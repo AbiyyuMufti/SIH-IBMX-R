@@ -39,7 +39,9 @@ Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `sc
 - Iterate: after each API call (or small group) in Phase B, immediately do the Phase C docs for it (redacted sample in `samples/`, endpoint doc in `docs/`), then go back to Phase B. Docs must explain the latest call in plain language.
 - CLAUDE.md still lists B then C as separate phases; update it if the user wants the new loop written down.
 - User context (2026-10-02): B2 Line = automatic (MindConnect, real assets); GT4 and soon Mira = manual OEE (operators enter data via a digital form in Insights Hub). Test order is a column in docs/api-summary.md (no separate test plan file).
-- Next: time series read for a B2 Line machine (aspects OEE_Hourly_Entry, OEE_MachineState, OEE_Prerequisites), then manualInputs / downtimeReasons GETs, then ask approval for evaluateKPIs POST.
+- Iteration 4 (2026-10-02): time series on B2 Line `02 Filler`: 6 aspects; limit max 2000, range max 90 days, 404 [6410] unknown aspect, 400 [6009] limits; OEE_MachineState/MachineSpeed empty (30 d); counters cumulative; sparse records with _qc. Script test-timeseries.js. Doc timeseries.md.
+- Notification hook added in .claude/settings.local.json (Notification event plays a Windows sound via PowerShell) so the user hears when a prompt needs confirmation.
+- Next (old note, time series now done): time series read for a B2 Line machine (aspects OEE_Hourly_Entry, OEE_MachineState, OEE_Prerequisites), then manualInputs / downtimeReasons GETs, then ask approval for evaluateKPIs POST.
 - Docs so far: `docs/README.md` (index + worked example of step 6), `docs/auth.md`, `docs/service-status.md`, `docs/assets.md` (docs now grouped by behaviour, not by service; `oee-api.md` removed).
 
 ## Open questions

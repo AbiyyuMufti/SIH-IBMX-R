@@ -1,5 +1,12 @@
 # Insights Hub API notes (Reckitt tenant)
 
+## How to read these docs (also for feeding them to another AI)
+- Start with this file, then [api-summary.md](api-summary.md) (everything that exists, grouped by behaviour, with test status and order).
+- Then open the behaviour file you need. Each endpoint has: purpose, method, URL, params, headers, example request (pasteable into a Node-RED function node), example response, gotchas.
+- Every endpoint is labelled **Tested** (called and verified on the Reckitt tenant, date given) or **From source only** (found in Postman, flows or the Python script, not called). Do not treat "from source only" as verified.
+- No secrets, tokens or real IDs are in these files. IDs are shown as `<id>` or `{assetId}`; asset and machine names are real.
+- Environment: Reckitt tenant, gateway `https://gateway.eu1.mindsphere.io`, read-only (GET), plus one POST to get the token.
+
 Working docs for calling the Siemens Insights Hub APIs found in the Postman collections, Node-RED flows and Python script. Only things we have actually called are marked **Tested**; everything else is marked **From source only**.
 
 ## Index
@@ -8,6 +15,7 @@ Working docs for calling the Siemens Insights Hub APIs found in the Postman coll
 | [auth.md](auth.md) | How to get a token and use it. Plain-language walkthrough | Tested |
 | [service-status.md](service-status.md) | Behaviour: is the service up and does my token work (`/health`, `/version`) | Tested |
 | [assets.md](assets.md) | Behaviour: find assets and the hierarchy (OEE and Asset Management lists, the tree, site level) | Tested |
+| [timeseries.md](timeseries.md) | Behaviour: read raw machine data (IoT Time Series): parameters, limits, record format | Tested on B2 Line `02 Filler` |
 | [config-and-master-data.md](config-and-master-data.md) | Behaviour: how OEE is set up (`/config`) and reason trees | Partly tested |
 | [api-summary.md](api-summary.md) | Everything that exists across all sources, and what we can test | Placeholder, updated as we go |
 | [inventory.md](inventory.md) | Per-file list of every outbound call found in the sources | Complete (Phase A) |
@@ -42,8 +50,14 @@ Where it lives in this repo: the script is `scripts/test-auth-health.js` (uses `
 - Reason trees are the lists of downtime and loss reasons per asset (22 trees; `B2 Line Reason Tree` has 1034 reasons in a flat list with `parentId`).
 - Scripts: `scripts/test-assets-paging-detail.js`, `scripts/test-asset-tree.js`, `scripts/test-hull-reasontrees.js`.
 
+## Fourth test: raw machine data (time series)
+- `02 Filler` (B2 Line, automatic) has 6 aspects; 4 hold data, `OEE_MachineState` and `OEE_MachineSpeed` are empty for the last 30 days.
+- Limits found: **max 2000 records per call, max 90 days per range**. A busy aspect fills the 2000 cap in about 30 minutes, so long ranges must be read in small windows.
+- Counters (`GoodParts`, `BadParts`) are cumulative; records are sparse; every variable has a `_qc` quality field.
+- Script: `scripts/test-timeseries.js`. Redacted samples: `samples/ts_02_filler_*.json`.
+
 ## How the docs are organised
-Files are grouped by **behaviour** (what you want to do), not by service. Each endpoint states its service and base path. Planned files, created as soon as something in them is tested: `timeseries.md`, `kpis.md`, `manual-inputs.md`, `events.md`, `write-calls.md`, `nodered-sdk-nodes.md`. The full list of what exists is in [api-summary.md](api-summary.md).
+Files are grouped by **behaviour** (what you want to do), not by service. Each endpoint states its service and base path. Planned files, created as soon as something in them is tested: `kpis.md`, `manual-inputs.md`, `events.md`, `write-calls.md`, `nodered-sdk-nodes.md`. The full list of what exists is in [api-summary.md](api-summary.md).
 
 ## How we work from here
 For every API call we test, we do two things before the next one: save a redacted sample in `samples/`, and write or update the doc for that endpoint here. So reading these docs should always explain the latest call.
