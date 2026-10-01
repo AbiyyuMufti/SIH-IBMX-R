@@ -16,6 +16,8 @@ Working docs for calling the Siemens Insights Hub APIs found in the Postman coll
 | [service-status.md](service-status.md) | Behaviour: is the service up and does my token work (`/health`, `/version`) | Tested |
 | [assets.md](assets.md) | Behaviour: find assets and the hierarchy (OEE and Asset Management lists, the tree, site level) | Tested |
 | [timeseries.md](timeseries.md) | Behaviour: read raw machine data (IoT Time Series): parameters, limits, record format | Tested on B2 Line `02 Filler` |
+| [manual-inputs.md](manual-inputs.md) | Behaviour: read operator input on a manual asset (GT4): shift entries, hourly entries | Tested on GT4 |
+| [kpis.md](kpis.md) | Behaviour: calculated results and reports (production vs target, downtime and reject reasons); KPI POSTs not yet | 4 reports tested |
 | [config-and-master-data.md](config-and-master-data.md) | Behaviour: how OEE is set up (`/config`) and reason trees | Partly tested |
 | [api-summary.md](api-summary.md) | Everything that exists across all sources, and what we can test | Placeholder, updated as we go |
 | [inventory.md](inventory.md) | Per-file list of every outbound call found in the sources | Complete (Phase A) |
@@ -56,8 +58,15 @@ Where it lives in this repo: the script is `scripts/test-auth-health.js` (uses `
 - Counters (`GoodParts`, `BadParts`) are cumulative; records are sparse; every variable has a `_qc` quality field.
 - Script: `scripts/test-timeseries.js`. Redacted samples: `samples/ts_02_filler_*.json`.
 
+## Fifth test: operator input on GT4 (manual OEE), windows 24 h, 48 h, 7 d
+- OEE `manualInputs` returns an object `{ manualInputs, virtualPeriods }`: one entry per 12-hour shift (order, product, counts, reject reasons, downtime reasons) plus the empty slots. GT4 had 1 entry in 24 h and 48 h, 2 in 7 d (little data, looks like test use).
+- The `OEE_Hourly_Entry` time series holds the hourly entries from the operators' form. Three fields are JSON stored in text, and `ActorEmail` is personal data.
+- Units differ: milliseconds in the OEE service, minutes in the hourly entries.
+- Reports tested: `productionTarget`, `downtimeReasons`, `topDowntimeReasons`, `topRejectReasons`. The `statusId` in `downtimeReasons` is the key for status-level calls.
+- Script: `scripts/test-manual-inputs.js`. Redacted samples: `samples/oee_manualinputs_gt4.json` and others.
+
 ## How the docs are organised
-Files are grouped by **behaviour** (what you want to do), not by service. Each endpoint states its service and base path. Planned files, created as soon as something in them is tested: `kpis.md`, `manual-inputs.md`, `events.md`, `write-calls.md`, `nodered-sdk-nodes.md`. The full list of what exists is in [api-summary.md](api-summary.md).
+Files are grouped by **behaviour** (what you want to do), not by service. Each endpoint states its service and base path. Planned files, created as soon as something in them is tested: `events.md`, `write-calls.md`, `nodered-sdk-nodes.md`. The full list of what exists is in [api-summary.md](api-summary.md).
 
 ## How we work from here
 For every API call we test, we do two things before the next one: save a redacted sample in `samples/`, and write or update the doc for that endpoint here. So reading these docs should always explain the latest call.
