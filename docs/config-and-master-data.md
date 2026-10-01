@@ -2,7 +2,7 @@
 
 Behaviour: read how OEE is set up for an asset, and the reference lists it uses (reason trees and so on).
 Service: OEE app v3. Base: `https://gateway.eu1.mindsphere.io/api/oee/v3`. Auth: Bearer token, see [auth.md](auth.md). Headers: `Accept: application/json` (the OEE service accepts it; Asset Management does not).
-Tested 2026-10-02 on the `reckitt` tenant. Anything not listed under "Tested" is **From source only**.
+Tested 2026-10-02 on the `reckitt` tenant, on `B2 Line` (automatic) and `GT4` (manual). Everything read-only. Anything not listed under "Tested" is **From source only**.
 
 ## What reason trees are
 A **reason tree** is the list of reasons why a machine is stopped or losing output, organised in levels. Examples of top-level groups in the `B2 Line Reason Tree`: `Planned Downtime`, `Unplanned Downtime`, `Breakdown`, `Changeover`, `Meals and breaks`, `Speed Loss`, `Quality Issues`, `Run`. Below each group are more specific reasons.
@@ -94,5 +94,67 @@ Take `msg.reasonTreeId` from the asset's `reasonTreeId` (see [assets.md](assets.
 - An asset that is not OEE-enabled can still return HTTP 200 with an empty config (`Hull`: `{"operandSource":{},"hasManuals":false}`). Check the asset is in the OEE list first.
 - The source flows read `/assets/{id}/config` to find the child assets and calendar of a line before asking KPIs.
 
+## Per-asset setup reads (Tested on B2 Line and GT4, HTTP 200 in about 0.25 s each)
+All are `GET .../api/oee/v3/assets/{assetId}/<name>` without parameters. They return pieces of what `/config` returns (see above), so you rarely need them if you already called `/config`.
+| Path | Returns (field names) | Notes |
+|---|---|---|
+| `/calendar` | `{ calendarId }` | Production calendar of the asset |
+| `/productCollection` | `{ productCollectionId }` | Product list used |
+| `/rejectReasonCollection` | `{ rejectReasonCollectionId }` | Reject-reason list used |
+| `/measure` | `{ measureCollectionId }` | **`{}` (empty object) on B2 Line**, which has none |
+| `/orderSource`, `/productSource` | `{ id, source, qualityCodeId, mode }` | B2 Line: `mode` = `CONNECTED`. GT4 only has `{ id, mode }` |
+| `/designSpeedSource` | `{ id, mode }` | Ideal speed source |
+| `/stateTableSource` | B2 Line: `{ id, stateTableId, source, mode: "STATUS_RULE" }`. GT4: `{ id, reasonTreeId, mode: "MANUAL" }` | Where the machine state comes from |
+| `/operandInstancesSource` | `{ good, rejected, total }`, each with `operandName`, `mode`, and for connected ones `valueType`, `source`, `qualityCodeId` | B2 Line: good = `CNT_PROGRESSIVE` and rejected = `CNT_DIFF` (both `CONNECTED`), total = `CALCULATED`. GT4: modes only |
+| `/status/{statusId}/measureAssignment`, `/status/{statusId}/workorderAssignment` | `{ measureAssignments: [] }`, `{ workorderAssignments: [] }` | Both empty in the tests. `statusId` comes from `downtimeReasons` (see [kpis.md](kpis.md)) |
+
+**What the values mean (inferred from the names and the data, not from product documentation)**
+- `mode`: where the value comes from. `CONNECTED` = from machine data, `MANUAL` = entered by operators, `STATUS_RULE` = derived by a status mapping, `CALCULATED` = computed by OEE. This matches your description: B2 Line is connected, GT4 manual.
+- `valueType`: `CNT_PROGRESSIVE` = a running counter that only goes up (like `GoodParts` in [timeseries.md](timeseries.md)); `CNT_DIFF` = a counter that gives the difference per step.
+- `source` (connected assets): three parts separated by `/`: two IDs and a variable key. It points at the asset, aspect and variable where the data is read.
+- `qualityCodeId`: which quality-code mapping applies to the variable (see `/qualityCodes`).
+
+## Master data lists (Tested)
+All `GET .../api/oee/v3/<path>`, no parameters unless stated, HTTP 200 in 0.25 to 0.7 s. Most return an **object with one named array** (not a bare array).
+| Path | Shape | Count / notes |
+|---|---|---|
+| `/calendars` | plain array of `{ id, name, description, timeZoneText }` | 36. Names such as `GT4 4-Crew Shift Pattern`, `Hull Calendar`, `General Shift`, `CAL-ITA2-...` |
+| `/calendars/{id}` | `{ id, name, description, timeZoneText }` | One calendar |
+| `/calendars/{id}/calendarEvents?from&to` | `{ calendarEvents: [ { id, name, description, timeModelCategoryId, duration, rrule } ] }` | GT4 calendar: 4 events (`Shift 1`, `Changeover`, `Shift 2`, `Changeover`). `duration` in **ms** (43200000 = 12 h). `rrule` = recurrence `{ freq: "DAILY", interval, dtstart, until }`, here daily until 2099 |
+| `/timeModel` | **one object** `{ id, name, description }`, not a list | The tenant's time model |
+| `/timeModel/{id}/categories` | `{ categories: [ { id, name, description, type, parentId, color } ] }` | 20. `type` is `TIME_MODEL` (root) or `TIME_CATEGORY`. Names: `Production time`, `Run`, `Planned stop`, `Availability loss`, `Changeover`, `Breakdown`, `Meals and breaks`, `Operator asset care`, and more. Build the tree with `parentId` |
+| `/productCollections` | `{ productCollections: [ { id, name, description } ] }` | 78 (per line, for example `B2 Line Products`) |
+| `/productCollections/{id}` | `{ id, name, description }` | |
+| `/productCollections/{id}/products` | `{ products: [ { id, name, description, designSpeedInterval, designSpeedUnit, designSpeedValue, designSpeedType, code } ] }` | GT4's collection: 15 products. Carries the ideal speed per product |
+| `/productUnits` | plain array `{ id, unit }` | 3: `Carton`, `Technology`, `Piece` |
+| `/qualityCodes` | `{ qualityCodes: [ { id, name, systemName, description, ranges: [3] } ] }` | 6: `OPC UA and S7`, `Modbus`, `Simatic I/O Shield`, `System`, `Rockwell`, `S7+, Fanuc Focas, Sinumerik, IEC61850 and MTConnect`. Presumably they define which `_qc` values count as good per connection type; not confirmed |
+| `/measureCollections` | `{ measureCollections: [ { id, name, description } ] }` | **Exactly 100**, and `size`, `page` and `limit` did not change it. It may be a silent cap |
+| `/measureCollections/{id}/measures` | `{ measures: [ { id, name, description, parentId } ] }` | GT4's collection has 1 measure (`EMC`) |
+| `/rejectReasonCollections` | `{ rejectReasonCollections: [ { id, name, description } ] }` | 3: `GT4 Reject Reasons`, `B2 Reject Reasons`, `RPS Global Reject Reasons` |
+| `/rejectReasonCollections/{id}/rejectReasons` | `{ rejectReasons: [ { id, name, description, parentId } ] }` | GT4's: 26, a tree through `parentId` (for example `Bottle` > `Broken`) |
+| `/stateTables` | `{ stateTables: [ { id, name, description, reasonTreeId } ] }` | 10 (one per B2 line or machine, for example `B2 Line Filler Status Mapping`) |
+| `/stateTables/{id}` | `{ id, name, description, reasonTreeId }` | |
+| `/stateTables/{id}/states` | `{ states: [ { id, reasonId, value } ] }` | 117 in the first table. Maps a machine state code (`value`, a string such as `"3"`) to a reason of the reason tree |
+| `/expressions` | `{ expressions: [ { id, name, displayName, description, type, formula, readOnly, modified, updateAvailable, keepMyVersion } ] }` | 34: 30 of type `KPI`, 4 `AUXILIARY`. The KPI list is in [kpis.md](kpis.md). `formula` refers to operands by ID, for example `[<id>]-[<id>]` |
+| `/expressions/{id}` | one expression | |
+| `/operands` | `{ operands: [ { id, name, description, type, value } ] }` | 27. Types: `INSTANCE` (4), `TIME_MODEL` (4), `TIME_MODEL_OCCURRENCE` (3), `ASSET_SOURCE_MODE_STRING` (6), `ASSET_SOURCE_MODE_NUMBER` (6), `THEORETICAL_OUTPUT`, `REQ_PARAM_FROM`, `REQ_PARAM_TO`, `SHIFT_PLAN_STOPS` |
+| `/microStops` | **one object** `{ belongs: "PERFORMANCE", color, duration: 5, unit: "MINUTE" }` | The micro-stop rule: presumably stops shorter than 5 minutes count as micro stops, booked under performance. Inferred |
+| `/application/settings` | HTTP **404** `{"errors":[{"code":"mdsp.core.oee.getSettings","logref":"...","message":"Resource not found"}]}` | No settings object exists in this tenant (the Postman collection expects one) |
+
+**Gotchas**
+- Names are not unique and many lists are per asset (78 product collections, 100 measure collections). Always take the ID from the asset's `/config` rather than searching by name.
+- `/timeModel` and `/microStops` are single objects. Do not treat them as lists.
+- `measureCollections` returns exactly 100 whatever the parameters, so assume it can be truncated.
+- A 404 error body uses the OEE format `{"errors":[{"code","logref","message"}]}`.
+
+**Example request for any of them (Node-RED function node)**
+```js
+msg.method = "GET";
+msg.url = "https://gateway.eu1.mindsphere.io/api/oee/v3/" + msg.path;   // for example "stateTables" or "calendars/" + calendarId + "/calendarEvents?from=...&to=..."
+msg.headers = { "Authorization": "Bearer " + flow.get("access_token_OEE"), "Accept": "application/json" };
+msg.payload = null;
+return msg;
+```
+
 ## From source only (not tested)
-Listed in [api-summary.md](api-summary.md): `/calendars`, `/timeModel` (+ categories), `/productCollections`, `/productUnits`, `/qualityCodes`, `/measureCollections`, `/rejectReasonCollections`, `/stateTables`, `/expressions`, `/operands`, `/microStops`, `/application/settings`.
+Write calls on all of the above (create, change, delete lists and assignments) and PUT on the per-asset setup paths. Not in scope without approval.

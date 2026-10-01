@@ -17,8 +17,8 @@ Working docs for calling the Siemens Insights Hub APIs found in the Postman coll
 | [assets.md](assets.md) | Behaviour: find assets and the hierarchy (OEE and Asset Management lists, the tree, site level) | Tested |
 | [timeseries.md](timeseries.md) | Behaviour: read raw machine data (IoT Time Series): parameters, limits, record format | Tested on B2 Line `02 Filler` |
 | [manual-inputs.md](manual-inputs.md) | Behaviour: read operator input on a manual asset (GT4): shift entries, hourly entries | Tested on GT4 |
-| [kpis.md](kpis.md) | Behaviour: calculated results and reports (production vs target, downtime and reject reasons); KPI POSTs not yet | 4 reports tested |
-| [config-and-master-data.md](config-and-master-data.md) | Behaviour: how OEE is set up (`/config`) and reason trees | Partly tested |
+| [kpis.md](kpis.md) | Behaviour: calculated results and reports (production vs target, downtime and status distributions, reject reasons, filter values) and the list of 34 KPI expressions; KPI POSTs not yet | 7 reports tested |
+| [config-and-master-data.md](config-and-master-data.md) | Behaviour: how OEE is set up (`/config`, per-asset sources), reason trees and all master data lists (calendars, time model, products, quality codes, measures, reject reasons, state tables, expressions, operands, micro stops) | Tested (reads) |
 | [api-summary.md](api-summary.md) | Everything that exists across all sources, and what we can test | Placeholder, updated as we go |
 | [inventory.md](inventory.md) | Per-file list of every outbound call found in the sources | Complete (Phase A) |
 | [auth-checklist.md](auth-checklist.md) | Where each credential comes from in the sources (never values) | Complete (Phase A) |
@@ -64,6 +64,12 @@ Where it lives in this repo: the script is `scripts/test-auth-health.js` (uses `
 - Units differ: milliseconds in the OEE service, minutes in the hourly entries.
 - Reports tested: `productionTarget`, `downtimeReasons`, `topDowntimeReasons`, `topRejectReasons`. The `statusId` in `downtimeReasons` is the key for status-level calls.
 - Script: `scripts/test-manual-inputs.js`. Redacted samples: `samples/oee_manualinputs_gt4.json` and others.
+
+## Sixth test: remaining reports and all master data lists (B2 Line and GT4)
+- Reports: `downtimeDistribution`, `statusDistribution`, `filterValues`, `measure`. Duration is a string on B2 Line and a number on GT4. B2 Line has a `##MICROSTOPS##` pseudo-reason (2108 occurrences in 7 d).
+- Per-asset setup: each source has a `mode` (`CONNECTED` for B2 Line, `MANUAL` for GT4, `STATUS_RULE`, `CALCULATED`) and counters have a `valueType` (`CNT_PROGRESSIVE` or `CNT_DIFF`).
+- Master data: 12 lists plus their nested lists. `/timeModel` and `/microStops` are single objects, `/measureCollections` always returns exactly 100, `/application/settings` returns 404.
+- Scripts: `scripts/test-asset-reports.js`, `scripts/test-master-data.js` (helper `scripts/lib-probe.js`).
 
 ## How the docs are organised
 Files are grouped by **behaviour** (what you want to do), not by service. Each endpoint states its service and base path. Planned files, created as soon as something in them is tested: `events.md`, `write-calls.md`, `nodered-sdk-nodes.md`. The full list of what exists is in [api-summary.md](api-summary.md).
