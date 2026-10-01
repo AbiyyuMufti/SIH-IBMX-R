@@ -68,7 +68,7 @@ Send it on every call:
 | `Authorization` | `Bearer <access_token>` |
 | `Accept` | `application/json` |
 
-The API host for all areas is `https://gateway.eu1.mindsphere.io`, followed by the API path, for example `/api/oee/v3/health`. See [oee-api.md](oee-api.md).
+The API host for all areas is `https://gateway.eu1.mindsphere.io`, followed by the API path, for example `/api/oee/v3/health`. See [service-status.md](service-status.md) and [assets.md](assets.md).
 
 ## Two other auth styles found in the sources (not tested, not used for Reckitt)
 - **App credentials** (`AssetFilterFinal.py`): `POST /api/technicaltokenmanager/v3/oauth/token` with header `X-SPACE-AUTH-KEY`. Belongs to the `caditiot` tenant app.

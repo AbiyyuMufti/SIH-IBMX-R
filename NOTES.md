@@ -37,7 +37,7 @@ Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `sc
 ## Working agreement (changed 2026-10-02, by the user)
 - Iterate: after each API call (or small group) in Phase B, immediately do the Phase C docs for it (redacted sample in `samples/`, endpoint doc in `docs/`), then go back to Phase B. Docs must explain the latest call in plain language.
 - CLAUDE.md still lists B then C as separate phases; update it if the user wants the new loop written down.
-- Docs so far: `docs/README.md` (index + worked example of step 6), `docs/auth.md`, `docs/oee-api.md` (health tested).
+- Docs so far: `docs/README.md` (index + worked example of step 6), `docs/auth.md`, `docs/service-status.md`, `docs/assets.md` (docs now grouped by behaviour, not by service; `oee-api.md` removed).
 
 ## Open questions
 1. Which client(s) to use for `reckitt` (OEE technical user vs supervisor client) and whether a read-only client exists. See `docs/auth-checklist.md`, section "Questions to ask your colleague".

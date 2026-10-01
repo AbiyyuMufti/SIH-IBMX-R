@@ -6,7 +6,8 @@ Working docs for calling the Siemens Insights Hub APIs found in the Postman coll
 | File | What it covers | State |
 |---|---|---|
 | [auth.md](auth.md) | How to get a token and use it. Plain-language walkthrough | Tested |
-| [oee-api.md](oee-api.md) | OEE app v3 endpoints (`/health`, `/version`, `/assets` tested; others listed as from source only) | 3 endpoints tested |
+| [service-status.md](service-status.md) | Behaviour: is the service up and does my token work (`/health`, `/version`) | Tested |
+| [assets.md](assets.md) | Behaviour: find assets and the hierarchy (OEE `/assets` tested; Asset Management and the tree in progress) | In progress |
 | [api-summary.md](api-summary.md) | Everything that exists across all sources, and what we can test | Placeholder, updated as we go |
 | [inventory.md](inventory.md) | Per-file list of every outbound call found in the sources | Complete (Phase A) |
 | [auth-checklist.md](auth-checklist.md) | Where each credential comes from in the sources (never values) | Complete (Phase A) |
@@ -32,6 +33,9 @@ Where it lives in this repo: the script is `scripts/test-auth-health.js` (uses `
 - `GET /version` returned `{"version": "1.24.39"}`. Asking again **without** a token returned HTTP 403, so assume OEE calls need the token (the Postman collection marks this one as no auth, which is wrong here).
 - `GET /assets` returned 44 assets in a plain list (name, description, a few flags and a reason-tree ID). There is no paging information, so the whole list arrived at once. The `assetId` values are what the later tests use.
 - Script: `scripts/test-version-assets.js`. Redacted samples: `samples/oee_version.json`, `samples/oee_assets.json`.
+
+## How the docs are organised
+Files are grouped by **behaviour** (what you want to do), not by service. Each endpoint states its service and base path. Planned files, created as soon as something in them is tested: `timeseries.md`, `kpis.md`, `manual-inputs.md`, `config-and-master-data.md`, `events.md`, `write-calls.md`, `nodered-sdk-nodes.md`. The full list of what exists is in [api-summary.md](api-summary.md).
 
 ## How we work from here
 For every API call we test, we do two things before the next one: save a redacted sample in `samples/`, and write or update the doc for that endpoint here. So reading these docs should always explain the latest call.

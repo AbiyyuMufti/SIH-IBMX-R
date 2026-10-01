@@ -1,6 +1,6 @@
 # API summary (placeholder)
 
-> **Status: placeholder, built from the source files. Only the token request and `GET /api/oee/v3/health` have been called so far** (see [auth.md](auth.md) and [oee-api.md](oee-api.md) for the tested parts). Everything else here is from source only. Detail per call is in [inventory.md](inventory.md); auth sources are in [auth-checklist.md](auth-checklist.md). Per-area docs replace this page as endpoints get tested.
+> **Status: placeholder, built from the source files. Only the token request and `GET /api/oee/v3/health`, `/version`, `/assets` have been called so far** (see [auth.md](auth.md), [service-status.md](service-status.md) and [assets.md](assets.md) for the tested parts). Everything else here is from source only. Detail per call is in [inventory.md](inventory.md); auth sources are in [auth-checklist.md](auth-checklist.md). Per-area docs replace this page as endpoints get tested.
 
 Target tenant for testing: **reckitt** (decided by the user). Gateway: `https://gateway.eu1.mindsphere.io`. IAM host for the token: `https://reckitt.piam.eu1.mindsphere.io`.
 
