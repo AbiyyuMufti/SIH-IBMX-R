@@ -21,8 +21,14 @@ Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `sc
 - Tried: first version of the Node-RED helper redacted any 32+ char string including URL paths, hiding endpoint paths. Error: `<LONG>` in place of URLs. Fix: regex no longer matches `/` and `.`; endpoint paths now visible.
 - Note: the allow rule `Bash(node scripts/parse-:*)` does not match the helper names required by CLAUDE.md (`scripts/helper-*.js`); those runs prompt unless you add `Bash(node scripts/helper-:*)`.
 
+## Decisions
+- 2026-10-02: test tenant is **reckitt** (user decision). Credentials were reused from other projects, which is why they appear in several source files.
+- Auth needs one POST (token request); ask the user before sending it in step 6.
+- Phase B will add JS call scripts in `scripts/` (one per API area, GET only, secrets from `.env`).
+- Placeholder summary of all APIs and what can be tested: `docs/api-summary.md`.
+
 ## Open questions
-1. Which tenant to test against (`caditiot`, `reckitt` or `greggs`) and which client(s). See `docs/auth-checklist.md`, section "Questions to ask your colleague".
+1. Which client(s) to use for `reckitt` (OEE technical user vs supervisor client) and whether a read-only client exists. See `docs/auth-checklist.md`, section "Questions to ask your colleague".
 2. Postman environment files were not provided; `HOST`/`PIAM` etc. are blank in the Testing collection and `PIAM` in the OEE collection.
 3. Insights Hub SDK nodes (`read-oee`, `write timeseries`, `create event`, `asset-type`, `read aggregates`) have no URL in the flow. Inferred APIs are guesses; ask the colleague for the actual endpoints if they matter.
 4. The Testing collection requests `Retrieve Cases` and `Retrieve Event Types` use the same URL as `Retrieve Events`; probably placeholders.
