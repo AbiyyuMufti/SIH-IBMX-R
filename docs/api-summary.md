@@ -1,8 +1,26 @@
 # API summary (placeholder)
 
-> **Status: placeholder, built from the source files only. Nothing here has been called yet.** It will be replaced by the real docs in Phase C (`docs/README.md` plus one file per API area) after the GET tests in Phase B. Detail per call is in [inventory.md](inventory.md); auth is in [auth-checklist.md](auth-checklist.md).
+> **Status: placeholder, built from the source files. Only the token request and `GET /api/oee/v3/health` have been called so far** (see [auth.md](auth.md) and [oee-api.md](oee-api.md) for the tested parts). Everything else here is from source only. Detail per call is in [inventory.md](inventory.md); auth sources are in [auth-checklist.md](auth-checklist.md). Per-area docs replace this page as endpoints get tested.
 
 Target tenant for testing: **reckitt** (decided by the user). Gateway: `https://gateway.eu1.mindsphere.io`. IAM host for the token: `https://reckitt.piam.eu1.mindsphere.io`.
+
+## What exists, grouped by behaviour
+| Behaviour | APIs | What it gets you | Status |
+|---|---|---|---|
+| **Log in** | IAM token (`POST /oauth/token`) | A 30-minute token for everything below | Tested |
+| **Check the service** | OEE `/health`, `/version` | Up/down check, service version | `health` tested |
+| **Find assets** | Asset Management (`/assets`, `/assets/{id}`, `/assets/{id}/aspects`, `/assettypes`) and OEE `/assets` | The asset tree (lines, machines), their IDs and types, and which data aspects each has. The asset IDs are the key for every other call | Not yet |
+| **Read raw machine data** | IoT Time Series (`/timeseries/{assetId}/{aspect}?from&to`) | Raw counters and states over a time window (good parts, rejects, machine speed, hourly entries) | Not yet |
+| **Read calculated KPIs** | OEE `POST /expressions/evaluateKPIs`, `/expressions/{id}/evaluate`, `/assets/{id}/timeModelCategoryDistribution`; GETs such as `statusDistribution`, `downtimeDistribution`, `topDowntimeReasons`, `topRejectReasons` | OEE, availability, performance, quality, downtime and reject breakdowns for an asset and period (what Paul's daily report uses) | Not yet. The `evaluate…` and `…Distribution` calls that are POST need your OK |
+| **Read operator input** | OEE `/assets/{id}/manualInputs`, `/comment`, `/productionTarget` | What operators entered by hand: reject reasons, comments, targets | Not yet |
+| **Read configuration and master data** | OEE `/assets/{id}/config` and `*Source`, `/reasontrees`, `/rejectReasonCollections`, `/measureCollections`, `/stateTables`, `/calendars`, `/timeModel`, `/productCollections`, `/productUnits`, `/qualityCodes`, `/expressions`, `/operands`, `/application/settings` | How OEE is set up: reason lists, calendars, time-model categories, product lists and the formulas behind the KPIs | Not yet |
+| **Events** | Event Management (`/events`, job status) | Platform events. Appears only in the `caditiot` Postman collection | Low priority |
+| **Change data (not tested without approval)** | OEE POST, PUT and DELETE (about 130 requests in Postman); time series PUT and DELETE; manual-input POST and PUT; event create and delete | Writing reject reasons and hourly entries, changing setup, deleting data | Off-limits unless you approve |
+| **Only inside Insights Hub Node-RED** | SDK nodes (`read-oee`, `read timeseries`, `write timeseries`, `create event`, Object Storage nodes) | Same data through built-in nodes. They have no URL we can call locally | Not callable here |
+
+In short, the read side gets you three things: who the assets are, what they measured, and what the OEE app calculates and is configured to do with that. The write side is what the source flows use to push calculated hourly OEE and reject reasons back in. Most of the 130 write requests are in the Postman collection and are administration, not something needed to read data.
+
+Suggested route: `/version`, then `/assets` for IDs, then `/assets/{id}/config` and a time series read, then the KPI POSTs once approved.
 
 ## How access works (3 steps)
 1. **Get a token (a POST, needs your OK first).** `POST https://reckitt.piam.eu1.mindsphere.io/oauth/token?grant_type=client_credentials` with header `Authorization: Basic base64(clientId:clientSecret)`. Response field `access_token`. Client ID and secret go in `.env` (`RECKITT_API_TECHUSER_CLIENT_ID`, `RECKITT_API_TECHUSER_CLIENT_SECRET`), see [auth-checklist.md](auth-checklist.md).
