@@ -185,6 +185,13 @@ HTTP 200, HAL list (`_embedded.aspects`, `page`). For `B2 Line` it lists 5 aspec
 
 ---
 
+### GET /api/assetmanagement/v3/assettypes and /aspecttypes (Tested: **403 Access Denied**)
+Tested with the API technical user: `/assettypes`, `/assettypes/{typeId}` and `/aspecttypes` all return **HTTP 403** `{"errors":[{"code":"mindsphere.generic.exception","message":"Access Denied"}]}`. The same user can read assets and aspects (above) but not the type definitions. The Python script and the Testing Postman collection use these calls, so another user or role has the permission. To read types, ask your colleague for a user with the Asset Management type-read role (exact role name not checked). Not retried with other credentials.
+
+What you can still learn about types without that permission: each asset has a `typeId` (for example `reckitt.B2_Line_Filler_Asset_OEE_Automatic`), and `/assets/{assetId}/aspects` lists the aspect names and their types.
+
+---
+
 ## Site level (Hull)
 | Question | Answer (tested) |
 |---|---|

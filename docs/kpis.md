@@ -1,8 +1,8 @@
 # Calculated results and reports (OEE)
 
-Behaviour: read what the OEE app has calculated or summarised for an asset: production vs target, downtime and reject reasons, and (later) the OEE KPIs themselves.
+Behaviour: read what the OEE app has calculated or summarised for an asset: production vs target, downtime and reject reasons, and the OEE KPIs themselves (via one read-style POST).
 Service: OEE app v3. Base: `https://gateway.eu1.mindsphere.io/api/oee/v3`. Auth: Bearer token, see [auth.md](auth.md). Headers on all calls: `Authorization: Bearer <token>`, `Accept: application/json`.
-Tested 2026-10-02 on `GT4` (manual OEE) and `B2 Line` (automatic) over the last 7 days. Read only.
+Tested 2026-10-02 on `GT4` (manual OEE) and `B2 Line` (automatic) over the last 7 days. Read only, plus one read-style POST (`evaluateKPIs`) that the user approved.
 Legend: **Tested** = called and verified. **From source only** = found in Postman/flows, not called.
 
 All the report calls below take `from` and `to` (ISO 8601 UTC) as query parameters. Without data in the window they return HTTP 200 with empty lists, not errors.
@@ -152,5 +152,121 @@ The OEE app has 34 expressions: 30 of type `KPI` and 4 `AUXILIARY`. The `POST /e
 
 Each expression has an `id` and a `formula` built from operand IDs; use `GET /expressions` to look up IDs, they are specific to the tenant. KPI names can differ between tenants (the source flows warn about this).
 
+## POST /expressions/evaluateKPIs (Tested, the only POST besides the token)
+| Item | Value |
+|---|---|
+| Purpose | Ask the OEE app to calculate all KPIs for one asset over a period. This is what Paul-Flow uses for the daily report |
+| Method and URL | `POST https://gateway.eu1.mindsphere.io/api/oee/v3/expressions/evaluateKPIs` |
+| Headers | `Authorization: Bearer <token>`, `Content-Type: application/json`, `Accept: application/json` |
+| Body | JSON, see below. Same shape as the Paul-Flow nodes `Prepare Request` / `evaluateKPIs` |
+| Tested | 2026-10-02, API technical user, on `B2 Line` (24 h), `GT4` (48 h) and `B2 Line` with `recursive: true`. HTTP 200 in 0.5 to 0.9 s each |
+| Side effects | None seen. The response only contains values and nothing in the sources writes anything for this call. Not proven server-side |
+
+**Request body**
+```json
+{
+  "assetId": "<assetId>",
+  "scope": {
+    "from": "2026-10-01T00:00:00.000Z",
+    "to": "2026-10-02T00:00:00.000Z",
+    "filter": [ { "key": "PRODUCT", "value": [] }, { "key": "ORDER", "value": [] }, { "key": "SHIFT", "value": [] } ],
+    "recursive": false,
+    "groupedByDateTime": false
+  }
+}
+```
+| Field | Meaning |
+|---|---|
+| `assetId` | An OEE asset (see [assets.md](assets.md)) |
+| `scope.from`, `scope.to` | ISO 8601 UTC period |
+| `scope.filter` | Optional narrowing. Empty `value` arrays = no filter. Keys used by the flows: `PRODUCT`, `ORDER`, `SHIFT`. To filter, put values from `GET /assets/{id}/filterValues` in `value` (not tested) |
+| `scope.recursive` | `false` in the flows. With `true` the response had 51 rows instead of 30 for B2 Line, with the same KPI values (see gotchas) |
+| `scope.groupedByDateTime` | `false` = one value per KPI for the whole period. `true` is used by the Postman evaluation requests to get a value per time bucket (not tested here) |
+
+**Example request (Node-RED function node, then an `http request` node set to "use `msg.method`", return "a parsed JSON object")**
+```js
+const to = new Date();
+const from = new Date(to.getTime() - 24 * 3600 * 1000);
+msg.method = "POST";
+msg.url = "https://gateway.eu1.mindsphere.io/api/oee/v3/expressions/evaluateKPIs";
+msg.headers = {
+  "Authorization": "Bearer " + flow.get("access_token_OEE"),
+  "Content-Type": "application/json",
+  "Accept": "application/json"
+};
+msg.payload = {
+  assetId: msg.assetId,
+  scope: {
+    from: from.toISOString(),
+    to: to.toISOString(),
+    filter: [ { key: "PRODUCT", value: [] }, { key: "ORDER", value: [] }, { key: "SHIFT", value: [] } ],
+    recursive: false,
+    groupedByDateTime: false
+  }
+};
+return msg;
+```
+Then pick values by name, as the flows do:
+```js
+const kpi = {};
+for (const r of msg.payload.results) kpi[r.name] = r.value;
+msg.payload = { oee: kpi["OEE"], availability: kpi["Availability"], performance: kpi["Performance"], quality: kpi["Quality"] };
+return msg;
+```
+
+**Response (HTTP 200)**
+```json
+{
+  "scope": { "from": "...", "to": "...", "filter": [], "recursive": false, "groupedByDateTime": false },
+  "results": [
+    { "id": "<id>", "name": "OEE", "displayName": "OEE", "expressionType": "KPI", "value": 0.4195,
+      "humanFormula": "'OEE' : 'Availability'*'Performance'*'Quality' = 0.4195 | used operands 'Availability' = 0.742, ..." }
+  ],
+  "took": "<string>",
+  "missingMapping": [],
+  "productUnit": "<string>"
+}
+```
+| Field | Meaning |
+|---|---|
+| `results[]` | One row per KPI: 30 rows with `expressionType: "KPI"`, the same 30 as in the KPI list above |
+| `results[].name` / `displayName` | Use `name` to look a KPI up (`displayName` can differ, for example `Rejected parts connected`) |
+| `results[].value` | The result (see units below) |
+| `results[].humanFormula` | The formula in words with the operand values used. Very useful to understand or debug a number |
+| `took` | Calculation time as text |
+| `missingMapping` | List of `{ key, value }` for things the calculation could not map. Empty for B2 Line, 1 item for GT4 (content not recorded; check it if a KPI looks wrong) |
+| `productUnit` | Unit of the counted parts |
+
+**Units of the values**
+| KPIs | Unit |
+|---|---|
+| `Availability`, `Performance`, `Quality`, `OEE`, `TEEP` | Fraction, 1 = 100 % (for example `0.4195` = 41.95 %). Rounded to 4 decimals |
+| `Total time`, `Operational time`, `Net production time`, `Net operational time`, `Used operational time`, `Availability losses`, `Performance losses`, `Quality losses`, `Planned stops`, `Planned stop from shift plan`, `MTTR`, `MTBF`, `Downtime (duration)`, `Micro stops (duration)`, `Macro stops (duration)` | **Milliseconds** |
+| `Good parts`, `Total parts`, `Rejected parts`, `Connected rejected parts`, `Manual rejected parts`, `Theoretical output` | Part counts |
+| `Availability loss (occurrence)`, `Downtimes (occurrence)`, `Micro stops (occurrence)`, `Macro stops (occurrence)` | Counts |
+
+**Results seen (2026-10-01 test windows)**
+| KPI | B2 Line, 24 h | GT4, 48 h |
+|---|---|---|
+| OEE | 0.4195 | 0.1222 |
+| Availability | 0.742 | 0.993 |
+| Performance | **2.1671** | 0.1231 |
+| Quality | 0.2609 | 0.9994 |
+| Good / Total / Rejected parts | 118940 / 455939 / 336999 | 15950 / 15960 / 10 |
+| Total time | 86400000 (24 h) | 148554813 (about 41.3 h) |
+| Downtimes (occurrence) | 239 (224 micro, 15 macro) | 1 |
+
+**Gotchas**
+- **Sanity-check the numbers.** B2 Line shows `Performance` above 1 (217 %), negative `Performance losses`, and more rejected than good parts. That suggests the design speed or the counters of B2 Line do not match the real production in this window (it may be commissioning or test data). The API calculates whatever is configured; it does not flag this. Do not present these values as real results without checking.
+- **GT4** (manual): `Performance` is 0.12 because `Theoretical output` (129600) is far above the entered 15960 parts, again a configuration or data question, not an API one. Its `Total time` is the calendar time inside the window, not 48 h.
+- **`recursive: true`** returned the same 30 KPI values for B2 Line plus 21 more rows: auxiliary expressions and **operands** (`expressionType` `OPERAND` or `null`) such as `From` and `To` (their `value` is an array of timestamps in ms), `GoodOperandMode`, `Microstops (duration)`. It did not add child machines into the numbers in this test. Whether it rolls up child assets for another asset type was not verified.
+- Rows of other types have `displayName: null`, and `value` is sometimes an array. Filter on `expressionType === "KPI"` before reading.
+- `humanFormula` can read `'null'` for some operands (GT4: `'Total parts' : 'null' = 15960`); the value is still returned.
+- A POST that returns HTTP 200 does not guarantee all KPIs have data. Check `missingMapping`.
+- Use the same `assetId` rules as other calls: OEE assets only. A site such as `Hull` gives 404 (not tested for this call).
+
+## Other calculation POSTs (not tested)
+`POST /expressions/{id}/evaluate` (one expression, same scope body with `assetId`) and `POST /assets/{assetId}/timeModelCategoryDistribution`. Request bodies are in [api-summary.md](api-summary.md).
+
 ## From source only (not tested)
-POST (read-style, ask first): `/expressions/evaluateKPIs`, `/expressions/{id}/evaluate`, `/assets/{id}/timeModelCategoryDistribution`. Details and request bodies are in [api-summary.md](api-summary.md).
+`POST /expressions/{id}/evaluate` and `POST /assets/{id}/timeModelCategoryDistribution` (see above); `GET /assets/{assetId}/measure` details for assets that have a measure collection.

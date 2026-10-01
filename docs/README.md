@@ -17,7 +17,7 @@ Working docs for calling the Siemens Insights Hub APIs found in the Postman coll
 | [assets.md](assets.md) | Behaviour: find assets and the hierarchy (OEE and Asset Management lists, the tree, site level) | Tested |
 | [timeseries.md](timeseries.md) | Behaviour: read raw machine data (IoT Time Series): parameters, limits, record format | Tested on B2 Line `02 Filler` |
 | [manual-inputs.md](manual-inputs.md) | Behaviour: read operator input on a manual asset (GT4): shift entries, hourly entries | Tested on GT4 |
-| [kpis.md](kpis.md) | Behaviour: calculated results and reports (production vs target, downtime and status distributions, reject reasons, filter values) and the list of 34 KPI expressions; KPI POSTs not yet | 7 reports tested |
+| [kpis.md](kpis.md) | Behaviour: calculated results and reports (production vs target, downtime and status distributions, reject reasons, filter values) and the list of 34 KPI expressions; KPI POSTs not yet | 7 reports + `evaluateKPIs` POST tested |
 | [config-and-master-data.md](config-and-master-data.md) | Behaviour: how OEE is set up (`/config`, per-asset sources), reason trees and all master data lists (calendars, time model, products, quality codes, measures, reject reasons, state tables, expressions, operands, micro stops) | Tested (reads) |
 | [api-summary.md](api-summary.md) | Everything that exists across all sources, and what we can test | Placeholder, updated as we go |
 | [inventory.md](inventory.md) | Per-file list of every outbound call found in the sources | Complete (Phase A) |
@@ -70,6 +70,11 @@ Where it lives in this repo: the script is `scripts/test-auth-health.js` (uses `
 - Per-asset setup: each source has a `mode` (`CONNECTED` for B2 Line, `MANUAL` for GT4, `STATUS_RULE`, `CALCULATED`) and counters have a `valueType` (`CNT_PROGRESSIVE` or `CNT_DIFF`).
 - Master data: 12 lists plus their nested lists. `/timeModel` and `/microStops` are single objects, `/measureCollections` always returns exactly 100, `/application/settings` returns 404.
 - Scripts: `scripts/test-asset-reports.js`, `scripts/test-master-data.js` (helper `scripts/lib-probe.js`).
+
+## Seventh test: Asset Management types (denied) and the KPI POST
+- `/assettypes`, `/assettypes/{id}` and `/aspecttypes` return **403 Access Denied** for the API technical user (it can read assets and aspects only).
+- `POST /expressions/evaluateKPIs` (approved, same call as Paul-Flow): HTTP 200 in under 1 s, 30 KPIs with `value` and a `humanFormula`. B2 Line 24 h: OEE 0.42, Performance 2.17 (above 100 %, looks like a configuration or data problem), GT4 48 h: OEE 0.12. `recursive: true` gave 21 extra operand rows but the same values.
+- Script: `scripts/test-am-types.js`, `scripts/test-kpi-post.js`.
 
 ## How the docs are organised
 Files are grouped by **behaviour** (what you want to do), not by service. Each endpoint states its service and base path. Planned files, created as soon as something in them is tested: `events.md`, `write-calls.md`, `nodered-sdk-nodes.md`. The full list of what exists is in [api-summary.md](api-summary.md).
