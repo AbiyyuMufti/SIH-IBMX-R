@@ -29,7 +29,7 @@ The goal was to prove that our credentials work and that the OEE service answers
 Where it lives in this repo: the script is `scripts/test-auth-health.js` (uses `scripts/lib-ih.js`), the saved response is `samples/oee_health.json` (gitignored).
 
 ## Second test: `/version` and `/assets`
-- `GET /version` returned `{"version": "1.24.39"}`. Asking again **without** a token returned HTTP 403, so every OEE call needs the token (the Postman collection says otherwise for this one).
+- `GET /version` returned `{"version": "1.24.39"}`. Asking again **without** a token returned HTTP 403, so assume OEE calls need the token (the Postman collection marks this one as no auth, which is wrong here).
 - `GET /assets` returned 44 assets in a plain list (name, description, a few flags and a reason-tree ID). There is no paging information, so the whole list arrived at once. The `assetId` values are what the later tests use.
 - Script: `scripts/test-version-assets.js`. Redacted samples: `samples/oee_version.json`, `samples/oee_assets.json`.
 
