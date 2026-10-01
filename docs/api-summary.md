@@ -28,6 +28,8 @@ In short, the read side gets you three things: who the assets are, what they mea
 
 Coverage of the OEE GET paths (68 distinct): every list call and the main nested lists are tested. What is left are single-item reads by ID of lists already tested (`.../{id}`) and calls that returned no data to look at (`comment`, `measureAssignment`, `workorderAssignment`). Next: Asset Management `assettypes`/`aspecttypes` (test order 5), then the KPI POSTs (6, approval).
 
+The formulas of all 34 KPI expressions (not just the ones Paul-Flow uses) are in [kpis.md](kpis.md).
+
 Suggested route (original): `/version`, then `/assets` for IDs, then `/assets/{id}/config` and a time series read, then the KPI POSTs once approved.
 
 ## How access works (3 steps)

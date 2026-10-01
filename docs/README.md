@@ -17,7 +17,7 @@ Working docs for calling the Siemens Insights Hub APIs found in the Postman coll
 | [assets.md](assets.md) | Behaviour: find assets and the hierarchy (OEE and Asset Management lists, the tree, site level) | Tested |
 | [timeseries.md](timeseries.md) | Behaviour: read raw machine data (IoT Time Series): parameters, limits, record format | Tested on B2 Line `02 Filler` |
 | [manual-inputs.md](manual-inputs.md) | Behaviour: read operator input on a manual asset (GT4): shift entries, hourly entries | Tested on GT4 |
-| [kpis.md](kpis.md) | Behaviour: calculated results and reports (production vs target, downtime and status distributions, reject reasons, filter values) and the list of 34 KPI expressions; KPI POSTs not yet | 7 reports + `evaluateKPIs` POST tested |
+| [kpis.md](kpis.md) | Behaviour: calculated results and reports (production vs target, downtime and status distributions, reject reasons, filter values) and the full formula reference of all 34 KPI expressions (what `evaluateKPIs` can calculate); KPI POSTs not yet | 7 reports + `evaluateKPIs` POST tested |
 | [config-and-master-data.md](config-and-master-data.md) | Behaviour: how OEE is set up (`/config`, per-asset sources), reason trees and all master data lists (calendars, time model, products, quality codes, measures, reject reasons, state tables, expressions, operands, micro stops) | Tested (reads) |
 | [api-summary.md](api-summary.md) | Everything that exists across all sources, and what we can test | Placeholder, updated as we go |
 | [inventory.md](inventory.md) | Per-file list of every outbound call found in the sources | Complete (Phase A) |

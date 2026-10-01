@@ -145,12 +145,80 @@ return msg;
 - Durations are milliseconds everywhere here, but sometimes a string.
 - The reports are for OEE assets only. A site such as `Hull` is not one (see [assets.md](assets.md)).
 
-## KPIs that can be calculated (from `GET /expressions`, Tested)
-The OEE app has 34 expressions: 30 of type `KPI` and 4 `AUXILIARY`. The `POST /expressions/evaluateKPIs` and `/expressions/{id}/evaluate` calls (not tested yet) work with these. Names (the ones you will look for first in bold):
+## All KPI formulas the OEE app can calculate (from `GET /expressions` and `/operands`, Tested)
+The OEE app holds **34 expressions**: 30 of type `KPI` and 4 `AUXILIARY`. Every call to `POST /expressions/evaluateKPIs` returns **all 30 KPIs** in one response (Paul-Flow just picks what it needs, so you are not limited to what it uses). The formulas below are what the app itself stores, with the operand IDs replaced by names. Read in the order of the table: later KPIs are built from earlier ones.
 
-**Quality**, **Performance**, **Availability**, **OEE**, **TEEP**, Total time, Planned stop from shift plan, Planned stops, Operational time, Availability losses, Availability loss (occurrence), Net production time, Performance losses, Net operational time, Quality losses, Used operational time, MTTR, MTBF, Downtime (duration), Downtimes (occurrence), Micro stops (duration), Micro stops (occurrence), Macro stops (duration), Macro stops (occurrence), Good parts, Rejected parts, Total parts, Connected rejected parts, Manual rejected parts, Theoretical output. The 4 auxiliary ones are `Good parts Aux`, `Rejected parts Aux`, `Total parts Aux` and `Const value`.
+How to read them: `[x]` = another KPI or an operand. The ID of each expression comes from `GET /expressions` and is tenant-specific.
 
-Each expression has an `id` and a `formula` built from operand IDs; use `GET /expressions` to look up IDs, they are specific to the tenant. KPI names can differ between tenants (the source flows warn about this).
+### Counting parts
+| KPI (`name`) | Formula | Unit | Meaning |
+|---|---|---|---|
+| `Total parts` | `[Total parts]` | count | Parts produced, from the asset's total source (connected counter, manual entry or calculated) |
+| `Good parts` | `[Good parts] - (convertNullToZero([Manual rejected parts]) * (GoodOperandMode == CONNECTED and RejectedOperandMode == MANUAL_CONNECTED))` | count | Good parts. When good is a connected counter and rejects are manual plus connected, the manually entered rejects are subtracted from the connected good count |
+| `Rejected parts` | `[Connected rejected parts] + convertNullToZero([Manual rejected parts])` | count | Connected plus manual rejects |
+| `Connected rejected parts` | `[Rejected parts]` (the operand) | count | Rejects from the machine |
+| `Manual rejected parts` | `[Manual rejected parts]` | count | Rejects entered by operators |
+| `Theoretical output` | `[Theoretical output]` | count | Parts the asset could have produced at design speed in the period (presumably from the product design speed and the calendar; not verified) |
+
+### Time
+| KPI | Formula | Unit | Meaning |
+|---|---|---|---|
+| `Total time` | `sum([To] - [From])` | ms | Time inside the request period that the asset's calendar covers (sum of the time slices) |
+| `Planned stop from shift plan` | `[Planned stop from shift plan]` | ms | Planned stops defined in the shift plan (calendar) |
+| `Planned stops` | `[Planned stop from shift plan] + [Planned stop]` | ms | Planned stops: from the shift plan plus time whose state is in the time-model category `Planned stop` |
+| `Operational time` | `[Total time] - [Planned stops]` | ms | Time the asset was supposed to run |
+| `Availability losses` | `[Availability loss]` | ms | Time whose state belongs to time-model category `Availability loss` |
+| `Availability loss (occurrence)` | `[Availability loss (occurrence)]` | count | Number of availability losses |
+| `Net production time` | `[Operational time] - [Availability losses]` | ms | Operational time without availability losses |
+| `Performance losses` | `(1 - [Performance]) * [Net production time]` | ms | Time lost to running slower than design speed. **Negative when Performance is above 1** |
+| `Net operational time` | `[Net production time] - [Performance losses]` | ms | After removing performance losses |
+| `Quality losses` | `(1 - [Quality]) * [Net operational time]` | ms | Time lost to rejects |
+| `Used operational time` | `[Net operational time] - [Quality losses]` | ms | Time that produced good parts (the "fully productive" time) |
+
+### OEE ratios
+| KPI | Formula | Unit | Meaning |
+|---|---|---|---|
+| `Quality` | `[Good parts] / [Total parts]` | fraction | Share of good parts |
+| `Performance` | `[Total parts] / [Theoretical output]` | fraction | Actual vs design output. Above 1 means more produced than the theoretical output, usually a sign of a wrong design speed or counter |
+| `Availability` | `[Net production time] / [Operational time]` | fraction | Share of planned time without availability losses |
+| `OEE` | `[Availability] * [Performance] * [Quality]` | fraction | Overall equipment effectiveness |
+| `TEEP` | `[OEE] * ([Operational time] / [Total time])` | fraction | OEE over all calendar time, including planned stops |
+
+### Reliability and stops
+| KPI | Formula | Unit | Meaning |
+|---|---|---|---|
+| `MTTR` | `[Availability losses] / [Availability loss (occurrence)]` | ms | Mean time to repair: average length of an availability loss |
+| `MTBF` | `[Net production time] / [Availability loss (occurrence)]` | ms | Mean time between failures: average productive time per availability loss |
+| `Downtime (duration)` | `[Macrostops (duration)] + [Microstops (duration)]` | ms | All stop time |
+| `Downtimes (occurrence)` | `[Macrostops (occurrence)] + [Microstops (occurrence)]` | count | All stops |
+| `Micro stops (duration)`, `Micro stops (occurrence)` | `[Microstops (duration)]`, `[Microstops (occurrence)]` | ms, count | Short stops (rule in `/microStops`: presumably under 5 minutes) |
+| `Macro stops (duration)`, `Macro stops (occurrence)` | `[Macrostops (duration)]`, `[Macrostops (occurrence)]` | ms, count | Longer stops |
+
+### The 4 auxiliary expressions
+Not returned as KPIs. They appear as `AUXILIARY` rows when `recursive: true`, and they are building blocks for assets that only have two of the three counters.
+| Name | Formula | Use |
+|---|---|---|
+| `Good parts Aux` | `[Total parts] - [Rejected parts]` | Derive good parts when total and rejected are counted |
+| `Rejected parts Aux` | `[Total parts] - [Good parts]` | Derive rejects when total and good are counted |
+| `Total parts Aux` | `[Good parts] + [Rejected parts]` | Derive total when good and rejected are counted. Seen in the B2 Line results (the total is calculated, `TotalOperandMode` = `CALCULATED`) |
+| `Const value` | `0` | The constant 0, used for assets without manual rejects |
+
+### Operands the formulas are built from
+| Type | Names | Meaning |
+|---|---|---|
+| `INSTANCE` (4) | `Good parts`, `Rejected parts`, `Manual rejected parts`, `Total parts` | Defined per asset: a counter or an auxiliary expression (see `/assets/{id}/operandInstancesSource` in [config-and-master-data.md](config-and-master-data.md)) |
+| `THEORETICAL_OUTPUT` | `Theoretical output` | Output at design speed |
+| `REQ_PARAM_FROM` / `REQ_PARAM_TO` | `From`, `To` | The request's period, split into time slices |
+| `SHIFT_PLAN_STOPS` | `Planned stop from shift plan` | Planned stops from the calendar |
+| `TIME_MODEL` (4) and `TIME_MODEL_OCCURRENCE` (3) | `Availability loss`, `Planned stop`, `Microstops (duration)`, `Macrostops (duration)` and their `(occurrence)` counts | Time (or number of events) whose machine state falls in that time-model category |
+| `ASSET_SOURCE_MODE_STRING` (6) | `GoodOperandMode`, `RejectedOperandMode`, `TotalOperandMode`, `OrderSourceMode`, `ProductSourceMode`, `StatusSourceMode` | How each source of the asset is fed (`CONNECTED`, `MANUAL` and so on) |
+| `ASSET_SOURCE_MODE_NUMBER` (6) | `CALCULATED`, `CONNECTED`, `MANUAL`, `MANUAL_CONNECTED`, `NONE`, `SINGLE` | Constants to compare the modes with inside formulas |
+
+### Limits and open points
+- **Fixed set.** `evaluateKPIs` always returns the same 30 KPIs. You cannot ask for a subset in the call we tested. To evaluate just one expression, `POST /expressions/{id}/evaluate` exists (not tested).
+- **Expressions can be edited in the tenant.** 7 expressions are read-only (`readOnly: true`: `Good parts`, `Total parts`, `Rejected parts`, `Connected rejected parts`, `Manual rejected parts`, `Total time`, `Const value`), the rest are editable. A KPI can therefore differ between tenants; none had `modified: true` here. Creating or editing expressions is a write call and was not tested.
+- **Not in the list:** there is no expression for things like cost, energy or OEE per product. For those, calculate from the returned values or from the time series yourself (or filter the call by product, see `scope.filter`; not tested).
+- Several formulas assume the asset's sources are configured. When something cannot be mapped, the response lists it in `missingMapping` (GT4 had 1 item); what the dependent KPIs return in that case was not investigated.
 
 ## POST /expressions/evaluateKPIs (Tested, the only POST besides the token)
 | Item | Value |
