@@ -5,7 +5,7 @@
 Target tenant for testing: **reckitt** (decided by the user). Gateway: `https://gateway.eu1.mindsphere.io`. IAM host for the token: `https://reckitt.piam.eu1.mindsphere.io`.
 
 ## How access works (3 steps)
-1. **Get a token (a POST, needs your OK first).** `POST https://reckitt.piam.eu1.mindsphere.io/oauth/token?grant_type=client_credentials` with header `Authorization: Basic base64(clientId:clientSecret)`. Response field `access_token`. Client ID and secret go in `.env` (`RECKITT_OEE_CLIENT_ID`, `RECKITT_OEE_CLIENT_SECRET`), see [auth-checklist.md](auth-checklist.md).
+1. **Get a token (a POST, needs your OK first).** `POST https://reckitt.piam.eu1.mindsphere.io/oauth/token?grant_type=client_credentials` with header `Authorization: Basic base64(clientId:clientSecret)`. Response field `access_token`. Client ID and secret go in `.env` (`RECKITT_API_TECHUSER_CLIENT_ID`, `RECKITT_API_TECHUSER_CLIENT_SECRET`), see [auth-checklist.md](auth-checklist.md).
 2. **Call the API with `Authorization: Bearer <access_token>`.** Tokens expire; the flows refresh every 19 minutes (1140 s).
 3. **Read the JSON.** List endpoints return `_embedded` + `page` (pagination); errors are HTTP status codes (to be documented after testing).
 
@@ -17,8 +17,8 @@ Based on Paul-Flow.json tab `Line ` (function `OEE`, node `http request`) and ta
 **Function node 1, "token request"** (wire to an `http request` node: method "use msg.method", return "a parsed JSON object"; then to node 2)
 ```js
 const tenantName = "reckitt";
-const clientId = env.get("RECKITT_OEE_CLIENT_ID");
-const secret = env.get("RECKITT_OEE_CLIENT_SECRET");
+const clientId = env.get("RECKITT_API_TECHUSER_CLIENT_ID");
+const secret = env.get("RECKITT_API_TECHUSER_CLIENT_SECRET");
 msg.method = "POST";
 msg.url = `https://${tenantName}.piam.eu1.mindsphere.io/oauth/token?grant_type=client_credentials`;
 msg.headers = {
@@ -62,6 +62,7 @@ Two flow nodes (`http request` with `useMindsphereAuth`) skip the token step, bu
 
 ### OEE v3 GET endpoints (from the Reckitt OEE Postman collection), grouped
 Prefix `/api/oee/v3`. `{x}` means an ID you get from a list call first.
+Count: 68 distinct GET paths in the OEE collection (66 OEE + 2 Asset Management in its `MISC` folder), from 72 GET requests (the rest are variants with different query strings). Adding the other Asset Management GETs (`assets/{id}`, `assettypes`, `assettypes/{id}`, `aspecttypes`), the time series read and the Event Management GETs from the Testing collection (`events`, `events/{id}`, two job-status paths, tenant `caditiot`) gives about 77 distinct GET paths in total.
 
 | Group | GET paths |
 |---|---|
@@ -83,7 +84,40 @@ Suggested order: `/health` (no data) -> `/assets` (get IDs) -> `/assets/{id}/con
 | Time series | PUT writes in Paul-Flow and farhan-flows; DELETE in Paul-Flow tab `OEE` and farhan-flows tab `Delete Timeseries` |
 | OEE manual inputs | POST / PUT `/assets/{assetId}/manualInputs` (flows write reject reasons and hourly entries) |
 | Event Management | create and delete event jobs (Testing Postman) |
-| Read-style POST | `POST /api/oee/v3/expressions/evaluateKPIs` and `POST /assets/{id}/timeModelCategoryDistribution` compute results without storing (used heavily by the flows). Still a POST, so I will ask first |
+| Calculation POSTs | Listed in the next section. They look read-only (no data stored) but are still POSTs, so I ask before each first call |
+
+## Calculation POSTs (request a KPI calculation, not documented as writes)
+These POSTs send a time range and get calculated values back. In the flows the response is only read and parsed (for example `Parse KPIs`, `Build OEE Daily Report Row`), and nothing is stored by the OEE call itself. That is how the flows use them; the server behaviour has not been verified, so the first test of each needs your OK. Prefix `/api/oee/v3`. Auth: Bearer token.
+
+| Endpoint | Purpose | Request body | Used by |
+|---|---|---|---|
+| `POST /expressions/evaluateKPIs` | Calculate the standard KPI set (availability, performance, quality, OEE and related values) for one asset and period | `{ "assetId": "<id>", "scope": { "from": "<ISO time>", "to": "<ISO time>", "filter": [{"key":"PRODUCT","value":[]},{"key":"ORDER","value":[]}], "recursive": false, "groupedByDateTime": false } }` | Paul-Flow tabs `Line `, `Line OEE Aggregator`, `B2 Line OEE Aggregator` (per asset, rate limited) and `OEE Daily Report B2` (daily 05:59 cron). Also Postman `expressions / evaluateKPIs` and `mei-flows` tab `B2 Line Bad Parts` |
+| `POST /expressions/{expressionId}/evaluate` | Evaluate one named expression (Quality, Performance, Availability, OEE, TEEP, TotalTime, OperationalTime, NetProductionTime, NetOperationTime, UsedOperationTime, Theoretical output, Total Parts) | Same shape as above. `groupedByDateTime: true` returns one value per time bucket; `recursive: true` includes child assets | Postman folder `expressions / evaluation` (13 requests). Expression IDs come from `GET /expressions` |
+| `POST /assets/{assetId}/timeModelCategoryDistribution` | Distribution of time per time-model category (running, stopped, planned stop and so on) for a period | `{ "from": "<ISO time>", "to": "<ISO time>", "filter": [{"key":"PRODUCT","value":[]},{"key":"ORDER","value":[]}] }` (farhan-flows also sends `"force": true`) | Postman `assets`; farhan-flows tab `B2 line OEE` (node `distribution / volume`) |
+
+How the flows use the result (from the Paul-Flow functions): the response holds a `results` array (also seen nested as `payload.results`) with one entry per KPI (name and value). Missing KPI names are warned about ("check KPI name matches tenant"), so KPI names can differ per tenant.
+
+Example, Node-RED function node (untested), same wiring as the GET example:
+```js
+msg.method = "POST";
+msg.url = "https://gateway.eu1.mindsphere.io/api/oee/v3/expressions/evaluateKPIs";
+msg.headers = {
+  "Authorization": "Bearer " + flow.get("access_token_OEE"),
+  "Content-Type": "application/json",
+  "Accept": "application/json"
+};
+msg.payload = {
+  assetId: msg.assetId,
+  scope: {
+    from: "2026-10-01T00:00:00.000Z",
+    to: "2026-10-02T00:00:00.000Z",
+    filter: [{ key: "PRODUCT", value: [] }, { key: "ORDER", value: [] }],
+    recursive: false,
+    groupedByDateTime: false
+  }
+};
+return msg;
+```
 
 ## Where to find things
 - Per-file call lists: [inventory.md](inventory.md) and `docs/inventory/`
