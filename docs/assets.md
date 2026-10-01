@@ -37,6 +37,8 @@ reckitt (basicenterprise)
 ```
 Asset type names (`typeId`, its last segment): sites `basicsite`, areas `basicarea`, lines `ProductionLine`, B2 machines `B2_Line_<Machine>_Asset_OEE_Automatic`, GT4 machines `GT4_Equipment`.
 
+How data reaches these assets (context from the user): `B2 Line` is automatic (MindConnect, real machines); `GT4` and later `Mira` use manual OEE, where operators enter hourly data in a digital form. See [api-summary.md](api-summary.md).
+
 Things to know about the hierarchy:
 - **Names are not unique.** Two assets are called `GT4` (one `basicarea` under Test Line, one `GT4_Equipment` under Blisters). `B2 Line` machines exist twice, as `02 Filler` under `B2 Line` and as `02_Filler` under `Test Line > To Be B2`. Always use `assetId`.
 - **Sites are not OEE assets.** `Hull` is only in Asset Management. See "Site level" below.
@@ -86,7 +88,7 @@ return msg;
 | `assetId` | string (32 hex chars) | Asset ID. Same ID as in Asset Management |
 | `name` | string | Asset name (not unique across the tenant, see above) |
 | `description` | string | Free text. Empty for 14 of 44 |
-| `isManual` | boolean | `true` for 39 of 44. Presumably "accepts manual input"; not confirmed |
+| `isManual` | boolean | `true` for 39 of 44, including `B2 Line` (which is automatic). Presumably "manual input is allowed"; not confirmed |
 | `isConfigured` | boolean | `true` for 38 of 44. Presumably "OEE setup is complete"; not confirmed |
 | `reasonTreeId` | string | Reason tree of the asset, see [config-and-master-data.md](config-and-master-data.md). Missing on 6 of 44 |
 

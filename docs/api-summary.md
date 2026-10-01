@@ -5,18 +5,24 @@
 Target tenant for testing: **reckitt** (decided by the user). Gateway: `https://gateway.eu1.mindsphere.io`. IAM host for the token: `https://reckitt.piam.eu1.mindsphere.io`.
 
 ## What exists, grouped by behaviour
-| Behaviour | APIs | What it gets you | Status |
-|---|---|---|---|
-| **Log in** | IAM token (`POST /oauth/token`) | A 30-minute token for everything below | Tested |
-| **Check the service** | OEE `/health`, `/version` | Up/down check, service version (`1.24.39`). Both need the token | Tested |
-| **Find assets** | Asset Management (`/assets`, `/assets/{id}`, `/assets/{id}/aspects`, `/assettypes`) and OEE `/assets` | The asset tree (lines, machines), their IDs and types, and which data aspects each has. The asset IDs are the key for every other call. OEE `/assets` returns 44 assets as a plain list | Tested (OEE `/assets`, Asset Management list, tree, children, aspects). See [assets.md](assets.md) |
-| **Read raw machine data** | IoT Time Series (`/timeseries/{assetId}/{aspect}?from&to`) | Raw counters and states over a time window (good parts, rejects, machine speed, hourly entries) | Not yet |
-| **Read calculated KPIs** | OEE `POST /expressions/evaluateKPIs`, `/expressions/{id}/evaluate`, `/assets/{id}/timeModelCategoryDistribution`; GETs such as `statusDistribution`, `downtimeDistribution`, `topDowntimeReasons`, `topRejectReasons` | OEE, availability, performance, quality, downtime and reject breakdowns for an asset and period (what Paul's daily report uses) | Not yet. The `evaluate…` and `…Distribution` calls that are POST need your OK |
-| **Read operator input** | OEE `/assets/{id}/manualInputs`, `/comment`, `/productionTarget` | What operators entered by hand: reject reasons, comments, targets | Not yet |
-| **Read configuration and master data** | OEE `/assets/{id}/config` and `*Source`, `/reasontrees`, `/rejectReasonCollections`, `/measureCollections`, `/stateTables`, `/calendars`, `/timeModel`, `/productCollections`, `/productUnits`, `/qualityCodes`, `/expressions`, `/operands`, `/application/settings` | How OEE is set up: reason lists, calendars, time-model categories, product lists and the formulas behind the KPIs | `/config` and `/reasontrees` tested. See [config-and-master-data.md](config-and-master-data.md) |
-| **Events** | Event Management (`/events`, job status) | Platform events. Appears only in the `caditiot` Postman collection | Low priority |
-| **Change data (not tested without approval)** | OEE POST, PUT and DELETE (about 130 requests in Postman); time series PUT and DELETE; manual-input POST and PUT; event create and delete | Writing reject reasons and hourly entries, changing setup, deleting data | Off-limits unless you approve |
-| **Only inside Insights Hub Node-RED** | SDK nodes (`read-oee`, `read timeseries`, `write timeseries`, `create event`, Object Storage nodes) | Same data through built-in nodes. They have no URL we can call locally | Not callable here |
+| Behaviour | APIs | What it gets you | Status | Test order |
+|---|---|---|---|---|
+| **Log in** | IAM token (`POST /oauth/token`) | A 30-minute token for everything below | Tested | done |
+| **Check the service** | OEE `/health`, `/version` | Up/down check, service version (`1.24.39`). Both need the token | Tested | done |
+| **Find assets** | Asset Management (`/assets`, `/assets/{id}`, `/assets/{id}/aspects`, `/assettypes`) and OEE `/assets` | The asset tree (lines, machines), their IDs and types, and which data aspects each has. The asset IDs are the key for every other call. OEE `/assets` returns 44 assets as a plain list | Tested (OEE `/assets`, Asset Management list, tree, children, aspects). See [assets.md](assets.md) | done (assettypes/aspecttypes: 5) |
+| **Read raw machine data** | IoT Time Series (`/timeseries/{assetId}/{aspect}?from&to`) | Raw counters and states over a time window (good parts, rejects, machine speed, hourly entries) | Not yet | 1 (B2 Line, automatic) |
+| **Read calculated KPIs** | OEE `POST /expressions/evaluateKPIs`, `/expressions/{id}/evaluate`, `/assets/{id}/timeModelCategoryDistribution`; GETs such as `statusDistribution`, `downtimeDistribution`, `topDowntimeReasons`, `topRejectReasons` | OEE, availability, performance, quality, downtime and reject breakdowns for an asset and period (what Paul's daily report uses) | Not yet. The `evaluate…` and `…Distribution` calls that are POST need your OK | 3 for the GETs; 6 for the POSTs (approval) |
+| **Read operator input** | OEE `/assets/{id}/manualInputs`, `/comment`, `/productionTarget` | What operators entered by hand: reject reasons, comments, targets | Not yet | 2 (GT4, manual) |
+| **Read configuration and master data** | OEE `/assets/{id}/config` and `*Source`, `/reasontrees`, `/rejectReasonCollections`, `/measureCollections`, `/stateTables`, `/calendars`, `/timeModel`, `/productCollections`, `/productUnits`, `/qualityCodes`, `/expressions`, `/operands`, `/application/settings` | How OEE is set up: reason lists, calendars, time-model categories, product lists and the formulas behind the KPIs | `/config` and `/reasontrees` tested. See [config-and-master-data.md](config-and-master-data.md) | 4 (rest of the lists) |
+| **Events** | Event Management (`/events`, job status) | Platform events. Appears only in the `caditiot` Postman collection | Low priority | 7 (low priority) |
+| **Change data (not tested without approval)** | OEE POST, PUT and DELETE (about 130 requests in Postman); time series PUT and DELETE; manual-input POST and PUT; event create and delete | Writing reject reasons and hourly entries, changing setup, deleting data | Off-limits unless you approve | never, unless approved |
+| **Only inside Insights Hub Node-RED** | SDK nodes (`read-oee`, `read timeseries`, `write timeseries`, `create event`, Object Storage nodes) | Same data through built-in nodes. They have no URL we can call locally | Not callable here | n/a |
+
+## How data gets in (context from the user)
+- **B2 Line:** automatic. Real assets connected through **MindConnect**, so machine signals arrive in the time series by themselves (asset types `B2_Line_*_Asset_OEE_Automatic`). Expect real data in `OEE_MachineState`, `OEE_Prerequisites`.
+- **GT4, and soon Mira:** **manual OEE**. Operators enter data through a digital form in Insights Hub; that data goes in through the OEE manual-input endpoint and shows up in the `OEE_Hourly_Entry` aspect (fields seen in farhan-flows: `ActorEmail`, `Comments`, `EntryState`, `Good`, `HourEndTime`, `OrderId` and more).
+- Both kinds are in the OEE asset list. `isManual` is `true` for 39 of 44 assets, including `B2 Line`, so it probably means "manual input is allowed", not "data is only manual". `B2 Line` also uses manual input for reject reasons (mei-flows). Not confirmed.
+- Test consequence: group 1 (raw data) targets B2 Line; group 2 (operator input) targets GT4.
 
 In short, the read side gets you three things: who the assets are, what they measured, and what the OEE app calculates and is configured to do with that. The write side is what the source flows use to push calculated hourly OEE and reject reasons back in. Most of the 130 write requests are in the Postman collection and are administration, not something needed to read data.
 
