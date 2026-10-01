@@ -35,19 +35,22 @@ Treat each as sensitive: may contain tokens or credentials.
 ## Workflow
 Phase A: offline, can run unattended (no network, no API calls)
 1. Preflight check, then first commit
-2. 2. Parse every file in `source/` separately. For each file, write `docs/inventory/<source-file-name>.md` (one row per outbound call: name/location, method, URL, how auth is built) and make one git commit for that file. After all files are done, write `docs/inventory.md` as an index linking to each per-file inventory with a call count.
+2. Parse every file in `source/` separately. For each file, write `docs/inventory/<source-file-name>.md` (one row per outbound call: name/location, method, URL, how auth is built) and make one git commit for that file. After all files are done, write `docs/inventory.md` as an index linking to each per-file inventory with a call count.
 3. Auth/secrets audit: for each distinct auth mechanism, list where it comes from, which file and location (never the value), and what is missing. Write `docs/auth-checklist.md`
 4. Add empty placeholders to `.env` for each secret/variable found (names only, no values)
 5. Update NOTES.md, commit, then STOP and wait for me
 
 Phase B: with me, one at a time
+
 6. I fill in `.env`. Test auth with a single GET, report, wait for me
 7. Then call safe GET endpoints one by one, grouped by API area; save redacted responses to `samples/`
 
 Phase C: docs
+
 8. Describe responses, write `docs/` (README index, auth.md, one file per API area, Node-RED outbound calls)
 
 Phase D: updates
+
 9. When I say source files changed: diff against `docs/inventory.md`, update only affected docs, note it in NOTES.md
 
 ## Doc format (per endpoint)
