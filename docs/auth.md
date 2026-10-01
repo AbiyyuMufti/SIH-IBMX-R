@@ -30,8 +30,10 @@ The client ID and secret are the "technical user". In this project they are in `
 | `access_token` | string | The token (a JWT, about 3.3 thousand characters). Never log it |
 | `token_type` | string | `bearer` |
 | `expires_in` | number | Seconds until it expires. Observed: `1799` (about 30 minutes) |
+| `scope` | string | Present in the response. Content not recorded; may list granted scopes/roles |
+| `jti` | string | Present in the response. Token ID, ignore |
 
-Other fields in the response were not inspected yet; the next run will list the field names.
+These five field names are all the response contains (confirmed on the second test run).
 
 **Example (Node-RED function node, pasteable).** Wire it to an `http request` node set to "use `msg.method`" and "return a parsed JSON object".
 ```js

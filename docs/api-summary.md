@@ -8,8 +8,8 @@ Target tenant for testing: **reckitt** (decided by the user). Gateway: `https://
 | Behaviour | APIs | What it gets you | Status |
 |---|---|---|---|
 | **Log in** | IAM token (`POST /oauth/token`) | A 30-minute token for everything below | Tested |
-| **Check the service** | OEE `/health`, `/version` | Up/down check, service version | `health` tested |
-| **Find assets** | Asset Management (`/assets`, `/assets/{id}`, `/assets/{id}/aspects`, `/assettypes`) and OEE `/assets` | The asset tree (lines, machines), their IDs and types, and which data aspects each has. The asset IDs are the key for every other call | Not yet |
+| **Check the service** | OEE `/health`, `/version` | Up/down check, service version (`1.24.39`). Both need the token | Tested |
+| **Find assets** | Asset Management (`/assets`, `/assets/{id}`, `/assets/{id}/aspects`, `/assettypes`) and OEE `/assets` | The asset tree (lines, machines), their IDs and types, and which data aspects each has. The asset IDs are the key for every other call. OEE `/assets` returns 44 assets as a plain list | OEE `/assets` tested; Asset Management not yet |
 | **Read raw machine data** | IoT Time Series (`/timeseries/{assetId}/{aspect}?from&to`) | Raw counters and states over a time window (good parts, rejects, machine speed, hourly entries) | Not yet |
 | **Read calculated KPIs** | OEE `POST /expressions/evaluateKPIs`, `/expressions/{id}/evaluate`, `/assets/{id}/timeModelCategoryDistribution`; GETs such as `statusDistribution`, `downtimeDistribution`, `topDowntimeReasons`, `topRejectReasons` | OEE, availability, performance, quality, downtime and reject breakdowns for an asset and period (what Paul's daily report uses) | Not yet. The `evaluate…` and `…Distribution` calls that are POST need your OK |
 | **Read operator input** | OEE `/assets/{id}/manualInputs`, `/comment`, `/productionTarget` | What operators entered by hand: reject reasons, comments, targets | Not yet |

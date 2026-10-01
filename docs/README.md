@@ -6,7 +6,7 @@ Working docs for calling the Siemens Insights Hub APIs found in the Postman coll
 | File | What it covers | State |
 |---|---|---|
 | [auth.md](auth.md) | How to get a token and use it. Plain-language walkthrough | Tested |
-| [oee-api.md](oee-api.md) | OEE app v3 endpoints (health tested; others listed as from source only) | 1 endpoint tested |
+| [oee-api.md](oee-api.md) | OEE app v3 endpoints (`/health`, `/version`, `/assets` tested; others listed as from source only) | 3 endpoints tested |
 | [api-summary.md](api-summary.md) | Everything that exists across all sources, and what we can test | Placeholder, updated as we go |
 | [inventory.md](inventory.md) | Per-file list of every outbound call found in the sources | Complete (Phase A) |
 | [auth-checklist.md](auth-checklist.md) | Where each credential comes from in the sources (never values) | Complete (Phase A) |
@@ -27,6 +27,11 @@ The goal was to prove that our credentials work and that the OEE service answers
 **What the result tells us:** the credentials are valid, the token is accepted by the OEE API, and the gateway and tenant are reachable. It does *not* yet tell us that the user can read data. Reading real data is the next test (`GET /assets`).
 
 Where it lives in this repo: the script is `scripts/test-auth-health.js` (uses `scripts/lib-ih.js`), the saved response is `samples/oee_health.json` (gitignored).
+
+## Second test: `/version` and `/assets`
+- `GET /version` returned `{"version": "1.24.39"}`. Asking again **without** a token returned HTTP 403, so every OEE call needs the token (the Postman collection says otherwise for this one).
+- `GET /assets` returned 44 assets in a plain list (name, description, a few flags and a reason-tree ID). There is no paging information, so the whole list arrived at once. The `assetId` values are what the later tests use.
+- Script: `scripts/test-version-assets.js`. Redacted samples: `samples/oee_version.json`, `samples/oee_assets.json`.
 
 ## How we work from here
 For every API call we test, we do two things before the next one: save a redacted sample in `samples/`, and write or update the doc for that endpoint here. So reading these docs should always explain the latest call.
