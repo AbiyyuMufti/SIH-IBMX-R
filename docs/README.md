@@ -17,7 +17,7 @@ Working docs for calling the Siemens Insights Hub APIs found in the Postman coll
 | [assets.md](assets.md) | Behaviour: find assets and the hierarchy (OEE and Asset Management lists, the tree, site level) | Tested |
 | [timeseries.md](timeseries.md) | Behaviour: read raw machine data (IoT Time Series): parameters, limits, record format | Tested on B2 Line `02 Filler` |
 | [manual-inputs.md](manual-inputs.md) | Behaviour: read operator input on a manual asset (GT4): shift entries, hourly entries | Tested on GT4 |
-| [kpis.md](kpis.md) | Behaviour: calculated results and reports (production vs target, downtime and status distributions, reject reasons, filter values) and the full formula reference of all 34 KPI expressions (what `evaluateKPIs` can calculate); KPI POSTs not yet | 7 reports + `evaluateKPIs` POST tested |
+| [kpis.md](kpis.md) | Behaviour: calculated results and reports (production vs target, downtime and status distributions, reject reasons, filter values) and the full formula reference of all 34 KPI expressions (what `evaluateKPIs` can calculate); KPI POSTs not yet | 7 reports + 3 read-style POSTs tested |
 | [config-and-master-data.md](config-and-master-data.md) | Behaviour: how OEE is set up (`/config`, per-asset sources), reason trees and all master data lists (calendars, time model, products, quality codes, measures, reject reasons, state tables, expressions, operands, micro stops) | Tested (reads) |
 | [api-summary.md](api-summary.md) | Everything that exists across all sources, and what we can test | Placeholder, updated as we go |
 | [inventory.md](inventory.md) | Per-file list of every outbound call found in the sources | Complete (Phase A) |
@@ -75,6 +75,12 @@ Where it lives in this repo: the script is `scripts/test-auth-health.js` (uses `
 - `/assettypes`, `/assettypes/{id}` and `/aspecttypes` return **403 Access Denied** for the API technical user (it can read assets and aspects only).
 - `POST /expressions/evaluateKPIs` (approved, same call as Paul-Flow): HTTP 200 in under 1 s, 30 KPIs with `value` and a `humanFormula`. B2 Line 24 h: OEE 0.42, Performance 2.17 (above 100 %, looks like a configuration or data problem), GT4 48 h: OEE 0.12. `recursive: true` gave 21 extra operand rows but the same values.
 - Script: `scripts/test-am-types.js`, `scripts/test-kpi-post.js`.
+
+## Eighth test: the other two calculation POSTs
+- `POST /expressions/{id}/evaluate` calculates one expression; `groupedByDateTime: true` gives one value per hour (`groups`); `recursive: true` also returns the expressions and operands it depends on. Works for the auxiliary expressions too.
+- `POST /assets/{id}/timeModelCategoryDistribution` returns the machine timeline in segments (B2 Line, 24 h: 469 segments, 14.2 h run and 9.9 h unplanned downtime, matching the KPI call). **Manual assets (GT4) are refused with HTTP 400.**
+- Paul-Flow's daily report writes every returned KPI as a Parquet column; its other tabs pick OEE, Availability, Performance, Quality and the parts and time KPIs.
+- Script: `scripts/test-kpi-post2.js`.
 
 ## How the docs are organised
 Files are grouped by **behaviour** (what you want to do), not by service. Each endpoint states its service and base path. Planned files, created as soon as something in them is tested: `events.md`, `write-calls.md`, `nodered-sdk-nodes.md`. The full list of what exists is in [api-summary.md](api-summary.md).

@@ -1,8 +1,8 @@
 # Calculated results and reports (OEE)
 
-Behaviour: read what the OEE app has calculated or summarised for an asset: production vs target, downtime and reject reasons, and the OEE KPIs themselves (via one read-style POST).
+Behaviour: read what the OEE app has calculated or summarised for an asset: production vs target, downtime and reject reasons, and the OEE KPIs themselves (via read-style POSTs).
 Service: OEE app v3. Base: `https://gateway.eu1.mindsphere.io/api/oee/v3`. Auth: Bearer token, see [auth.md](auth.md). Headers on all calls: `Authorization: Bearer <token>`, `Accept: application/json`.
-Tested 2026-10-02 on `GT4` (manual OEE) and `B2 Line` (automatic) over the last 7 days. Read only, plus one read-style POST (`evaluateKPIs`) that the user approved.
+Tested 2026-10-02 on `GT4` (manual OEE) and `B2 Line` (automatic) over the last 7 days. Read only, plus three read-style POSTs (`evaluateKPIs`, `/expressions/{id}/evaluate`, `timeModelCategoryDistribution`) that the user approved.
 Legend: **Tested** = called and verified. **From source only** = found in Postman/flows, not called.
 
 All the report calls below take `from` and `to` (ISO 8601 UTC) as query parameters. Without data in the window they return HTTP 200 with empty lists, not errors.
@@ -215,7 +215,7 @@ Not returned as KPIs. They appear as `AUXILIARY` rows when `recursive: true`, an
 | `ASSET_SOURCE_MODE_NUMBER` (6) | `CALCULATED`, `CONNECTED`, `MANUAL`, `MANUAL_CONNECTED`, `NONE`, `SINGLE` | Constants to compare the modes with inside formulas |
 
 ### Limits and open points
-- **Fixed set.** `evaluateKPIs` always returns the same 30 KPIs. You cannot ask for a subset in the call we tested. To evaluate just one expression, `POST /expressions/{id}/evaluate` exists (not tested).
+- **Fixed set.** `evaluateKPIs` always returns the same 30 KPIs. You cannot ask for a subset in the call we tested. To evaluate just one expression, use `POST /expressions/{id}/evaluate` (tested, below).
 - **Expressions can be edited in the tenant.** 7 expressions are read-only (`readOnly: true`: `Good parts`, `Total parts`, `Rejected parts`, `Connected rejected parts`, `Manual rejected parts`, `Total time`, `Const value`), the rest are editable. A KPI can therefore differ between tenants; none had `modified: true` here. Creating or editing expressions is a write call and was not tested.
 - **Not in the list:** there is no expression for things like cost, energy or OEE per product. For those, calculate from the returned values or from the time series yourself (or filter the call by product, see `scope.filter`; not tested).
 - Several formulas assume the asset's sources are configured. When something cannot be mapped, the response lists it in `missingMapping` (GT4 had 1 item); what the dependent KPIs return in that case was not investigated.
@@ -333,8 +333,112 @@ return msg;
 - A POST that returns HTTP 200 does not guarantee all KPIs have data. Check `missingMapping`.
 - Use the same `assetId` rules as other calls: OEE assets only. A site such as `Hull` gives 404 (not tested for this call).
 
-## Other calculation POSTs (not tested)
-`POST /expressions/{id}/evaluate` (one expression, same scope body with `assetId`) and `POST /assets/{assetId}/timeModelCategoryDistribution`. Request bodies are in [api-summary.md](api-summary.md).
+## POST /expressions/{expressionId}/evaluate (Tested)
+| Item | Value |
+|---|---|
+| Purpose | Calculate **one** expression (any of the 34 in the KPI reference above) instead of all 30, optionally as a value per hour |
+| Method and URL | `POST https://gateway.eu1.mindsphere.io/api/oee/v3/expressions/{expressionId}/evaluate` |
+| Headers | `Authorization: Bearer <token>`, `Content-Type: application/json`, `Accept: application/json` |
+| `{expressionId}` | The `id` of the expression from `GET /expressions` (tenant-specific) |
+| Body | Same as `evaluateKPIs`: `{ "assetId": "<id>", "scope": { "from", "to", "filter", "recursive", "groupedByDateTime" } }` |
+| Tested | 2026-10-02 on `B2 Line` with `OEE`, `Availability`, and the auxiliary `Total parts Aux`. HTTP 200 in 0.4 to 0.6 s. Side effects: none seen |
+
+**Example request (Node-RED function node)**
+```js
+msg.method = "POST";
+msg.url = "https://gateway.eu1.mindsphere.io/api/oee/v3/expressions/" + msg.expressionId + "/evaluate";
+msg.headers = { "Authorization": "Bearer " + flow.get("access_token_OEE"), "Content-Type": "application/json", "Accept": "application/json" };
+const to = new Date();
+msg.payload = {
+  assetId: msg.assetId,
+  scope: {
+    from: new Date(to.getTime() - 6 * 3600 * 1000).toISOString(),
+    to: to.toISOString(),
+    filter: [ { key: "PRODUCT", value: [] }, { key: "ORDER", value: [] } ],
+    recursive: false,
+    groupedByDateTime: true        // true = one value per hour in results[0].groups
+  }
+};
+return msg;
+```
+
+**What came back**
+- **Normal call** (`groupedByDateTime: false`): the same envelope as `evaluateKPIs`, but `results` has **1 row** (the requested expression): `{ id, name, displayName, expressionType, value, humanFormula }`, plus `took` (here `"140 ms"`), `missingMapping`, `productUnit` (`"Piece"`). Example: `OEE` = 0.423 with `humanFormula` `'OEE' : 'Availability'*'Performance'*'Quality' = 0.423 | used operands 'Availability' = 0.7406, 'Performance' = 2.176, 'Quality' = 0.2625`.
+- **`groupedByDateTime: true`**: the single result row gets an extra `groups` array with one entry per **hour** of the period: `{ "time": "2026-10-01T17:00:00.000Z", "value": 1.1899 }`. A 6-hour window gave 7 entries (the partial hours at both ends count). An hour without data has `"value": null` (1 of 7 here). The top-level `value` is the figure for the whole period, which is not the average of the hourly values.
+- **`recursive: true`** on `Availability`: 11 rows. The requested KPI plus everything it depends on: other KPIs (`Total time`, `Planned stops`, `Operational time`, `Availability losses`, `Net production time`) and operands (`Planned stop`, `Availability loss`, `To`, `From`, `Planned stop from shift plan`, with `expressionType` `null`). Handy to see how a number was built.
+- **Auxiliary expressions work too**: `Total parts Aux` returned `Good parts + Rejected parts` (`expressionType: "AUXILIARY"`).
+
+**Gotchas**
+- Values move between calls because the window and the live data move (OEE for B2 Line was 0.4195 in one call and 0.423 a few minutes later, with `to` = "now").
+- The body must contain `assetId`; the expression ID is only in the URL.
+- Hourly values can be far from the period value (B2 Line, 6 h: hourly OEE from 0.05 to 1.19, period 0.37). Because the ratios are not averages, do not average the hourly values yourself; take the top-level `value`.
+- `Performance` above 1 and similar oddities of the B2 Line data (see above) apply here too.
+
+## POST /assets/{assetId}/timeModelCategoryDistribution (Tested, automatic assets only)
+| Item | Value |
+|---|---|
+| Purpose | The machine's timeline for the period, split into segments, each with its time-model category (`Run`, `Unplanned Downtime`, ...). The raw material behind availability and the status charts |
+| Method and URL | `POST https://gateway.eu1.mindsphere.io/api/oee/v3/assets/{assetId}/timeModelCategoryDistribution` |
+| Headers | `Authorization: Bearer <token>`, `Content-Type: application/json`, `Accept: application/json` |
+| Body | `{ "from": "<ISO>", "to": "<ISO>", "filter": [ { "key": "PRODUCT", "value": [] }, { "key": "ORDER", "value": [] } ], "force": true }` |
+| Tested | `B2 Line`, 24 h: HTTP 200 in 0.7 s, **469 segments**, same result with and without `"force": true` (the flows send it; its effect was not visible). `GT4`, 48 h: HTTP **400** |
+
+Note the body is flat (`from`/`to` at the top), unlike the KPI calls where they sit inside `scope`.
+
+**Example request (Node-RED function node)**
+```js
+msg.method = "POST";
+msg.url = "https://gateway.eu1.mindsphere.io/api/oee/v3/assets/" + msg.assetId + "/timeModelCategoryDistribution";
+msg.headers = { "Authorization": "Bearer " + flow.get("access_token_OEE"), "Content-Type": "application/json", "Accept": "application/json" };
+const to = new Date();
+msg.payload = {
+  from: new Date(to.getTime() - 24 * 3600 * 1000).toISOString(),
+  to: to.toISOString(),
+  filter: [ { key: "PRODUCT", value: [] }, { key: "ORDER", value: [] } ],
+  force: true
+};
+return msg;
+```
+
+**Response**
+```json
+{
+  "from": "2026-09-30T23:54:52.961Z", "to": "2026-10-01T23:54:52.961Z",
+  "filter": [ { "key": "PRODUCT", "value": [] }, { "key": "ORDER", "value": [] } ],
+  "distribution": [
+    { "realFrom": "2026-09-30T23:53:34.402Z", "realTo": "2026-09-30T23:57:04.375Z",
+      "from": "2026-09-30T23:54:52.961Z", "to": "2026-09-30T23:57:04.375Z",
+      "plcCode": "true", "statusId": "<id>", "overwritten": "false", "id": "<id>",
+      "timeModelId": "<id>", "timeModelName": "Production time",
+      "timeCategoryId": "<id>", "timeCategoryName": "Run",
+      "reasonId": null, "stateId": null, "stateName": null, "reason": null, "colorCode": "#65C728" }
+  ]
+}
+```
+| Field | Meaning |
+|---|---|
+| `from`, `to` | The segment cut to the requested period |
+| `realFrom`, `realTo` | The segment's real start and end (the first segment starts before the requested `from`) |
+| `timeModelName`, `timeCategoryName` | Group and category: seen `Production time` / `Run` and `Availability loss` / `Unplanned Downtime` |
+| `colorCode` | Chart colour (green `#65C728` for `Run`) |
+| `plcCode` | Machine signal behind the segment, as a **string** (`"true"` for running, `"false"` for stopped here) |
+| `statusId` | Status ID, the same kind of ID as `statusId` in `downtimeReasons` |
+| `overwritten` | **String** (`"false"`): whether the status was changed afterwards |
+| `reasonId`, `reason`, `stateId`, `stateName` | `null` on all 469 segments of the test (no reason assigned in this window) |
+
+Totals computed from the 469 segments (they add up to exactly 24 h):
+| Time model / category | Segments | Total |
+|---|---|---|
+| `Production time` / `Run` | 235 | 849 min (14.2 h) |
+| `Availability loss` / `Unplanned Downtime` | 234 | 591 min (9.9 h) |
+
+The 591 minutes match `Downtime (duration)` of the KPI call (35464130 ms) for the same asset and window.
+
+**Gotchas**
+- **Manual assets are rejected:** `GT4` returned HTTP 400 `{"errors":[{"code":"mdsp.core.oee.getTimeModelCategoryDistribution","message":"Assets with manual status are not supported"}]}`. Only automatic (connected) assets such as the B2 Line machines work.
+- **Large response:** about 470 segments for one line in one day (a machine flipping between run and stop every few minutes). Keep windows short or aggregate afterwards.
+- `plcCode` and `overwritten` are strings, not booleans.
+- `force` made no visible difference here.
 
 ## From source only (not tested)
-`POST /expressions/{id}/evaluate` and `POST /assets/{id}/timeModelCategoryDistribution` (see above); `GET /assets/{assetId}/measure` details for assets that have a measure collection.
+Write calls only. Everything read-only in the OEE sources has now been tested (the remaining GETs are single-item reads by ID of lists already tested).
