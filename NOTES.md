@@ -27,6 +27,11 @@ Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `sc
 - Phase B will add JS call scripts in `scripts/` (one per API area, GET only, secrets from `.env`).
 - Placeholder summary of all APIs and what can be tested: `docs/api-summary.md`.
 
+## Phase B log
+- Step 6 done (2026-10-02): token POST with the reckitt API technical user (`RECKITT_API_TECHUSER_*`) OK: token_type bearer, expires_in 1799 s (30 min), token about 3.3k chars (JWT). `GET /api/oee/v3/health` -> HTTP 200, empty body, no content-type header, about 1.4 s. Sample: `samples/oee_health.json` (gitignored).
+- Scripts: `scripts/lib-ih.js` (env loader, getToken, apiGet GET-only, redact, saveSample), `scripts/test-auth-health.js`.
+- Note: flows refresh the token every 19 min; real lifetime is 30 min.
+
 ## Open questions
 1. Which client(s) to use for `reckitt` (OEE technical user vs supervisor client) and whether a read-only client exists. See `docs/auth-checklist.md`, section "Questions to ask your colleague".
 2. Postman environment files were not provided; `HOST`/`PIAM` etc. are blank in the Testing collection and `PIAM` in the OEE collection.
