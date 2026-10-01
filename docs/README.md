@@ -7,7 +7,8 @@ Working docs for calling the Siemens Insights Hub APIs found in the Postman coll
 |---|---|---|
 | [auth.md](auth.md) | How to get a token and use it. Plain-language walkthrough | Tested |
 | [service-status.md](service-status.md) | Behaviour: is the service up and does my token work (`/health`, `/version`) | Tested |
-| [assets.md](assets.md) | Behaviour: find assets and the hierarchy (OEE `/assets` tested; Asset Management and the tree in progress) | In progress |
+| [assets.md](assets.md) | Behaviour: find assets and the hierarchy (OEE and Asset Management lists, the tree, site level) | Tested |
+| [config-and-master-data.md](config-and-master-data.md) | Behaviour: how OEE is set up (`/config`) and reason trees | Partly tested |
 | [api-summary.md](api-summary.md) | Everything that exists across all sources, and what we can test | Placeholder, updated as we go |
 | [inventory.md](inventory.md) | Per-file list of every outbound call found in the sources | Complete (Phase A) |
 | [auth-checklist.md](auth-checklist.md) | Where each credential comes from in the sources (never values) | Complete (Phase A) |
@@ -34,8 +35,15 @@ Where it lives in this repo: the script is `scripts/test-auth-health.js` (uses `
 - `GET /assets` returned 44 assets in a plain list (name, description, a few flags and a reason-tree ID). There is no paging information, so the whole list arrived at once. The `assetId` values are what the later tests use.
 - Script: `scripts/test-version-assets.js`. Redacted samples: `samples/oee_version.json`, `samples/oee_assets.json`.
 
+## Third test: the hierarchy, paging, assets and reason trees
+- The Asset Management list rebuilds the same tree you see in the Insights Hub UI (reckitt > EU > Hull > Bottles > B2 Line > 7 machines). 246 assets in total, 44 of them in the OEE list. **Asset Management needs `Accept: application/hal+json`**; with `application/json` it fails with HTTP 500.
+- OEE `/assets` ignores `size` and `page`: always all 44.
+- `B2 Line` and its 7 machines are OEE assets; `GT4` is, but its 10 machines are not. `Hull` (a site) is **not** an OEE asset: OEE returns 404 for it.
+- Reason trees are the lists of downtime and loss reasons per asset (22 trees; `B2 Line Reason Tree` has 1034 reasons in a flat list with `parentId`).
+- Scripts: `scripts/test-assets-paging-detail.js`, `scripts/test-asset-tree.js`, `scripts/test-hull-reasontrees.js`.
+
 ## How the docs are organised
-Files are grouped by **behaviour** (what you want to do), not by service. Each endpoint states its service and base path. Planned files, created as soon as something in them is tested: `timeseries.md`, `kpis.md`, `manual-inputs.md`, `config-and-master-data.md`, `events.md`, `write-calls.md`, `nodered-sdk-nodes.md`. The full list of what exists is in [api-summary.md](api-summary.md).
+Files are grouped by **behaviour** (what you want to do), not by service. Each endpoint states its service and base path. Planned files, created as soon as something in them is tested: `timeseries.md`, `kpis.md`, `manual-inputs.md`, `events.md`, `write-calls.md`, `nodered-sdk-nodes.md`. The full list of what exists is in [api-summary.md](api-summary.md).
 
 ## How we work from here
 For every API call we test, we do two things before the next one: save a redacted sample in `samples/`, and write or update the doc for that endpoint here. So reading these docs should always explain the latest call.

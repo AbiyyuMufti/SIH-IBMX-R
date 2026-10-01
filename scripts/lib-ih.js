@@ -53,11 +53,11 @@ export async function getToken(idVar = 'RECKITT_API_TECHUSER_CLIENT_ID', secretV
 }
 
 // GET only. Returns { status, headers (selected), body, ms }.
-export async function apiGet(path, token, { query } = {}) {
+export async function apiGet(path, token, { query, accept = 'application/json' } = {}) {
   const url = new URL(path.startsWith('http') ? path : cfg.gateway + path);
   for (const [k, v] of Object.entries(query ?? {})) url.searchParams.set(k, v);
   const t0 = Date.now();
-  const res = await fetch(url, { method: 'GET', headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } });
+  const res = await fetch(url, { method: 'GET', headers: { Authorization: `Bearer ${token}`, Accept: accept } });
   const text = await res.text();
   let body;
   try { body = JSON.parse(text); } catch { body = text; }
