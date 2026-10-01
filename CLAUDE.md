@@ -30,11 +30,12 @@ Treat each as sensitive: may contain tokens or credentials.
 - Read Python files only. Never execute them. Re-implement useful calls as JS in `scripts/`
 - Node-RED as a server is out of scope: ignore `http in` / `http response` nodes and do not document or call the endpoints Node-RED exposes
 - Do not guess credentials. If something is missing, list it and ask me
+- Any helper script must be named scripts/helper-<something>.js, read-only, no network.
 
 ## Workflow
 Phase A: offline, can run unattended (no network, no API calls)
 1. Preflight check, then first commit
-2. Parse everything in `source/` in one go: Postman, Node-RED outbound calls, Python requests -> `docs/inventory.md` (one row per call: source file, name, method, URL, how auth is built)
+2. 2. Parse every file in `source/` separately. For each file, write `docs/inventory/<source-file-name>.md` (one row per outbound call: name/location, method, URL, how auth is built) and make one git commit for that file. After all files are done, write `docs/inventory.md` as an index linking to each per-file inventory with a call count.
 3. Auth/secrets audit: for each distinct auth mechanism, list where it comes from, which file and location (never the value), and what is missing. Write `docs/auth-checklist.md`
 4. Add empty placeholders to `.env` for each secret/variable found (names only, no values)
 5. Update NOTES.md, commit, then STOP and wait for me
