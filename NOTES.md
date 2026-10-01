@@ -32,6 +32,11 @@ Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `sc
 - Scripts: `scripts/lib-ih.js` (env loader, getToken, apiGet GET-only, redact, saveSample), `scripts/test-auth-health.js`.
 - Note: flows refresh the token every 19 min; real lifetime is 30 min.
 
+## Working agreement (changed 2026-10-02, by the user)
+- Iterate: after each API call (or small group) in Phase B, immediately do the Phase C docs for it (redacted sample in `samples/`, endpoint doc in `docs/`), then go back to Phase B. Docs must explain the latest call in plain language.
+- CLAUDE.md still lists B then C as separate phases; update it if the user wants the new loop written down.
+- Docs so far: `docs/README.md` (index + worked example of step 6), `docs/auth.md`, `docs/oee-api.md` (health tested).
+
 ## Open questions
 1. Which client(s) to use for `reckitt` (OEE technical user vs supervisor client) and whether a read-only client exists. See `docs/auth-checklist.md`, section "Questions to ask your colleague".
 2. Postman environment files were not provided; `HOST`/`PIAM` etc. are blank in the Testing collection and `PIAM` in the OEE collection.

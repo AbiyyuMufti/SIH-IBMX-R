@@ -49,7 +49,7 @@ export async function getToken(idVar = 'RECKITT_API_TECHUSER_CLIENT_ID', secretV
     const err = body ? { error: body.error, error_description: body.error_description, message: body.message } : { raw: text.slice(0, 200) };
     throw new Error(`Token request failed: HTTP ${res.status} ${JSON.stringify(err)}`);
   }
-  return { token: body.access_token, expiresIn: body.expires_in, tokenType: body.token_type };
+  return { token: body.access_token, expiresIn: body.expires_in, tokenType: body.token_type, fields: Object.keys(body) };
 }
 
 // GET only. Returns { status, headers (selected), body, ms }.

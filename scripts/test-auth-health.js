@@ -14,6 +14,7 @@ try {
   process.exit(1);
 }
 console.log('Token OK       : type=%s expires_in=%ss length=%d (value not printed)', tok.tokenType, tok.expiresIn, tok.token.length);
+console.log('Token response fields:', tok.fields.join(', '));
 
 const r = await apiGet(`${cfg.oeePath}/health`, tok.token);
 console.log('GET %s -> HTTP %d in %dms', r.url.replace(cfg.gateway, ''), r.status, r.ms);
