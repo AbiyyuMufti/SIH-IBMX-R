@@ -1,8 +1,13 @@
 # Configuration and master data (OEE service)
 
-Behaviour: read how OEE is set up for an asset, and the reference lists it uses (reason trees and so on).
-Service: OEE app v3. Base: `https://gateway.eu1.mindsphere.io/api/oee/v3`. Auth: Bearer token, see [auth.md](auth.md). Headers: `Accept: application/json` (the OEE service accepts it; Asset Management does not).
-Tested 2026-10-02 on the `reckitt` tenant, on `B2 Line` (automatic) and `GT4` (manual). Everything read-only. Anything not listed under "Tested" is **From source only**.
+| At a glance | |
+|---|---|
+| **Use it to** | Find out how OEE is set up for an asset (sources, calendar, reason tree) and read the reference lists it uses |
+| **Service** | OEE app v3, base `https://gateway.eu1.mindsphere.io/api/oee/v3` |
+| **Auth** | Bearer token, see [auth.md](auth.md) |
+| **Status** | **Tested** 2026-10-02 on `B2 Line` and `GT4`. Read only |
+| **Endpoints** | `/assets/{id}/config` and the per-asset source reads; `/reasontrees` (+ `/{id}`, `/{id}/reasons`); `/calendars`, `/timeModel`, `/productCollections`, `/productUnits`, `/qualityCodes`, `/measureCollections`, `/rejectReasonCollections`, `/stateTables`, `/expressions`, `/operands`, `/microStops`, `/application/settings` (404) |
+| **Key facts** | Most lists return an object with one named array, not a bare array. `/timeModel` and `/microStops` are single objects. `/measureCollections` is capped at exactly 100 |
 
 ## What reason trees are
 A **reason tree** is the list of reasons why a machine is stopped or losing output, organised in levels. Examples of top-level groups in the `B2 Line Reason Tree`: `Planned Downtime`, `Unplanned Downtime`, `Breakdown`, `Changeover`, `Meals and breaks`, `Speed Loss`, `Quality Issues`, `Run`. Below each group are more specific reasons.

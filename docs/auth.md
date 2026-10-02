@@ -1,6 +1,13 @@
 # Authentication
 
-State: **Tested** on 2026-10-02 with the Reckitt API technical user.
+| At a glance | |
+|---|---|
+| **Use it to** | Get an access token and send it on every API call |
+| **Services** | IAM login `https://reckitt.piam.eu1.mindsphere.io`; API gateway `https://gateway.eu1.mindsphere.io` |
+| **Auth** | Client ID + secret (HTTP Basic) are exchanged for a Bearer token, valid about 30 minutes |
+| **Status** | **Tested** 2026-10-02 with the Reckitt API technical user |
+| **Endpoints** | `POST /oauth/token` (the only POST needed for read-only work) |
+| **Needs** | `RECKITT_API_TECHUSER_CLIENT_ID` and `RECKITT_API_TECHUSER_CLIENT_SECRET` in `.env` (names only, never values here) |
 
 ## Overview
 All APIs use a two-step pattern:

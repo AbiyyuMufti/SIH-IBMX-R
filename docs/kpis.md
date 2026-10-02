@@ -1,9 +1,15 @@
 # Calculated results and reports (OEE)
 
-Behaviour: read what the OEE app has calculated or summarised for an asset: production vs target, downtime and reject reasons, and the OEE KPIs themselves (via read-style POSTs).
-Service: OEE app v3. Base: `https://gateway.eu1.mindsphere.io/api/oee/v3`. Auth: Bearer token, see [auth.md](auth.md). Headers on all calls: `Authorization: Bearer <token>`, `Accept: application/json`.
-Tested 2026-10-02 on `GT4` (manual OEE) and `B2 Line` (automatic) over the last 7 days. Read only, plus three read-style POSTs (`evaluateKPIs`, `/expressions/{id}/evaluate`, `timeModelCategoryDistribution`) that the user approved.
-Legend: **Tested** = called and verified. **From source only** = found in Postman/flows, not called.
+| At a glance | |
+|---|---|
+| **Use it to** | Read calculated results: OEE, availability, performance, quality and 26 more KPIs, plus downtime, reject and production reports |
+| **Service** | OEE app v3, base `https://gateway.eu1.mindsphere.io/api/oee/v3` |
+| **Auth** | Bearer token, see [auth.md](auth.md). Headers: `Accept: application/json`, and `Content-Type: application/json` on POST |
+| **Status** | **Tested** 2026-10-02 on `B2 Line` (automatic) and `GT4` (manual). Read only, plus three read-style POSTs approved by the user |
+| **GET endpoints** | `/assets/{id}/productionTarget`, `downtimeReasons`, `topDowntimeReasons`, `topRejectReasons`, `statusDistribution`, `downtimeDistribution`, `filterValues`, `measure` (all take `from` and `to`) |
+| **POST endpoints** | `/expressions/evaluateKPIs` (all 30 KPIs), `/expressions/{id}/evaluate` (one expression, optionally per hour), `/assets/{id}/timeModelCategoryDistribution` (timeline segments; automatic assets only) |
+| **Key facts** | Ratios are fractions (1 = 100 %), times are **milliseconds**. All 34 formulas are listed below. B2 Line numbers look odd (Performance above 1): check the configuration before trusting them |
+| **Sections (in order)** | 1. GET reports (`productionTarget`, `downtimeReasons`, `topDowntimeReasons`, `topRejectReasons`, distributions, `filterValues`, `measure`). 2. Full KPI formula reference (34 expressions and operands). 3. `POST evaluateKPIs`. 4. `POST /expressions/{id}/evaluate`. 5. `POST timeModelCategoryDistribution` |
 
 All the report calls below take `from` and `to` (ISO 8601 UTC) as query parameters. Without data in the window they return HTTP 200 with empty lists, not errors.
 

@@ -1,7 +1,13 @@
 # Finding assets and the hierarchy
 
-Behaviour: get the asset IDs every other call needs, and understand how assets are organised (enterprise > region > site > area > line > machine).
-Auth: Bearer token for all calls, see [auth.md](auth.md). Gateway: `https://gateway.eu1.mindsphere.io`. Tested 2026-10-02 on the `reckitt` tenant with the API technical user.
+| At a glance | |
+|---|---|
+| **Use it to** | Get the `assetId` every other call needs, and rebuild the hierarchy (enterprise > region > site > area > line > machine) |
+| **Services** | OEE app v3 (`/api/oee/v3`) and Asset Management v3 (`/api/assetmanagement/v3`, **needs `Accept: application/hal+json`**) |
+| **Auth** | Bearer token, see [auth.md](auth.md) |
+| **Status** | **Tested** 2026-10-02 on `reckitt`; asset **types** are denied (HTTP 403) for the API technical user |
+| **Endpoints** | OEE: `GET /assets`, `GET /assets/{id}`. Asset Management: `GET /assets` (paged), `/assets/root`, `/assets/{id}`, `/assets?filter={"parentId":...}`, `/assets/{id}/aspects` |
+| **Key facts** | 246 assets in the tenant, 44 are OEE assets. Names are not unique, use `assetId`. A site such as `Hull` is not an OEE asset |
 
 ## Which call to use
 | You want | Use | Service |

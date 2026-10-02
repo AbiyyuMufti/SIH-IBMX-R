@@ -1,8 +1,13 @@
 # Operator input (manual OEE)
 
-Behaviour: read what operators entered by hand for an asset: production counts, products, reject reasons, downtime reasons and comments.
-Service: OEE app v3 (`/api/oee/v3`) and IoT Time Series (`/api/iottimeseries/v3`). Auth: Bearer token, see [auth.md](auth.md).
-Tested 2026-10-02 on `GT4` (a manual-OEE asset: operators use a digital form in Insights Hub), windows 24 h, 48 h and 7 d. Read only. The write calls (POST/PUT on manual inputs) were not tested.
+| At a glance | |
+|---|---|
+| **Use it to** | Read what operators entered by hand on a manual-OEE asset: shift entries, hourly entries, reasons, comments |
+| **Services** | OEE app v3 (`/api/oee/v3`) and IoT Time Series v3 (`/api/iottimeseries/v3`) |
+| **Auth** | Bearer token, see [auth.md](auth.md) |
+| **Status** | **Tested** 2026-10-02 on `GT4` (windows 24 h, 48 h, 7 d). Read only; the write calls were not tested |
+| **Endpoints** | `GET /assets/{id}/manualInputs?from&to`, `GET /timeseries/{id}/OEE_Hourly_Entry?from&to`, `GET /assets/{id}/comment?from&to` |
+| **Key facts** | Shift entries are 12 h and use **milliseconds**; hourly entries use **minutes** and hold JSON inside text fields. `ActorEmail` is personal data |
 
 ## How the data is stored (observed)
 The same operator data shows up in two places:

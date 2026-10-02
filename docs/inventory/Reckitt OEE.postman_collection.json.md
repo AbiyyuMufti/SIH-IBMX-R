@@ -81,7 +81,7 @@ Source: `source/Reckitt OEE.postman_collection.json` (Postman v2.1, 203 requests
 | # | Name | Method | URL | Auth | Headers | Body | Scripts |
 |---|---|---|---|---|---|---|---|
 | 16 | merge | POST | `{{HOST}}{{API}}/assets/{{ASSET_ID}}/merge` | Bearer {{TOKEN}} |  | raw |  |
-| 17 | split | POST | `{{HOST}}{{API}}/assets/{{ASSET_ID}}/split/1af1e23c8d3547258691e8ec4399245b` | Bearer {{TOKEN}} |  | raw |  |
+| 17 | split | POST | `{{HOST}}{{API}}/assets/{{ASSET_ID}}/split/<id>` | Bearer {{TOKEN}} |  | raw |  |
 | 18 | status/overwrite | PUT | `{{HOST}}{{API}}/assets/{{ASSET_ID}}/status/overwrite?from={{FROM}}&to={{TO}}` | Bearer {{TOKEN}} |  | raw | test sets ASSET_ID,eTag |
 | 19 | status/replace | PUT | `{{HOST}}{{API}}/assets/{{ASSET_ID}}/status/replace` | Bearer {{TOKEN}} |  | raw | test sets ASSET_ID,eTag |
 

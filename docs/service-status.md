@@ -1,8 +1,12 @@
 # Service status checks
 
-Behaviour: confirm a service is up and your token works, before doing anything else.
-Service: OEE app v3. Base URL: `https://gateway.eu1.mindsphere.io/api/oee/v3`. Auth: Bearer token, see [auth.md](auth.md).
-Legend: **Tested** = called and verified on 2026-10-02.
+| At a glance | |
+|---|---|
+| **Use it to** | Check the OEE service is up, that your token is accepted, and read its version |
+| **Service** | OEE app v3, base `https://gateway.eu1.mindsphere.io/api/oee/v3` |
+| **Auth** | Bearer token, see [auth.md](auth.md) |
+| **Status** | **Tested** 2026-10-02 |
+| **Endpoints** | `GET /health` (empty body, HTTP 200), `GET /version` (`{ "version": "..." }`, HTTP 403 without a token) |
 
 ## GET /health (Tested)
 | Item | Value |

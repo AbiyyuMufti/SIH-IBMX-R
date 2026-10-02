@@ -1,8 +1,13 @@
 # Raw machine data (IoT Time Series)
 
-Behaviour: read the raw values a machine has reported over time (counters, states, speeds, sensor readings).
-Service: IoT Time Series v3. Base: `https://gateway.eu1.mindsphere.io/api/iottimeseries/v3`. Auth: Bearer token, see [auth.md](auth.md).
-Tested 2026-10-02 on the `reckitt` tenant with the API technical user, on machine `02 Filler` under `B2 Line` (an automatic asset fed by MindConnect). Reading only; the write and delete calls seen in the source flows were not tested.
+| At a glance | |
+|---|---|
+| **Use it to** | Read raw values (counters, states, speeds, sensors) of one aspect of one asset over a time range |
+| **Service** | IoT Time Series v3, base `https://gateway.eu1.mindsphere.io/api/iottimeseries/v3` |
+| **Auth** | Bearer token, see [auth.md](auth.md) |
+| **Status** | **Tested** 2026-10-02 on B2 Line `02 Filler` (automatic). Read only; the write and delete calls from the source flows were not tested |
+| **Endpoints** | `GET /timeseries/{assetId}/{aspectName}?from&to&limit&sort` |
+| **Key facts** | Max **2000 records** per call (cut silently) and max **90 days** per range. Counters are cumulative. Records are sparse. Every value has a `_qc` quality field |
 
 ## What it is
 Every asset has **aspects** (groups of variables). The time series API returns the stored values of one aspect of one asset for a time range. To know which aspects exist for an asset, use Asset Management `GET /assets/{assetId}/aspects` (see [assets.md](assets.md)).

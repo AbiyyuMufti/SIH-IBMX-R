@@ -1,5 +1,12 @@
 # Auth and secrets checklist
 
+| At a glance | |
+|---|---|
+| **Use it to** | Find where each credential appears in the source files (file and location only, never values) and what to ask your colleague |
+| **Used for the tests** | Mechanism 1, client credentials on the `reckitt` tenant, with the **API technical user** (`.env`: `RECKITT_API_TECHUSER_CLIENT_ID`, `RECKITT_API_TECHUSER_CLIENT_SECRET`). It works for all read calls except Asset Management types (403). The other credentials below were **not used** |
+| **Exposure** | Several secrets are typed directly into the source files (list at the end). Treat them as exposed and rotate them |
+| **How to call the API** | [auth.md](auth.md) and [quickstart.md](quickstart.md) |
+
 Every distinct auth mechanism found in `source/`, where it comes from (file and location only, never values), and what is missing. `.env` placeholder names are in the last column; they are empty and you fill them locally.
 
 Status legend: **inline** = secret typed directly in the source (location listed); **var** = only a variable name in the source, value is elsewhere; **ctx** = comes from Node-RED context at runtime; **none** = no credentials needed.
@@ -17,7 +24,7 @@ Status legend: **inline** = secret typed directly in the source (location listed
 | Reckitt OEE Postman | `techuser / create TU OEEHUB  User User` (#202) | var | `TU_OEEHBUB_USER_USER_USERNAME`, `..._PASSWORD` | same names |
 | Paul-Flow.json | Tab `OEE`, function `Technical user` (id c6b2a6b3.721a8): variables `tenantName`, `clientId`, `secret` | **inline** | Client ID and secret (tenant `reckitt`) | `RECKITT_OEE_CLIENT_ID`, `RECKITT_OEE_CLIENT_SECRET` |
 | farhan-flows.json | Tab `OEE`, function `Technical user` (id 53d5e4a.b48a21c): `tenantName`, `clientId`, `secret` | **inline** | Same pattern as Paul-Flow (check if it is the same client) | same names |
-| farhan-flows.json | Functions `build token request`: tab `B2 line OEE` (fb5853b0.867458), tab `GT4 line OEE` (e7b6bcbc.9458c, f66152e5.64853, disabled), tab `GT4 line losses` (3f84e0f5.b85a58, disabled), tab `Delete Timeseries` (45ec1f4d.1eaef8). Literal fallback for `CLIENT_ID` and `CLIENT_SECRET` after `flow.get(...)` | **inline** (fallback) + **var** (`GT4_CLIENT_ID`, `GT4_CLIENT_SECRET`, `clientID`, `tokenSecret`) | Client ID and secret for the `reckitt-supervisor` style client (tenant `reckitt`) | `RECKITT_SUPERVISOR_CLIENT_ID`, `RECKITT_SUPERVISOR_CLIENT_SECRET` |
+| farhan-flows.json | Functions `build token request`: tab `B2 line OEE` (fb5853b0.867458), tab `GT4 line OEE` (e7b6bcbc.9458c, f66152e5.64853, disabled), tab `GT4 line losses` (3f84e0f5.b85a58, disabled), tab `Delete Timeseries` (45ec1f4d.1eaef8). Literal fallback for `CLIENT_ID` and `CLIENT_SECRET` after `flow.get(...)` | **inline** (fallback) + **var** (`GT4_CLIENT_ID`, `GT4_CLIENT_SECRET`, `clientID`, `tokenSecret`) | Client ID and secret of the "supervisor" client (tenant `reckitt`; the default client ID is also hardcoded there) | `RECKITT_SUPERVISOR_CLIENT_ID`, `RECKITT_SUPERVISOR_CLIENT_SECRET` |
 | farhan-flows.json | Tab `Delete Timeseries`, functions `write config into flow context` and `2 · build token request`: `IH_TOKEN_URL`, `IH_CLIENT_ID`, `IH_CLIENT_SECRET` fed from flow vars `tokenUrl`, `clientID`, `tokenSecret` | var | Where those flow vars are first set is not in the file | `IH_TOKEN_URL`, `IH_CLIENT_ID`, `IH_CLIENT_SECRET` |
 
 ## 2. Technical Token Manager: app credentials
