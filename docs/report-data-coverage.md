@@ -6,6 +6,7 @@
 | **Basis** | Tests on the `reckitt` tenant, 2026-10-02, API technical user. The "Class" column of the requirement list was **not** used |
 | **Status words** | **FULFILLED** = tested and the field exists. **PARTIAL** = part of it exists, or it exists with a stated gap. **MISSING** = nothing tested provides it. **NOT TESTED** = could not be checked with the available data |
 | **Result** | 12 FULFILLED, 11 PARTIAL, 2 MISSING, 0 NOT TESTED (see the table). The biggest gaps are the CU definition and factor, targets, and site coverage (only Hull has working data) |
+| **Readable summary** | [cross-check-result.md](cross-check-result.md) |
 | **Details** | Endpoint details: [endpoints.md](endpoints.md), [kpis.md](kpis.md), [assets.md](assets.md), [config-and-master-data.md](config-and-master-data.md), [manual-inputs.md](manual-inputs.md) |
 
 ## Facts that decide a lot (tested)
