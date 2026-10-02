@@ -49,4 +49,4 @@ Context: tested on tenant `reckitt` (gateway `https://gateway.eu1.mindsphere.io`
 ## Ranked next steps
 1. Agree the CU definition and factor with Reckitt. 2. Get the target master. 3. Get the SKU master. 4. Configure the Nottingham and Weinheim assets, and check why Mira, Tuzla and STP show almost no downtime. 5. Check B2 Line design speed and counters.
 
-Full detail: `docs/cross-check-result.md` (readable), `docs/report-data-coverage.md` (per item, exact call and field), `docs/endpoints.md` (every tested call), `docs/quickstart.md` (Node-RED setup).
+Full detail: `prompt-response/cross-check-result.md` (readable), `prompt-response/report-data-coverage.md` (per item, exact call and field), `docs/endpoints.md` (every tested call), `docs/quickstart.md` (Node-RED setup).

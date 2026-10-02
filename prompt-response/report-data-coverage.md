@@ -7,7 +7,7 @@
 | **Status words** | **FULFILLED** = tested and the field exists. **PARTIAL** = part of it exists, or it exists with a stated gap. **MISSING** = nothing tested provides it. **NOT TESTED** = could not be checked with the available data |
 | **Result** | 12 FULFILLED, 11 PARTIAL, 2 MISSING, 0 NOT TESTED (see the table). The biggest gaps are the CU definition and factor, targets, and site coverage (only Hull has working data) |
 | **Readable summary** | [cross-check-result.md](cross-check-result.md) |
-| **Details** | Endpoint details: [endpoints.md](endpoints.md), [kpis.md](kpis.md), [assets.md](assets.md), [config-and-master-data.md](config-and-master-data.md), [manual-inputs.md](manual-inputs.md) |
+| **Details** | Endpoint details: [endpoints.md](../docs/endpoints.md), [kpis.md](../docs/kpis.md), [assets.md](../docs/assets.md), [config-and-master-data.md](../docs/config-and-master-data.md), [manual-inputs.md](../docs/manual-inputs.md) |
 
 ## Facts that decide a lot (tested)
 1. **Only Hull has usable OEE data today.** OEE assets per site: Hull 17 (B2 Line with 7 machines, GT4, plus test copies), Mira 15, Tuzla 6, STP 4, Weinheim 1, Nottingham 1. **Six assets are not configured** and answer HTTP 400 `Asset configuration not finished`: `L2` (Weinheim), `N1` (Nottingham), `L22_Labeller1/2/3` (STP) and the test asset `B2`. In the last 30 days only Hull (and 1.6 h on one Mira asset) returned downtime rows; 24 of 44 OEE assets returned none.

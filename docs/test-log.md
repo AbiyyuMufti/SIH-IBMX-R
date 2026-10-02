@@ -69,4 +69,4 @@ Where it lives in this repo: the script is `scripts/test-auth-health.js` (uses `
 - `evaluateKPIs` on GT4 (7 d) with `SHIFT`, `PRODUCT` and `ORDER` filter values (same approved POST): filters work; `Theoretical output` is not split by order; `missingMapping` flags missing production periods.
 - `downtimeReasons` paging: `page` and `size` work, `limit` is ignored. All 232 B2 Line rows in 24 h are `Unplanned Downtime` with no sub-path.
 - B2 Line shift calendar, B2 Line product list (123 products), comments on B2 Line (empty), asset description baselines (23 of 44).
-- Script: `scripts/test-report-coverage.js`. Result: [report-data-coverage.md](report-data-coverage.md).
+- Script: `scripts/test-report-coverage.js`. Result: `prompt-response/report-data-coverage.md`.

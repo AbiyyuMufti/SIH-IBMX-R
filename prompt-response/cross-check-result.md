@@ -6,7 +6,7 @@
 | **Answer** | 12 items **fulfilled**, 11 **partial**, 2 **missing**, 0 not tested |
 | **Basis** | Real calls on the `reckitt` tenant, 2026-10-02, with the API technical user. The "Class" estimate in the requirement list was not used |
 | **Biggest gaps** | The CU definition and factor, targets, product master data, and site coverage (only Hull has working data today) |
-| **Detail** | Full table with the exact call and field per item: [report-data-coverage.md](report-data-coverage.md). Endpoint details: [endpoints.md](endpoints.md) |
+| **Detail** | Full table with the exact call and field per item: [report-data-coverage.md](report-data-coverage.md). Endpoint details: [endpoints.md](../docs/endpoints.md) |
 
 Status words: **FULFILLED** = tested and the field exists. **PARTIAL** = part of it exists, or it exists with a stated gap. **MISSING** = nothing tested provides it. **NOT TESTED** = could not be checked.
 
