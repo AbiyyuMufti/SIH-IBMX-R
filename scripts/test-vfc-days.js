@@ -1,4 +1,4 @@
-// Offline checks for the day list, the London date rule and the failure path (bad credentials -> nothing sent).
+// Offline checks for the day list and the London date rule. The failure path is covered by test-vfc-flow.js.
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 const rd = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
@@ -24,14 +24,3 @@ console.log('production_day of 2026-09-30T05:59Z:', X.productionDay(day('2026-09
 console.log('london date of 2026-07-01T23:30Z (BST):', X.londonDate(day('2026-07-01T23:30:00Z')), '| of 2026-12-01T23:30Z (GMT):', X.londonDate(day('2026-12-01T23:30:00Z')));
 console.log('DST switch 2026-03-29T00:59Z/01:00Z offsets:', X.londonOffsetHours(day('2026-03-29T00:59:00Z')), X.londonOffsetHours(day('2026-03-29T01:00:00Z')), '| 2026-10-25T00:59Z/01:00Z:', X.londonOffsetHours(day('2026-10-25T00:59:00Z')), X.londonOffsetHours(day('2026-10-25T01:00:00Z')));
 
-// failure path: wrong credentials must send only a log message, no table
-import './lib-ih.js';
-const code = rd('./vfc-transform.js').replace(/\nif \(typeof module[\s\S]*$/, '\n') + rd('./vfc/node-process-day-body.js');
-const cfgSrc = rd('./vfc/node-config.js');
-vm.runInNewContext('(function(flow,node,msg){' + cfgSrc + '})')(flow, { status: () => {} }, {});
-ctx.cfg.clientId = 'wrong'; ctx.cfg.clientSecret = 'wrong'; ctx.cfg.dryRun = false;
-const sent = [];
-const n2 = { status: () => {}, error: () => {}, send: (a) => sent.push(a) };
-vm.runInNewContext('(function(flow,node,msg,fetch,Buffer,setTimeout,Promise){' + code + '})')(flow, n2, { payload: '2026-09-30', mode: 'backfill' }, fetch, Buffer, setTimeout, Promise);
-for (let i = 0; i < 30 && !sent.length; i++) await new Promise((r) => setTimeout(r, 500));
-console.log('failure path ->', sent[0].map((x) => (x ? x.topic + ': ' + x.payload.slice(0, 90) : null)));
