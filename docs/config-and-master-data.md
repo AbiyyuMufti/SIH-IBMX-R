@@ -168,3 +168,19 @@ return msg;
 
 ## From source only (not tested)
 Write calls on all of the above (create, change, delete lists and assignments) and PUT on the per-asset setup paths. Not in scope without approval.
+
+## What the OEE app screens show, and the call behind each (Tested 2026-10-02)
+Checked against three screens of the Insights Hub OEE app (product collection, asset configuration, operator entries).
+
+| Screen | Field | API call | Field in the answer |
+|---|---|---|---|
+| Asset configuration > KPI targets | Warning and error per KPI (OEE, Performance, Availability, Quality) | `GET /api/oee/v3/assets/{assetId}` | `thresholds.warnings[]` and `thresholds.errors[]`, each `{ name, value }` in percent |
+| Product collection | Name, description, code, design speed | `GET /productCollections/{id}/products` (id from the asset's `/config` or `/productCollection`) | `name`, `description`, `code`, `designSpeedValue`, `designSpeedInterval`, `designSpeedUnit` |
+| Operator entries (manual assets) | Time, order, product, produced, good, rejected, reject reasons, machine states | `GET /assets/{assetId}/manualInputs?from&to` | `startTime`, `endTime`, `order`, `productName`, `total`, `good`, `rejected`, `rejectReasons[]` (`name`, `amount`), `statuses[]` (`name`, `occurrence`, `duration` ms), `plannedProductionTime` |
+
+Findings from the check:
+- **KPI targets differ per asset.** Of 44 OEE assets: 27 have `0/0` for all four (not set), 13 have 70/30 for all four, 3 have 70/30 with Quality `0/0`, and **GT4 has OEE 70/30, Performance 70/30, Availability 75/50, Quality 88/70** (matches the screen). Earlier notes that gave 70/30 for every KPI were taken from B2 Line only.
+- **Design speed has a different interval per collection.** The `SP4 Products` collection (82 products, description "SAP routing PLIQSP4; speeds are bottleneck rates") uses `designSpeedInterval` `HOUR` (for example 324.99), the B2 Line collection uses `MINUTE`. Convert to one interval before comparing.
+- **Product descriptions carry extra text.** In SP4 each product description reads like `24.000 EA; bottleneck PLIQSP4; 5.4165 KAR/min`. 5.4165 x 60 = 324.99, so the stored speed is in cartons (KAR) although the unit says `Piece`. The `24.000 EA` could be pieces per carton, a possible seed for a CU factor. **Inferred, not confirmed.**
+- **No OEE asset returned `SP4 Products`** from `/productCollection` (44 assets checked). It probably belongs to one of the unconfigured assets, not confirmed.
+- **Product per shift exists for manual assets.** `manualInputs` has `productName` and `order` per shift entry (GT4). The hourly KPI call has no product column.
