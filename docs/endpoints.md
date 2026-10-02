@@ -56,13 +56,13 @@
 | Method | Path | Purpose | Params / body | Returns | Doc |
 |---|---|---|---|---|---|
 | GET | `/api/oee/v3/assets/{assetId}/productionTarget` | Production vs target over time | `from`, `to` | `{ total[], good[], rejected[], target[] }` of `{ time, value }` (about 1000 points) | [kpis.md](kpis.md) |
-| GET | `/api/oee/v3/assets/{assetId}/downtimeReasons` | Downtime rows with reasons | `from`, `to` | `{ _embedded.downtimeReasons[], page, ... }` (default page size 25) | [kpis.md](kpis.md) |
+| GET | `/api/oee/v3/assets/{assetId}/downtimeReasons` | Downtime rows with reasons | `from`, `to`, `page` (0-based), `size` (`size=300` returns all) | `{ _embedded.downtimeReasons[], page, ... }` (default page size 25; one row per stop on automatic assets, per shift on manual ones) | [kpis.md](kpis.md) |
 | GET | `/api/oee/v3/assets/{assetId}/topDowntimeReasons` | Ranked downtime reasons | `from`, `to` | Array (`duration` is a string, ms) | [kpis.md](kpis.md) |
 | GET | `/api/oee/v3/assets/{assetId}/topRejectReasons` | Ranked reject reasons | `from`, `to` | Array | [kpis.md](kpis.md) |
 | GET | `/api/oee/v3/assets/{assetId}/statusDistribution`, `/downtimeDistribution` | Time split by status or downtime reason | `from`, `to` | `{ totalCount, totalDuration, average, median, path, distribution[] }` | [kpis.md](kpis.md) |
 | GET | `/api/oee/v3/assets/{assetId}/filterValues` | Values usable as filters | `from`, `to` | `{ filterValues: [ { key, value[] } ] }` (`order`, `product`, `shift`) | [kpis.md](kpis.md) |
 | GET | `/api/oee/v3/assets/{assetId}/measure` | Measure collection of the asset | none | `{ measureCollectionId }` or `{}` | [kpis.md](kpis.md) |
-| POST | `/api/oee/v3/expressions/evaluateKPIs` | All 30 KPIs for one asset and period | Body `{ assetId, scope: { from, to, filter[], recursive, groupedByDateTime } }` | `{ scope, results[ { name, value, humanFormula, ... } ], took, missingMapping, productUnit }` | [kpis.md](kpis.md) |
+| POST | `/api/oee/v3/expressions/evaluateKPIs` | All 30 KPIs for one asset and period | Body `{ assetId, scope: { from, to, filter[], recursive, groupedByDateTime } }`. Filter keys `PRODUCT`, `ORDER`, `SHIFT` with values from `filterValues` work (tested on GT4) | `{ scope, results[ { name, value, humanFormula, ... } ], took, missingMapping, productUnit }` | [kpis.md](kpis.md) |
 | POST | `/api/oee/v3/expressions/{expressionId}/evaluate` | One expression, optionally per hour | Same body | Same envelope with 1 result; `groups[]` per hour if `groupedByDateTime` | [kpis.md](kpis.md) |
 | POST | `/api/oee/v3/assets/{assetId}/timeModelCategoryDistribution` | Machine timeline in segments | Body `{ from, to, filter[], force? }` (flat, no `scope`) | `{ from, to, filter, distribution[] }`. **HTTP 400 for manual assets** (GT4) | [kpis.md](kpis.md) |
 

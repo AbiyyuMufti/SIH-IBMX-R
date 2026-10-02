@@ -146,6 +146,11 @@ All `GET .../api/oee/v3/<path>`, no parameters unless stated, HTTP 200 in 0.25 t
 | `/microStops` | **one object** `{ belongs: "PERFORMANCE", color, duration: 5, unit: "MINUTE" }` | The micro-stop rule: presumably stops shorter than 5 minutes count as micro stops, booked under performance. Inferred |
 | `/application/settings` | HTTP **404** `{"errors":[{"code":"mdsp.core.oee.getSettings","logref":"...","message":"Resource not found"}]}` | No settings object exists in this tenant (the Postman collection expects one) |
 
+**More seen on B2 Line (tested)**
+- Calendar `Hull Calendar` (time zone text `(UTC+01:00) Edinburgh, London`): 24 events in September 2026, each a 12 h shift named after a crew (`Red`, `Gold`, `Blue`, ...), recurring `DAILY` with `interval: 10` from 06:00Z or 18:00Z until 2026-12-31. The `shift` values in `filterValues` are these crew names.
+- Product collection `B2 Line Products`: 123 products whose `name` equals the numeric `code`; design speed 210 `Piece` per `MINUTE` (`designSpeedType: SPEED`). GT4's collection has descriptive names (for example `250 mg tablets - Pep 8's`) and unit `Carton`.
+- Reason trees: 38 OEE assets have a `reasonTreeId`, they use 10 trees, and the biggest group of 21 assets shares one tree.
+
 **Gotchas**
 - Names are not unique and many lists are per asset (78 product collections, 100 measure collections). Always take the ID from the asset's `/config` rather than searching by name.
 - `/timeModel` and `/microStops` are single objects. Do not treat them as lists.

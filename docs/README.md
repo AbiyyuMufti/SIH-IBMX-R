@@ -34,6 +34,7 @@
 | [api-summary.md](api-summary.md) | What exists across all sources, coverage by service, the untested write calls |
 | [inventory.md](inventory.md) | Per-source-file lists of every outbound call (`inventory/`), including Node-RED tab and node names |
 | [auth-checklist.md](auth-checklist.md) | Where each credential comes from in the source files (locations only) and questions for your colleague |
+| [report-data-coverage.md](report-data-coverage.md) | Cross-check of the 25 data items for the Power BI OEE reports (EU Daily and site reports) against the tested API, with gaps and blockers |
 | [test-log.md](test-log.md) | How each finding was obtained: script, sample and result per test |
 
 ## Ten things to know before calling anything

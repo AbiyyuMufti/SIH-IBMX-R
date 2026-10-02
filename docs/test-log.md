@@ -62,3 +62,11 @@ Where it lives in this repo: the script is `scripts/test-auth-health.js` (uses `
 - `POST /assets/{id}/timeModelCategoryDistribution` returns the machine timeline in segments (B2 Line, 24 h: 469 segments, 14.2 h run and 9.9 h unplanned downtime, matching the KPI call). **Manual assets (GT4) are refused with HTTP 400.**
 - Paul-Flow's daily report writes every returned KPI as a Parquet column; its other tabs pick OEE, Availability, Performance, Quality and the parts and time KPIs.
 - Script: `scripts/test-kpi-post2.js`.
+
+## Test 9: report data coverage cross-check
+- Per-site OEE asset counts (walk to `basicsite` / `basicarea`): Hull 17, Mira 15, Tuzla 6, STP 4, Weinheim 1, Nottingham 1. 6 assets are unconfigured and answer HTTP 400.
+- `topDowntimeReasons` for all 44 OEE assets over 30 days: only Hull (and 1.6 h on one Mira asset) has data; Hull top-level reasons are dominated by `Unplanned Downtime`, `Lack of resources` and blank-path micro stops; `Breakdown` is 17 h, 5 events, 1 asset.
+- `evaluateKPIs` on GT4 (7 d) with `SHIFT`, `PRODUCT` and `ORDER` filter values (same approved POST): filters work; `Theoretical output` is not split by order; `missingMapping` flags missing production periods.
+- `downtimeReasons` paging: `page` and `size` work, `limit` is ignored. All 232 B2 Line rows in 24 h are `Unplanned Downtime` with no sub-path.
+- B2 Line shift calendar, B2 Line product list (123 products), comments on B2 Line (empty), asset description baselines (23 of 44).
+- Script: `scripts/test-report-coverage.js`. Result: [report-data-coverage.md](report-data-coverage.md).

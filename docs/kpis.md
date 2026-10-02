@@ -43,7 +43,7 @@ Values look cumulative within a period (the target rose from 0 to 1148 to 2977).
 |---|---|
 | Purpose | Detailed list of downtime events with their reasons (one row per status) |
 | URL | `GET .../api/oee/v3/assets/{assetId}/downtimeReasons?from=<ISO>&to=<ISO>` |
-| Result | HTTP 200 in about 0.3 s, 1 row for GT4 in 7 d. Paged: default page size 25 |
+| Result | HTTP 200 in about 0.3 s, 1 row for GT4 in 7 d. Paged: default page size 25. Query `page` (0-based) and `size` work (`size=300` returned all 232 rows of B2 Line for 24 h in one call); `limit` is ignored |
 
 ```json
 {
@@ -73,6 +73,8 @@ Values look cumulative within a period (the target rose from 0 to 1148 to 2977).
 | `workOrderCount`, `measuresCount`, `commentCount` | How many work orders, measures and comments are attached |
 | `justification` | Whether the reason needs a justification (see the reason's own `justification` flag in the reason tree) |
 | `page` | Pagination: `size`, `totalElements`, `totalPages`, `number` (0-based). Query parameter names for paging not tested |
+
+**Automatic vs manual assets (tested on B2 Line and GT4):** on an automatic asset (B2 Line) each row is **one stop event** with its exact `from` and `to` (for example 29 s and 35 s long). On a manual asset (GT4) a row covers the **whole shift** (`from`/`to` = 05:00 to 17:00). Stops nobody has given a reason appear with reason `Unplanned Downtime` and `reasonPath: null`: all 232 rows of B2 Line in 24 h looked like this. There is no field called "not logged"; use that pattern, or the pseudo-reason `##MICROSTOPS##` for short stops.
 
 ### GET /assets/{assetId}/topDowntimeReasons
 Top downtime reasons, ranked. HTTP 200 in about 0.3 s. A **plain array**:
@@ -336,7 +338,10 @@ return msg;
 - **`recursive: true`** returned the same 30 KPI values for B2 Line plus 21 more rows: auxiliary expressions and **operands** (`expressionType` `OPERAND` or `null`) such as `From` and `To` (their `value` is an array of timestamps in ms), `GoodOperandMode`, `Microstops (duration)`. It did not add child machines into the numbers in this test. Whether it rolls up child assets for another asset type was not verified.
 - Rows of other types have `displayName: null`, and `value` is sometimes an array. Filter on `expressionType === "KPI"` before reading.
 - `humanFormula` can read `'null'` for some operands (GT4: `'Total parts' : 'null' = 15960`); the value is still returned.
-- A POST that returns HTTP 200 does not guarantee all KPIs have data. Check `missingMapping`.
+- A POST that returns HTTP 200 does not guarantee all KPIs have data. Check `missingMapping`. On GT4 it contained `{ "key": "Manuals", "value": "Missing production periods(s) found" }`: periods in the window had no operator entry. On B2 Line it was empty.
+- **Filters work (tested on GT4, 7 days).** With values from `filterValues` in `scope.filter`: `SHIFT=Shift 1` returned Good parts 22950 (all production), `SHIFT=Shift 2` returned 0 and OEE `null`; `PRODUCT=<name>` returned the same counts with a slightly different OEE; `ORDER=AJ7777` and `ORDER=AJS348` returned 7000 and 15950 good parts (sum 22950). The filter key is upper case in the request (`SHIFT`, `PRODUCT`, `ORDER`).
+- **`Theoretical output` is not split by `ORDER`:** it was 265600 for each order (and for the unfiltered call), so OEE per order is understated and the value must not be summed across order filters. It did split by `SHIFT` (265600 in Shift 1, 0 in Shift 2).
+- A KPI value can be `null` (OEE for an empty shift). Unconfigured assets answer HTTP 400 `{"errors":[{"code":"mdsp.core.oee.assetConfiguration","message":"Asset configuration not finished"}]}`.
 - Use the same `assetId` rules as other calls: OEE assets only. A site such as `Hull` gives 404 (not tested for this call).
 
 ## POST /expressions/{expressionId}/evaluate (Tested)

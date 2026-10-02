@@ -52,6 +52,22 @@ Things to know about the hierarchy:
 
 ---
 
+## OEE assets per site (Tested 2026-10-02)
+Counted by walking each OEE asset up to its nearest `basicsite` and `basicarea` ancestor.
+| Site | OEE assets | Areas (OEE assets) | Notes |
+|---|---|---|---|
+| Hull | 17 | Bottles (B2 Line + 7 machines), Blisters (GT4), plus test copies under `Test Line` | Only site with real data. B2 Line is automatic, GT4 manual |
+| Mira | 15 | Liquids (7 lines), Powders (4), Tablets (3), Gel caps (1) | Configured, but only 1.6 h of downtime on one asset in 30 days |
+| Tuzla | 6 | Liquids (3), Powders (3) | No downtime rows in 30 days |
+| STP | 4 | zzConnectivity (`L22_Filler`, `L22_Labeller1/2/3`) | 3 of 4 not configured |
+| Weinheim | 1 | Tablet (`L2`) | **Not configured** (HTTP 400) |
+| Nottingham | 1 | Solid dose packing (`N1`) | **Not configured** (HTTP 400) |
+| Chartres, NMD | 0 | | No OEE assets |
+
+`isConfigured: false` assets (6): `B2` (test), `L22_Labeller1/2/3`, `L2`, `N1`. Calls such as `topDowntimeReasons` or `evaluateKPIs` on them return HTTP 400 `Asset configuration not finished`.
+
+23 of the 44 OEE assets carry a free-text `description` such as `RPS baseline OEE <period> <n>%; volume <n>; SAP routing <code>`, a possible source for baseline values (unstructured).
+
 ## OEE service
 
 ### GET /api/oee/v3/assets (Tested)
