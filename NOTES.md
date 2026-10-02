@@ -77,3 +77,9 @@ Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `sc
 ## Next
 - You: fill `.env` (names in `.env`; see auth-checklist), answer open questions.
 - Phase B step 6: test auth with one GET, report, wait for you. Then step 7: safe GETs one by one by API area, redacted responses to `samples/`.
+
+## VFC flow (fact_kpi, fact_loss) - in progress (2026-10-02)
+- Paul-Flow.json is available. Pattern: function builds msg.method/url/headers -> http request (method "use", ret "obj") -> function; parquet node (engine parquetjs, option write, multi, columns [{column,type}]) -> function sets msg.path -> write object (mode object).
+- Local run for production day 2026-09-30 done (scripts/test-vfc-local.js, logic in scripts/vfc-transform.js): B2 Line 24 kpi rows + 168 loss rows, GT4 24 + 1; SUM(total_time_ms) = 24.000 h for both. Data depth: B2 Line and GT4 start 2026-08-31 (scripts/test-vfc-depth.js, has asset IDs, not for commit).
+- Blocked on: parquet node type names and nullability (not documented where reachable), overwrite behaviour of write object, function-node capabilities. Flow JSON not yet built; asked the user.
+- VFC function nodes have NO fetch, require, process (user test 2026-10-02); Buffer and Promise exist, setTimeout is an object. Flow rebuilt with http request nodes, split per asset, join per day, no cycles. downtimeReasons accepts size=5000 (423 stops in one page), GET /assets/{id} gives hierarchyPath (names only). Parquet node types offered: STRING, BOOLEAN, INT64, DOUBLE, TIMESTAMP_MILLIS/MICROS, JSON, no DATE. End-to-end run of the exported JSON: scripts/test-vfc-flow.js.

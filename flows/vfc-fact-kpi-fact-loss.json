@@ -1,0 +1,906 @@
+[
+  {
+    "id": "11eef.b9919",
+    "type": "tab",
+    "label": "Mufti OEE parquet (fact_kpi, fact_loss)",
+    "disabled": false,
+    "info": "Writes two daily parquet tables to the data lake. Read calls only against Insights Hub.",
+    "allowCycles": false
+  },
+  {
+    "z": "11eef.b9919",
+    "id": "13dde.d3232",
+    "type": "comment",
+    "name": "[1] CONFIG",
+    "info": "GROUP 1 - CONFIG. The only place to edit: output paths, dry-run switch, credentials, asset list, rebuild days, planned-stop roots. The node runs on every trigger and stores the settings in flow context (flow.get(\"cfg\")). dryRun is true by default: set it to false to write files.",
+    "x": 140,
+    "y": 40,
+    "wires": []
+  },
+  {
+    "z": "11eef.b9919",
+    "id": "15ccd.ecb4b",
+    "type": "comment",
+    "name": "[2] TRIGGERS",
+    "info": "GROUP 2 - TRIGGERS. Schedule: daily 07:00 UTC, builds yesterday and the 2 production days before it. Backfill: edit the inject payload {\"start\":\"YYYY-MM-DD\",\"end\":\"YYYY-MM-DD\"} (production days, 06:00Z to 06:00Z) and click the button. Both go through CONFIG. \"Build day list\" then sends ONE MESSAGE PER DAY; the delay node starts one day every 5 s.",
+    "x": 140,
+    "y": 100,
+    "wires": []
+  },
+  {
+    "z": "11eef.b9919",
+    "id": "17bbc.106464",
+    "type": "comment",
+    "name": "[3] DAY SETUP",
+    "info": "GROUP 3 - ONE DAY, SETUP. token request -> OEE asset list -> choose the assets. Function nodes cannot use fetch in the VFC, so each call is an http request node (method, url and headers come from the function before it). Failures go to the LOG and nothing is written for that day.",
+    "x": 140,
+    "y": 160,
+    "wires": []
+  },
+  {
+    "z": "11eef.b9919",
+    "id": "19aab.11fd7d",
+    "type": "comment",
+    "name": "[4] PER ASSET",
+    "info": "GROUP 4 - ONE ASSET. The split node sends one message per asset (one per second). Calls per asset: Asset Management GET asset (hierarchyPath) -> evaluateKPIs POST (read-style, groupedByDateTime=true, recursive=false, no ORDER filter) -> downtimeReasons GET (size 5000, one page). Every asset ends at the join, also when skipped or failed, so the join never waits for a missing message.",
+    "x": 140,
+    "y": 220,
+    "wires": []
+  },
+  {
+    "z": "11eef.b9919",
+    "id": "1b99a.139696",
+    "type": "comment",
+    "name": "[5] BUILD TABLES",
+    "info": "GROUP 5 - JOIN + BUILD. The join waits for all assets of the day. \"Build tables\" writes NOTHING if any asset failed (no half days) and sends nothing in dry-run mode. Output 1 = fact_kpi, output 2 = fact_loss, output 3 = log.",
+    "x": 140,
+    "y": 280,
+    "wires": []
+  },
+  {
+    "z": "11eef.b9919",
+    "id": "1d889.152faf",
+    "type": "comment",
+    "name": "[6] WRITE fact_kpi",
+    "info": "GROUP 6 - parquet node + path + write object for fact_kpi. Same file name on every rerun (path from CONFIG, YYYY-MM-DD = production day), so a rerun replaces the day. Types: UTF8 (STRING), BOOLEAN, INT64, DOUBLE, TIMESTAMP_MILLIS (epoch ms, set in Build tables); days are text YYYY-MM-DD.",
+    "x": 140,
+    "y": 340,
+    "wires": []
+  },
+  {
+    "z": "11eef.b9919",
+    "id": "1f778.16c8c8",
+    "type": "comment",
+    "name": "[7] WRITE fact_loss",
+    "info": "GROUP 7 - parquet node + path + write object for fact_loss. Same pattern as group 6.",
+    "x": 140,
+    "y": 400,
+    "wires": []
+  },
+  {
+    "z": "11eef.b9919",
+    "id": "21667.1861e1",
+    "type": "comment",
+    "name": "[8] LOG",
+    "info": "GROUP 8 - LOG. One line per day (debug sidebar): rows per asset, sum of total time, skipped assets, KPI names without a column, FAILED / NOTHING WRITTEN, or the dry-run row counts and first rows.",
+    "x": 140,
+    "y": 460,
+    "wires": []
+  },
+  {
+    "z": "11eef.b9919",
+    "id": "5599c.438784",
+    "type": "inject",
+    "name": "Schedule 07:00 UTC",
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "repeat": "",
+    "repeatEnd": "0",
+    "endTime": "0",
+    "crontab": "0 7 * * *",
+    "offset": "NaN",
+    "once": false,
+    "properties": "",
+    "timezone": "UTC",
+    "betweentimesunit": "m",
+    "showNextExecution": false,
+    "powerMode": false,
+    "x": 150,
+    "y": 540,
+    "wires": [
+      [
+        "23556.19fafa"
+      ]
+    ]
+  },
+  {
+    "z": "11eef.b9919",
+    "id": "5788b.45209d",
+    "type": "inject",
+    "name": "Backfill (edit payload)",
+    "topic": "",
+    "payload": "{\"start\":\"2026-09-01\",\"end\":\"2026-09-03\"}",
+    "payloadType": "json",
+    "repeat": "",
+    "repeatEnd": "0",
+    "endTime": "0",
+    "crontab": "",
+    "offset": "NaN",
+    "once": false,
+    "properties": "",
+    "timezone": "utc",
+    "betweentimesunit": "m",
+    "showNextExecution": false,
+    "powerMode": false,
+    "x": 160,
+    "y": 600,
+    "wires": [
+      [
+        "23556.19fafa"
+      ]
+    ]
+  },
+  {
+    "z": "11eef.b9919",
+    "id": "23556.19fafa",
+    "type": "function",
+    "name": "CONFIG (edit here)",
+    "func": "// CONFIG: the only place to edit. Runs on every trigger, then passes the message on.\nvar cfg = {\n  // ---- output paths in the data lake (YYYY-MM-DD is replaced by the production day) ----\n  paths: {\n    fact_kpi: 'mufti_test/fact_kpi/fact_kpi_YYYY-MM-DD.parquet',\n    fact_loss: 'mufti_test/fact_loss/fact_loss_YYYY-MM-DD.parquet'\n  },\n  // ---- switches ----\n  dryRun: true,            // true = log row counts and first rows, write NO files. Set false to write.\n  rebuildDays: 2,          // schedule: yesterday plus this many days before it\n  // ---- credentials (technical user). Fill in after import. Do not share the flow with these filled in ----\n  tenantName: 'reckitt',\n  clientId: 'PUT_CLIENT_ID_HERE',\n  clientSecret: 'PUT_CLIENT_SECRET_HERE',\n  // ---- host ----\n  gateway: 'https://gateway.eu1.mindsphere.io',\n  // ---- assets: empty list = every configured OEE asset except the excluded ones below ----\n  assetIds: [\n    'cf4565d7da1e4efcbc0ea6a4814b8eee', // B2 Line (Hull)\n    'bc08dae161124f1cb533199f556190b3'  // GT4 (Hull)\n  ],\n  excludeAncestorNames: ['Test Line'],   // skip any asset below an asset with one of these names\n  excludeNames: [],\n  // ---- classification of stops: first element of reasonFullPath in this list = planned ----\n  plannedRoots: ['Planned Downtime', 'Planned Maintenance']\n};\nflow.set('cfg', cfg);\nnode.status({ fill: cfg.dryRun ? 'yellow' : 'green', shape: 'dot', text: cfg.dryRun ? 'DRY RUN' : 'WRITE MODE' });\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 400,
+    "y": 570,
+    "wires": [
+      [
+        "25445.1b9413"
+      ]
+    ]
+  },
+  {
+    "z": "11eef.b9919",
+    "id": "25445.1b9413",
+    "type": "function",
+    "name": "Build day list",
+    "func": "// Build the list of production days. One message per day leaves this node (oldest first).\nvar cfg = flow.get('cfg');\nvar p = msg.payload;\nvar days = [], mode;\nfunction dayStr(ms) { return new Date(ms).toISOString().slice(0, 10); }\nif (p && typeof p === 'object' && p.start && p.end) {\n  mode = 'backfill';\n  var s = Date.parse(p.start + 'T00:00:00Z'), e = Date.parse(p.end + 'T00:00:00Z');\n  if (isNaN(s) || isNaN(e) || e < s) { node.error('Backfill needs {\"start\":\"YYYY-MM-DD\",\"end\":\"YYYY-MM-DD\"} with start <= end', msg); return null; }\n  for (var t = s; t <= e; t += 86400000) days.push(dayStr(t));\n} else {\n  mode = 'schedule';\n  var now = Date.now();\n  // Production day D runs D 06:00Z to D+1 06:00Z. At 07:00Z the latest finished production day is the one before the current one.\n  var latest = Date.parse(dayStr(now - 6 * 3600000 - 86400000) + 'T00:00:00Z');\n  for (var i = cfg.rebuildDays; i >= 0; i--) days.push(dayStr(latest - i * 86400000));\n}\nnode.status({ fill: 'blue', shape: 'dot', text: mode + ': ' + days.length + ' day(s) ' + days[0] + (days.length > 1 ? ' .. ' + days[days.length - 1] : '') });\nreturn [days.map(function (d) { return { topic: 'day', payload: d, mode: mode }; })];\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 620,
+    "y": 570,
+    "wires": [
+      [
+        "27334.1d2d2c"
+      ]
+    ]
+  },
+  {
+    "z": "11eef.b9919",
+    "id": "27334.1d2d2c",
+    "type": "delay",
+    "name": "One day per 5 s",
+    "pauseType": "rate",
+    "timeout": "5",
+    "timeoutUnits": "seconds",
+    "rate": "1",
+    "nbRateUnits": "5",
+    "rateUnits": "second",
+    "randomFirst": "1",
+    "randomLast": "5",
+    "randomUnits": "seconds",
+    "drop": false,
+    "powerMode": false,
+    "x": 830,
+    "y": 570,
+    "wires": [
+      [
+        "29223.1ec645"
+      ]
+    ]
+  },
+  {
+    "z": "11eef.b9919",
+    "id": "29223.1ec645",
+    "type": "function",
+    "name": "1 Day: token request",
+    "func": "// Step 1 of a day: ask for a token. The next node is an http request node (it uses msg.method, msg.url, msg.headers).\nvar cfg = flow.get('cfg');\nmsg.day = msg.payload;\nmsg.loadedAt = Date.now();\nmsg.method = 'POST';\nmsg.url = 'https://' + cfg.tenantName + '.piam.eu1.mindsphere.io/oauth/token?grant_type=client_credentials';\nmsg.headers = {\n  'Authorization': 'Basic ' + Buffer.from(cfg.clientId + ':' + cfg.clientSecret).toString('base64'),\n  'Accept': 'application/json'\n};\ndelete msg.payload;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 160,
+    "y": 700,
+    "wires": [
+      [
+        "2b112.205f5e"
+      ]
+    ]
+  },
+  {
+    "z": "11eef.b9919",
+    "id": "2b112.205f5e",
+    "type": "http request",
+    "name": "POST token",
+    "method": "use",
+    "ret": "obj",
+    "url": "",
+    "timeout": "",
+    "mindspherePath": "",
+    "useMindsphereAuth": false,
+    "isAdmin": false,
+    "x": 360,
+    "y": 700,
+    "wires": [
+      [
+        "2d001.21f877"
+      ]
+    ]
+  },
+  {
+    "z": "11eef.b9919",
+    "id": "2d001.21f877",
+    "type": "function",
+    "name": "2 Day: OEE list request",
+    "func": "// Step 2 of a day: keep the token, ask for the OEE asset list (isConfigured, isManual). Output 2 = log (failure).\nvar cfg = flow.get('cfg');\nif (msg.statusCode !== 200 || !msg.payload || !msg.payload.access_token) {\n  return [null, { topic: 'log', payload: msg.day + ' [' + msg.mode + '] FAILED, NOTHING WRITTEN: token request failed, HTTP ' + msg.statusCode }];\n}\nmsg.token = msg.payload.access_token;\nmsg.method = 'GET';\nmsg.url = cfg.gateway + '/api/oee/v3/assets';\nmsg.headers = { 'Authorization': 'Bearer ' + msg.token, 'Accept': 'application/json' };\ndelete msg.payload;\nreturn [msg, null];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 540,
+    "y": 700,
+    "wires": [
+      [
+        "2eef0.239190"
+      ],
+      [
+        "53aad.41ee6b"
+      ]
+    ]
+  },
+  {
+    "z": "11eef.b9919",
+    "id": "2eef0.239190",
+    "type": "http request",
+    "name": "GET OEE assets",
+    "method": "use",
+    "ret": "obj",
+    "url": "",
+    "timeout": "",
+    "mindspherePath": "",
+    "useMindsphereAuth": false,
+    "isAdmin": false,
+    "x": 760,
+    "y": 700,
+    "wires": [
+      [
+        "30ddf.252aa9"
+      ]
+    ]
+  },
+  {
+    "z": "11eef.b9919",
+    "id": "30ddf.252aa9",
+    "type": "function",
+    "name": "3 Day: choose assets",
+    "func": "// Step 3 of a day: choose the assets. Output 1 = array of assets (goes to the split node), output 2 = log.\nvar cfg = flow.get('cfg');\nif (msg.statusCode !== 200 || !Array.isArray(msg.payload)) {\n  return [null, { topic: 'log', payload: msg.day + ' [' + msg.mode + '] FAILED, NOTHING WRITTEN: OEE asset list failed, HTTP ' + msg.statusCode }];\n}\nvar oee = msg.payload, byId = {}, skipped = [], targets = [];\noee.forEach(function (o) { byId[o.assetId] = o; });\nvar ids = cfg.assetIds && cfg.assetIds.length ? cfg.assetIds : oee.map(function (o) { return o.assetId; });\nids.forEach(function (id) {\n  var o = byId[id];\n  if (!o) { skipped.push(String(id).slice(0, 6) + '... not an OEE asset'); return; }\n  if (o.isConfigured === false) { skipped.push(o.name + ' not configured'); return; }\n  targets.push({ id: id, isManual: o.isManual, name: o.name });\n});\nmsg.planSkipped = skipped;\nif (!targets.length) {\n  return [null, { topic: 'log', payload: msg.day + ' [' + msg.mode + '] NOTHING TO WRITE (no assets to read)' + (skipped.length ? ' | skipped: ' + skipped.join('; ') : '') }];\n}\nmsg.payload = targets;\nnode.status({ fill: 'blue', shape: 'dot', text: msg.day + ': ' + targets.length + ' asset(s)' });\nreturn [msg, null];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 950,
+    "y": 700,
+    "wires": [
+      [
+        "32cce.26c3c2"
+      ],
+      [
+        "53aad.41ee6b"
+      ]
+    ]
+  },
+  {
+    "z": "11eef.b9919",
+    "id": "32cce.26c3c2",
+    "type": "split",
+    "name": "Split per asset",
+    "splt": "\\n",
+    "spltType": "str",
+    "arraySplt": 1,
+    "arraySpltType": "len",
+    "stream": false,
+    "addname": "assetIndex",
+    "x": 1140,
+    "y": 700,
+    "wires": [
+      [
+        "34bbd.285cdb"
+      ]
+    ]
+  },
+  {
+    "z": "11eef.b9919",
+    "id": "34bbd.285cdb",
+    "type": "delay",
+    "name": "One asset per second",
+    "pauseType": "rate",
+    "timeout": "1",
+    "timeoutUnits": "seconds",
+    "rate": "1",
+    "nbRateUnits": "1",
+    "rateUnits": "second",
+    "randomFirst": "1",
+    "randomLast": "1",
+    "randomUnits": "seconds",
+    "drop": false,
+    "powerMode": false,
+    "x": 1330,
+    "y": 700,
+    "wires": [
+      [
+        "36aac.29f5f4"
+      ]
+    ]
+  },
+  {
+    "z": "11eef.b9919",
+    "id": "36aac.29f5f4",
+    "type": "function",
+    "name": "4 Asset: details request",
+    "func": "// Step 4 (one message per asset, from the split node): ask Asset Management for the asset incl. hierarchyPath.\nvar cfg = flow.get('cfg');\nmsg.asset = msg.payload;   // { id, isManual, name }\nmsg.method = 'GET';\nmsg.url = cfg.gateway + '/api/assetmanagement/v3/assets/' + encodeURIComponent(msg.asset.id);\nmsg.headers = { 'Authorization': 'Bearer ' + msg.token, 'Accept': 'application/hal+json' };\ndelete msg.payload;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 160,
+    "y": 800,
+    "wires": [
+      [
+        "3899b.2b8f0d"
+      ]
+    ]
+  },
+  {
+    "z": "11eef.b9919",
+    "id": "3899b.2b8f0d",
+    "type": "http request",
+    "name": "GET asset (hierarchy)",
+    "method": "use",
+    "ret": "obj",
+    "url": "",
+    "timeout": "",
+    "mindspherePath": "",
+    "useMindsphereAuth": false,
+    "isAdmin": false,
+    "x": 380,
+    "y": 800,
+    "wires": [
+      [
+        "3a88a.2d2826"
+      ]
+    ]
+  },
+  {
+    "z": "11eef.b9919",
+    "id": "3a88a.2d2826",
+    "type": "function",
+    "name": "5 Asset: KPI request",
+    "func": "// Transformation logic for the VFC flow (fact_kpi, fact_loss). Pure functions, no imports, no\n// network, so the same text can be pasted into a VFC function node and tested locally here.\n// ES5-style on purpose (var, function) in case the VFC function sandbox is old.\n\nvar KPI_COLUMNS = {\n  'Good parts': 'good_parts', 'Total parts': 'total_parts', 'Rejected parts': 'rejected_parts',\n  'Connected rejected parts': 'connected_rejected_parts', 'Manual rejected parts': 'manual_rejected_parts',\n  'Theoretical output': 'theoretical_output',\n  'Quality': 'quality', 'Performance': 'performance', 'Availability': 'availability', 'OEE': 'oee', 'TEEP': 'teep',\n  'Total time': 'total_time_ms', 'Planned stops': 'planned_stops_ms', 'Planned stop from shift plan': 'planned_stop_shift_plan_ms',\n  'Operational time': 'operational_time_ms', 'Net production time': 'net_production_time_ms',\n  'Net operational time': 'net_operational_time_ms', 'Used operational time': 'used_operational_time_ms',\n  'Availability losses': 'availability_losses_ms', 'Availability loss (occurrence)': 'availability_loss_count',\n  'Performance losses': 'performance_losses_ms', 'Quality losses': 'quality_losses_ms',\n  'MTTR': 'mttr_ms', 'MTBF': 'mtbf_ms',\n  'Downtime (duration)': 'downtime_ms', 'Downtimes (occurrence)': 'downtime_count',\n  'Micro stops (duration)': 'micro_stops_ms', 'Micro stops (occurrence)': 'micro_stops_count',\n  'Macro stops (duration)': 'macro_stops_ms', 'Macro stops (occurrence)': 'macro_stops_count'\n};\n// Columns that showed fractional values in real data (GT4 manual counts, B2 Line derived times): written as DOUBLE, never rounded.\nvar DOUBLE_COLUMNS = ['good_parts', 'total_parts', 'rejected_parts', 'connected_rejected_parts', 'manual_rejected_parts', 'theoretical_output',\n  'used_operational_time_ms', 'net_operational_time_ms', 'performance_losses_ms', 'quality_losses_ms', 'mttr_ms', 'mtbf_ms',\n  'availability_loss_count', 'downtime_count', 'macro_stops_count'];\n// Remaining count and millisecond columns: INT64 (rounded).\nvar INT_COLUMNS = ['total_time_ms', 'planned_stops_ms', 'planned_stop_shift_plan_ms', 'operational_time_ms', 'net_production_time_ms',\n  'availability_losses_ms', 'micro_stops_ms', 'micro_stops_count', 'macro_stops_ms'];\n// The parquet node has no DATE type: days are written as ISO text YYYY-MM-DD (STRING).\nfunction dateObj(s) { return s; }\n\nfunction numOrNull(v) {\n  if (v === null || v === undefined || v === '') return null;\n  var n = Number(v);\n  return isFinite(n) ? n : null;\n}\n// Europe/London offset in hours for a UTC instant (BST = last Sunday March 01:00 UTC to last Sunday October 01:00 UTC)\nfunction lastSundayUtc(year, month) {\n  var d = new Date(Date.UTC(year, month + 1, 0, 1, 0, 0));\n  d.setUTCDate(d.getUTCDate() - d.getUTCDay());\n  return d.getTime();\n}\nfunction londonOffsetHours(ms) {\n  var y = new Date(ms).getUTCFullYear();\n  return ms >= lastSundayUtc(y, 2) && ms < lastSundayUtc(y, 9) ? 1 : 0;\n}\nfunction roundOrNull(v) { var n = numOrNull(v); return n === null ? null : Math.round(n); }\nfunction ymd(ms) { return new Date(ms).toISOString().slice(0, 10); }\nfunction productionDay(ms) { return ymd(ms - 6 * 3600000); }\nfunction londonDate(ms) { return ymd(ms + londonOffsetHours(ms) * 3600000); }\n\n// Hierarchy from Asset Management GET /assets/{id}: names = hierarchyPath names (root first) + the asset's own name.\n// Tenant layout (checked): [0] tenant, [1] region (EU/NA), [2] site, [3] area, [4] line, [5] machine.\n// B2 Line = [reckitt, EU, Hull, Bottles, B2 Line]; GT4 = [reckitt, EU, Hull, Blisters, GT4] (GT4 has no machine, so it is the line).\nfunction hierarchyFromNames(names) {\n  return {\n    asset_name: names[names.length - 1] || null,\n    site: names[2] || null, area: names[3] || null, line: names[4] || null, machine: names[5] || null\n  };\n}\n\n// evaluateKPIs response body (groupedByDateTime true, recursive false) -> fact_kpi rows (one per hour)\nfunction buildKpiRows(body, ctx) {\n  // ctx: {assetId, isManual, h (hierarchy fields), loadMode, loadedAt (ms), unmapped (array to collect)}\n  var results = (body && body.results) || [];\n  var hours = {}, order = [];\n  results.forEach(function (r) {\n    var col = KPI_COLUMNS[r.name];\n    if (!col) { if (ctx.unmapped && ctx.unmapped.indexOf(r.name) < 0) ctx.unmapped.push(r.name); return; }\n    (r.groups || []).forEach(function (g) {\n      if (!hours[g.time]) { hours[g.time] = {}; order.push(g.time); }\n      hours[g.time][col] = numOrNull(g.value);\n    });\n  });\n  var miss = body && body.missingMapping && body.missingMapping.length ? JSON.stringify(body.missingMapping) : null;\n  return order.sort().map(function (t) {\n    var ms = Date.parse(t), v = hours[t];\n    var row = {\n      asset_id: ctx.assetId, asset_name: ctx.h.asset_name, site: ctx.h.site, area: ctx.h.area, line: ctx.h.line, machine: ctx.h.machine,\n      is_manual: ctx.isManual === null || ctx.isManual === undefined ? null : !!ctx.isManual,\n      product_unit: (body && body.productUnit) || null,\n      period_start: new Date(ms), period_end: new Date(ms + 3600000),\n      production_day: dateObj(productionDay(ms)), local_date: dateObj(londonDate(ms))\n    };\n    ['oee', 'teep', 'availability', 'performance', 'quality'].forEach(function (c) { row[c] = v[c] === undefined ? null : v[c]; });\n    Object.keys(KPI_COLUMNS).forEach(function (k) {\n      var c = KPI_COLUMNS[k];\n      if (row.hasOwnProperty(c)) return;\n      var x = v[c] === undefined ? null : v[c];\n      row[c] = x !== null && INT_COLUMNS.indexOf(c) >= 0 ? Math.round(x) : x;\n    });\n    row.missing_mapping = miss;\n    row.load_mode = ctx.loadMode;\n    row.loaded_at = new Date(ctx.loadedAt);\n    return row;\n  });\n}\n\n// loss class from the root of the reason path. plannedRoots comes from the config node.\nfunction lossClass(row, plannedRoots) {\n  if (row.reason === '##MICROSTOPS##') return 'microstop';\n  var root = String(row.reasonFullPath || row.reason || '').split(' / ')[0];\n  return plannedRoots.indexOf(root) >= 0 ? 'planned' : 'unplanned';\n}\n\n// downtimeReasons rows (all pages) -> fact_loss rows. Keeps rows whose start lies in [fromMs, toMs).\nfunction buildLossRows(rows, ctx) {\n  // ctx: {assetId, h, fromMs, toMs, plannedRoots, loadMode, loadedAt}\n  var out = [], dropped = 0;\n  (rows || []).forEach(function (r) {\n    var s = Date.parse(r.from);\n    if (!(s >= ctx.fromMs && s < ctx.toMs)) { dropped++; return; }\n    var parts = r.reasonFullPath ? String(r.reasonFullPath).split(' / ') : [];\n    out.push({\n      asset_id: ctx.assetId, asset_name: ctx.h.asset_name, site: ctx.h.site, area: ctx.h.area, line: ctx.h.line, machine: ctx.h.machine,\n      event_start: new Date(s), event_end: r.to ? new Date(Date.parse(r.to)) : null,\n      production_day: dateObj(productionDay(s)), local_date: dateObj(londonDate(s)),\n      reason: r.reason || null,\n      reason_category: parts.length > 1 ? parts[0] : null,\n      reason_subgroup: parts.length > 2 ? parts[1] : null,\n      reason_full_path: r.reasonFullPath || null,\n      loss_class: lossClass(r, ctx.plannedRoots),\n      is_microstop: r.reason === '##MICROSTOPS##',\n      duration_ms: roundOrNull(r.duration), loss_time_ms: roundOrNull(r.lossTime),\n      occurrence: numOrNull(r.occurrence), comment_count: numOrNull(r.commentCount),\n      overwritten: r.overwritten === null || r.overwritten === undefined ? null : !!r.overwritten,\n      load_mode: ctx.loadMode, loaded_at: new Date(ctx.loadedAt)\n    });\n  });\n  out.droppedOutsideWindow = dropped;\n  return out;\n}\n\n\n// ===== Step 5 (per asset): hierarchy from hierarchyPath, then the KPI request. Output 1 = KPI request, output 2 = straight to the join =====\nvar cfg = flow.get('cfg');\nfunction toJoin(note) {\n  msg.payload = { assetId: msg.asset.id, name: msg.asset.name, failed: note.failed || null, skipped: note.skipped || null, kpiRows: [], lossRows: [] };\n  return [null, msg];\n}\nif (msg.statusCode !== 200 || !msg.payload || !msg.payload.name) return toJoin({ failed: msg.asset.name + ': asset details failed, HTTP ' + msg.statusCode });\nvar names = (msg.payload.hierarchyPath || []).map(function (p) { return p.name; });\nnames.push(msg.payload.name);\nvar h = hierarchyFromNames(names);\nmsg.h = h;\nvar parents = names.slice(0, -1);\nvar excluded = cfg.excludeNames.indexOf(msg.payload.name) >= 0 || parents.some(function (n) { return cfg.excludeAncestorNames.indexOf(n) >= 0; });\nif (excluded) return toJoin({ skipped: h.asset_name + ' excluded' });\nmsg.method = 'POST';\nmsg.url = cfg.gateway + '/api/oee/v3/expressions/evaluateKPIs';\nmsg.headers = { 'Authorization': 'Bearer ' + msg.token, 'Content-Type': 'application/json', 'Accept': 'application/json' };\nmsg.payload = {\n  assetId: msg.asset.id,\n  scope: {\n    from: new Date(Date.parse(msg.day + 'T06:00:00.000Z')).toISOString(),\n    to: new Date(Date.parse(msg.day + 'T06:00:00.000Z') + 86400000).toISOString(),\n    filter: [{ key: 'PRODUCT', value: [] }],\n    recursive: false,\n    groupedByDateTime: true\n  }\n};\nreturn [msg, null];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 580,
+    "y": 800,
+    "wires": [
+      [
+        "3c779.2ec13f"
+      ],
+      [
+        "44335.3525a3"
+      ]
+    ]
+  },
+  {
+    "z": "11eef.b9919",
+    "id": "3c779.2ec13f",
+    "type": "http request",
+    "name": "POST evaluateKPIs",
+    "method": "use",
+    "ret": "obj",
+    "url": "",
+    "timeout": "",
+    "mindspherePath": "",
+    "useMindsphereAuth": false,
+    "isAdmin": false,
+    "x": 790,
+    "y": 800,
+    "wires": [
+      [
+        "3e668.305a58"
+      ]
+    ]
+  },
+  {
+    "z": "11eef.b9919",
+    "id": "3e668.305a58",
+    "type": "function",
+    "name": "6 Asset: loss request",
+    "func": "// Transformation logic for the VFC flow (fact_kpi, fact_loss). Pure functions, no imports, no\n// network, so the same text can be pasted into a VFC function node and tested locally here.\n// ES5-style on purpose (var, function) in case the VFC function sandbox is old.\n\nvar KPI_COLUMNS = {\n  'Good parts': 'good_parts', 'Total parts': 'total_parts', 'Rejected parts': 'rejected_parts',\n  'Connected rejected parts': 'connected_rejected_parts', 'Manual rejected parts': 'manual_rejected_parts',\n  'Theoretical output': 'theoretical_output',\n  'Quality': 'quality', 'Performance': 'performance', 'Availability': 'availability', 'OEE': 'oee', 'TEEP': 'teep',\n  'Total time': 'total_time_ms', 'Planned stops': 'planned_stops_ms', 'Planned stop from shift plan': 'planned_stop_shift_plan_ms',\n  'Operational time': 'operational_time_ms', 'Net production time': 'net_production_time_ms',\n  'Net operational time': 'net_operational_time_ms', 'Used operational time': 'used_operational_time_ms',\n  'Availability losses': 'availability_losses_ms', 'Availability loss (occurrence)': 'availability_loss_count',\n  'Performance losses': 'performance_losses_ms', 'Quality losses': 'quality_losses_ms',\n  'MTTR': 'mttr_ms', 'MTBF': 'mtbf_ms',\n  'Downtime (duration)': 'downtime_ms', 'Downtimes (occurrence)': 'downtime_count',\n  'Micro stops (duration)': 'micro_stops_ms', 'Micro stops (occurrence)': 'micro_stops_count',\n  'Macro stops (duration)': 'macro_stops_ms', 'Macro stops (occurrence)': 'macro_stops_count'\n};\n// Columns that showed fractional values in real data (GT4 manual counts, B2 Line derived times): written as DOUBLE, never rounded.\nvar DOUBLE_COLUMNS = ['good_parts', 'total_parts', 'rejected_parts', 'connected_rejected_parts', 'manual_rejected_parts', 'theoretical_output',\n  'used_operational_time_ms', 'net_operational_time_ms', 'performance_losses_ms', 'quality_losses_ms', 'mttr_ms', 'mtbf_ms',\n  'availability_loss_count', 'downtime_count', 'macro_stops_count'];\n// Remaining count and millisecond columns: INT64 (rounded).\nvar INT_COLUMNS = ['total_time_ms', 'planned_stops_ms', 'planned_stop_shift_plan_ms', 'operational_time_ms', 'net_production_time_ms',\n  'availability_losses_ms', 'micro_stops_ms', 'micro_stops_count', 'macro_stops_ms'];\n// The parquet node has no DATE type: days are written as ISO text YYYY-MM-DD (STRING).\nfunction dateObj(s) { return s; }\n\nfunction numOrNull(v) {\n  if (v === null || v === undefined || v === '') return null;\n  var n = Number(v);\n  return isFinite(n) ? n : null;\n}\n// Europe/London offset in hours for a UTC instant (BST = last Sunday March 01:00 UTC to last Sunday October 01:00 UTC)\nfunction lastSundayUtc(year, month) {\n  var d = new Date(Date.UTC(year, month + 1, 0, 1, 0, 0));\n  d.setUTCDate(d.getUTCDate() - d.getUTCDay());\n  return d.getTime();\n}\nfunction londonOffsetHours(ms) {\n  var y = new Date(ms).getUTCFullYear();\n  return ms >= lastSundayUtc(y, 2) && ms < lastSundayUtc(y, 9) ? 1 : 0;\n}\nfunction roundOrNull(v) { var n = numOrNull(v); return n === null ? null : Math.round(n); }\nfunction ymd(ms) { return new Date(ms).toISOString().slice(0, 10); }\nfunction productionDay(ms) { return ymd(ms - 6 * 3600000); }\nfunction londonDate(ms) { return ymd(ms + londonOffsetHours(ms) * 3600000); }\n\n// Hierarchy from Asset Management GET /assets/{id}: names = hierarchyPath names (root first) + the asset's own name.\n// Tenant layout (checked): [0] tenant, [1] region (EU/NA), [2] site, [3] area, [4] line, [5] machine.\n// B2 Line = [reckitt, EU, Hull, Bottles, B2 Line]; GT4 = [reckitt, EU, Hull, Blisters, GT4] (GT4 has no machine, so it is the line).\nfunction hierarchyFromNames(names) {\n  return {\n    asset_name: names[names.length - 1] || null,\n    site: names[2] || null, area: names[3] || null, line: names[4] || null, machine: names[5] || null\n  };\n}\n\n// evaluateKPIs response body (groupedByDateTime true, recursive false) -> fact_kpi rows (one per hour)\nfunction buildKpiRows(body, ctx) {\n  // ctx: {assetId, isManual, h (hierarchy fields), loadMode, loadedAt (ms), unmapped (array to collect)}\n  var results = (body && body.results) || [];\n  var hours = {}, order = [];\n  results.forEach(function (r) {\n    var col = KPI_COLUMNS[r.name];\n    if (!col) { if (ctx.unmapped && ctx.unmapped.indexOf(r.name) < 0) ctx.unmapped.push(r.name); return; }\n    (r.groups || []).forEach(function (g) {\n      if (!hours[g.time]) { hours[g.time] = {}; order.push(g.time); }\n      hours[g.time][col] = numOrNull(g.value);\n    });\n  });\n  var miss = body && body.missingMapping && body.missingMapping.length ? JSON.stringify(body.missingMapping) : null;\n  return order.sort().map(function (t) {\n    var ms = Date.parse(t), v = hours[t];\n    var row = {\n      asset_id: ctx.assetId, asset_name: ctx.h.asset_name, site: ctx.h.site, area: ctx.h.area, line: ctx.h.line, machine: ctx.h.machine,\n      is_manual: ctx.isManual === null || ctx.isManual === undefined ? null : !!ctx.isManual,\n      product_unit: (body && body.productUnit) || null,\n      period_start: new Date(ms), period_end: new Date(ms + 3600000),\n      production_day: dateObj(productionDay(ms)), local_date: dateObj(londonDate(ms))\n    };\n    ['oee', 'teep', 'availability', 'performance', 'quality'].forEach(function (c) { row[c] = v[c] === undefined ? null : v[c]; });\n    Object.keys(KPI_COLUMNS).forEach(function (k) {\n      var c = KPI_COLUMNS[k];\n      if (row.hasOwnProperty(c)) return;\n      var x = v[c] === undefined ? null : v[c];\n      row[c] = x !== null && INT_COLUMNS.indexOf(c) >= 0 ? Math.round(x) : x;\n    });\n    row.missing_mapping = miss;\n    row.load_mode = ctx.loadMode;\n    row.loaded_at = new Date(ctx.loadedAt);\n    return row;\n  });\n}\n\n// loss class from the root of the reason path. plannedRoots comes from the config node.\nfunction lossClass(row, plannedRoots) {\n  if (row.reason === '##MICROSTOPS##') return 'microstop';\n  var root = String(row.reasonFullPath || row.reason || '').split(' / ')[0];\n  return plannedRoots.indexOf(root) >= 0 ? 'planned' : 'unplanned';\n}\n\n// downtimeReasons rows (all pages) -> fact_loss rows. Keeps rows whose start lies in [fromMs, toMs).\nfunction buildLossRows(rows, ctx) {\n  // ctx: {assetId, h, fromMs, toMs, plannedRoots, loadMode, loadedAt}\n  var out = [], dropped = 0;\n  (rows || []).forEach(function (r) {\n    var s = Date.parse(r.from);\n    if (!(s >= ctx.fromMs && s < ctx.toMs)) { dropped++; return; }\n    var parts = r.reasonFullPath ? String(r.reasonFullPath).split(' / ') : [];\n    out.push({\n      asset_id: ctx.assetId, asset_name: ctx.h.asset_name, site: ctx.h.site, area: ctx.h.area, line: ctx.h.line, machine: ctx.h.machine,\n      event_start: new Date(s), event_end: r.to ? new Date(Date.parse(r.to)) : null,\n      production_day: dateObj(productionDay(s)), local_date: dateObj(londonDate(s)),\n      reason: r.reason || null,\n      reason_category: parts.length > 1 ? parts[0] : null,\n      reason_subgroup: parts.length > 2 ? parts[1] : null,\n      reason_full_path: r.reasonFullPath || null,\n      loss_class: lossClass(r, ctx.plannedRoots),\n      is_microstop: r.reason === '##MICROSTOPS##',\n      duration_ms: roundOrNull(r.duration), loss_time_ms: roundOrNull(r.lossTime),\n      occurrence: numOrNull(r.occurrence), comment_count: numOrNull(r.commentCount),\n      overwritten: r.overwritten === null || r.overwritten === undefined ? null : !!r.overwritten,\n      load_mode: ctx.loadMode, loaded_at: new Date(ctx.loadedAt)\n    });\n  });\n  out.droppedOutsideWindow = dropped;\n  return out;\n}\n\n\n// ===== Step 6 (per asset): build the KPI rows from the response, then the downtimeReasons request. Output 2 = straight to the join =====\nvar cfg = flow.get('cfg');\nvar nm = msg.h.asset_name;\nfunction toJoin(note) {\n  msg.payload = { assetId: msg.asset.id, name: nm, failed: note.failed || null, skipped: note.skipped || null, kpiRows: [], lossRows: [] };\n  return [null, msg];\n}\nvar body = msg.payload;\nif (msg.statusCode === 400 && /configuration not finished/i.test(JSON.stringify(body))) return toJoin({ skipped: nm + ' configuration not finished' });\nif (msg.statusCode !== 200 || !body || typeof body !== 'object') return toJoin({ failed: nm + ': evaluateKPIs failed, HTTP ' + msg.statusCode });\nif (!body.results || !body.results.length) return toJoin({ skipped: nm + ' no data' });\nvar unmapped = [];\nmsg.kpiRows = buildKpiRows(body, { assetId: msg.asset.id, isManual: msg.asset.isManual, h: msg.h, loadMode: msg.mode, loadedAt: msg.loadedAt || Date.now(), unmapped: unmapped });\nmsg.unmapped = unmapped;\nvar fromIso = new Date(Date.parse(msg.day + 'T06:00:00.000Z')).toISOString();\nvar toIso = new Date(Date.parse(msg.day + 'T06:00:00.000Z') + 86400000).toISOString();\nmsg.method = 'GET';\n// size 5000 returns every stop of a day in one page (tested: 423 stops with size 1000). More than one page makes the day fail.\nmsg.url = cfg.gateway + '/api/oee/v3/assets/' + encodeURIComponent(msg.asset.id) + '/downtimeReasons?from=' + encodeURIComponent(fromIso) + '&to=' + encodeURIComponent(toIso) + '&size=5000&page=0';\nmsg.headers = { 'Authorization': 'Bearer ' + msg.token, 'Accept': 'application/json' };\ndelete msg.payload;\nreturn [msg, null];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 990,
+    "y": 800,
+    "wires": [
+      [
+        "40557.31f371"
+      ],
+      [
+        "44335.3525a3"
+      ]
+    ]
+  },
+  {
+    "z": "11eef.b9919",
+    "id": "40557.31f371",
+    "type": "http request",
+    "name": "GET downtimeReasons",
+    "method": "use",
+    "ret": "obj",
+    "url": "",
+    "timeout": "",
+    "mindspherePath": "",
+    "useMindsphereAuth": false,
+    "isAdmin": false,
+    "x": 1200,
+    "y": 800,
+    "wires": [
+      [
+        "42446.338c8a"
+      ]
+    ]
+  },
+  {
+    "z": "11eef.b9919",
+    "id": "42446.338c8a",
+    "type": "function",
+    "name": "7 Asset: build result",
+    "func": "// Transformation logic for the VFC flow (fact_kpi, fact_loss). Pure functions, no imports, no\n// network, so the same text can be pasted into a VFC function node and tested locally here.\n// ES5-style on purpose (var, function) in case the VFC function sandbox is old.\n\nvar KPI_COLUMNS = {\n  'Good parts': 'good_parts', 'Total parts': 'total_parts', 'Rejected parts': 'rejected_parts',\n  'Connected rejected parts': 'connected_rejected_parts', 'Manual rejected parts': 'manual_rejected_parts',\n  'Theoretical output': 'theoretical_output',\n  'Quality': 'quality', 'Performance': 'performance', 'Availability': 'availability', 'OEE': 'oee', 'TEEP': 'teep',\n  'Total time': 'total_time_ms', 'Planned stops': 'planned_stops_ms', 'Planned stop from shift plan': 'planned_stop_shift_plan_ms',\n  'Operational time': 'operational_time_ms', 'Net production time': 'net_production_time_ms',\n  'Net operational time': 'net_operational_time_ms', 'Used operational time': 'used_operational_time_ms',\n  'Availability losses': 'availability_losses_ms', 'Availability loss (occurrence)': 'availability_loss_count',\n  'Performance losses': 'performance_losses_ms', 'Quality losses': 'quality_losses_ms',\n  'MTTR': 'mttr_ms', 'MTBF': 'mtbf_ms',\n  'Downtime (duration)': 'downtime_ms', 'Downtimes (occurrence)': 'downtime_count',\n  'Micro stops (duration)': 'micro_stops_ms', 'Micro stops (occurrence)': 'micro_stops_count',\n  'Macro stops (duration)': 'macro_stops_ms', 'Macro stops (occurrence)': 'macro_stops_count'\n};\n// Columns that showed fractional values in real data (GT4 manual counts, B2 Line derived times): written as DOUBLE, never rounded.\nvar DOUBLE_COLUMNS = ['good_parts', 'total_parts', 'rejected_parts', 'connected_rejected_parts', 'manual_rejected_parts', 'theoretical_output',\n  'used_operational_time_ms', 'net_operational_time_ms', 'performance_losses_ms', 'quality_losses_ms', 'mttr_ms', 'mtbf_ms',\n  'availability_loss_count', 'downtime_count', 'macro_stops_count'];\n// Remaining count and millisecond columns: INT64 (rounded).\nvar INT_COLUMNS = ['total_time_ms', 'planned_stops_ms', 'planned_stop_shift_plan_ms', 'operational_time_ms', 'net_production_time_ms',\n  'availability_losses_ms', 'micro_stops_ms', 'micro_stops_count', 'macro_stops_ms'];\n// The parquet node has no DATE type: days are written as ISO text YYYY-MM-DD (STRING).\nfunction dateObj(s) { return s; }\n\nfunction numOrNull(v) {\n  if (v === null || v === undefined || v === '') return null;\n  var n = Number(v);\n  return isFinite(n) ? n : null;\n}\n// Europe/London offset in hours for a UTC instant (BST = last Sunday March 01:00 UTC to last Sunday October 01:00 UTC)\nfunction lastSundayUtc(year, month) {\n  var d = new Date(Date.UTC(year, month + 1, 0, 1, 0, 0));\n  d.setUTCDate(d.getUTCDate() - d.getUTCDay());\n  return d.getTime();\n}\nfunction londonOffsetHours(ms) {\n  var y = new Date(ms).getUTCFullYear();\n  return ms >= lastSundayUtc(y, 2) && ms < lastSundayUtc(y, 9) ? 1 : 0;\n}\nfunction roundOrNull(v) { var n = numOrNull(v); return n === null ? null : Math.round(n); }\nfunction ymd(ms) { return new Date(ms).toISOString().slice(0, 10); }\nfunction productionDay(ms) { return ymd(ms - 6 * 3600000); }\nfunction londonDate(ms) { return ymd(ms + londonOffsetHours(ms) * 3600000); }\n\n// Hierarchy from Asset Management GET /assets/{id}: names = hierarchyPath names (root first) + the asset's own name.\n// Tenant layout (checked): [0] tenant, [1] region (EU/NA), [2] site, [3] area, [4] line, [5] machine.\n// B2 Line = [reckitt, EU, Hull, Bottles, B2 Line]; GT4 = [reckitt, EU, Hull, Blisters, GT4] (GT4 has no machine, so it is the line).\nfunction hierarchyFromNames(names) {\n  return {\n    asset_name: names[names.length - 1] || null,\n    site: names[2] || null, area: names[3] || null, line: names[4] || null, machine: names[5] || null\n  };\n}\n\n// evaluateKPIs response body (groupedByDateTime true, recursive false) -> fact_kpi rows (one per hour)\nfunction buildKpiRows(body, ctx) {\n  // ctx: {assetId, isManual, h (hierarchy fields), loadMode, loadedAt (ms), unmapped (array to collect)}\n  var results = (body && body.results) || [];\n  var hours = {}, order = [];\n  results.forEach(function (r) {\n    var col = KPI_COLUMNS[r.name];\n    if (!col) { if (ctx.unmapped && ctx.unmapped.indexOf(r.name) < 0) ctx.unmapped.push(r.name); return; }\n    (r.groups || []).forEach(function (g) {\n      if (!hours[g.time]) { hours[g.time] = {}; order.push(g.time); }\n      hours[g.time][col] = numOrNull(g.value);\n    });\n  });\n  var miss = body && body.missingMapping && body.missingMapping.length ? JSON.stringify(body.missingMapping) : null;\n  return order.sort().map(function (t) {\n    var ms = Date.parse(t), v = hours[t];\n    var row = {\n      asset_id: ctx.assetId, asset_name: ctx.h.asset_name, site: ctx.h.site, area: ctx.h.area, line: ctx.h.line, machine: ctx.h.machine,\n      is_manual: ctx.isManual === null || ctx.isManual === undefined ? null : !!ctx.isManual,\n      product_unit: (body && body.productUnit) || null,\n      period_start: new Date(ms), period_end: new Date(ms + 3600000),\n      production_day: dateObj(productionDay(ms)), local_date: dateObj(londonDate(ms))\n    };\n    ['oee', 'teep', 'availability', 'performance', 'quality'].forEach(function (c) { row[c] = v[c] === undefined ? null : v[c]; });\n    Object.keys(KPI_COLUMNS).forEach(function (k) {\n      var c = KPI_COLUMNS[k];\n      if (row.hasOwnProperty(c)) return;\n      var x = v[c] === undefined ? null : v[c];\n      row[c] = x !== null && INT_COLUMNS.indexOf(c) >= 0 ? Math.round(x) : x;\n    });\n    row.missing_mapping = miss;\n    row.load_mode = ctx.loadMode;\n    row.loaded_at = new Date(ctx.loadedAt);\n    return row;\n  });\n}\n\n// loss class from the root of the reason path. plannedRoots comes from the config node.\nfunction lossClass(row, plannedRoots) {\n  if (row.reason === '##MICROSTOPS##') return 'microstop';\n  var root = String(row.reasonFullPath || row.reason || '').split(' / ')[0];\n  return plannedRoots.indexOf(root) >= 0 ? 'planned' : 'unplanned';\n}\n\n// downtimeReasons rows (all pages) -> fact_loss rows. Keeps rows whose start lies in [fromMs, toMs).\nfunction buildLossRows(rows, ctx) {\n  // ctx: {assetId, h, fromMs, toMs, plannedRoots, loadMode, loadedAt}\n  var out = [], dropped = 0;\n  (rows || []).forEach(function (r) {\n    var s = Date.parse(r.from);\n    if (!(s >= ctx.fromMs && s < ctx.toMs)) { dropped++; return; }\n    var parts = r.reasonFullPath ? String(r.reasonFullPath).split(' / ') : [];\n    out.push({\n      asset_id: ctx.assetId, asset_name: ctx.h.asset_name, site: ctx.h.site, area: ctx.h.area, line: ctx.h.line, machine: ctx.h.machine,\n      event_start: new Date(s), event_end: r.to ? new Date(Date.parse(r.to)) : null,\n      production_day: dateObj(productionDay(s)), local_date: dateObj(londonDate(s)),\n      reason: r.reason || null,\n      reason_category: parts.length > 1 ? parts[0] : null,\n      reason_subgroup: parts.length > 2 ? parts[1] : null,\n      reason_full_path: r.reasonFullPath || null,\n      loss_class: lossClass(r, ctx.plannedRoots),\n      is_microstop: r.reason === '##MICROSTOPS##',\n      duration_ms: roundOrNull(r.duration), loss_time_ms: roundOrNull(r.lossTime),\n      occurrence: numOrNull(r.occurrence), comment_count: numOrNull(r.commentCount),\n      overwritten: r.overwritten === null || r.overwritten === undefined ? null : !!r.overwritten,\n      load_mode: ctx.loadMode, loaded_at: new Date(ctx.loadedAt)\n    });\n  });\n  out.droppedOutsideWindow = dropped;\n  return out;\n}\n\n\n// ===== Step 7 (per asset): build the stop rows and hand one result per asset to the join =====\nvar cfg = flow.get('cfg');\nvar nm = msg.h.asset_name;\nvar res = { assetId: msg.asset.id, name: nm, failed: null, skipped: null, kpiRows: msg.kpiRows, lossRows: [], unmapped: msg.unmapped };\nvar b = msg.payload;\nif (msg.statusCode !== 200 || !b || typeof b !== 'object') {\n  res.failed = nm + ': downtimeReasons failed, HTTP ' + msg.statusCode;\n  res.kpiRows = [];\n} else if (b.page && b.page.totalPages > 1) {\n  res.failed = nm + ': downtimeReasons has more than one page (' + b.page.totalElements + ' rows), raise the size in step 6';\n  res.kpiRows = [];\n} else {\n  var fromMs = Date.parse(msg.day + 'T06:00:00.000Z');\n  var rows = (b._embedded && b._embedded.downtimeReasons) || [];\n  res.lossRows = buildLossRows(rows, { assetId: msg.asset.id, h: msg.h, fromMs: fromMs, toMs: fromMs + 86400000, plannedRoots: cfg.plannedRoots, loadMode: msg.mode, loadedAt: msg.loadedAt || Date.now() });\n  res.outside = res.lossRows.droppedOutsideWindow;\n  var sum = res.kpiRows.reduce(function (s, x) { return s + (x.total_time_ms || 0); }, 0);\n  res.note = nm + ': ' + res.kpiRows.length + ' kpi rows, ' + res.lossRows.length + ' stops, sum total_time ' + (sum / 3600000).toFixed(2) + ' h' + (res.outside ? ', ' + res.outside + ' stops outside the day ignored' : '');\n}\nmsg.payload = res;\ndelete msg.kpiRows; delete msg.unmapped;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 1400,
+    "y": 800,
+    "wires": [
+      [
+        "44335.3525a3"
+      ]
+    ]
+  },
+  {
+    "z": "11eef.b9919",
+    "id": "44335.3525a3",
+    "type": "join",
+    "name": "Wait for all assets of the day",
+    "mode": "auto",
+    "build": "array",
+    "property": "payload",
+    "propertyType": "msg",
+    "key": "topic",
+    "joiner": "\\n",
+    "joinerType": "str",
+    "accumulate": false,
+    "timeout": "",
+    "count": "",
+    "x": 160,
+    "y": 900,
+    "wires": [
+      [
+        "46224.36bebc"
+      ]
+    ]
+  },
+  {
+    "z": "11eef.b9919",
+    "id": "46224.36bebc",
+    "type": "function",
+    "name": "8 Build tables",
+    "func": "// Step 8 (after the join): one result per asset arrives as msg.payload (array). Build the two tables.\n// Output 1 = fact_kpi rows, output 2 = fact_loss rows, output 3 = log. Any failed asset = nothing is written for the day.\nvar cfg = flow.get('cfg');\nvar day = msg.day, mode = msg.mode;\nvar results = Array.isArray(msg.payload) ? msg.payload : [msg.payload];\nvar failed = results.filter(function (r) { return r && r.failed; }).map(function (r) { return r.failed; });\nvar kpiRows = [], lossRows = [], notes = [], skipped = (msg.planSkipped || []).slice(), unmapped = [];\nresults.forEach(function (r) {\n  if (!r) return;\n  if (r.skipped) skipped.push(r.skipped);\n  if (r.note) notes.push(r.note);\n  (r.unmapped || []).forEach(function (u) { if (unmapped.indexOf(u) < 0) unmapped.push(u); });\n  kpiRows = kpiRows.concat(r.kpiRows || []);\n  lossRows = lossRows.concat(r.lossRows || []);\n});\nvar expected = msg.parts && msg.parts.count;\nvar tail = (skipped.length ? ' | skipped: ' + skipped.join('; ') : '') + (unmapped.length ? ' | KPI without column: ' + unmapped.join(', ') : '');\nfunction log(text) { return { topic: 'log', payload: day + ' [' + mode + '] ' + text }; }\nif (failed.length) {\n  node.status({ fill: 'red', shape: 'ring', text: day + ' FAILED, nothing written' });\n  return [null, null, log('FAILED, NOTHING WRITTEN: ' + failed.join(' | ') + tail)];\n}\nif (!kpiRows.length && !lossRows.length) {\n  node.status({ fill: 'grey', shape: 'ring', text: day + ' nothing to write' });\n  return [null, null, log(notes.join(' | ') + ' | NOTHING TO WRITE' + tail)];\n}\nif (cfg.dryRun) {\n  node.status({ fill: 'yellow', shape: 'dot', text: day + ' dry run ' + kpiRows.length + '/' + lossRows.length });\n  return [null, null, log(notes.join(' | ') + ' | DRY RUN: fact_kpi ' + kpiRows.length + ' rows, fact_loss ' + lossRows.length + ' rows. First rows: ' + JSON.stringify({ fact_kpi: kpiRows.slice(0, 2), fact_loss: lossRows.slice(0, 2) }) + tail)];\n}\n// parquet TIMESTAMP_MILLIS needs epoch ms, not Date objects or ISO text (messages are serialised between nodes, so Dates arrive as text)\nfunction toMs(rows, keys) {\n  return rows.map(function (r) {\n    var o = Object.assign({}, r);\n    keys.forEach(function (k) { if (o[k] !== null && o[k] !== undefined) o[k] = typeof o[k] === 'number' ? o[k] : Date.parse(o[k]); });\n    return o;\n  });\n}\nkpiRows = toMs(kpiRows, ['period_start', 'period_end', 'loaded_at']);\nlossRows = toMs(lossRows, ['event_start', 'event_end', 'loaded_at']);\nvar kpiMsg = kpiRows.length ? { topic: 'fact_kpi', day: day, payload: kpiRows } : null;\nvar lossMsg = lossRows.length ? { topic: 'fact_loss', day: day, payload: lossRows } : null;\nnode.status({ fill: 'green', shape: 'dot', text: day + ' ' + kpiRows.length + '/' + lossRows.length });\nreturn [kpiMsg, lossMsg, log(notes.join(' | ') + ' | WRITING fact_kpi ' + kpiRows.length + ' rows, fact_loss ' + lossRows.length + ' rows' + tail)];\n",
+    "outputs": 3,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 400,
+    "y": 900,
+    "wires": [
+      [
+        "48113.3857d5"
+      ],
+      [
+        "4dde0.3d2320"
+      ],
+      [
+        "53aad.41ee6b"
+      ]
+    ]
+  },
+  {
+    "z": "11eef.b9919",
+    "id": "48113.3857d5",
+    "type": "parquet",
+    "name": "Write fact_kpi parquet",
+    "option": "write",
+    "columns": [
+      {
+        "column": "asset_id",
+        "type": "UTF8"
+      },
+      {
+        "column": "asset_name",
+        "type": "UTF8"
+      },
+      {
+        "column": "site",
+        "type": "UTF8"
+      },
+      {
+        "column": "area",
+        "type": "UTF8"
+      },
+      {
+        "column": "line",
+        "type": "UTF8"
+      },
+      {
+        "column": "machine",
+        "type": "UTF8"
+      },
+      {
+        "column": "is_manual",
+        "type": "BOOLEAN"
+      },
+      {
+        "column": "product_unit",
+        "type": "UTF8"
+      },
+      {
+        "column": "period_start",
+        "type": "TIMESTAMP_MILLIS"
+      },
+      {
+        "column": "period_end",
+        "type": "TIMESTAMP_MILLIS"
+      },
+      {
+        "column": "production_day",
+        "type": "UTF8"
+      },
+      {
+        "column": "local_date",
+        "type": "UTF8"
+      },
+      {
+        "column": "oee",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "teep",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "availability",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "performance",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "quality",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "good_parts",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "total_parts",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "rejected_parts",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "connected_rejected_parts",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "manual_rejected_parts",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "theoretical_output",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "total_time_ms",
+        "type": "INT64"
+      },
+      {
+        "column": "planned_stops_ms",
+        "type": "INT64"
+      },
+      {
+        "column": "planned_stop_shift_plan_ms",
+        "type": "INT64"
+      },
+      {
+        "column": "operational_time_ms",
+        "type": "INT64"
+      },
+      {
+        "column": "net_production_time_ms",
+        "type": "INT64"
+      },
+      {
+        "column": "net_operational_time_ms",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "used_operational_time_ms",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "availability_losses_ms",
+        "type": "INT64"
+      },
+      {
+        "column": "availability_loss_count",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "performance_losses_ms",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "quality_losses_ms",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "mttr_ms",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "mtbf_ms",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "downtime_ms",
+        "type": "INT64"
+      },
+      {
+        "column": "downtime_count",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "micro_stops_ms",
+        "type": "INT64"
+      },
+      {
+        "column": "micro_stops_count",
+        "type": "INT64"
+      },
+      {
+        "column": "macro_stops_ms",
+        "type": "INT64"
+      },
+      {
+        "column": "macro_stops_count",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "missing_mapping",
+        "type": "UTF8"
+      },
+      {
+        "column": "load_mode",
+        "type": "UTF8"
+      },
+      {
+        "column": "loaded_at",
+        "type": "TIMESTAMP_MILLIS"
+      }
+    ],
+    "rcolumns": "",
+    "multi": "multiple",
+    "outputPty": "payload",
+    "outputPtyType": "msg",
+    "engine": "parquetjs",
+    "x": 650,
+    "y": 860,
+    "wires": [
+      [
+        "4a002.39f0ee"
+      ]
+    ]
+  },
+  {
+    "z": "11eef.b9919",
+    "id": "4a002.39f0ee",
+    "type": "function",
+    "name": "Set fact_kpi path",
+    "func": "var cfg = flow.get('cfg');\nmsg.path = cfg.paths.fact_kpi.replace('YYYY-MM-DD', msg.day);\nmsg.filename = msg.path.split('/').pop();\n// msg.payload (the parquet output) is passed through unchanged\nreturn msg;",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 860,
+    "y": 860,
+    "wires": [
+      [
+        "4bef1.3b8a07"
+      ]
+    ]
+  },
+  {
+    "z": "11eef.b9919",
+    "id": "4bef1.3b8a07",
+    "type": "write object",
+    "name": "fact_kpi to data lake",
+    "path": "",
+    "mode": "object",
+    "x": 1060,
+    "y": 860,
+    "wires": []
+  },
+  {
+    "z": "11eef.b9919",
+    "id": "4dde0.3d2320",
+    "type": "parquet",
+    "name": "Write fact_loss parquet",
+    "option": "write",
+    "columns": [
+      {
+        "column": "asset_id",
+        "type": "UTF8"
+      },
+      {
+        "column": "asset_name",
+        "type": "UTF8"
+      },
+      {
+        "column": "site",
+        "type": "UTF8"
+      },
+      {
+        "column": "area",
+        "type": "UTF8"
+      },
+      {
+        "column": "line",
+        "type": "UTF8"
+      },
+      {
+        "column": "machine",
+        "type": "UTF8"
+      },
+      {
+        "column": "event_start",
+        "type": "TIMESTAMP_MILLIS"
+      },
+      {
+        "column": "event_end",
+        "type": "TIMESTAMP_MILLIS"
+      },
+      {
+        "column": "production_day",
+        "type": "UTF8"
+      },
+      {
+        "column": "local_date",
+        "type": "UTF8"
+      },
+      {
+        "column": "reason",
+        "type": "UTF8"
+      },
+      {
+        "column": "reason_category",
+        "type": "UTF8"
+      },
+      {
+        "column": "reason_subgroup",
+        "type": "UTF8"
+      },
+      {
+        "column": "reason_full_path",
+        "type": "UTF8"
+      },
+      {
+        "column": "loss_class",
+        "type": "UTF8"
+      },
+      {
+        "column": "is_microstop",
+        "type": "BOOLEAN"
+      },
+      {
+        "column": "duration_ms",
+        "type": "INT64"
+      },
+      {
+        "column": "loss_time_ms",
+        "type": "INT64"
+      },
+      {
+        "column": "occurrence",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "comment_count",
+        "type": "INT64"
+      },
+      {
+        "column": "overwritten",
+        "type": "BOOLEAN"
+      },
+      {
+        "column": "load_mode",
+        "type": "UTF8"
+      },
+      {
+        "column": "loaded_at",
+        "type": "TIMESTAMP_MILLIS"
+      }
+    ],
+    "rcolumns": "",
+    "multi": "multiple",
+    "outputPty": "payload",
+    "outputPtyType": "msg",
+    "engine": "parquetjs",
+    "x": 650,
+    "y": 930,
+    "wires": [
+      [
+        "4fccf.3ebc39"
+      ]
+    ]
+  },
+  {
+    "z": "11eef.b9919",
+    "id": "4fccf.3ebc39",
+    "type": "function",
+    "name": "Set fact_loss path",
+    "func": "var cfg = flow.get('cfg');\nmsg.path = cfg.paths.fact_loss.replace('YYYY-MM-DD', msg.day);\nmsg.filename = msg.path.split('/').pop();\n// msg.payload (the parquet output) is passed through unchanged\nreturn msg;",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 860,
+    "y": 930,
+    "wires": [
+      [
+        "51bbe.405552"
+      ]
+    ]
+  },
+  {
+    "z": "11eef.b9919",
+    "id": "51bbe.405552",
+    "type": "write object",
+    "name": "fact_loss to data lake",
+    "path": "",
+    "mode": "object",
+    "x": 1060,
+    "y": 930,
+    "wires": []
+  },
+  {
+    "z": "11eef.b9919",
+    "id": "53aad.41ee6b",
+    "type": "debug",
+    "name": "Day log",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "x": 650,
+    "y": 1000,
+    "wires": []
+  }
+]
