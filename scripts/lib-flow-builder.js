@@ -81,7 +81,7 @@ export function makeBuilder(flowIndex) {
       const nextStep = steps.slice(i + 1).find((s) => !s.stack);
       let nextId = null;
       if (nextStep && nextStep.t === 'end') {
-        nextId = linkOut(nextStep.key, col(c + 1), rowY(r));
+        nextId = linkOut(nextStep.key, col(c + 1), rowY(r) + (step.dy || 0));
       } else if (nextStep) {
         nextId = id(nextStep.key);
       }
@@ -125,6 +125,14 @@ export function makeBuilder(flowIndex) {
           timeout: '1', timeoutUnits: 'seconds', rate: '1', nbRateUnits: String(step.seconds || 1),
           rateUnits: 'second',
           randomFirst: '1', randomLast: '1', randomUnits: 'seconds', drop: false,
+          powerMode: false, ...pos, wires: [[nextId]]
+        });
+      } else if (step.t === 'wait') {
+        add({
+          id: id(step.key), type: 'delay', name: step.name, pauseType: 'delay',
+          timeout: String(step.seconds), timeoutUnits: 'seconds', rate: '1',
+          nbRateUnits: '1', rateUnits: 'second', randomFirst: '1',
+          randomLast: '5', randomUnits: 'seconds', drop: false,
           powerMode: false, ...pos, wires: [[nextId]]
         });
       } else if (step.t === 'joinTimeout') {
@@ -189,6 +197,9 @@ export const join = (key, name) => ({ t: 'join', key, name });
 
 export const catchStep = (key, name) => ({ t: 'catch', key, name });
 export const readStep = (key, name) => ({ t: 'read', key, name });
+export const waitStep = (key, name, seconds, stack = false, dy = 0) => ({
+  t: 'wait', key, name, seconds, stack, dy
+});
 export const joinTimeout = (key, name, seconds) => ({ t: 'joinTimeout', key, name, seconds });
 export const debugStep = (key, name, complete, stack = false, dy = 0) => ({
   t: 'debug', key, name, complete, stack, dy
@@ -201,26 +212,27 @@ export const writeStep = (key, name) => ({ t: 'write', key, name });
 export function addLogLanes(b, r, flowName) {
   const replace = { __FLOW__: flowName };
   b.lane(r++, 'ERRORS',
-    'a catch node takes every error raised by a node of this tab and turns it into a log line with the name of the node and the message of the API (for example the limit message of evaluateKPIs). Errors of the log nodes themselves are not logged again, a failed read of the log file goes to the append step.',
+    'a catch node takes every error raised by a node of this tab and turns it into a log line with the name of the node and the message of the API (for example the limit message of evaluateKPIs). Errors of the log nodes themselves are not logged again.',
     [
       catchStep('errCatch', 'Catch errors'),
-      fn('errFn', 'Describe error', 'l1-describe-error.js', ['next', 'APPEND']),
+      fn('errFn', 'Describe error', 'l1-describe-error.js', ['next']),
       end('LOG')
     ]);
   b.lane(r++, 'LOG',
-    'every log line arrives here through the link "to LOG". 1 turns a line into a row (time, flow, site, production day, level) and shows it in the debug sidebar. The join collects the rows for 30 s, the delay lets one batch pass every 10 s so two writes do not overlap, 3 sets the file of the month and the read node loads the old file. The log is written whatever the dry-run switch says.',
+    'every log line arrives here through the link "to LOG". 1 turns a line into a row (time, flow, site, production day, level) and shows it in the debug sidebar. The join collects the rows for 30 s, the delay lets one batch pass every 10 s so two writes do not overlap, 3 sets the file of the month and the read node loads the old file. A read of a file that does not exist answers nothing (only a warning), so the same batch also goes through a 10 s wait to the append step. The log is written whatever the dry-run switch says.',
     [
       linkInStep('LOG'),
       fn('logFmt', 'Format log line', 'l2-format-line.js', ['next'], replace, false, 'logDebug'),
       joinTimeout('logJoin', 'Collect log lines', 30),
       debugStep('logDebug', 'Run log', 'line', true, 80),
       delay('logDelay', 'One log batch per 10 s', 10),
-      fn('logBuild', 'Build log write', 'l3-build-log-write.js', ['next'], replace),
+      fn('logBuild', 'Build log write', 'l3-build-log-write.js', ['next'], replace, false, 'logWait'),
       readStep('logRead', 'Read log file'),
+      waitStep('logWait', 'Wait for read 10 s', 10, true, 80),
       end('APPEND')
     ]);
   b.lane(r++, 'LOG WRITE',
-    'adds the rows of the batch to the old file and writes the whole file back (the data lake has no append). Columns: ts_utc, seq, flow, site, production_day, mode, level, source, message. Every field is quoted, line breaks become a space. If the old file cannot be read for another reason than "not found", a new file with a time stamp is written, so the history is never replaced.',
+    'adds the rows of the batch to the old file and writes the whole file back (the data lake has no append). Columns: ts_utc, seq, flow, site, production_day, mode, level, source, message. Every field is quoted, line breaks become a space. The batch arrives twice (read answer and the wait) and is written once. If the read gives no answer for a file this flow wrote before, a new file with a time stamp is written, so the history is never replaced.',
     [
       linkInStep('APPEND'),
       fn('logAppend', 'Append log rows', 'l4-append-log.js', ['next']),

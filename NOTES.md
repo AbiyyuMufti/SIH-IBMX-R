@@ -75,7 +75,7 @@ Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `sc
 - Many Node-RED calls are copies across tabs; distinct endpoints are far fewer than the call counts.
 
 ## Next
-- Logger (CSV in the data lake, `docs/logging.md`): you import the three flows and check the four open points listed there. Then re-run September to see the 413 and paging errors in the log.
+- Logger (CSV in the data lake, `docs/logging.md`): re-import the Hull and Reference tabs (the first version could not create the file), run once, wait about 1 minute, check `logs/hull/log_2026-10.csv`; then the open points in the doc. Then re-run September to see the 413 and paging errors in the log.
 - You: import `flows/vfc-site-hull.json` (needs the Config tab), run with DRY_RUN true, then write. Check the files land in `fact_kpi/Hull/` and `fact_loss/Hull/`.
 - Waiting for you: the pasted Siemens page on secret rotation, then adapt the config and secret design.
 - Group 2: decide later. Group 3 waits for Reckitt.
@@ -136,4 +136,4 @@ Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `sc
 - Runner extended: catch, in-memory read/write object, custom join (sent when the queue is empty), debug of `msg.line`. New mock scenario `kpi-413`. New test `scripts/test-vfc-log.js`.
 - Same logs as before in ok, unmapped, stops-paged, empty (compared with the saved baselines).
 - The `3.x` and `4.x` check nodes now put the API message in the FAILED text.
-- Guess to confirm in the VFC: the not-found error text of `read object`.
+- First VFC run (user imported, I ran Backfill, dry run): the run line showed, but `read object` on the missing file only printed a yellow warning (404) and sent nothing. The catch never saw it, so nothing was written. Tried: read, then catch for the error. Fix (approved): the batch also goes through a 10 s wait to the append step; the append writes once per batch id, assumes a missing file when there is no payload, and writes a time-stamped file instead of replacing a file it knows. Runner: a read of a missing file now only warns; a delay in delay mode sends when the flow is quiet.

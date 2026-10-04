@@ -2316,7 +2316,7 @@
     "id": "94d18.149628",
     "type": "comment",
     "name": "[13] ERRORS",
-    "info": "STAGE 13 - a catch node takes every error raised by a node of this tab and turns it into a log line with the name of the node and the message of the API (for example the limit message of evaluateKPIs). Errors of the log nodes themselves are not logged again, a failed read of the log file goes to the append step.",
+    "info": "STAGE 13 - a catch node takes every error raised by a node of this tab and turns it into a log line with the name of the node and the message of the API (for example the limit message of evaluateKPIs). Errors of the log nodes themselves are not logged again.",
     "x": 120,
     "y": 2680,
     "wires": []
@@ -2351,24 +2351,11 @@
   },
   {
     "z": "9f487.49a2c1",
-    "id": "9e7c3.1c93a5",
-    "type": "link out",
-    "name": "to APPEND",
-    "mode": "link",
-    "links": [
-      "9c8d4.1afa8c"
-    ],
-    "x": 500,
-    "y": 2820,
-    "wires": []
-  },
-  {
-    "z": "9f487.49a2c1",
     "id": "96c07.162f41",
     "type": "function",
     "name": "13.1 Describe error",
-    "func": "// Turns an error caught by the catch node into a log line.\n// In: the message of a catch node (msg.error). Out 1: a log line for the\n// shared log. Out 2: a failed read of the log file, for the append step.\n// Errors of the log nodes themselves never go to out 1 (no log loop).\nvar err = msg.error || {};\nvar source = (err.source && err.source.name) || 'unknown node';\n\nfunction textOf(value) {\n  if (value === undefined || value === null) {\n    return '';\n  }\n  if (typeof value === 'string') {\n    return value;\n  }\n  return JSON.stringify(value);\n}\n\n// Takes the API message out of an error body when there is one.\nfunction apiMessage(value) {\n  var body = value;\n  if (typeof value === 'string') {\n    try {\n      body = JSON.parse(value);\n    } catch (e) {\n      return value;\n    }\n  }\n  var data = body && body.data;\n  var list = (data && data.errors) || (body && body.errors);\n  if (list && list.length && list[0].message) {\n    return list[0].message;\n  }\n  return textOf(value);\n}\n\nvar detail = apiMessage(err.message);\n\nif (msg.logBatch) {\n  if (msg.logStep === 'read') {\n    msg.logReadError = detail;\n    return [null, msg];\n  }\n  node.status({\n    fill: 'red',\n    shape: 'ring',\n    text: 'log write failed'\n  });\n  return [null, null];\n}\n\nvar text = '';\nif (msg.day) {\n  text += msg.day + ' [' + msg.mode + '] ';\n}\ntext += 'ERROR in ' + source + ': ' + detail;\nvar line = {\n  topic: 'log',\n  payload: text,\n  level: 'error',\n  source: source\n};\nreturn [line, null];\n",
-    "outputs": 2,
+    "func": "// Turns an error caught by the catch node into a log line.\n// In: the message of a catch node (msg.error).\n// Out: a log line for the shared log. Errors of the log nodes themselves\n// are dropped (no log loop).\nvar err = msg.error || {};\nvar source = (err.source && err.source.name) || 'unknown node';\n\nfunction textOf(value) {\n  if (value === undefined || value === null) {\n    return '';\n  }\n  if (typeof value === 'string') {\n    return value;\n  }\n  return JSON.stringify(value);\n}\n\n// Takes the API message out of an error body when there is one.\nfunction apiMessage(value) {\n  var body = value;\n  if (typeof value === 'string') {\n    try {\n      body = JSON.parse(value);\n    } catch (e) {\n      return value;\n    }\n  }\n  var data = body && body.data;\n  var list = (data && data.errors) || (body && body.errors);\n  if (list && list.length && list[0].message) {\n    return list[0].message;\n  }\n  return textOf(value);\n}\n\nif (msg.logBatch) {\n  node.status({\n    fill: 'red',\n    shape: 'ring',\n    text: 'log write failed'\n  });\n  return null;\n}\n\nvar text = '';\nif (msg.day) {\n  text += msg.day + ' [' + msg.mode + '] ';\n}\ntext += 'ERROR in ' + source + ': ' + apiMessage(err.message);\nreturn {\n  topic: 'log',\n  payload: text,\n  level: 'error',\n  source: source\n};\n",
+    "outputs": 1,
     "language": "javascript",
     "noerr": 0,
     "x": 380,
@@ -2376,18 +2363,15 @@
     "wires": [
       [
         "9a9e5.196173"
-      ],
-      [
-        "9e7c3.1c93a5"
       ]
     ]
   },
   {
     "z": "9f487.49a2c1",
-    "id": "a06b2.1e2cbe",
+    "id": "9c8d4.1afa8c",
     "type": "comment",
     "name": "[14] LOG",
-    "info": "STAGE 14 - every log line arrives here through the link \"to LOG\". 1 turns a line into a row (time, flow, site, production day, level) and shows it in the debug sidebar. The join collects the rows for 30 s, the delay lets one batch pass every 10 s so two writes do not overlap, 3 sets the file of the month and the read node loads the old file. The log is written whatever the dry-run switch says.",
+    "info": "STAGE 14 - every log line arrives here through the link \"to LOG\". 1 turns a line into a row (time, flow, site, production day, level) and shows it in the debug sidebar. The join collects the rows for 30 s, the delay lets one batch pass every 10 s so two writes do not overlap, 3 sets the file of the month and the read node loads the old file. A read of a file that does not exist answers nothing (only a warning), so the same batch also goes through a 10 s wait to the append step. The log is written whatever the dry-run switch says.",
     "x": 120,
     "y": 2900,
     "wires": []
@@ -2417,13 +2401,13 @@
     "y": 2980,
     "wires": [
       [
-        "a25a1.1fc5d7"
+        "9e7c3.1c93a5"
       ]
     ]
   },
   {
     "z": "9f487.49a2c1",
-    "id": "a25a1.1fc5d7",
+    "id": "9e7c3.1c93a5",
     "type": "function",
     "name": "14.1 Format log line",
     "func": "// Turns one log message into a row for the log file.\n// In: msg.payload = log text (optional msg.level and msg.source).\n// Out: msg.payload = the row, msg.line = the text for the debug node.\nvar FLOW_NAME = 'reference';\nvar cfg = flow.get('cfg') || {};\nvar text = String(msg.payload);\n\nvar seq = (flow.get('logSeq') || 0) + 1;\nflow.set('logSeq', seq);\n\n// Most lines start with the production day and the mode: \"2026-09-01 [x] \".\nvar day = '';\nvar mode = '';\nvar message = text;\nvar parts = /^(\\d{4}-\\d{2}-\\d{2}) \\[([^\\]]*)\\] ([\\s\\S]*)$/.exec(text);\nif (parts) {\n  day = parts[1];\n  mode = parts[2];\n  message = parts[3];\n}\n\nvar level = msg.level;\nif (!level) {\n  if (/FAILED/.test(message)) {\n    level = 'failed';\n  } else if (/NOTHING TO WRITE/.test(message)) {\n    level = 'warn';\n  } else {\n    level = 'info';\n  }\n}\n\nmsg.line = text;\nmsg.payload = {\n  ts_utc: new Date().toISOString(),\n  seq: seq,\n  flow: FLOW_NAME,\n  site: cfg.site || 'all',\n  production_day: day,\n  mode: mode,\n  level: level,\n  source: msg.source || 'flow',\n  message: message\n};\nreturn msg;\n",
@@ -2434,14 +2418,14 @@
     "y": 2980,
     "wires": [
       [
-        "a4490.215ef0",
-        "a637f.22f809"
+        "a06b2.1e2cbe",
+        "a25a1.1fc5d7"
       ]
     ]
   },
   {
     "z": "9f487.49a2c1",
-    "id": "a4490.215ef0",
+    "id": "a06b2.1e2cbe",
     "type": "join",
     "name": "Collect log lines",
     "mode": "custom",
@@ -2464,13 +2448,13 @@
     "y": 2980,
     "wires": [
       [
-        "a826e.249122"
+        "a4490.215ef0"
       ]
     ]
   },
   {
     "z": "9f487.49a2c1",
-    "id": "a637f.22f809",
+    "id": "a25a1.1fc5d7",
     "type": "debug",
     "name": "Run log",
     "active": true,
@@ -2485,7 +2469,7 @@
   },
   {
     "z": "9f487.49a2c1",
-    "id": "a826e.249122",
+    "id": "a4490.215ef0",
     "type": "delay",
     "name": "One log batch per 10 s",
     "pauseType": "rate",
@@ -2503,16 +2487,16 @@
     "y": 2980,
     "wires": [
       [
-        "aa15d.262a3b"
+        "a637f.22f809"
       ]
     ]
   },
   {
     "z": "9f487.49a2c1",
-    "id": "aa15d.262a3b",
+    "id": "a637f.22f809",
     "type": "function",
     "name": "14.2 Build log write",
-    "func": "// Prepares the write of one batch of log rows (the read node runs next).\n// In: msg.payload = array of log rows from the join node.\n// Out: msg.path = the file of the month, msg.logRows = the rows.\n// msg.logBatch keeps errors of the log nodes themselves out of the log.\nvar FLOW_NAME = 'reference';\nvar cfg = flow.get('cfg') || {};\nvar root = cfg.root || 'logs_without_root';\nvar rows = msg.payload;\nvar month = rows[0].ts_utc.slice(0, 7);\n\nmsg.logRows = rows;\nmsg.path = root + '/logs/' + FLOW_NAME + '/log_' + month + '.csv';\nmsg.logBatch = true;\nmsg.logStep = 'read';\nmsg.payload = '';\nreturn msg;\n",
+    "func": "// Prepares the write of one batch of log rows (the read node runs next).\n// In: msg.payload = array of log rows from the join node.\n// Out: msg.path = file of the month, msg.logRows, msg.logBatchId, no payload.\n// msg.logBatch keeps errors of the log nodes themselves out of the log.\nvar FLOW_NAME = 'reference';\nvar cfg = flow.get('cfg') || {};\nvar root = cfg.root || 'logs_without_root';\nvar rows = msg.payload;\nvar month = rows[0].ts_utc.slice(0, 7);\n\nvar batchNo = (flow.get('logBatchNo') || 0) + 1;\nflow.set('logBatchNo', batchNo);\n\nmsg.logRows = rows;\nmsg.path = root + '/logs/' + FLOW_NAME + '/log_' + month + '.csv';\nmsg.logBatch = true;\nmsg.logBatchId = rows[0].ts_utc + '#' + batchNo;\ndelete msg.payload;\nreturn msg;\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
@@ -2520,7 +2504,8 @@
     "y": 2980,
     "wires": [
       [
-        "ac04c.27c354"
+        "a826e.249122",
+        "aa15d.262a3b"
       ]
     ]
   },
@@ -2531,7 +2516,7 @@
     "name": "to APPEND",
     "mode": "link",
     "links": [
-      "9c8d4.1afa8c"
+      "ac04c.27c354"
     ],
     "x": 1680,
     "y": 2980,
@@ -2539,7 +2524,7 @@
   },
   {
     "z": "9f487.49a2c1",
-    "id": "ac04c.27c354",
+    "id": "a826e.249122",
     "type": "read object",
     "name": "Read log file",
     "path": "",
@@ -2555,40 +2540,60 @@
   {
     "z": "9f487.49a2c1",
     "id": "afe2a.2af586",
-    "type": "comment",
-    "name": "[15] LOG WRITE",
-    "info": "STAGE 15 - adds the rows of the batch to the old file and writes the whole file back (the data lake has no append). Columns: ts_utc, seq, flow, site, production_day, mode, level, source, message. Every field is quoted, line breaks become a space. If the old file cannot be read for another reason than \"not found\", a new file with a time stamp is written, so the history is never replaced.",
-    "x": 120,
-    "y": 3120,
+    "type": "link out",
+    "name": "to APPEND",
+    "mode": "link",
+    "links": [
+      "ac04c.27c354"
+    ],
+    "x": 1680,
+    "y": 3060,
     "wires": []
   },
   {
     "z": "9f487.49a2c1",
-    "id": "9c8d4.1afa8c",
-    "type": "link in",
-    "name": "APPEND",
-    "links": [
-      "9e7c3.1c93a5",
-      "adf3b.295c6d"
-    ],
-    "x": 120,
-    "y": 3200,
+    "id": "aa15d.262a3b",
+    "type": "delay",
+    "name": "Wait for read 10 s",
+    "pauseType": "delay",
+    "timeout": "10",
+    "timeoutUnits": "seconds",
+    "rate": "1",
+    "nbRateUnits": "1",
+    "rateUnits": "second",
+    "randomFirst": "1",
+    "randomLast": "5",
+    "randomUnits": "seconds",
+    "drop": false,
+    "powerMode": false,
+    "x": 1420,
+    "y": 3060,
     "wires": [
       [
-        "b1d19.2c8e9f"
+        "afe2a.2af586"
       ]
     ]
   },
   {
     "z": "9f487.49a2c1",
     "id": "b1d19.2c8e9f",
-    "type": "function",
-    "name": "15.1 Append log rows",
-    "func": "// Appends the rows of one batch to the log file of the month.\n// In: the old file as msg.payload, or msg.logReadError if the read failed.\n// Out: msg.payload = the whole new file (the data lake has no append).\nvar SEPARATOR = ',';\nvar NOT_FOUND = /not.?found|no such|does not exist|404/i;\nvar COLUMNS = [\n  'ts_utc',\n  'seq',\n  'flow',\n  'site',\n  'production_day',\n  'mode',\n  'level',\n  'source',\n  'message'\n];\n\n// Quotes inside a field are doubled, line breaks become a space.\nfunction quote(value) {\n  var text = (value === undefined || value === null) ? '' : String(value);\n  text = text.replace(/\"/g, '\"\"').replace(/[\\r\\n]+/g, ' ');\n  return '\"' + text + '\"';\n}\n\nfunction lineOf(row) {\n  return COLUMNS.map(function (name) {\n    return quote(row[name]);\n  }).join(SEPARATOR);\n}\n\n// The read node gives text, or a serialised buffer.\nfunction decode(payload) {\n  if (typeof payload === 'string') {\n    return payload;\n  }\n  if (payload && payload.type === 'Buffer' && payload.data) {\n    var bin = '';\n    payload.data.forEach(function (byte) {\n      bin += String.fromCharCode(byte);\n    });\n    try {\n      return decodeURIComponent(escape(bin));\n    } catch (e) {\n      return bin;\n    }\n  }\n  return '';\n}\n\nvar rows = msg.logRows.slice();\nrows.sort(function (a, b) {\n  if (a.ts_utc !== b.ts_utc) {\n    return a.ts_utc < b.ts_utc ? -1 : 1;\n  }\n  return a.seq - b.seq;\n});\n\nvar path = msg.path;\nvar old = '';\nif (msg.logReadError) {\n  if (!NOT_FOUND.test(msg.logReadError)) {\n    // Unclear read error: never replace the old file, start a new one.\n    var stamp = new Date().toISOString().replace(/[-:.TZ]/g, '');\n    path = path.replace(/\\.csv$/, '_' + stamp + '.csv');\n    rows.push({\n      ts_utc: new Date().toISOString(),\n      seq: 0,\n      flow: rows[0].flow,\n      site: rows[0].site,\n      production_day: '',\n      mode: '',\n      level: 'error',\n      source: 'log',\n      message: 'log read failed (' + msg.logReadError + '), wrote ' + path\n    });\n  }\n} else {\n  old = decode(msg.payload);\n}\n\nvar lines = [];\nif (!old) {\n  lines.push(COLUMNS.map(quote).join(SEPARATOR));\n} else if (old.slice(-1) !== '\\n') {\n  old += '\\n';\n}\nrows.forEach(function (row) {\n  lines.push(lineOf(row));\n});\n\nmsg.payload = old + lines.join('\\n') + '\\n';\nmsg.path = path;\nmsg.logStep = 'write';\ndelete msg.logReadError;\ndelete msg.logRows;\nreturn msg;\n",
-    "outputs": 1,
-    "language": "javascript",
-    "noerr": 0,
-    "x": 380,
+    "type": "comment",
+    "name": "[15] LOG WRITE",
+    "info": "STAGE 15 - adds the rows of the batch to the old file and writes the whole file back (the data lake has no append). Columns: ts_utc, seq, flow, site, production_day, mode, level, source, message. Every field is quoted, line breaks become a space. The batch arrives twice (read answer and the wait) and is written once. If the read gives no answer for a file this flow wrote before, a new file with a time stamp is written, so the history is never replaced.",
+    "x": 120,
+    "y": 3120,
+    "wires": []
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "ac04c.27c354",
+    "type": "link in",
+    "name": "APPEND",
+    "links": [
+      "adf3b.295c6d",
+      "afe2a.2af586"
+    ],
+    "x": 120,
     "y": 3200,
     "wires": [
       [
@@ -2599,6 +2604,23 @@
   {
     "z": "9f487.49a2c1",
     "id": "b3c08.2e27b8",
+    "type": "function",
+    "name": "15.1 Append log rows",
+    "func": "// Adds the rows of one batch to the log file of the month.\n// In: msg.payload = the old file (read answered) or nothing (no answer).\n// Out: msg.payload = the whole new file, the data lake has no append.\n// The same batch can arrive twice (read answer, then the wait): once only.\nvar SEPARATOR = ',';\nvar KEEP_IDS = 50;\nvar COLUMNS = [\n  'ts_utc',\n  'seq',\n  'flow',\n  'site',\n  'production_day',\n  'mode',\n  'level',\n  'source',\n  'message'\n];\n\n// Quotes inside a field are doubled, line breaks become a space.\nfunction quote(value) {\n  var text = (value === undefined || value === null) ? '' : String(value);\n  text = text.replace(/\"/g, '\"\"').replace(/[\\r\\n]+/g, ' ');\n  return '\"' + text + '\"';\n}\n\nfunction lineOf(row) {\n  return COLUMNS.map(function (name) {\n    return quote(row[name]);\n  }).join(SEPARATOR);\n}\n\n// The read node gives text, or a serialised buffer.\nfunction decode(payload) {\n  if (typeof payload === 'string') {\n    return payload;\n  }\n  if (payload && payload.type === 'Buffer' && payload.data) {\n    var bin = '';\n    payload.data.forEach(function (byte) {\n      bin += String.fromCharCode(byte);\n    });\n    try {\n      return decodeURIComponent(escape(bin));\n    } catch (e) {\n      return bin;\n    }\n  }\n  return null;\n}\n\nvar rows = msg.logRows.slice();\nrows.sort(function (a, b) {\n  if (a.ts_utc !== b.ts_utc) {\n    return a.ts_utc < b.ts_utc ? -1 : 1;\n  }\n  return a.seq - b.seq;\n});\n\nvar done = flow.get('logDone') || [];\nvar known = flow.get('logKnown') || [];\nif (done.indexOf(msg.logBatchId) >= 0) {\n  return null;\n}\n\nvar path = msg.path;\nvar old = '';\nvar problem = '';\nif (msg.payload === undefined || msg.payload === null) {\n  if (known.indexOf(path) >= 0) {\n    problem = 'read gave no answer for a file written before';\n  }\n} else {\n  old = decode(msg.payload);\n  if (old === null) {\n    old = '';\n    problem = 'old file is not text';\n  }\n}\nif (problem) {\n  // Never replace the old file: write a new one with a time stamp.\n  var stamp = new Date().toISOString().replace(/[-:.TZ]/g, '');\n  path = path.replace(/\\.csv$/, '_' + stamp + '.csv');\n  rows.push({\n    ts_utc: new Date().toISOString(),\n    seq: 0,\n    flow: rows[0].flow,\n    site: rows[0].site,\n    production_day: '',\n    mode: '',\n    level: 'error',\n    source: 'log',\n    message: problem + ', wrote ' + path\n  });\n} else if (known.indexOf(path) < 0) {\n  known.push(path);\n  flow.set('logKnown', known);\n}\n\nvar lines = [];\nif (!old) {\n  lines.push(COLUMNS.map(quote).join(SEPARATOR));\n} else if (old.slice(-1) !== '\\n') {\n  old += '\\n';\n}\nrows.forEach(function (row) {\n  lines.push(lineOf(row));\n});\n\ndone.push(msg.logBatchId);\nflow.set('logDone', done.slice(-KEEP_IDS));\n\nmsg.payload = old + lines.join('\\n') + '\\n';\nmsg.path = path;\ndelete msg.logRows;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 380,
+    "y": 3200,
+    "wires": [
+      [
+        "b5af7.2fc0d1"
+      ]
+    ]
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "b5af7.2fc0d1",
     "type": "write object",
     "name": "Log to data lake",
     "path": "",

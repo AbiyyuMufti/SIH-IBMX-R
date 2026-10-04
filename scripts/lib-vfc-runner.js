@@ -53,6 +53,7 @@ export async function runFlow(nodes, options) {
   // In-memory data lake: path -> text. Pass options.lake to keep it between runs.
   const lake = options.lake || new Map();
   const customJoins = new Map();
+  const waiting = [];
   const stats = {
     requests: [],
     logs: [],
@@ -61,6 +62,7 @@ export async function runFlow(nodes, options) {
     parquetPayloads: {},
     status: [],
     errors: [],
+    warnings: [],
     lake
   };
 
@@ -111,9 +113,16 @@ export async function runFlow(nodes, options) {
     } else if (n.type === 'catch') {
       emit(n, [msg]);
     } else if (n.type === 'read object') {
-      if (!lake.has(msg.path)) throw new Error('file not found: ' + msg.path);
+      if (!lake.has(msg.path)) {
+        // The VFC read node only prints a warning and sends nothing on.
+        stats.warnings.push(`${n.name}: file not found ${msg.path}`);
+        return;
+      }
       msg.payload = Buffer.from(lake.get(msg.path), 'utf8');
       emit(n, [msg]);
+    } else if (n.type === 'delay' && n.pauseType === 'delay') {
+      // A fixed delay sends when the rest of the flow is quiet.
+      waiting.push([n, msg]);
     } else if (n.type === 'delay' || n.type === 'link in') {
       emit(n, [msg]);
     } else if (n.type === 'link out') {
@@ -179,6 +188,10 @@ export async function runFlow(nodes, options) {
       for (const [joinId, g] of [...customJoins]) {
         customJoins.delete(joinId);
         emit(byId.get(joinId), [{ ...g.last, payload: g.items }]);
+      }
+      while (waiting.length) {
+        const [w, wm] = waiting.shift();
+        emit(w, [wm]);
       }
       if (!queue.length) break;
     }

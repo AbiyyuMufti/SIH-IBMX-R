@@ -1,8 +1,9 @@
-// Appends the rows of one batch to the log file of the month.
-// In: the old file as msg.payload, or msg.logReadError if the read failed.
-// Out: msg.payload = the whole new file (the data lake has no append).
+// Adds the rows of one batch to the log file of the month.
+// In: msg.payload = the old file (read answered) or nothing (no answer).
+// Out: msg.payload = the whole new file, the data lake has no append.
+// The same batch can arrive twice (read answer, then the wait): once only.
 var SEPARATOR = ',';
-var NOT_FOUND = /not.?found|no such|does not exist|404/i;
+var KEEP_IDS = 50;
 var COLUMNS = [
   'ts_utc',
   'seq',
@@ -44,7 +45,7 @@ function decode(payload) {
       return bin;
     }
   }
-  return '';
+  return null;
 }
 
 var rows = msg.logRows.slice();
@@ -55,27 +56,44 @@ rows.sort(function (a, b) {
   return a.seq - b.seq;
 });
 
+var done = flow.get('logDone') || [];
+var known = flow.get('logKnown') || [];
+if (done.indexOf(msg.logBatchId) >= 0) {
+  return null;
+}
+
 var path = msg.path;
 var old = '';
-if (msg.logReadError) {
-  if (!NOT_FOUND.test(msg.logReadError)) {
-    // Unclear read error: never replace the old file, start a new one.
-    var stamp = new Date().toISOString().replace(/[-:.TZ]/g, '');
-    path = path.replace(/\.csv$/, '_' + stamp + '.csv');
-    rows.push({
-      ts_utc: new Date().toISOString(),
-      seq: 0,
-      flow: rows[0].flow,
-      site: rows[0].site,
-      production_day: '',
-      mode: '',
-      level: 'error',
-      source: 'log',
-      message: 'log read failed (' + msg.logReadError + '), wrote ' + path
-    });
+var problem = '';
+if (msg.payload === undefined || msg.payload === null) {
+  if (known.indexOf(path) >= 0) {
+    problem = 'read gave no answer for a file written before';
   }
 } else {
   old = decode(msg.payload);
+  if (old === null) {
+    old = '';
+    problem = 'old file is not text';
+  }
+}
+if (problem) {
+  // Never replace the old file: write a new one with a time stamp.
+  var stamp = new Date().toISOString().replace(/[-:.TZ]/g, '');
+  path = path.replace(/\.csv$/, '_' + stamp + '.csv');
+  rows.push({
+    ts_utc: new Date().toISOString(),
+    seq: 0,
+    flow: rows[0].flow,
+    site: rows[0].site,
+    production_day: '',
+    mode: '',
+    level: 'error',
+    source: 'log',
+    message: problem + ', wrote ' + path
+  });
+} else if (known.indexOf(path) < 0) {
+  known.push(path);
+  flow.set('logKnown', known);
 }
 
 var lines = [];
@@ -88,9 +106,10 @@ rows.forEach(function (row) {
   lines.push(lineOf(row));
 });
 
+done.push(msg.logBatchId);
+flow.set('logDone', done.slice(-KEEP_IDS));
+
 msg.payload = old + lines.join('\n') + '\n';
 msg.path = path;
-msg.logStep = 'write';
-delete msg.logReadError;
 delete msg.logRows;
 return msg;

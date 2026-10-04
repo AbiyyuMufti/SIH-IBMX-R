@@ -1,7 +1,7 @@
 // Turns an error caught by the catch node into a log line.
-// In: the message of a catch node (msg.error). Out 1: a log line for the
-// shared log. Out 2: a failed read of the log file, for the append step.
-// Errors of the log nodes themselves never go to out 1 (no log loop).
+// In: the message of a catch node (msg.error).
+// Out: a log line for the shared log. Errors of the log nodes themselves
+// are dropped (no log loop).
 var err = msg.error || {};
 var source = (err.source && err.source.name) || 'unknown node';
 
@@ -33,30 +33,23 @@ function apiMessage(value) {
   return textOf(value);
 }
 
-var detail = apiMessage(err.message);
-
 if (msg.logBatch) {
-  if (msg.logStep === 'read') {
-    msg.logReadError = detail;
-    return [null, msg];
-  }
   node.status({
     fill: 'red',
     shape: 'ring',
     text: 'log write failed'
   });
-  return [null, null];
+  return null;
 }
 
 var text = '';
 if (msg.day) {
   text += msg.day + ' [' + msg.mode + '] ';
 }
-text += 'ERROR in ' + source + ': ' + detail;
-var line = {
+text += 'ERROR in ' + source + ': ' + apiMessage(err.message);
+return {
   topic: 'log',
   payload: text,
   level: 'error',
   source: source
 };
-return [line, null];
