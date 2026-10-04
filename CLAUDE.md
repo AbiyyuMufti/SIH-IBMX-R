@@ -21,10 +21,11 @@ Build and maintain Node-RED flows for Siemens Insights Hub (Reckitt OEE), based 
 - Parquet node types: UTF8 (STRING), BOOLEAN, INT64, DOUBLE, TIMESTAMP_MILLIS. No DATE type: days are text `YYYY-MM-DD`
 
 ## Flow build
-- The flow JSON is generated: edit `scripts/vfc/*.js` and `scripts/build-vfc-flow.js`, then run `node scripts/build-vfc-flow.js`. Do not hand-edit the JSON
+- The flow JSON is generated: edit `scripts/vfc/*.js` (one file per function node, named `s<stage>-<name>.js`) and `scripts/build-vfc-flow.js`, then run `node scripts/build-vfc-flow.js`. Do not hand-edit the JSON
 - Committed flow files contain placeholders only. Real credentials only in `flows/*.local.json`
 - `dryRun` stays `true` by default. Writing files is my decision
-- Validate offline: valid JSON, unique node IDs, every wire points to an existing node. I import and run it in Node-RED and report back
+- Validate offline before every commit: `node scripts/validate-flow.js` (the checks below) and `node scripts/test-vfc-flow.js 2026-09-30 mock` (runs the flow against a fake Insights Hub, no network, no credentials). I import and run it in Node-RED and report back
+- When you refactor, prove the behaviour is unchanged: run the old and the new flow on the same mock data (`scripts/lib-mock-ih.js` has the scenarios) and compare requests, logs and parquet rows
 
 ## Flow readability (VFC and Node-RED)
 I read the flow in the VFC editor, which does not wrap lines. Code and wiring must stay readable there.
@@ -45,7 +46,7 @@ Wiring and layout:
 - Flow runs left to right, one lane per row, nodes on a grid. No wires going backward (right to left)
 - Use link out / link in nodes when a wire would be long, cross other wires or go backward. Do not use links for short forward wires. Name each pair clearly (e.g. `to LOG`). If the VFC palette has no link nodes, tell me before choosing another approach
 - Debug and logging: one debug node per place I need to watch, wired from one node only. Never wire many nodes into one debug node. For a shared log, give each source its own link out named `to LOG`, all going to one link in, then one log node, then one debug
-- Node names: short, verb first, stage number first (`3 Build day plan`)
+- Node names: short, verb first, stage and step number first (`2.3 Choose assets`)
 - Each stage starts with a comment node as a header
 
 Checks (in `scripts/validate-flow.js`, must pass before every commit):
