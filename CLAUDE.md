@@ -24,7 +24,7 @@ Build and maintain Node-RED flows for Siemens Insights Hub (Reckitt OEE), based 
 
 ## Flow build
 - The flow JSON is generated: edit `scripts/vfc/*.js` (one file per function node, named `s<stage>-<name>.js`) and `scripts/build-vfc-site-flows.js` (shared helpers in `scripts/lib-flow-builder.js`), then run `node scripts/build-vfc-site-flows.js`. Do not hand-edit the JSON
-- The Config tab and the reference tab use `scripts/vfc/c1-config.js`, `scripts/vfc/r<stage>-<name>.js` and `scripts/build-vfc-reference-flows.js`. Shared settings (credentials, sites, asset ids, root folder) live in ONE node, `1.1 CONFIG`, and are read from global context (`global.get('cfg')`). Test: `node scripts/test-vfc-flow.js 2026-09-30 mock write file=flows/vfc-reference-tables.json` (the runner runs the Config tab first)
+- The Config tab and the reference tab use `scripts/vfc/c1-config.js`, `scripts/vfc/r<stage>-<name>.js` and `scripts/build-vfc-reference-flows.js`. Shared settings (credentials, sites, asset ids, root folder) live in ONE node, `1.1 CONFIG`, and are read from global context (`glob.get('cfg')`: in the VFC the global context is `glob`, not `global`). Test: `node scripts/test-vfc-flow.js 2026-09-30 mock write file=flows/vfc-reference-tables.json` (the runner runs the Config tab first)
 - Layout: columns 260 px, rows 220 px, all positions multiples of 20, side link outs below their node. `validate-flow.js` does not check overlaps yet: check them with the estimate in NOTES.md before commit
 - Committed flow files contain placeholders only. Real credentials only in `flows/*.local.json`
 - `dryRun` stays `true` by default. Writing files is my decision

@@ -1,6 +1,6 @@
 // CONFIG: the shared settings of ALL flows. Edit here only.
 // In: any message from an inject (on deploy, or the Apply button).
-// Out: nothing. The settings go to global context: global.get('cfg').
+// Out: nothing. The settings go to global context: glob.get('cfg').
 var cfg = {
   // Root folder in the data lake. Every table gets its own subfolder.
   root: 'mufti_test',
@@ -32,7 +32,7 @@ var cfg = {
   // Reference flow: calendar events are read for this many days.
   calendarWindowDays: 31
 };
-global.set('cfg', cfg);
+glob.set('cfg', cfg);
 node.status({
   fill: 'green',
   shape: 'dot',

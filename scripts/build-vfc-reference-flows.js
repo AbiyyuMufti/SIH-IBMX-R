@@ -1,7 +1,6 @@
 // Builds the importable VFC flows for the reference tables:
 //   flows/vfc-config.json            the Config tab (shared settings)
 //   flows/vfc-reference-tables.json  one tab, five tables
-//   flows/vfc-group-test.json        a tiny file to test group nodes
 // Usage: node scripts/build-vfc-reference-flows.js
 //
 // The function-node code lives in scripts/vfc/c*.js and r*.js. Edit those
@@ -198,7 +197,7 @@ function buildReferenceFlow() {
   });
 
   b.nodes.unshift({
-    id: b.TAB, type: 'tab', label: 'Mufti OEE reference tables', disabled: false, allowCycles: false,
+    id: b.TAB, type: 'tab', label: 'Reference tables', disabled: false, allowCycles: false,
     info: 'Writes five reference tables to the data lake: dim_asset, ref_target_seed, dim_reason, dim_product, dim_shift. Read calls only against Insights Hub. Needs the Config tab.'
   });
   return b.nodes;
@@ -209,7 +208,7 @@ function buildConfigFlow() {
   const b = makeBuilder(20);
   b.comment(
     '[1] CONFIG',
-    'STAGE 1 - CONFIG. The shared settings of ALL flows live in node 1.1 CONFIG, the only node to edit: root folder, credentials, sites with their asset ids and production-day start, exclusions. It stores them in global context (global.get("cfg")). It runs on deploy and when you click Apply. After a change, click Apply, then run the flow you want to test.',
+    'STAGE 1 - CONFIG. The shared settings of ALL flows live in node 1.1 CONFIG, the only node to edit: root folder, credentials, sites with their asset ids and production-day start, exclusions. It stores them in global context (glob.get("cfg")). It runs on deploy and when you click Apply. After a change, click Apply, then run the flow you want to test.',
     1
   );
   const cfgId = b.id('cfg');
@@ -226,24 +225,9 @@ function buildConfigFlow() {
     outputs: 1, language: 'javascript', noerr: 0, x: b.col(1), y: b.rowY(1), wires: [[]]
   });
   b.nodes.unshift({
-    id: b.TAB, type: 'tab', label: 'Mufti OEE config', disabled: false, allowCycles: false,
-    info: 'Shared settings of the Mufti OEE flows, stored in global context.'
+    id: b.TAB, type: 'tab', label: 'Config', disabled: false, allowCycles: false,
+    info: 'Shared settings of the flows, stored in global context.'
   });
-  return b.nodes;
-}
-
-// ---------- a tiny file to test group nodes ----------
-function buildGroupTest() {
-  const b = makeBuilder(30);
-  const groupId = b.newId();
-  const a = b.newId();
-  const c = b.newId();
-  b.nodes.push(
-    { z: b.TAB, id: a, g: groupId, type: 'inject', name: 'in group', topic: '', payload: '', payloadType: 'date', repeat: '', crontab: '', once: false, x: 180, y: 160, wires: [[c]] },
-    { z: b.TAB, id: c, g: groupId, type: 'debug', name: 'in group', active: true, tosidebar: true, console: false, tostatus: false, complete: 'payload', x: 440, y: 160, wires: [] },
-    { z: b.TAB, id: groupId, type: 'group', name: 'Test group', style: { label: true }, nodes: [a, c], x: 120, y: 100, w: 420, h: 120 }
-  );
-  b.nodes.unshift({ id: b.TAB, type: 'tab', label: 'Group test', disabled: false, info: 'Import to test whether the VFC supports group nodes. Delete afterwards.' });
   return b.nodes;
 }
 
@@ -251,8 +235,7 @@ function buildGroupTest() {
 mkdirSync(new URL('../flows/', import.meta.url), { recursive: true });
 const OUTPUTS = [
   ['vfc-config.json', buildConfigFlow],
-  ['vfc-reference-tables.json', buildReferenceFlow],
-  ['vfc-group-test.json', buildGroupTest]
+  ['vfc-reference-tables.json', buildReferenceFlow]
 ];
 for (const [file, build] of OUTPUTS) {
   const nodes = build();

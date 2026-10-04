@@ -5,7 +5,7 @@
     "label": "Reference tables",
     "disabled": false,
     "allowCycles": false,
-    "info": "Writes five reference tables to the data lake:\ndim_asset,\nref_target_seed,\ndim_reason,\ndim_product,\ndim_shift.\nRead calls only against Insights Hub.\nNeeds the Config tab."
+    "info": "Writes five reference tables to the data lake: dim_asset, ref_target_seed, dim_reason, dim_product, dim_shift. Read calls only against Insights Hub. Needs the Config tab."
   },
   {
     "z": "9f487.49a2c1",
