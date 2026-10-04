@@ -3,8 +3,7 @@
 // Out 2: the asset result for the join when the asset failed or is excluded.
 var cfg = flow.get('cfg');
 var DAY_MS = 86400000;
-// A production day D runs from D 06:00Z to D+1 06:00Z.
-var DAY_START = 'T06:00:00.000Z';
+var HOUR_MS = 3600000;
 
 // Names are root first. Tenant layout: [0] tenant, [1] region, [2] site,
 // [3] area, [4] line, [5] machine. GT4 has no machine, so it is the line.
@@ -50,7 +49,8 @@ if (excluded || parentExcluded) {
   return toJoin({ skipped: msg.h.asset_name + ' excluded' });
 }
 
-var from = Date.parse(msg.day + DAY_START);
+// A production day D runs from D start hour to D+1 start hour (UTC).
+var from = Date.parse(msg.day + 'T00:00:00.000Z') + cfg.dayStartHour * HOUR_MS;
 msg.method = 'POST';
 msg.url = cfg.gateway + '/api/oee/v3/expressions/evaluateKPIs';
 msg.headers = {

@@ -3,13 +3,13 @@
 // for the http request node.
 var cfg = flow.get('cfg');
 var DAY_MS = 86400000;
-// A production day D runs from D 06:00Z to D+1 06:00Z.
-var DAY_START = 'T06:00:00.000Z';
+var HOUR_MS = 3600000;
 // One page of 5000 holds every stop of a day (tested: 423 stops with
 // size 1000). More than one page makes the day fail in node 4.2.
 var PAGE_SIZE = 5000;
 
-var from = Date.parse(msg.day + DAY_START);
+// A production day D runs from D start hour to D+1 start hour (UTC).
+var from = Date.parse(msg.day + 'T00:00:00.000Z') + cfg.dayStartHour * HOUR_MS;
 var fromIso = new Date(from).toISOString();
 var toIso = new Date(from + DAY_MS).toISOString();
 var query = '?from=' + encodeURIComponent(fromIso) +

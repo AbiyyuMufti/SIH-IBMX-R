@@ -2,8 +2,9 @@
 // In: msg.kpiRows (from period_start) and msg.lossRows (from event_start).
 // Out: the same rows with the two day columns.
 var HOUR_MS = 3600000;
-// A production day D runs from D 06:00Z to D+1 06:00Z.
-var PRODUCTION_DAY_START_HOURS = 6;
+var cfg = flow.get('cfg');
+// A production day D runs from D start hour to D+1 start hour (UTC).
+var PRODUCTION_DAY_START_HOURS = cfg.dayStartHour;
 
 // Last Sunday of the month at 01:00 UTC. The month is 0-based.
 function lastSundayUtc(year, month) {

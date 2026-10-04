@@ -3,11 +3,12 @@
 // that start outside the production day). The day columns are added later.
 var cfg = flow.get('cfg');
 var DAY_MS = 86400000;
-// A production day D runs from D 06:00Z to D+1 06:00Z.
-var DAY_START = 'T06:00:00.000Z';
+var HOUR_MS = 3600000;
 var MICROSTOPS = '##MICROSTOPS##';
 var loadedAt = msg.loadedAt || Date.now();
-var fromMs = Date.parse(msg.day + DAY_START);
+// A production day D runs from D dayStartHour UTC to D+1 dayStartHour.
+var midnight = Date.parse(msg.day + 'T00:00:00.000Z');
+var fromMs = midnight + cfg.dayStartHour * HOUR_MS;
 var toMs = fromMs + DAY_MS;
 
 function numOrNull(v) {

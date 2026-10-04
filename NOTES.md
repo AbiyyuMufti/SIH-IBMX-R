@@ -76,7 +76,8 @@ Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `sc
 
 ## Next
 - You: import `flows/vfc-config.json` and `flows/vfc-reference-tables.json`, fill in CONFIG, run with dryRun true. Check: `global` context works, all five tables, one `flows/vfc-group-test.json` import (do group nodes exist in the VFC?).
-- Step 3 (agreed plan): per-site fact flows (generated, one tab per site, site subfolders `fact_kpi/<site>/`, per-site production-day start, failure per site), same grid layout. The fact flow still overlaps in 14 places by estimate and is off the 20 px grid.
+- You: import `flows/vfc-site-hull.json` (needs the Config tab), run with DRY_RUN true, then write. Check the files land in `fact_kpi/Hull/` and `fact_loss/Hull/`.
+- Waiting for you: the pasted Siemens page on secret rotation, then adapt the config and secret design.
 - Then group 2 on the same config and site structure. Group 3 waits for Reckitt.
 
 ## VFC flow (fact_kpi, fact_loss) - in progress (2026-10-02)
@@ -111,3 +112,10 @@ Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `sc
 - Runner: `global` context, join state per join node (was shared by parts id), `dryRun` as an object per table, runs the Config tab first. The fact flow output is unchanged (mock ok, unmapped, stops-paged, empty identical).
 - Layout: 260 px columns, 220 px rows, everything on the 20 px grid, side link outs below their node, fan-out link outs stacked to the right. Estimated overlaps in the new tab: 0. The cause of the old overlaps: fixed 190 px columns with node widths that depend on the name, and side link outs placed on top of the next node.
 - Secrets: not rotated yet. Siemens has a how-to "OAuth Client Secret Rotation" and a page "Rotating app credentials"; the pages did not load in this session, so no rotation interval or mechanism is recorded here.
+
+## Per-site fact flows (2026-10-04, step 3)
+- New: `scripts/lib-flow-builder.js` (shared tab builder and lane steps, the reference generator now imports it and its JSON rebuilds byte-identical), `scripts/build-vfc-site-flows.js` (one flow per entry in `SITES`), `scripts/vfc/s1-site-settings.js`, `docs/fact-flows.md`. `flows/vfc-site-hull.json`: 65 nodes, same grid layout as the reference tab.
+- Removed: `scripts/build-vfc-flow.js`, `flows/vfc-fact-kpi-fact-loss.json`.
+- Day start (`dayStartHour`) is now a per-site setting read in nodes 1.2, 3.2, 4.1, 4.3 and 5.2; it was fixed at 06:00Z. `plannedRoots` moved to the Config tab.
+- Proof: old flow vs Hull flow on the mock, scenarios ok, unmapped, stops-paged, empty: same requests, logs and parquet rows. Only the path gained the `Hull` subfolder.
+- Still open: `local_date` uses a London offset rule (UK only). Global context in the VFC is unconfirmed.

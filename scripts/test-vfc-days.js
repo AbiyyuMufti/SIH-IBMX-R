@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
 const read = (name) => readFileSync(new URL(`./vfc/${name}`, import.meta.url), 'utf8');
-const ctx = { cfg: { rebuildDays: 2 } };
+const ctx = { cfg: { rebuildDays: 2, dayStartHour: 6 } };
 const flow = { get: (k) => ctx[k], set: (k, v) => { ctx[k] = v; } };
 const node = { status: () => {}, error: (e) => console.log('node.error:', e) };
 
@@ -42,7 +42,7 @@ console.log('local_date of 2026-07-01T23:30Z (BST):', at('2026-07-01T23:30:00Z')
 
 // The London offset itself, taken out of the same node code (cut before the last two calls).
 const helpers = dayFieldsSource.replace(/\naddDays\(msg\.kpiRows[\s\S]*$/, '\nreturn { londonOffsetHours: londonOffsetHours };\n');
-const { londonOffsetHours } = vm.runInNewContext('(function(){' + helpers + '})')();
+const { londonOffsetHours } = vm.runInNewContext('(function(flow){' + helpers + '})')(flow);
 const ms = (s) => Date.parse(s);
 console.log(
   'DST switch 2026-03-29T00:59Z/01:00Z offsets:', londonOffsetHours(ms('2026-03-29T00:59:00Z')), londonOffsetHours(ms('2026-03-29T01:00:00Z')),

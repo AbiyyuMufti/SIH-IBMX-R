@@ -3,9 +3,9 @@
 // {start, end}. Out: {topic: 'day', payload: 'YYYY-MM-DD', mode}.
 var DAY_MS = 86400000;
 var HOUR_MS = 3600000;
-// A production day D runs from D 06:00Z to D+1 06:00Z.
-var PRODUCTION_DAY_START_HOURS = 6;
 var cfg = flow.get('cfg');
+// A production day D runs from D start hour to D+1 start hour (UTC).
+var PRODUCTION_DAY_START_HOURS = cfg.dayStartHour;
 var p = msg.payload;
 var days = [];
 var mode;
@@ -32,8 +32,8 @@ if (p && typeof p === 'object' && p.start && p.end) {
 } else {
   mode = 'schedule';
   var now = Date.now();
-  // At 07:00Z the latest finished production day is the one before the
-  // current one.
+  // One hour after the day start the latest finished production day is the
+  // one before the current one.
   var shifted = now - PRODUCTION_DAY_START_HOURS * HOUR_MS - DAY_MS;
   var latest = Date.parse(dayStr(shifted) + 'T00:00:00Z');
   for (var i = cfg.rebuildDays; i >= 0; i--) {

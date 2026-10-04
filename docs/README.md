@@ -27,6 +27,7 @@
 | [kpis.md](kpis.md) | Reports and KPIs, plus the formulas of all 34 expressions | Tested (3 calculation POSTs approved) |
 | [config-and-master-data.md](config-and-master-data.md) | How OEE is set up; reason trees, calendars, products and other lists | Tested |
 | [reference-tables.md](reference-tables.md) | The five reference tables (assets, reasons, products, shifts, KPI targets), the Config tab and the single flow that writes them | Mock only |
+| [fact-flows.md](fact-flows.md) | The per-site flows that write `fact_kpi` and `fact_loss`, and how to add a site | Hull on the mock |
 
 ## Reference and background
 | File | Contents |

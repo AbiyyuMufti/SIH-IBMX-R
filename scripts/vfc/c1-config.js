@@ -10,7 +10,7 @@ var cfg = {
   clientSecret: 'PUT_CLIENT_SECRET_HERE',
   gateway: 'https://gateway.eu1.mindsphere.io',
   // One entry per site: the assets to read and the first hour (UTC) of its
-  // production day. All empty asset lists = every configured OEE asset.
+  // production day. A site flow needs a non-empty assetIds list.
   sites: [
     {
       name: 'Hull',
@@ -27,6 +27,8 @@ var cfg = {
   excludeNames: [],
   // Skip any asset below an asset with one of these names.
   excludeAncestorNames: ['Test Line'],
+  // A stop is planned when the first part of its reason path is in this list.
+  plannedRoots: ['Planned Downtime', 'Planned Maintenance'],
   // Reference flow: calendar events are read for this many days.
   calendarWindowDays: 31
 };
