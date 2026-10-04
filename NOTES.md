@@ -77,7 +77,7 @@ Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `sc
 ## Next
 - You: import `flows/vfc-site-hull.json` (needs the Config tab), run with DRY_RUN true, then write. Check the files land in `fact_kpi/Hull/` and `fact_loss/Hull/`.
 - Waiting for you: the pasted Siemens page on secret rotation, then adapt the config and secret design.
-- Then group 2 on the same config and site structure. Group 3 waits for Reckitt.
+- Group 2: decide later. Group 3 waits for Reckitt.
 
 ## VFC flow (fact_kpi, fact_loss) - in progress (2026-10-02)
 - Paul-Flow.json is available. Pattern: function builds msg.method/url/headers -> http request (method "use", ret "obj") -> function; parquet node (engine parquetjs, option write, multi, columns [{column,type}]) -> function sets msg.path -> write object (mode object).
@@ -126,5 +126,6 @@ Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `sc
 ## VFC check (2026-10-04, by the user)
 - Config, reference and Hull flows imported and dry-run in the VFC: all work after one fix. In the VFC the global context is `glob`, not `global` (sources, runner and docs now use `glob`). Group nodes are supported (group test file removed).
 - Tab names chosen by the user: `Config`, `Reference tables`, `Hull daily report` (no "Mufti"). The generators use them.
-- Decision: group 2 (shift KPIs, manual entries, run rate, derived loss columns) is skipped for now. Group 1 is the base for the first draft of the real dashboard. `fact_kpi_shift` can be derived from `fact_kpi` plus `dim_shift` if needed.
+- Decision: group 2 (shift KPIs, manual entries, run rate, derived loss columns) is marked DECIDE LATER (postponed, not dropped, not planned). Group 1 is the base for the first draft of the real dashboard. `fact_kpi_shift` can be derived from `fact_kpi` plus `dim_shift` if needed.
 - Next: user checks file content in the data lake; first dashboard draft on group 1 tables.
+- `dryRun` is set in the VFC by the user. Dev work never changes the default (`true`).
