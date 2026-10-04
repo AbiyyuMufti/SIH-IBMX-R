@@ -8,12 +8,13 @@
 // Output: downloads/<path> and downloads/datalake-<name>.zip (zip command).
 // Signed URLs and tokens are never printed.
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { dirname, resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { cfg, getToken } from './lib-ih.js';
 
 const BATCH = 50;
-const OUT = resolve(import.meta.dirname, '..', 'downloads');
+const OUT = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'downloads');
 
 async function signedUrls(token, paths) {
   const url = cfg.gateway + '/api/datalake/v3/generateDownloadObjectUrls';
@@ -34,6 +35,21 @@ async function signedUrls(token, paths) {
     body = null;
   }
   return { status: res.status, body, text };
+}
+
+// zip is not installed on every machine (not in Git Bash on Windows).
+// Fallback: the tar.exe that ships with Windows 10 can write zip files.
+function makeZip(zipFile, files) {
+  try {
+    execFileSync('zip', ['-q', '-r', zipFile, ...files], { cwd: OUT });
+    return;
+  } catch (e) {
+    if (e.code !== 'ENOENT' || process.platform !== 'win32') {
+      throw e;
+    }
+  }
+  const tar = resolve(process.env.SystemRoot || 'C:\Windows', 'System32', 'tar.exe');
+  execFileSync(tar, ['-a', '-c', '-f', zipFile, ...files], { cwd: OUT });
 }
 
 function daysBetween(from, to) {
@@ -75,6 +91,12 @@ for (let i = 0; i < paths.length; i += BATCH) {
     failed.push(...part.map((p) => `${p} (HTTP ${r.status})`));
     continue;
   }
+  const returned = new Set(r.body.objectUrls.map((item) => item.path));
+  for (const p of part) {
+    if (!returned.has(p)) {
+      failed.push(`${p} (no URL returned)`);
+    }
+  }
   for (const item of r.body.objectUrls) {
     const file = await fetch(item.signedUrl);
     if (!file.ok) {
@@ -82,6 +104,10 @@ for (let i = 0; i < paths.length; i += BATCH) {
       continue;
     }
     const target = resolve(OUT, item.path);
+    if (!target.startsWith(OUT + sep)) {
+      failed.push(`${item.path} (path leaves the downloads folder)`);
+      continue;
+    }
     mkdirSync(dirname(target), { recursive: true });
     writeFileSync(target, Buffer.from(await file.arrayBuffer()));
     saved.push(item.path);
@@ -93,6 +119,6 @@ failed.forEach((f) => console.log('FAILED', f));
 if (saved.length) {
   const name = a.replace(/[^A-Za-z0-9=_-]+/g, '_') + `${b}_${c}`;
   const zip = resolve(OUT, `datalake-${name}.zip`);
-  execFileSync('zip', ['-q', '-r', zip, ...saved], { cwd: OUT });
+  makeZip(zip, saved);
   console.log('zip:', zip);
 }
