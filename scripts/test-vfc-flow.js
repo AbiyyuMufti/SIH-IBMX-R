@@ -5,6 +5,7 @@
 //              parquet / write object nodes receive it (no file is written)
 //   all      = every configured OEE asset instead of the list in CONFIG
 //   mock     = synthetic answers, no network and no .env (see lib-mock-ih.js)
+//   file=<path>  run another flow file (default: the fact_kpi / fact_loss flow)
 import { readFileSync } from 'node:fs';
 import { runFlow } from './lib-vfc-runner.js';
 import { makeMockFetch } from './lib-mock-ih.js';
@@ -14,7 +15,9 @@ const start = args[0] || '2026-09-30';
 const end = /^[0-9]{4}-/.test(args[1] || '') ? args[1] : start;
 const write = args.includes('write');
 const mockArg = args.find((a) => a === 'mock' || a.startsWith('mock='));
-const nodes = JSON.parse(readFileSync(new URL('../flows/vfc-fact-kpi-fact-loss.json', import.meta.url), 'utf8'));
+const fileArg = args.find((a) => a.startsWith('file='));
+const flowFile = fileArg ? fileArg.slice(5) : 'flows/vfc-fact-kpi-fact-loss.json';
+const nodes = JSON.parse(readFileSync(new URL('../' + flowFile, import.meta.url), 'utf8'));
 
 const options = { startDay: start, endDay: end, write, allAssets: args.includes('all') };
 if (mockArg) {

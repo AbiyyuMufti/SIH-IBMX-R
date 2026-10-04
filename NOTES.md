@@ -1,8 +1,8 @@
 # NOTES
 
 ## Status
-- Phase A (offline) complete: steps 1-5 done. Waiting for you before Phase B. No network calls were made, no Python executed, `source/` untouched.
-- Commits: one per inventory, `inventory: index`, `docs: auth checklist`, helper scripts committed separately.
+- API exploration done (Phase A and B). VFC flow `fact_kpi` / `fact_loss` built, refactored to the readability rules, tested on the mock.
+- Reference tables (`dim_asset`, `dim_reason`, `dim_product`, `dim_shift`, `ref_target_seed`): five separate flows built and tested on the mock (2026-10-04). Not yet imported into the VFC or run against the real tenant.
 
 ## Processing queue (source/, sizes in bytes)
 - [x] CADIT Insights Hub Services Testing.postman_collection.json (17,731): 16 calls
@@ -75,8 +75,8 @@ Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `sc
 - Many Node-RED calls are copies across tabs; distinct endpoints are far fewer than the call counts.
 
 ## Next
-- You: fill `.env` (names in `.env`; see auth-checklist), answer open questions.
-- Phase B step 6: test auth with one GET, report, wait for you. Then step 7: safe GETs one by one by API area, redacted responses to `samples/`.
+- You: import the five `flows/vfc-ref-*.json` in the VFC, fill in CONFIG, run with dryRun true, and report what differs (link nodes, calendar events shape, unconfigured asset config).
+- Then: `fact_kpi_shift`, `fact_manual_entry`, run rate per product, synthetic files for `ref_cu`, `dim_sku`, `ref_target` (plan from the dashboard design artifact).
 
 ## VFC flow (fact_kpi, fact_loss) - in progress (2026-10-02)
 - Paul-Flow.json is available. Pattern: function builds msg.method/url/headers -> http request (method "use", ret "obj") -> function; parquet node (engine parquetjs, option write, multi, columns [{column,type}]) -> function sets msg.path -> write object (mode object).
@@ -94,3 +94,10 @@ Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `sc
 - New tooling: `scripts/validate-flow.js` (the CLAUDE.md checks), `scripts/lib-vfc-runner.js` (runner, now with link nodes), `scripts/lib-mock-ih.js` (fake Insights Hub, synthetic data). `node scripts/test-vfc-flow.js 2026-09-30 mock` runs the flow offline. `scripts/test-vfc-days.js` reads the new files.
 - Not tested against real Insights Hub or the VFC editor: the VFC palette is assumed to have link in / link out nodes (standard Node-RED). Import the new flow in the VFC and tell Claude if link nodes are missing or anything looks wrong.
 - Observed, not changed: KPI column `downtime_ms` is in neither INT_COLUMNS nor the DOUBLE list, so its parquet type is INT64 but the value is not rounded. A fractional downtime duration fails the type check in the test runner; how the real parquet node reacts is unknown. Real data has not shown it yet.
+
+## Reference table flows (2026-10-04)
+- Design approved by the user: one flow file per table (to learn from), CONFIG as in the fact flow (same default asset list, set by the user), live check optional.
+- Live check **not done**: the cloud session had no `.env` or credentials. The flows follow the shapes in `docs/config-and-master-data.md`. Open items are listed in `docs/reference-tables.md`.
+- New files: `scripts/build-vfc-reference-flows.js` (own small layout helpers; the fact flow generator was not touched, its JSON rebuilds byte-identical), `scripts/vfc/r*.js`, `flows/vfc-ref-*.json`. `test-vfc-flow.js` takes `file=<flow json>`. `lib-mock-ih.js` has routes for config, thresholds, reason trees, product collections and calendars, and two scenarios: `ref-config-fail`, `ref-detail-fail`.
+- Result: all five flows pass `validate-flow.js`. Mock runs: ok, token-fail, list-fail, empty, only-unconfigured, ref-config-fail, ref-detail-fail behave as intended (nothing written on any failure). Old flow: mock output for ok, unmapped, stops-paged and empty identical to before.
+- Decision: the five flows each repeat the setup stage (token, asset list, choose assets). Duplicated on purpose so each file stands alone.

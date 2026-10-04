@@ -1,0 +1,750 @@
+[
+  {
+    "id": "9f487.49a2c1",
+    "type": "tab",
+    "label": "Mufti OEE reference: dim_asset",
+    "disabled": false,
+    "allowCycles": false,
+    "info": "Writes the reference table dim_asset to the data lake. Read calls only against Insights Hub."
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "a1376.4b3bda",
+    "type": "comment",
+    "name": "[1] TRIGGER & CONFIG",
+    "info": "STAGE 1 - TRIGGER AND CONFIG. Writes the table dim_asset to the data lake. Schedule: weekly, Monday 07:00 UTC. The Run now button starts it by hand. Both go through 1.1 CONFIG, the only node to edit: output path, dry-run switch, credentials, asset list. dryRun is true by default: set it to false to write the file. The file name is fixed, so every run replaces the file.",
+    "x": 140,
+    "y": 50,
+    "wires": []
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "a3265.4cd4f3",
+    "type": "inject",
+    "name": "Weekly Mon 07:00 UTC",
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "repeat": "",
+    "repeatEnd": "0",
+    "endTime": "0",
+    "crontab": "0 7 * * 1",
+    "offset": "NaN",
+    "once": false,
+    "properties": "",
+    "timezone": "UTC",
+    "betweentimesunit": "m",
+    "showNextExecution": false,
+    "powerMode": false,
+    "x": 120,
+    "y": 90,
+    "wires": [
+      [
+        "a5154.4e6e0c"
+      ]
+    ]
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "a7043.500725",
+    "type": "inject",
+    "name": "Run now",
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "repeat": "",
+    "repeatEnd": "0",
+    "endTime": "0",
+    "crontab": "",
+    "offset": "NaN",
+    "once": false,
+    "properties": "",
+    "timezone": "utc",
+    "betweentimesunit": "m",
+    "showNextExecution": false,
+    "powerMode": false,
+    "x": 120,
+    "y": 140,
+    "wires": [
+      [
+        "a5154.4e6e0c"
+      ]
+    ]
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "a5154.4e6e0c",
+    "type": "function",
+    "name": "1.1 CONFIG (edit here)",
+    "func": "// CONFIG: the only node to edit. It runs on every trigger.\n// In: any message from an inject node. Out: the same message.\n// The settings are stored in flow context (flow.get('cfg')).\nvar cfg = {\n  // Output path in the data lake. The file is replaced on every run.\n  path: 'mufti_test/dim_asset/dim_asset.parquet',\n  // true = log row counts and first rows, write NO file. false = write.\n  dryRun: true,\n  // Technical user. Fill in after import. Do not share the flow filled in.\n  tenantName: 'reckitt',\n  clientId: 'PUT_CLIENT_ID_HERE',\n  clientSecret: 'PUT_CLIENT_SECRET_HERE',\n  gateway: 'https://gateway.eu1.mindsphere.io',\n  // Assets to read. An empty list = every configured OEE asset except the\n  // excluded ones below.\n  assetIds: [\n    // B2 Line (Hull)\n    'cf4565d7da1e4efcbc0ea6a4814b8eee',\n    // GT4 (Hull)\n    'bc08dae161124f1cb533199f556190b3'\n  ],\n  // Skip any asset with one of these names.\n  excludeNames: [],\n\n  // Only dim_asset: skip any asset below an asset with one of these names.\n  excludeAncestorNames: ['Test Line']\n};\nflow.set('cfg', cfg);\nnode.status({\n  fill: cfg.dryRun ? 'yellow' : 'green',\n  shape: 'dot',\n  text: cfg.dryRun ? 'DRY RUN' : 'WRITE MODE'\n});\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 310,
+    "y": 115,
+    "wires": [
+      [
+        "a8f32.51a03e"
+      ]
+    ]
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "acd10.54d270",
+    "type": "link out",
+    "name": "to SETUP",
+    "mode": "link",
+    "links": [
+      "aae21.533957"
+    ],
+    "x": 690,
+    "y": 115,
+    "wires": []
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "a8f32.51a03e",
+    "type": "function",
+    "name": "1.2 Build run message",
+    "func": "// Starts one run. In: any message from CONFIG (inject or test start).\n// Out: msg.payload = the run day text YYYY-MM-DD, and msg.mode.\n// A start like {start: 'YYYY-MM-DD'} fixes the day, otherwise it is today.\nvar day = new Date().toISOString().slice(0, 10);\nvar start = msg.payload;\nif (start && typeof start === 'object' && start.start) {\n  day = start.start;\n}\nmsg.payload = day;\nmsg.mode = 'reference';\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 500,
+    "y": 115,
+    "wires": [
+      [
+        "acd10.54d270"
+      ]
+    ]
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "aebff.566b89",
+    "type": "comment",
+    "name": "[2] SETUP",
+    "info": "STAGE 2 - token request, OEE asset list, choose the assets. Function nodes cannot use fetch in the VFC, so every call is an http request node: the function before it sets msg.method, msg.url and msg.headers. A failure goes to the LOG and nothing is written.",
+    "x": 140,
+    "y": 265,
+    "wires": []
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "aae21.533957",
+    "type": "link in",
+    "name": "SETUP",
+    "links": [
+      "acd10.54d270"
+    ],
+    "x": 120,
+    "y": 330,
+    "wires": [
+      [
+        "b0aee.5804a2"
+      ]
+    ]
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "b0aee.5804a2",
+    "type": "function",
+    "name": "2.1 Build token request",
+    "func": "// Builds the token request. The next node is an http request node.\n// In: a day message {payload: 'YYYY-MM-DD', mode}.\n// Out: msg.method, msg.url and msg.headers for the token POST.\nvar cfg = flow.get('cfg');\nvar credentials = cfg.clientId + ':' + cfg.clientSecret;\nmsg.day = msg.payload;\nmsg.loadedAt = Date.now();\nmsg.method = 'POST';\nmsg.url = 'https://' + cfg.tenantName +\n  '.piam.eu1.mindsphere.io/oauth/token?grant_type=client_credentials';\nmsg.headers = {\n  'Authorization': 'Basic ' + Buffer.from(credentials).toString('base64'),\n  'Accept': 'application/json'\n};\ndelete msg.payload;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 310,
+    "y": 330,
+    "wires": [
+      [
+        "b29dd.599dbb"
+      ]
+    ]
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "b29dd.599dbb",
+    "type": "http request",
+    "name": "POST token",
+    "method": "use",
+    "ret": "obj",
+    "url": "",
+    "timeout": "",
+    "mindspherePath": "",
+    "useMindsphereAuth": false,
+    "isAdmin": false,
+    "x": 500,
+    "y": 330,
+    "wires": [
+      [
+        "b48cc.5b36d4"
+      ]
+    ]
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "ba599.60021f",
+    "type": "link out",
+    "name": "to LOG",
+    "mode": "link",
+    "links": [
+      "b86aa.5e6906"
+    ],
+    "x": 810,
+    "y": 390,
+    "wires": []
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "b48cc.5b36d4",
+    "type": "function",
+    "name": "2.2 Build asset list request",
+    "func": "// Keeps the token and builds the OEE asset list request (isConfigured,\n// isManual). In: the token response. Out 1: the request for the http node.\n// Out 2: a log message when the token request failed.\nvar cfg = flow.get('cfg');\nvar token = msg.payload && msg.payload.access_token;\n\nfunction logMessage(text) {\n  return {\n    topic: 'log',\n    payload: msg.day + ' [' + msg.mode + '] ' + text\n  };\n}\n\nif (msg.statusCode !== 200 || !token) {\n  var failed = 'FAILED, NOTHING WRITTEN: token request failed, HTTP ';\n  return [null, logMessage(failed + msg.statusCode)];\n}\nmsg.token = token;\nmsg.method = 'GET';\nmsg.url = cfg.gateway + '/api/oee/v3/assets';\nmsg.headers = {\n  'Authorization': 'Bearer ' + msg.token,\n  'Accept': 'application/json'\n};\ndelete msg.payload;\nreturn [msg, null];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 690,
+    "y": 330,
+    "wires": [
+      [
+        "b67bb.5ccfed"
+      ],
+      [
+        "ba599.60021f"
+      ]
+    ]
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "b67bb.5ccfed",
+    "type": "http request",
+    "name": "GET OEE assets",
+    "method": "use",
+    "ret": "obj",
+    "url": "",
+    "timeout": "",
+    "mindspherePath": "",
+    "useMindsphereAuth": false,
+    "isAdmin": false,
+    "x": 880,
+    "y": 330,
+    "wires": [
+      [
+        "bc488.619b38"
+      ]
+    ]
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "c0266.64cd6a",
+    "type": "link out",
+    "name": "to LOG",
+    "mode": "link",
+    "links": [
+      "b86aa.5e6906"
+    ],
+    "x": 1190,
+    "y": 390,
+    "wires": []
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "bc488.619b38",
+    "type": "function",
+    "name": "2.3 Choose assets",
+    "func": "// Chooses the assets to read for a reference table.\n// In: the OEE asset list. Out 1: msg.payload = [{id, name, isManual,\n// isConfigured, reasonTreeId}] for the next node. Out 2: a log message.\nvar KEEP_UNCONFIGURED = true;\nvar cfg = flow.get('cfg');\nvar byId = {};\nvar skipped = [];\nvar targets = [];\n\nfunction logMessage(text) {\n  return {\n    topic: 'log',\n    payload: msg.day + ' [' + msg.mode + '] ' + text\n  };\n}\n\nif (msg.statusCode !== 200 || !Array.isArray(msg.payload)) {\n  var failed = 'FAILED, NOTHING WRITTEN: OEE asset list failed, HTTP ';\n  return [null, logMessage(failed + msg.statusCode)];\n}\n\nmsg.payload.forEach(function (o) {\n  byId[o.assetId] = o;\n});\nvar ids = cfg.assetIds;\nif (!ids || !ids.length) {\n  ids = msg.payload.map(function (o) {\n    return o.assetId;\n  });\n}\nids.forEach(function (id) {\n  var o = byId[id];\n  if (!o) {\n    skipped.push(String(id).slice(0, 6) + '... not an OEE asset');\n    return;\n  }\n  if (cfg.excludeNames.indexOf(o.name) >= 0) {\n    skipped.push(o.name + ' excluded');\n    return;\n  }\n  if (o.isConfigured === false && !KEEP_UNCONFIGURED) {\n    skipped.push(o.name + ' not configured');\n    return;\n  }\n  targets.push({\n    id: id,\n    name: o.name,\n    isManual: o.isManual,\n    isConfigured: o.isConfigured !== false,\n    reasonTreeId: o.reasonTreeId || null\n  });\n});\nmsg.planSkipped = skipped;\n\nif (!targets.length) {\n  var nothing = 'NOTHING TO WRITE (no assets to read)';\n  if (skipped.length) {\n    nothing += ' | skipped: ' + skipped.join('; ');\n  }\n  return [null, logMessage(nothing)];\n}\nmsg.payload = targets;\nnode.status({\n  fill: 'blue',\n  shape: 'dot',\n  text: targets.length + ' asset(s)'\n});\nreturn [msg, null];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 1070,
+    "y": 330,
+    "wires": [
+      [
+        "be377.633451"
+      ],
+      [
+        "c0266.64cd6a"
+      ]
+    ]
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "be377.633451",
+    "type": "split",
+    "name": "Split per item",
+    "splt": "\\n",
+    "spltType": "str",
+    "arraySplt": 1,
+    "arraySpltType": "len",
+    "stream": false,
+    "addname": "index",
+    "x": 1260,
+    "y": 330,
+    "wires": [
+      [
+        "c2155.666683"
+      ]
+    ]
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "c5f33.6998b5",
+    "type": "link out",
+    "name": "to ASSET",
+    "mode": "link",
+    "links": [
+      "c4044.67ff9c"
+    ],
+    "x": 1640,
+    "y": 330,
+    "wires": []
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "c2155.666683",
+    "type": "delay",
+    "name": "One asset per second",
+    "pauseType": "rate",
+    "timeout": "1",
+    "timeoutUnits": "seconds",
+    "rate": "1",
+    "nbRateUnits": "1",
+    "rateUnits": "second",
+    "randomFirst": "1",
+    "randomLast": "1",
+    "randomUnits": "seconds",
+    "drop": false,
+    "powerMode": false,
+    "x": 1450,
+    "y": 330,
+    "wires": [
+      [
+        "c5f33.6998b5"
+      ]
+    ]
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "c7e22.6b31ce",
+    "type": "comment",
+    "name": "[3] ASSET",
+    "info": "STAGE 3 - One message per asset. Asset Management GET asset (hierarchyPath), then the OEE config of the asset (calendar and product collection ids). Unconfigured assets are kept: they get a row with empty ids. Every asset ends at the join, also when failed or excluded (\"to JOIN\").",
+    "x": 140,
+    "y": 480,
+    "wires": []
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "c4044.67ff9c",
+    "type": "link in",
+    "name": "ASSET",
+    "links": [
+      "c5f33.6998b5"
+    ],
+    "x": 120,
+    "y": 545,
+    "wires": [
+      [
+        "c9d11.6ccae7"
+      ]
+    ]
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "c9d11.6ccae7",
+    "type": "function",
+    "name": "3.1 Build asset request",
+    "func": "// Builds the Asset Management request for one asset (to get hierarchyPath).\n// In: one asset {id, isManual, name} from the split node.\n// Out: msg.method, msg.url and msg.headers for the http request node.\nvar cfg = flow.get('cfg');\nmsg.asset = msg.payload;\nmsg.method = 'GET';\nmsg.url = cfg.gateway + '/api/assetmanagement/v3/assets/' +\n  encodeURIComponent(msg.asset.id);\nmsg.headers = {\n  'Authorization': 'Bearer ' + msg.token,\n  'Accept': 'application/hal+json'\n};\ndelete msg.payload;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 310,
+    "y": 545,
+    "wires": [
+      [
+        "cbc00.6e6400"
+      ]
+    ]
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "cbc00.6e6400",
+    "type": "http request",
+    "name": "GET asset (hierarchy)",
+    "method": "use",
+    "ret": "obj",
+    "url": "",
+    "timeout": "",
+    "mindspherePath": "",
+    "useMindsphereAuth": false,
+    "isAdmin": false,
+    "x": 500,
+    "y": 545,
+    "wires": [
+      [
+        "cdaef.6ffd19"
+      ]
+    ]
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "d37bc.74c864",
+    "type": "link out",
+    "name": "to JOIN",
+    "mode": "link",
+    "links": [
+      "d18cd.732f4b"
+    ],
+    "x": 810,
+    "y": 605,
+    "wires": []
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "cdaef.6ffd19",
+    "type": "function",
+    "name": "3.2 Build config request",
+    "func": "// Works out the hierarchy of one asset and builds the OEE config request.\n// In: the Asset Management response. Out 1: the config request.\n// Out 2: an item for the join when the asset failed or is excluded.\nvar cfg = flow.get('cfg');\n\n// Names are root first. Tenant layout: [0] tenant, [1] region, [2] site,\n// [3] area, [4] line, [5] machine. GT4 has no machine, so it is the line.\nfunction hierarchyFromNames(names) {\n  return {\n    asset_name: names[names.length - 1] || null,\n    site: names[2] || null,\n    area: names[3] || null,\n    line: names[4] || null,\n    machine: names[5] || null\n  };\n}\n\nfunction toJoin(failed, skipped) {\n  msg.payload = {\n    name: msg.asset.name,\n    failed: failed,\n    skipped: skipped,\n    rows: []\n  };\n  return [null, msg];\n}\n\nvar details = msg.payload;\nif (msg.statusCode !== 200 || !details || !details.name) {\n  var text = msg.asset.name + ': asset details failed, HTTP ';\n  return toJoin(text + msg.statusCode, null);\n}\n\nvar names = (details.hierarchyPath || []).map(function (p) {\n  return p.name;\n});\nnames.push(details.name);\nmsg.h = hierarchyFromNames(names);\nvar excluded = cfg.excludeNames.indexOf(details.name) >= 0;\nvar parentExcluded = names.slice(0, -1).some(function (n) {\n  return cfg.excludeAncestorNames.indexOf(n) >= 0;\n});\nif (excluded || parentExcluded) {\n  return toJoin(null, msg.h.asset_name + ' excluded');\n}\n\nmsg.method = 'GET';\nmsg.url = cfg.gateway + '/api/oee/v3/assets/' +\n  encodeURIComponent(msg.asset.id) + '/config';\nmsg.headers = {\n  'Authorization': 'Bearer ' + msg.token,\n  'Accept': 'application/json'\n};\ndelete msg.payload;\nreturn [msg, null];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 690,
+    "y": 545,
+    "wires": [
+      [
+        "cf9de.719632"
+      ],
+      [
+        "d37bc.74c864"
+      ]
+    ]
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "cf9de.719632",
+    "type": "http request",
+    "name": "GET asset config",
+    "method": "use",
+    "ret": "obj",
+    "url": "",
+    "timeout": "",
+    "mindspherePath": "",
+    "useMindsphereAuth": false,
+    "isAdmin": false,
+    "x": 880,
+    "y": 545,
+    "wires": [
+      [
+        "d56ab.76617d"
+      ]
+    ]
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "d759a.77fa96",
+    "type": "link out",
+    "name": "to JOIN",
+    "mode": "link",
+    "links": [
+      "d18cd.732f4b"
+    ],
+    "x": 1260,
+    "y": 545,
+    "wires": []
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "d56ab.76617d",
+    "type": "function",
+    "name": "3.3 Build asset row",
+    "func": "// Builds the dim_asset row of one asset.\n// In: the OEE config response, msg.h (hierarchy) and msg.asset.\n// Out: msg.payload = an item {name, failed, skipped, rows} for the join.\nvar asset = msg.asset;\nvar config = msg.payload || {};\nvar item = {\n  name: asset.name,\n  failed: null,\n  skipped: null,\n  rows: []\n};\n\nif (msg.statusCode !== 200) {\n  // An asset that is not configured has no config: keep it, ids empty.\n  config = {};\n  if (asset.isConfigured) {\n    var text = asset.name + ': asset config failed, HTTP ';\n    item.failed = text + msg.statusCode;\n    msg.payload = item;\n    return msg;\n  }\n}\n\nvar isManual = null;\nif (asset.isManual !== null && asset.isManual !== undefined) {\n  isManual = !!asset.isManual;\n}\nitem.rows.push({\n  asset_id: asset.id,\n  asset_name: msg.h.asset_name,\n  site: msg.h.site,\n  area: msg.h.area,\n  line: msg.h.line,\n  machine: msg.h.machine,\n  is_manual: isManual,\n  is_configured: asset.isConfigured,\n  calendar_id: config.calendarId || null,\n  product_collection_id: config.productCollectionId || null,\n  reason_tree_id: asset.reasonTreeId,\n  loaded_at: msg.loadedAt\n});\nmsg.payload = item;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 1070,
+    "y": 545,
+    "wires": [
+      [
+        "d759a.77fa96"
+      ]
+    ]
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "d9489.7993af",
+    "type": "comment",
+    "name": "[4] JOIN & DECIDE",
+    "info": "STAGE 4 - The join waits for all items. Collect puts the rows in one list. Decide writes NOTHING if any item failed (no half tables) and nothing in dry-run mode. Output 1 = the rows for the parquet node, output 2 = the log.",
+    "x": 140,
+    "y": 695,
+    "wires": []
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "d18cd.732f4b",
+    "type": "link in",
+    "name": "JOIN",
+    "links": [
+      "d37bc.74c864",
+      "d759a.77fa96"
+    ],
+    "x": 120,
+    "y": 760,
+    "wires": [
+      [
+        "db378.7b2cc8"
+      ]
+    ]
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "db378.7b2cc8",
+    "type": "join",
+    "name": "Wait for all items",
+    "mode": "auto",
+    "build": "array",
+    "property": "payload",
+    "propertyType": "msg",
+    "key": "topic",
+    "joiner": "\\n",
+    "joinerType": "str",
+    "accumulate": false,
+    "timeout": "",
+    "count": "",
+    "x": 310,
+    "y": 760,
+    "wires": [
+      [
+        "dd267.7cc5e1"
+      ]
+    ]
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "dd267.7cc5e1",
+    "type": "function",
+    "name": "4.1 Collect rows",
+    "func": "// Collects the items that the join delivered into one list of rows.\n// In: msg.payload = array of items {name, failed, skipped, rows}.\n// Out: msg.rows, msg.failed and msg.skipped (lists), msg.itemCount.\nvar items = Array.isArray(msg.payload) ? msg.payload : [msg.payload];\nvar rows = [];\nvar failed = [];\nvar skipped = (msg.planSkipped || []).slice();\n\nitems.forEach(function (item) {\n  if (!item) {\n    return;\n  }\n  if (item.failed) {\n    failed.push(item.failed);\n  }\n  if (item.skipped) {\n    skipped.push(item.skipped);\n  }\n  rows = rows.concat(item.rows || []);\n});\nmsg.rows = rows;\nmsg.failed = failed;\nmsg.skipped = skipped;\nmsg.itemCount = items.length;\ndelete msg.payload;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 500,
+    "y": 760,
+    "wires": [
+      [
+        "df156.7e5efa"
+      ]
+    ]
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "e2f34.81912c",
+    "type": "link out",
+    "name": "to WRITE",
+    "mode": "link",
+    "links": [
+      "e1045.7ff813"
+    ],
+    "x": 810,
+    "y": 780,
+    "wires": []
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "e4e23.832a45",
+    "type": "link out",
+    "name": "to LOG",
+    "mode": "link",
+    "links": [
+      "b86aa.5e6906"
+    ],
+    "x": 810,
+    "y": 820,
+    "wires": []
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "df156.7e5efa",
+    "type": "function",
+    "name": "4.2 Decide write",
+    "func": "// Decides what happens with the table dim_asset.\n// In: msg.rows, msg.failed, msg.skipped. Out 1: msg.payload = rows for the\n// parquet node. Out 2: a log line. A failed item means nothing is written.\nvar cfg = flow.get('cfg');\nvar rows = msg.rows;\nvar tail = '';\nif (msg.skipped.length) {\n  tail += ' | skipped: ' + msg.skipped.join('; ');\n}\nvar sizes = 'dim_asset ' + rows.length + ' rows from ' +\n  msg.itemCount + ' item(s)';\n\nfunction logOnly(text) {\n  var line = {\n    topic: 'log',\n    payload: msg.day + ' [' + msg.mode + '] ' + text\n  };\n  return [null, line];\n}\n\nif (msg.failed.length) {\n  node.status({\n    fill: 'red',\n    shape: 'ring',\n    text: 'FAILED, nothing written'\n  });\n  return logOnly(\n    'FAILED, NOTHING WRITTEN: ' + msg.failed.join(' | ') + tail\n  );\n}\nif (!rows.length) {\n  node.status({\n    fill: 'grey',\n    shape: 'ring',\n    text: 'nothing to write'\n  });\n  return logOnly('NOTHING TO WRITE: ' + sizes + tail);\n}\nif (cfg.dryRun) {\n  node.status({\n    fill: 'yellow',\n    shape: 'dot',\n    text: 'dry run ' + rows.length\n  });\n  var firstRows = JSON.stringify(rows.slice(0, 2));\n  return logOnly('DRY RUN: ' + sizes + '. First rows: ' + firstRows + tail);\n}\n\nnode.status({\n  fill: 'green',\n  shape: 'dot',\n  text: 'writing ' + rows.length\n});\nvar writing = {\n  topic: 'log',\n  payload: msg.day + ' [' + msg.mode + '] WRITING ' + sizes + tail\n};\nmsg.payload = rows;\ndelete msg.rows;\nreturn [msg, writing];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 690,
+    "y": 760,
+    "wires": [
+      [
+        "e2f34.81912c"
+      ],
+      [
+        "e4e23.832a45"
+      ]
+    ]
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "e6d12.84c35e",
+    "type": "comment",
+    "name": "[5] WRITE dim_asset",
+    "info": "STAGE 5 - parquet node, path and write object for dim_asset. The path comes from CONFIG. Types: UTF8 (STRING), BOOLEAN, INT64, DOUBLE, TIMESTAMP_MILLIS (epoch ms).",
+    "x": 140,
+    "y": 910,
+    "wires": []
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "e1045.7ff813",
+    "type": "link in",
+    "name": "WRITE",
+    "links": [
+      "e2f34.81912c"
+    ],
+    "x": 120,
+    "y": 975,
+    "wires": [
+      [
+        "e8c01.865c77"
+      ]
+    ]
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "e8c01.865c77",
+    "type": "parquet",
+    "name": "Write dim_asset parquet",
+    "option": "write",
+    "columns": [
+      {
+        "column": "asset_id",
+        "type": "UTF8"
+      },
+      {
+        "column": "asset_name",
+        "type": "UTF8"
+      },
+      {
+        "column": "site",
+        "type": "UTF8"
+      },
+      {
+        "column": "area",
+        "type": "UTF8"
+      },
+      {
+        "column": "line",
+        "type": "UTF8"
+      },
+      {
+        "column": "machine",
+        "type": "UTF8"
+      },
+      {
+        "column": "is_manual",
+        "type": "BOOLEAN"
+      },
+      {
+        "column": "is_configured",
+        "type": "BOOLEAN"
+      },
+      {
+        "column": "calendar_id",
+        "type": "UTF8"
+      },
+      {
+        "column": "product_collection_id",
+        "type": "UTF8"
+      },
+      {
+        "column": "reason_tree_id",
+        "type": "UTF8"
+      },
+      {
+        "column": "loaded_at",
+        "type": "TIMESTAMP_MILLIS"
+      }
+    ],
+    "rcolumns": "",
+    "multi": "multiple",
+    "outputPty": "payload",
+    "outputPtyType": "msg",
+    "engine": "parquetjs",
+    "x": 310,
+    "y": 975,
+    "wires": [
+      [
+        "eaaf0.87f590"
+      ]
+    ]
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "eaaf0.87f590",
+    "type": "function",
+    "name": "5.1 Set path",
+    "func": "// Sets the file path in the data lake.\n// In: the output of the parquet node (msg.payload is passed on unchanged).\n// Out: the same message with msg.path and msg.filename. The file name is\n// fixed, so every run replaces the file and never duplicates it.\nvar cfg = flow.get('cfg');\nmsg.path = cfg.path;\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 500,
+    "y": 975,
+    "wires": [
+      [
+        "ec9df.898ea9"
+      ]
+    ]
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "ec9df.898ea9",
+    "type": "write object",
+    "name": "dim_asset to data lake",
+    "path": "",
+    "mode": "object",
+    "x": 690,
+    "y": 975,
+    "wires": []
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "ee8ce.8b27c2",
+    "type": "comment",
+    "name": "[6] LOG",
+    "info": "STAGE 6 - LOG. Every log line arrives here through the link \"to LOG\": one line per run (debug sidebar): row count, skipped assets, FAILED / NOTHING WRITTEN, or the dry-run row count and first rows.",
+    "x": 140,
+    "y": 1125,
+    "wires": []
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "b86aa.5e6906",
+    "type": "link in",
+    "name": "LOG",
+    "links": [
+      "ba599.60021f",
+      "c0266.64cd6a",
+      "e4e23.832a45"
+    ],
+    "x": 120,
+    "y": 1190,
+    "wires": [
+      [
+        "f07bd.8cc0db"
+      ]
+    ]
+  },
+  {
+    "z": "9f487.49a2c1",
+    "id": "f07bd.8cc0db",
+    "type": "debug",
+    "name": "Run log",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "x": 310,
+    "y": 1190,
+    "wires": []
+  }
+]

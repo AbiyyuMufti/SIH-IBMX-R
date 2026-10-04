@@ -26,6 +26,7 @@
 | [manual-inputs.md](manual-inputs.md) | Read what operators entered (GT4, later Mira) | Tested on GT4 |
 | [kpis.md](kpis.md) | Reports and KPIs, plus the formulas of all 34 expressions | Tested (3 calculation POSTs approved) |
 | [config-and-master-data.md](config-and-master-data.md) | How OEE is set up; reason trees, calendars, products and other lists | Tested |
+| [reference-tables.md](reference-tables.md) | The five reference tables (assets, reasons, products, shifts, KPI targets) and the flows that write them | Mock only |
 
 ## Reference and background
 | File | Contents |

@@ -1,0 +1,999 @@
+[
+  {
+    "id": "4754f.03bfb9",
+    "type": "tab",
+    "label": "Mufti OEE reference: dim_product",
+    "disabled": false,
+    "allowCycles": false,
+    "info": "Writes the reference table dim_product to the data lake. Read calls only against Insights Hub."
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "4943e.0558d2",
+    "type": "comment",
+    "name": "[1] TRIGGER & CONFIG",
+    "info": "STAGE 1 - TRIGGER AND CONFIG. Writes the table dim_product to the data lake. Schedule: weekly, Monday 07:00 UTC. The Run now button starts it by hand. Both go through 1.1 CONFIG, the only node to edit: output path, dry-run switch, credentials, asset list. dryRun is true by default: set it to false to write the file. The file name is fixed, so every run replaces the file.",
+    "x": 140,
+    "y": 50,
+    "wires": []
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "4b32d.06f1eb",
+    "type": "inject",
+    "name": "Weekly Mon 07:00 UTC",
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "repeat": "",
+    "repeatEnd": "0",
+    "endTime": "0",
+    "crontab": "0 7 * * 1",
+    "offset": "NaN",
+    "once": false,
+    "properties": "",
+    "timezone": "UTC",
+    "betweentimesunit": "m",
+    "showNextExecution": false,
+    "powerMode": false,
+    "x": 120,
+    "y": 90,
+    "wires": [
+      [
+        "4d21c.088b04"
+      ]
+    ]
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "4f10b.0a241d",
+    "type": "inject",
+    "name": "Run now",
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "repeat": "",
+    "repeatEnd": "0",
+    "endTime": "0",
+    "crontab": "",
+    "offset": "NaN",
+    "once": false,
+    "properties": "",
+    "timezone": "utc",
+    "betweentimesunit": "m",
+    "showNextExecution": false,
+    "powerMode": false,
+    "x": 120,
+    "y": 140,
+    "wires": [
+      [
+        "4d21c.088b04"
+      ]
+    ]
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "4d21c.088b04",
+    "type": "function",
+    "name": "1.1 CONFIG (edit here)",
+    "func": "// CONFIG: the only node to edit. It runs on every trigger.\n// In: any message from an inject node. Out: the same message.\n// The settings are stored in flow context (flow.get('cfg')).\nvar cfg = {\n  // Output path in the data lake. The file is replaced on every run.\n  path: 'mufti_test/dim_product/dim_product.parquet',\n  // true = log row counts and first rows, write NO file. false = write.\n  dryRun: true,\n  // Technical user. Fill in after import. Do not share the flow filled in.\n  tenantName: 'reckitt',\n  clientId: 'PUT_CLIENT_ID_HERE',\n  clientSecret: 'PUT_CLIENT_SECRET_HERE',\n  gateway: 'https://gateway.eu1.mindsphere.io',\n  // Assets to read. An empty list = every configured OEE asset except the\n  // excluded ones below.\n  assetIds: [\n    // B2 Line (Hull)\n    'cf4565d7da1e4efcbc0ea6a4814b8eee',\n    // GT4 (Hull)\n    'bc08dae161124f1cb533199f556190b3'\n  ],\n  // Skip any asset with one of these names.\n  excludeNames: [],\n\n  // Only dim_asset: skip any asset below an asset with one of these names.\n  excludeAncestorNames: ['Test Line']\n};\nflow.set('cfg', cfg);\nnode.status({\n  fill: cfg.dryRun ? 'yellow' : 'green',\n  shape: 'dot',\n  text: cfg.dryRun ? 'DRY RUN' : 'WRITE MODE'\n});\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 310,
+    "y": 115,
+    "wires": [
+      [
+        "50ffa.0bbd36"
+      ]
+    ]
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "54dd8.0eef68",
+    "type": "link out",
+    "name": "to SETUP",
+    "mode": "link",
+    "links": [
+      "52ee9.0d564f"
+    ],
+    "x": 690,
+    "y": 115,
+    "wires": []
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "50ffa.0bbd36",
+    "type": "function",
+    "name": "1.2 Build run message",
+    "func": "// Starts one run. In: any message from CONFIG (inject or test start).\n// Out: msg.payload = the run day text YYYY-MM-DD, and msg.mode.\n// A start like {start: 'YYYY-MM-DD'} fixes the day, otherwise it is today.\nvar day = new Date().toISOString().slice(0, 10);\nvar start = msg.payload;\nif (start && typeof start === 'object' && start.start) {\n  day = start.start;\n}\nmsg.payload = day;\nmsg.mode = 'reference';\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 500,
+    "y": 115,
+    "wires": [
+      [
+        "54dd8.0eef68"
+      ]
+    ]
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "56cc7.108881",
+    "type": "comment",
+    "name": "[2] SETUP",
+    "info": "STAGE 2 - token request, OEE asset list, choose the assets. Function nodes cannot use fetch in the VFC, so every call is an http request node: the function before it sets msg.method, msg.url and msg.headers. A failure goes to the LOG and nothing is written.",
+    "x": 140,
+    "y": 265,
+    "wires": []
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "52ee9.0d564f",
+    "type": "link in",
+    "name": "SETUP",
+    "links": [
+      "54dd8.0eef68"
+    ],
+    "x": 120,
+    "y": 330,
+    "wires": [
+      [
+        "58bb6.12219a"
+      ]
+    ]
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "58bb6.12219a",
+    "type": "function",
+    "name": "2.1 Build token request",
+    "func": "// Builds the token request. The next node is an http request node.\n// In: a day message {payload: 'YYYY-MM-DD', mode}.\n// Out: msg.method, msg.url and msg.headers for the token POST.\nvar cfg = flow.get('cfg');\nvar credentials = cfg.clientId + ':' + cfg.clientSecret;\nmsg.day = msg.payload;\nmsg.loadedAt = Date.now();\nmsg.method = 'POST';\nmsg.url = 'https://' + cfg.tenantName +\n  '.piam.eu1.mindsphere.io/oauth/token?grant_type=client_credentials';\nmsg.headers = {\n  'Authorization': 'Basic ' + Buffer.from(credentials).toString('base64'),\n  'Accept': 'application/json'\n};\ndelete msg.payload;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 310,
+    "y": 330,
+    "wires": [
+      [
+        "5aaa5.13bab3"
+      ]
+    ]
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "5aaa5.13bab3",
+    "type": "http request",
+    "name": "POST token",
+    "method": "use",
+    "ret": "obj",
+    "url": "",
+    "timeout": "",
+    "mindspherePath": "",
+    "useMindsphereAuth": false,
+    "isAdmin": false,
+    "x": 500,
+    "y": 330,
+    "wires": [
+      [
+        "5c994.1553cc"
+      ]
+    ]
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "62661.1a1f17",
+    "type": "link out",
+    "name": "to LOG",
+    "mode": "link",
+    "links": [
+      "60772.1885fe"
+    ],
+    "x": 810,
+    "y": 390,
+    "wires": []
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "5c994.1553cc",
+    "type": "function",
+    "name": "2.2 Build asset list request",
+    "func": "// Keeps the token and builds the OEE asset list request (isConfigured,\n// isManual). In: the token response. Out 1: the request for the http node.\n// Out 2: a log message when the token request failed.\nvar cfg = flow.get('cfg');\nvar token = msg.payload && msg.payload.access_token;\n\nfunction logMessage(text) {\n  return {\n    topic: 'log',\n    payload: msg.day + ' [' + msg.mode + '] ' + text\n  };\n}\n\nif (msg.statusCode !== 200 || !token) {\n  var failed = 'FAILED, NOTHING WRITTEN: token request failed, HTTP ';\n  return [null, logMessage(failed + msg.statusCode)];\n}\nmsg.token = token;\nmsg.method = 'GET';\nmsg.url = cfg.gateway + '/api/oee/v3/assets';\nmsg.headers = {\n  'Authorization': 'Bearer ' + msg.token,\n  'Accept': 'application/json'\n};\ndelete msg.payload;\nreturn [msg, null];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 690,
+    "y": 330,
+    "wires": [
+      [
+        "5e883.16ece5"
+      ],
+      [
+        "62661.1a1f17"
+      ]
+    ]
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "5e883.16ece5",
+    "type": "http request",
+    "name": "GET OEE assets",
+    "method": "use",
+    "ret": "obj",
+    "url": "",
+    "timeout": "",
+    "mindspherePath": "",
+    "useMindsphereAuth": false,
+    "isAdmin": false,
+    "x": 880,
+    "y": 330,
+    "wires": [
+      [
+        "64550.1bb830"
+      ]
+    ]
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "6832e.1eea62",
+    "type": "link out",
+    "name": "to LOG",
+    "mode": "link",
+    "links": [
+      "60772.1885fe"
+    ],
+    "x": 1190,
+    "y": 390,
+    "wires": []
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "64550.1bb830",
+    "type": "function",
+    "name": "2.3 Choose assets",
+    "func": "// Chooses the assets to read for a reference table.\n// In: the OEE asset list. Out 1: msg.payload = [{id, name, isManual,\n// isConfigured, reasonTreeId}] for the next node. Out 2: a log message.\nvar KEEP_UNCONFIGURED = false;\nvar cfg = flow.get('cfg');\nvar byId = {};\nvar skipped = [];\nvar targets = [];\n\nfunction logMessage(text) {\n  return {\n    topic: 'log',\n    payload: msg.day + ' [' + msg.mode + '] ' + text\n  };\n}\n\nif (msg.statusCode !== 200 || !Array.isArray(msg.payload)) {\n  var failed = 'FAILED, NOTHING WRITTEN: OEE asset list failed, HTTP ';\n  return [null, logMessage(failed + msg.statusCode)];\n}\n\nmsg.payload.forEach(function (o) {\n  byId[o.assetId] = o;\n});\nvar ids = cfg.assetIds;\nif (!ids || !ids.length) {\n  ids = msg.payload.map(function (o) {\n    return o.assetId;\n  });\n}\nids.forEach(function (id) {\n  var o = byId[id];\n  if (!o) {\n    skipped.push(String(id).slice(0, 6) + '... not an OEE asset');\n    return;\n  }\n  if (cfg.excludeNames.indexOf(o.name) >= 0) {\n    skipped.push(o.name + ' excluded');\n    return;\n  }\n  if (o.isConfigured === false && !KEEP_UNCONFIGURED) {\n    skipped.push(o.name + ' not configured');\n    return;\n  }\n  targets.push({\n    id: id,\n    name: o.name,\n    isManual: o.isManual,\n    isConfigured: o.isConfigured !== false,\n    reasonTreeId: o.reasonTreeId || null\n  });\n});\nmsg.planSkipped = skipped;\n\nif (!targets.length) {\n  var nothing = 'NOTHING TO WRITE (no assets to read)';\n  if (skipped.length) {\n    nothing += ' | skipped: ' + skipped.join('; ');\n  }\n  return [null, logMessage(nothing)];\n}\nmsg.payload = targets;\nnode.status({\n  fill: 'blue',\n  shape: 'dot',\n  text: targets.length + ' asset(s)'\n});\nreturn [msg, null];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 1070,
+    "y": 330,
+    "wires": [
+      [
+        "6643f.1d5149"
+      ],
+      [
+        "6832e.1eea62"
+      ]
+    ]
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "6643f.1d5149",
+    "type": "split",
+    "name": "Split per item",
+    "splt": "\\n",
+    "spltType": "str",
+    "arraySplt": 1,
+    "arraySpltType": "len",
+    "stream": false,
+    "addname": "index",
+    "x": 1260,
+    "y": 330,
+    "wires": [
+      [
+        "6a21d.20837b"
+      ]
+    ]
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "6dffb.23b5ad",
+    "type": "link out",
+    "name": "to CONFIG",
+    "mode": "link",
+    "links": [
+      "6c10c.221c94"
+    ],
+    "x": 1640,
+    "y": 330,
+    "wires": []
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "6a21d.20837b",
+    "type": "delay",
+    "name": "One asset per second",
+    "pauseType": "rate",
+    "timeout": "1",
+    "timeoutUnits": "seconds",
+    "rate": "1",
+    "nbRateUnits": "1",
+    "rateUnits": "second",
+    "randomFirst": "1",
+    "randomLast": "1",
+    "randomUnits": "seconds",
+    "drop": false,
+    "powerMode": false,
+    "x": 1450,
+    "y": 330,
+    "wires": [
+      [
+        "6dffb.23b5ad"
+      ]
+    ]
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "6feea.254ec6",
+    "type": "comment",
+    "name": "[3] ASSET CONFIG",
+    "info": "STAGE 3 - One message per asset. GET the OEE config of the asset and read one id from it. The result goes to the join of this stage (\"to JOIN IDS\"). A failed call is carried to the log, nothing is written.",
+    "x": 140,
+    "y": 480,
+    "wires": []
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "6c10c.221c94",
+    "type": "link in",
+    "name": "CONFIG",
+    "links": [
+      "6dffb.23b5ad"
+    ],
+    "x": 120,
+    "y": 545,
+    "wires": [
+      [
+        "71dd9.26e7df"
+      ]
+    ]
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "71dd9.26e7df",
+    "type": "function",
+    "name": "3.1 Build config request",
+    "func": "// Builds the OEE config request of one asset (calendar, product collection).\n// In: one asset {id, name, ...} from the split node.\n// Out: msg.method, msg.url and msg.headers for the http request node.\nvar cfg = flow.get('cfg');\nmsg.asset = msg.payload;\nmsg.method = 'GET';\nmsg.url = cfg.gateway + '/api/oee/v3/assets/' +\n  encodeURIComponent(msg.asset.id) + '/config';\nmsg.headers = {\n  'Authorization': 'Bearer ' + msg.token,\n  'Accept': 'application/json'\n};\ndelete msg.payload;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 310,
+    "y": 545,
+    "wires": [
+      [
+        "73cc8.2880f8"
+      ]
+    ]
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "73cc8.2880f8",
+    "type": "http request",
+    "name": "GET asset config",
+    "method": "use",
+    "ret": "obj",
+    "url": "",
+    "timeout": "",
+    "mindspherePath": "",
+    "useMindsphereAuth": false,
+    "isAdmin": false,
+    "x": 500,
+    "y": 545,
+    "wires": [
+      [
+        "75bb7.2a1a11"
+      ]
+    ]
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "79995.2d4c43",
+    "type": "link out",
+    "name": "to JOIN IDS",
+    "mode": "link",
+    "links": [
+      "77aa6.2bb32a"
+    ],
+    "x": 880,
+    "y": 545,
+    "wires": []
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "75bb7.2a1a11",
+    "type": "function",
+    "name": "3.2 Read config id",
+    "func": "// Reads one id from the OEE config response of one asset.\n// In: the config response. Out: msg.payload = {name, value, failed} for the\n// join. The id to read is set in FIELD.\nvar FIELD = 'productCollectionId';\nvar name = msg.asset.name;\nvar item = {\n  name: name,\n  value: null,\n  failed: null\n};\n\nif (msg.statusCode !== 200 || !msg.payload) {\n  item.failed = name + ': config failed, HTTP ' + msg.statusCode;\n} else {\n  item.value = msg.payload[FIELD] || null;\n}\nmsg.payload = item;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 690,
+    "y": 545,
+    "wires": [
+      [
+        "79995.2d4c43"
+      ]
+    ]
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "7b884.2ee55c",
+    "type": "comment",
+    "name": "[4] COLLECT IDS",
+    "info": "STAGE 4 - Waits for all assets, then keeps the distinct ids. The master list gives the names. One message per id goes on to the detail calls.",
+    "x": 140,
+    "y": 695,
+    "wires": []
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "77aa6.2bb32a",
+    "type": "link in",
+    "name": "JOIN IDS",
+    "links": [
+      "79995.2d4c43"
+    ],
+    "x": 120,
+    "y": 760,
+    "wires": [
+      [
+        "7d773.307e75"
+      ]
+    ]
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "7d773.307e75",
+    "type": "join",
+    "name": "Wait for all assets",
+    "mode": "auto",
+    "build": "array",
+    "property": "payload",
+    "propertyType": "msg",
+    "key": "topic",
+    "joiner": "\\n",
+    "joinerType": "str",
+    "accumulate": false,
+    "timeout": "",
+    "count": "",
+    "x": 310,
+    "y": 760,
+    "wires": [
+      [
+        "7f662.32178e"
+      ]
+    ]
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "83440.3549c0",
+    "type": "link out",
+    "name": "to LOG",
+    "mode": "link",
+    "links": [
+      "60772.1885fe"
+    ],
+    "x": 620,
+    "y": 820,
+    "wires": []
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "7f662.32178e",
+    "type": "function",
+    "name": "4.1 Pick ids",
+    "func": "// Collects the distinct ids of the assets. The field to read is ID_FIELD.\n// In: msg.payload = array of items. Out 1: msg.ids (list of ids).\n// Out 2: a log line when an item failed or there is no id at all.\nvar ID_FIELD = 'value';\nvar seen = {};\nvar ids = [];\nvar failures = [];\nvar without = [];\n\nfunction logMessage(text) {\n  return {\n    topic: 'log',\n    payload: msg.day + ' [' + msg.mode + '] ' + text\n  };\n}\n\nmsg.payload.forEach(function (item) {\n  if (item.failed) {\n    failures.push(item.failed);\n    return;\n  }\n  var id = item[ID_FIELD];\n  if (!id) {\n    without.push(item.name);\n    return;\n  }\n  if (!seen[id]) {\n    seen[id] = true;\n    ids.push(id);\n  }\n});\n\nif (failures.length) {\n  var failed = 'FAILED, NOTHING WRITTEN: ' + failures.join(' | ');\n  return [null, logMessage(failed)];\n}\nif (!ids.length) {\n  var nothing = 'NOTHING TO WRITE (no ids found)';\n  if (without.length) {\n    nothing += ' | assets without id: ' + without.join(', ');\n  }\n  return [null, logMessage(nothing)];\n}\nif (without.length) {\n  var note = ' | assets without id: ' + without.join(', ');\n  msg.planSkipped = (msg.planSkipped || []).concat(note);\n}\nmsg.ids = ids;\ndelete msg.payload;\nreturn [msg, null];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 500,
+    "y": 760,
+    "wires": [
+      [
+        "81551.33b0a7"
+      ],
+      [
+        "83440.3549c0"
+      ]
+    ]
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "81551.33b0a7",
+    "type": "function",
+    "name": "4.2 Build master list request",
+    "func": "// Builds the request for the master list that holds the names of the ids.\n// In: msg.ids. Out: msg.method, msg.url and msg.headers for the http node.\n// The list path is set in LIST_PATH.\nvar LIST_PATH = 'productCollections';\nvar cfg = flow.get('cfg');\nmsg.method = 'GET';\nmsg.url = cfg.gateway + '/api/oee/v3/' + LIST_PATH;\nmsg.headers = {\n  'Authorization': 'Bearer ' + msg.token,\n  'Accept': 'application/json'\n};\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 690,
+    "y": 760,
+    "wires": [
+      [
+        "8532f.36e2d9"
+      ]
+    ]
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "8532f.36e2d9",
+    "type": "http request",
+    "name": "GET master list",
+    "method": "use",
+    "ret": "obj",
+    "url": "",
+    "timeout": "",
+    "mindspherePath": "",
+    "useMindsphereAuth": false,
+    "isAdmin": false,
+    "x": 880,
+    "y": 760,
+    "wires": [
+      [
+        "8721e.387bf2"
+      ]
+    ]
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "8affc.3bae24",
+    "type": "link out",
+    "name": "to LOG",
+    "mode": "link",
+    "links": [
+      "60772.1885fe"
+    ],
+    "x": 1190,
+    "y": 820,
+    "wires": []
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "8721e.387bf2",
+    "type": "function",
+    "name": "4.3 Choose ids",
+    "func": "// Matches the wanted ids (msg.ids) with the master list, to get the names.\n// In: the list response. Out 1: msg.payload = [{id, name, extra}] for the\n// split node. Out 2: a log line. LIST_KEY is the array inside the response.\nvar LIST_KEY = 'productCollections';\nvar NAME_FIELD = 'name';\nvar EXTRA_FIELD = '';\nvar byId = {};\nvar targets = [];\nvar notInList = [];\n\nfunction logMessage(text) {\n  return {\n    topic: 'log',\n    payload: msg.day + ' [' + msg.mode + '] ' + text\n  };\n}\n\nvar list = msg.payload;\nif (LIST_KEY && list) {\n  list = list[LIST_KEY];\n}\nif (msg.statusCode !== 200 || !Array.isArray(list)) {\n  var failed = 'FAILED, NOTHING WRITTEN: master list failed, HTTP ';\n  return [null, logMessage(failed + msg.statusCode)];\n}\n\nlist.forEach(function (entry) {\n  byId[entry.id] = entry;\n});\nmsg.ids.forEach(function (id) {\n  var entry = byId[id];\n  if (!entry) {\n    notInList.push(String(id).slice(0, 6) + '...');\n  }\n  targets.push({\n    id: id,\n    name: entry ? entry[NAME_FIELD] : null,\n    extra: entry && EXTRA_FIELD ? entry[EXTRA_FIELD] : null\n  });\n});\nif (notInList.length) {\n  var note = ' | not in master list: ' + notInList.join(', ');\n  msg.planSkipped = (msg.planSkipped || []).concat(note);\n}\nmsg.payload = targets;\ndelete msg.ids;\nnode.status({\n  fill: 'blue',\n  shape: 'dot',\n  text: targets.length + ' id(s)'\n});\nreturn [msg, null];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 1070,
+    "y": 760,
+    "wires": [
+      [
+        "8910d.3a150b"
+      ],
+      [
+        "8affc.3bae24"
+      ]
+    ]
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "8910d.3a150b",
+    "type": "split",
+    "name": "Split per item",
+    "splt": "\\n",
+    "spltType": "str",
+    "arraySplt": 1,
+    "arraySpltType": "len",
+    "stream": false,
+    "addname": "index",
+    "x": 1260,
+    "y": 760,
+    "wires": [
+      [
+        "8ceeb.3d473d"
+      ]
+    ]
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "90cc9.40796f",
+    "type": "link out",
+    "name": "to DETAIL",
+    "mode": "link",
+    "links": [
+      "8edda.3ee056"
+    ],
+    "x": 1640,
+    "y": 760,
+    "wires": []
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "8ceeb.3d473d",
+    "type": "delay",
+    "name": "One id per second",
+    "pauseType": "rate",
+    "timeout": "1",
+    "timeoutUnits": "seconds",
+    "rate": "1",
+    "nbRateUnits": "1",
+    "rateUnits": "second",
+    "randomFirst": "1",
+    "randomLast": "1",
+    "randomUnits": "seconds",
+    "drop": false,
+    "powerMode": false,
+    "x": 1450,
+    "y": 760,
+    "wires": [
+      [
+        "90cc9.40796f"
+      ]
+    ]
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "92bb8.421288",
+    "type": "comment",
+    "name": "[5] PRODUCTS",
+    "info": "STAGE 5 - One message per product collection. GET the products (code, name, design speed) and convert the speed to units per hour. The result goes to the join (\"to JOIN\").",
+    "x": 140,
+    "y": 910,
+    "wires": []
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "8edda.3ee056",
+    "type": "link in",
+    "name": "DETAIL",
+    "links": [
+      "90cc9.40796f"
+    ],
+    "x": 120,
+    "y": 975,
+    "wires": [
+      [
+        "94aa7.43aba1"
+      ]
+    ]
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "94aa7.43aba1",
+    "type": "function",
+    "name": "5.1 Build detail request",
+    "func": "// Builds the GET request for one id (reason tree, collection or calendar).\n// In: one target {id, name, extra} from the split node.\n// Out: msg.method, msg.url and msg.headers for the http request node.\nvar PATH_BEFORE = 'productCollections/';\nvar PATH_AFTER = '/products';\nvar WITH_WINDOW = false;\nvar DAY_MS = 86400000;\nvar cfg = flow.get('cfg');\nmsg.target = msg.payload;\nvar url = cfg.gateway + '/api/oee/v3/' + PATH_BEFORE +\n  encodeURIComponent(msg.target.id) + PATH_AFTER;\n\n// Calendar events are read for a window that starts on the run day.\nif (WITH_WINDOW) {\n  var from = Date.parse(msg.day + 'T00:00:00.000Z');\n  var to = from + cfg.calendarWindowDays * DAY_MS;\n  url += '?from=' + new Date(from).toISOString();\n  url += '&to=' + new Date(to).toISOString();\n}\nmsg.method = 'GET';\nmsg.url = url;\nmsg.headers = {\n  'Authorization': 'Bearer ' + msg.token,\n  'Accept': 'application/json'\n};\ndelete msg.payload;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 310,
+    "y": 975,
+    "wires": [
+      [
+        "96996.4544ba"
+      ]
+    ]
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "96996.4544ba",
+    "type": "http request",
+    "name": "GET details",
+    "method": "use",
+    "ret": "obj",
+    "url": "",
+    "timeout": "",
+    "mindspherePath": "",
+    "useMindsphereAuth": false,
+    "isAdmin": false,
+    "x": 500,
+    "y": 975,
+    "wires": [
+      [
+        "98885.46ddd3"
+      ]
+    ]
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "9c663.4a1005",
+    "type": "link out",
+    "name": "to JOIN",
+    "mode": "link",
+    "links": [
+      "9a774.4876ec"
+    ],
+    "x": 880,
+    "y": 975,
+    "wires": []
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "98885.46ddd3",
+    "type": "function",
+    "name": "5.2 Build rows",
+    "func": "// Builds the dim_product rows of one product collection.\n// In: the products response and msg.target.\n// Out: msg.payload = an item {name, failed, skipped, rows} for the join.\n// design_speed_per_hour: the speed in units per hour, null if unknown.\nvar PER_HOUR = {\n  SECOND: 3600,\n  MINUTE: 60,\n  HOUR: 1\n};\nvar target = msg.target;\nvar label = target.name || String(target.id).slice(0, 6) + '...';\nvar item = {\n  name: label,\n  failed: null,\n  skipped: null,\n  rows: []\n};\n\nvar products = msg.payload && msg.payload.products;\nif (msg.statusCode !== 200 || !Array.isArray(products)) {\n  var text = 'product collection ' + label + ' failed, HTTP ';\n  item.failed = text + msg.statusCode;\n  msg.payload = item;\n  return msg;\n}\n\nfunction perHour(p) {\n  var factor = PER_HOUR[p.designSpeedInterval];\n  if (typeof p.designSpeedValue !== 'number' || !factor) {\n    return null;\n  }\n  return p.designSpeedValue * factor;\n}\n\nproducts.forEach(function (p) {\n  item.rows.push({\n    collection_id: target.id,\n    collection_name: target.name,\n    product_id: p.id,\n    code: p.code || null,\n    name: p.name || null,\n    description: p.description || null,\n    design_speed_value: p.designSpeedValue,\n    design_speed_unit: p.designSpeedUnit || null,\n    design_speed_interval: p.designSpeedInterval || null,\n    design_speed_type: p.designSpeedType || null,\n    design_speed_per_hour: perHour(p),\n    loaded_at: msg.loadedAt\n  });\n});\nmsg.payload = item;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 690,
+    "y": 975,
+    "wires": [
+      [
+        "9c663.4a1005"
+      ]
+    ]
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "9e552.4ba91e",
+    "type": "comment",
+    "name": "[6] JOIN & DECIDE",
+    "info": "STAGE 6 - The join waits for all items. Collect puts the rows in one list. Decide writes NOTHING if any item failed (no half tables) and nothing in dry-run mode. Output 1 = the rows for the parquet node, output 2 = the log.",
+    "x": 140,
+    "y": 1125,
+    "wires": []
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "9a774.4876ec",
+    "type": "link in",
+    "name": "JOIN",
+    "links": [
+      "9c663.4a1005"
+    ],
+    "x": 120,
+    "y": 1190,
+    "wires": [
+      [
+        "a0441.4d4237"
+      ]
+    ]
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "a0441.4d4237",
+    "type": "join",
+    "name": "Wait for all items",
+    "mode": "auto",
+    "build": "array",
+    "property": "payload",
+    "propertyType": "msg",
+    "key": "topic",
+    "joiner": "\\n",
+    "joinerType": "str",
+    "accumulate": false,
+    "timeout": "",
+    "count": "",
+    "x": 310,
+    "y": 1190,
+    "wires": [
+      [
+        "a2330.4edb50"
+      ]
+    ]
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "a2330.4edb50",
+    "type": "function",
+    "name": "6.1 Collect rows",
+    "func": "// Collects the items that the join delivered into one list of rows.\n// In: msg.payload = array of items {name, failed, skipped, rows}.\n// Out: msg.rows, msg.failed and msg.skipped (lists), msg.itemCount.\nvar items = Array.isArray(msg.payload) ? msg.payload : [msg.payload];\nvar rows = [];\nvar failed = [];\nvar skipped = (msg.planSkipped || []).slice();\n\nitems.forEach(function (item) {\n  if (!item) {\n    return;\n  }\n  if (item.failed) {\n    failed.push(item.failed);\n  }\n  if (item.skipped) {\n    skipped.push(item.skipped);\n  }\n  rows = rows.concat(item.rows || []);\n});\nmsg.rows = rows;\nmsg.failed = failed;\nmsg.skipped = skipped;\nmsg.itemCount = items.length;\ndelete msg.payload;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 500,
+    "y": 1190,
+    "wires": [
+      [
+        "a421f.507469"
+      ]
+    ]
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "a7ffd.53a69b",
+    "type": "link out",
+    "name": "to WRITE",
+    "mode": "link",
+    "links": [
+      "a610e.520d82"
+    ],
+    "x": 810,
+    "y": 1210,
+    "wires": []
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "a9eec.553fb4",
+    "type": "link out",
+    "name": "to LOG",
+    "mode": "link",
+    "links": [
+      "60772.1885fe"
+    ],
+    "x": 810,
+    "y": 1250,
+    "wires": []
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "a421f.507469",
+    "type": "function",
+    "name": "6.2 Decide write",
+    "func": "// Decides what happens with the table dim_product.\n// In: msg.rows, msg.failed, msg.skipped. Out 1: msg.payload = rows for the\n// parquet node. Out 2: a log line. A failed item means nothing is written.\nvar cfg = flow.get('cfg');\nvar rows = msg.rows;\nvar tail = '';\nif (msg.skipped.length) {\n  tail += ' | skipped: ' + msg.skipped.join('; ');\n}\nvar sizes = 'dim_product ' + rows.length + ' rows from ' +\n  msg.itemCount + ' item(s)';\n\nfunction logOnly(text) {\n  var line = {\n    topic: 'log',\n    payload: msg.day + ' [' + msg.mode + '] ' + text\n  };\n  return [null, line];\n}\n\nif (msg.failed.length) {\n  node.status({\n    fill: 'red',\n    shape: 'ring',\n    text: 'FAILED, nothing written'\n  });\n  return logOnly(\n    'FAILED, NOTHING WRITTEN: ' + msg.failed.join(' | ') + tail\n  );\n}\nif (!rows.length) {\n  node.status({\n    fill: 'grey',\n    shape: 'ring',\n    text: 'nothing to write'\n  });\n  return logOnly('NOTHING TO WRITE: ' + sizes + tail);\n}\nif (cfg.dryRun) {\n  node.status({\n    fill: 'yellow',\n    shape: 'dot',\n    text: 'dry run ' + rows.length\n  });\n  var firstRows = JSON.stringify(rows.slice(0, 2));\n  return logOnly('DRY RUN: ' + sizes + '. First rows: ' + firstRows + tail);\n}\n\nnode.status({\n  fill: 'green',\n  shape: 'dot',\n  text: 'writing ' + rows.length\n});\nvar writing = {\n  topic: 'log',\n  payload: msg.day + ' [' + msg.mode + '] WRITING ' + sizes + tail\n};\nmsg.payload = rows;\ndelete msg.rows;\nreturn [msg, writing];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 690,
+    "y": 1190,
+    "wires": [
+      [
+        "a7ffd.53a69b"
+      ],
+      [
+        "a9eec.553fb4"
+      ]
+    ]
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "abddb.56d8cd",
+    "type": "comment",
+    "name": "[7] WRITE dim_product",
+    "info": "STAGE 7 - parquet node, path and write object for dim_product. The path comes from CONFIG. Types: UTF8 (STRING), BOOLEAN, INT64, DOUBLE, TIMESTAMP_MILLIS (epoch ms).",
+    "x": 140,
+    "y": 1340,
+    "wires": []
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "a610e.520d82",
+    "type": "link in",
+    "name": "WRITE",
+    "links": [
+      "a7ffd.53a69b"
+    ],
+    "x": 120,
+    "y": 1405,
+    "wires": [
+      [
+        "adcca.5871e6"
+      ]
+    ]
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "adcca.5871e6",
+    "type": "parquet",
+    "name": "Write dim_product parquet",
+    "option": "write",
+    "columns": [
+      {
+        "column": "collection_id",
+        "type": "UTF8"
+      },
+      {
+        "column": "collection_name",
+        "type": "UTF8"
+      },
+      {
+        "column": "product_id",
+        "type": "UTF8"
+      },
+      {
+        "column": "code",
+        "type": "UTF8"
+      },
+      {
+        "column": "name",
+        "type": "UTF8"
+      },
+      {
+        "column": "description",
+        "type": "UTF8"
+      },
+      {
+        "column": "design_speed_value",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "design_speed_unit",
+        "type": "UTF8"
+      },
+      {
+        "column": "design_speed_interval",
+        "type": "UTF8"
+      },
+      {
+        "column": "design_speed_type",
+        "type": "UTF8"
+      },
+      {
+        "column": "design_speed_per_hour",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "loaded_at",
+        "type": "TIMESTAMP_MILLIS"
+      }
+    ],
+    "rcolumns": "",
+    "multi": "multiple",
+    "outputPty": "payload",
+    "outputPtyType": "msg",
+    "engine": "parquetjs",
+    "x": 310,
+    "y": 1405,
+    "wires": [
+      [
+        "afbb9.5a0aff"
+      ]
+    ]
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "afbb9.5a0aff",
+    "type": "function",
+    "name": "7.1 Set path",
+    "func": "// Sets the file path in the data lake.\n// In: the output of the parquet node (msg.payload is passed on unchanged).\n// Out: the same message with msg.path and msg.filename. The file name is\n// fixed, so every run replaces the file and never duplicates it.\nvar cfg = flow.get('cfg');\nmsg.path = cfg.path;\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 500,
+    "y": 1405,
+    "wires": [
+      [
+        "b1aa8.5ba418"
+      ]
+    ]
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "b1aa8.5ba418",
+    "type": "write object",
+    "name": "dim_product to data lake",
+    "path": "",
+    "mode": "object",
+    "x": 690,
+    "y": 1405,
+    "wires": []
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "b3997.5d3d31",
+    "type": "comment",
+    "name": "[8] LOG",
+    "info": "STAGE 8 - LOG. Every log line arrives here through the link \"to LOG\": one line per run (debug sidebar): row count, skipped assets, FAILED / NOTHING WRITTEN, or the dry-run row count and first rows.",
+    "x": 140,
+    "y": 1555,
+    "wires": []
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "60772.1885fe",
+    "type": "link in",
+    "name": "LOG",
+    "links": [
+      "62661.1a1f17",
+      "6832e.1eea62",
+      "83440.3549c0",
+      "8affc.3bae24",
+      "a9eec.553fb4"
+    ],
+    "x": 120,
+    "y": 1620,
+    "wires": [
+      [
+        "b5886.5ed64a"
+      ]
+    ]
+  },
+  {
+    "z": "4754f.03bfb9",
+    "id": "b5886.5ed64a",
+    "type": "debug",
+    "name": "Run log",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "x": 310,
+    "y": 1620,
+    "wires": []
+  }
+]
