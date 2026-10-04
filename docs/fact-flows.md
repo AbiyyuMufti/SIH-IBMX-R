@@ -4,7 +4,7 @@
 |---|---|
 | **What this is** | One VFC tab per site that writes the two daily tables `fact_kpi` (hourly KPIs per asset) and `fact_loss` (one row per stop) |
 | **How they are built** | `scripts/build-vfc-site-flows.js` writes `flows/vfc-site-<name>.json` from `scripts/vfc/s*.js`. Shared settings come from the Config tab (`flows/vfc-config.json`) |
-| **Status** | Hull built and tested on the mock only (2026-10-04). The earlier single flow ran in the VFC and wrote files |
+| **Status** | Hull imported and dry-run in the VFC by the user (2026-10-04). File content not yet checked |
 | **Output** | `<root>/fact_kpi/<site>/fact_kpi_YYYY-MM-DD.parquet` and `<root>/fact_loss/<site>/fact_loss_YYYY-MM-DD.parquet`. A rerun replaces the day. `dryRun` is true by default |
 | **Trigger** | Daily 07:00 UTC for Hull (one hour after the production day ends) and a backfill inject with a day range |
 

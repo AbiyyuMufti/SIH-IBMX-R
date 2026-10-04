@@ -3,9 +3,10 @@ Build and maintain Node-RED flows for Siemens Insights Hub (Reckitt OEE), based 
 
 ## Status
 - API exploration is done. All read-style OEE endpoints are tested; write calls are skipped on purpose
-- Done: one VFC flow per site that writes `fact_kpi` and `fact_loss` parquet tables (`flows/vfc-site-hull.json`, see `docs/fact-flows.md`). Hull is checked on the mock only
-- Done (mock only): Config tab `flows/vfc-config.json` and the single reference tab `flows/vfc-reference-tables.json` (see `docs/reference-tables.md`)
-- Current work: the user checks the Config, reference and Hull flows in the VFC; then the other flows planned from the dashboard design (group 2)
+- Done: one VFC flow per site that writes `fact_kpi` and `fact_loss` parquet tables (`flows/vfc-site-hull.json`, see `docs/fact-flows.md`). checked by the user in the VFC (dry run)
+- Done (checked by the user in the VFC, dry run): Config tab `flows/vfc-config.json` and the single reference tab `flows/vfc-reference-tables.json` (see `docs/reference-tables.md`)
+- Current work: first dashboard draft on the group 1 tables (Config, reference tables, Hull facts). Group 2 (shift KPIs, manual entries, run rate, derived loss columns) is DECIDE LATER, not planned. Group 3 waits for Reckitt
+- `dryRun` is set in the VFC by the user, not in dev work: do not change the default
 - Read `docs/README.md` first, then only the doc for the area you are working on. Do not re-parse `source/` unless I ask
 
 ## Folders
