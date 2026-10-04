@@ -1,71 +1,80 @@
 # Project
-Explore the scripts, Postman collection and Node-RED flows in `source/` for a local API, then write documentation for use in another project (Siemens Insights Hub, Node-RED).
+Build and maintain Node-RED flows for Siemens Insights Hub (Reckitt OEE), based on the API documentation in `docs/`. Test tenant: `reckitt`.
 
-## Goal
-Final output: markdown docs in `docs/`: the external APIs that the scripts, Postman collection and Node-RED flows call (endpoints, auth, request/response shapes, how to call each one).
+## Status
+- API exploration is done. All read-style OEE endpoints are tested; write calls are skipped on purpose
+- Current work: the VFC flow that writes `fact_kpi` and `fact_loss` parquet tables (`flows/vfc-fact-kpi-fact-loss.json`)
+- Read `docs/README.md` first, then only the doc for the area you are working on. Do not re-parse `source/` unless I ask
 
 ## Folders
-- `source/` = my original files (read-only, never edit)
-- `samples/` = redacted API responses you create when calling endpoints
-- `scripts/` = JS scripts you write to explore the API
-- `docs/` = final documentation
+- `source/` = my original files (Postman, flows, Python). Read-only, git-ignored
+- `docs/` = API documentation. Behaviour files start with an "At a glance" table
+- `scripts/` = JS test and helper scripts. `scripts/vfc/` = function-node code for the VFC flow
+- `flows/` = generated flow JSON. `flows/*.local.json` = copies with real credentials, git-ignored
+- `prompt-response/` = analysis and question lists for Reckitt, not API docs
+- `samples/` = redacted API responses, git-ignored
 
 ## Stack
-- Plain JavaScript, ES modules, Node 18+ native fetch
-- Scripts in `scripts/`, run with `node`
-- Doc examples must be pasteable into Node-RED (function node / http request node)
+- Plain JavaScript, ES modules, Node 18+ native fetch (scripts only)
+- Flow target: Insights Hub Visual Flow Creator (VFC). Function nodes there have NO `fetch`, `require` or `process`. Use `http request` nodes for every API call (a function sets `msg.method/url/headers`, then the http request node runs it)
+- One message per day or per asset, collected with a join
+- Parquet node types: UTF8 (STRING), BOOLEAN, INT64, DOUBLE, TIMESTAMP_MILLIS. No DATE type: days are text `YYYY-MM-DD`
 
-## Inputs (all in `source/`)
-- Postman collection JSON (+ environment file if provided)
-- Node-RED flows JSON
-- Python files
-Treat each as sensitive: may contain tokens or credentials.
+## Flow build
+- The flow JSON is generated: edit `scripts/vfc/*.js` and `scripts/build-vfc-flow.js`, then run `node scripts/build-vfc-flow.js`. Do not hand-edit the JSON
+- Committed flow files contain placeholders only. Real credentials only in `flows/*.local.json`
+- `dryRun` stays `true` by default. Writing files is my decision
+- Validate offline: valid JSON, unique node IDs, every wire points to an existing node. I import and run it in Node-RED and report back
+
+## Flow readability (VFC and Node-RED)
+I read the flow in the VFC editor, which does not wrap lines. Code and wiring must stay readable there.
+
+Function node code:
+- Max 80 characters per line. Break longer lines
+- Always multi-line blocks: `if (x) {` on its own line, body on the next lines, `}` on its own line. Never `if (x) { a; return; }` or `forEach(function (o) { ... });` on one line
+- One statement per line
+- Arrays and objects with more than 3 items: one item per line, so the list grows downward, never to the right
+- Long strings or messages: build them in steps (`var text = ...; text += ...;`), not one 300-character expression
+- Comments go on their own line ABOVE the code. No trailing comments after code, properties or array items
+- Start each function node with a 2 to 4 line comment: what it takes in, what it sends out
+- One job per function node. If it passes about 50 lines, split it
+- Put the settings I may change at the top as named constants, not buried in the code
+
+Wiring and layout:
+- No loops or cycles. This stays a hard rule
+- Flow runs left to right, one lane per row, nodes on a grid. No wires going backward (right to left)
+- Use link out / link in nodes when a wire would be long, cross other wires or go backward. Do not use links for short forward wires. Name each pair clearly (e.g. `to LOG`). If the VFC palette has no link nodes, tell me before choosing another approach
+- Debug and logging: one debug node per place I need to watch, wired from one node only. Never wire many nodes into one debug node. For a shared log, give each source its own link out named `to LOG`, all going to one link in, then one log node, then one debug
+- Node names: short, verb first, stage number first (`3 Build day plan`)
+- Each stage starts with a comment node as a header
+
+Checks (in `scripts/validate-flow.js`, must pass before every commit):
+- Fail on any function-node line over 80 characters
+- Fail on trailing comments and single-line `{ ... }` blocks
+- Fail on any cycle, any wire pointing to a missing node, and any debug node with more than one incoming wire
+- Report the longest line and the number of link nodes
 
 ## Rules
-- Never print or write secrets (tokens, passwords, keys) in docs, logs, or chat
-- Secrets live in `.env` only, read via process.env; `.env` stays in .gitignore
-- If you find a secret in source files: do not copy it into docs, logs, or chat. Tell me the file and location only, then add a placeholder to `.env` (e.g. `API_TOKEN=`) for me to fill in. We test with it locally
-- GET only by default. Ask before any POST/PUT/PATCH/DELETE
-- Never modify the original Postman, Node-RED or Python files
-- Read Python files only. Never execute them. Re-implement useful calls as JS in `scripts/`
-- Node-RED as a server is out of scope: ignore `http in` / `http response` nodes and do not document or call the endpoints Node-RED exposes
-- Do not guess credentials. If something is missing, list it and ask me
-- Any helper script must be named scripts/helper-<something>.js, read-only, no network.
+- Never print or write secrets (tokens, passwords, keys) in docs, logs, commits or chat
+- Secrets live in `.env` (read via process.env), git-ignored. If you find one in a file, tell me file and location only
+- GET only by default. Ask before any POST/PUT/PATCH/DELETE, except read-style POSTs I already approved (token, `evaluateKPIs`, `evaluate`, `timeModelCategoryDistribution`)
+- Never modify `source/`. Never execute Python files
+- Do not guess API behaviour. If `docs/` does not cover it, test it (GET) or ask me
+- No personal data in docs (emails, user names)
+- This repo is public: before every commit check the diff for secrets, asset IDs or customer business detail I have not approved
 
 ## Workflow
-Phase A: offline, can run unattended (no network, no API calls)
-1. Preflight check, then first commit
-2. Parse every file in `source/` separately. For each file, write `docs/inventory/<source-file-name>.md` (one row per outbound call: name/location, method, URL, how auth is built) and make one git commit for that file. After all files are done, write `docs/inventory.md` as an index linking to each per-file inventory with a call count.
-3. Auth/secrets audit: for each distinct auth mechanism, list where it comes from, which file and location (never the value), and what is missing. Write `docs/auth-checklist.md`
-4. Add empty placeholders to `.env` for each secret/variable found (names only, no values)
-5. Update NOTES.md, commit, then STOP and wait for me
-
-Phase B: with me, one at a time
-
-6. I fill in `.env`. Test auth with a single GET, report, wait for me
-7. Then call safe GET endpoints one by one, grouped by API area; save redacted responses to `samples/`
-
-Phase C: docs
-
-8. Describe responses, write `docs/` (README index, auth.md, one file per API area, Node-RED outbound calls)
-
-Phase D: updates
-
-9. When I say source files changed: diff against `docs/inventory.md`, update only affected docs, note it in NOTES.md
-
-## Doc format (per endpoint)
-Purpose, method, URL, params, headers (auth by name only), example request, example response, gotchas. Use tables and bullets, no filler.
-- For Node-RED calls, also record: which flow and node makes the call, what triggers it, and what the flow does with the response
+- Iterate: after each API call or small group, write the redacted sample and update the doc for it, then continue
+- For flows, one change per session: propose the design, wait for approval, build, validate, commit, then I test
+- When a test fails or behaviour differs from `docs/`, fix the doc in the same session
 
 ## Notes
-- Read `NOTES.md` at the start of every session
-- Log every failed attempt in `NOTES.md` (tried, error, fix)
-- At session end, update `NOTES.md` with status and next steps
-- Node-RED credentials may live in a separate `flows_cred.json` (encrypted). If auth values are missing, list them as missing and ask me
+- Read the Status, Open questions and Next sections of `NOTES.md` at the start of a session, not the whole file
+- Log failed attempts (tried, error, fix) and decisions in `NOTES.md`
+- At session end, update Status and Next
 
 ## Git
-- Repo is local only. Never push, never add a remote
-- At the end of each workflow step, commit: `git add docs scripts NOTES.md CLAUDE.md` then `git commit -m "step N: short description"`
-- Never use `git add .` or `git add -A`. Add specific paths only
-- Run `git status` before committing. If `.env`, `source/` or `samples/` show up as staged, stop and tell me
-- Never rewrite history (no reset --hard, rebase, force, amend) unless I ask
+- Remote exists on GitHub (public). Never push unless I ask. Never add or change a remote
+- Commit at the end of each step with specific paths: `git add docs scripts flows NOTES.md CLAUDE.md`. Never `git add .` or `-A`
+- Run `git status` first. If `.env`, `source/`, `samples/` or `*.local.json` are staged, stop and tell me
+- Never rewrite history unless I ask
