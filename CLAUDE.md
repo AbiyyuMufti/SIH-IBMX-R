@@ -38,7 +38,7 @@ Function node code:
 - Long strings or messages: build them in steps (`var text = ...; text += ...;`), not one 300-character expression
 - Comments go on their own line ABOVE the code. No trailing comments after code, properties or array items
 - Start each function node with a 2 to 4 line comment: what it takes in, what it sends out
-- One job per function node. If it passes about 50 lines, split it
+- One job per function node, and the steps inside it read in a clear logical order (set up, check, work, result). Length alone is not a reason to split: do not split a node only to get under a line count. Split when a node does two different jobs
 - Put the settings I may change at the top as named constants, not buried in the code
 
 Wiring and layout:

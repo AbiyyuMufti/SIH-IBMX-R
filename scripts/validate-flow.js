@@ -8,7 +8,6 @@ import { fileURLToPath } from 'node:url';
 
 const MAX_LINE = 80;
 const MAX_ITEMS_ON_ONE_LINE = 3;
-const MAX_LOGIC_LINES = 50;
 const MIN_HEADER_LINES = 2;
 const MAX_HEADER_LINES = 4;
 const BLOCK_WORDS = ['else', 'try', 'finally', 'do'];
@@ -327,9 +326,6 @@ export function validateFlow(nodes) {
     if (r.longest > stats.longestLine) {
       stats.longestLine = r.longest;
       stats.longestIn = n.name;
-    }
-    if (r.logicLines > MAX_LOGIC_LINES) {
-      warnings.push(`${label(n)}: ${r.logicLines} lines of logic (about ${MAX_LOGIC_LINES} is the target), consider splitting`);
     }
   }
   return { errors, warnings, stats };
