@@ -310,7 +310,7 @@ export function validateFlow(nodes) {
     if (n.type === 'debug' && incoming.get(n.id) > 1) {
       errors.push(`${label(n)}: ${incoming.get(n.id)} wires come in, one debug node per source`);
     }
-    const isStart = ['inject', 'comment', 'tab', 'link in'].includes(n.type);
+    const isStart = ['inject', 'comment', 'tab', 'link in', 'catch'].includes(n.type);
     if (!isStart && incoming.get(n.id) === 0) warnings.push(`${label(n)}: nothing is wired to it`);
   }
 

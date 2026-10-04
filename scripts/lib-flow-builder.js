@@ -69,9 +69,16 @@ export function makeBuilder(flowIndex) {
     stageNo++;
     comment(`[${stageNo}] ${title}`, `STAGE ${stageNo} - ${info}`, r);
     let fnNo = 0;
+    // A step with stack: true shares the column of the step before it.
+    const colOf = [];
+    let colNo = -1;
+    steps.forEach((s, i) => {
+      if (!s.stack) colNo++;
+      colOf[i] = colNo;
+    });
     steps.forEach((step, i) => {
-      const c = i;
-      const nextStep = steps[i + 1];
+      const c = colOf[i];
+      const nextStep = steps.slice(i + 1).find((s) => !s.stack);
       let nextId = null;
       if (nextStep && nextStep.t === 'end') {
         nextId = linkOut(nextStep.key, col(c + 1), rowY(r));
@@ -84,7 +91,7 @@ export function makeBuilder(flowIndex) {
           if (fan) return [linkOut(o, col(c + 1), rowY(r) + (k - (outs.length - 1) / 2) * 40)];
           return [linkOut(o, col(c) + 120, rowY(r) + 60)];
         });
-      const pos = { x: col(c), y: rowY(r) };
+      const pos = { x: col(c), y: rowY(r) + (step.dy || 0) };
       if (step.t === 'linkin') {
         linkIn(step.key, c, r, nextId);
       } else if (step.t === 'fn') {
@@ -93,10 +100,13 @@ export function makeBuilder(flowIndex) {
         for (const [from, to] of Object.entries(step.replace || {})) {
           func = func.replaceAll(from, to);
         }
+        const fnId = id(step.key);
+        const wires = wiresFor(step.outs, step.fan);
+        if (step.also) wires[0].push(id(step.also));
         add({
-          id: id(step.key), type: 'function', name: `${stageNo}.${fnNo} ${step.name}`,
+          id: fnId, type: 'function', name: `${stageNo}.${fnNo} ${step.name}`,
           func, outputs: step.outs.length, language: 'javascript', noerr: 0, ...pos,
-          wires: wiresFor(step.outs, step.fan)
+          wires
         });
       } else if (step.t === 'http') {
         add({
@@ -112,9 +122,34 @@ export function makeBuilder(flowIndex) {
       } else if (step.t === 'delay') {
         add({
           id: id(step.key), type: 'delay', name: step.name, pauseType: 'rate',
-          timeout: '1', timeoutUnits: 'seconds', rate: '1', nbRateUnits: '1', rateUnits: 'second',
+          timeout: '1', timeoutUnits: 'seconds', rate: '1', nbRateUnits: String(step.seconds || 1),
+          rateUnits: 'second',
           randomFirst: '1', randomLast: '1', randomUnits: 'seconds', drop: false,
           powerMode: false, ...pos, wires: [[nextId]]
+        });
+      } else if (step.t === 'joinTimeout') {
+        add({
+          id: id(step.key), type: 'join', name: step.name, mode: 'custom', build: 'array',
+          property: 'payload', propertyType: 'msg', key: 'topic', joiner: '\\n', joinerType: 'str',
+          accumulate: false, useparts: false, timeout: String(step.seconds), count: '',
+          reduceRight: false, reduceExp: '', reduceInit: '', reduceInitType: '', reduceFixup: '',
+          ...pos, wires: [[nextId]]
+        });
+      } else if (step.t === 'catch') {
+        add({
+          id: id(step.key), type: 'catch', name: step.name, scope: null, uncaught: false,
+          ...pos, wires: [[nextId]]
+        });
+      } else if (step.t === 'read') {
+        add({
+          id: id(step.key), type: 'read object', name: step.name, path: '', mode: 'object',
+          ...pos, wires: [[nextId]]
+        });
+      } else if (step.t === 'debug' && step.name) {
+        add({
+          id: id(step.key), type: 'debug', name: step.name, active: true, tosidebar: true,
+          console: false, tostatus: false, complete: step.complete || 'payload',
+          targetType: 'msg', ...pos, wires: []
         });
       } else if (step.t === 'join') {
         add({
@@ -131,7 +166,8 @@ export function makeBuilder(flowIndex) {
         });
       } else if (step.t === 'write') {
         add({
-          id: id(step.key), type: 'write object', name: `${step.table} to data lake`, path: '',
+          id: id(step.key), type: 'write object',
+          name: step.name || `${step.table} to data lake`, path: '',
           mode: 'object', ...pos, wires: []
         });
       }
@@ -141,11 +177,54 @@ export function makeBuilder(flowIndex) {
 }
 
 // ---------- step helpers ----------
-export const fn = (key, name, file, outs, replace = {}, fan = false) => ({ t: 'fn', key, name, file, outs, replace, fan });
+export const fn = (key, name, file, outs, replace = {}, fan = false, also = null) => ({
+  t: 'fn', key, name, file, outs, replace, fan, also
+});
 export const http = (key, name) => ({ t: 'http', key, name });
 export const linkInStep = (key) => ({ t: 'linkin', key });
 export const end = (key) => ({ t: 'end', key });
 export const split = (key) => ({ t: 'split', key });
-export const delay = (key, name) => ({ t: 'delay', key, name });
+export const delay = (key, name, seconds) => ({ t: 'delay', key, name, seconds });
 export const join = (key, name) => ({ t: 'join', key, name });
 
+export const catchStep = (key, name) => ({ t: 'catch', key, name });
+export const readStep = (key, name) => ({ t: 'read', key, name });
+export const joinTimeout = (key, name, seconds) => ({ t: 'joinTimeout', key, name, seconds });
+export const debugStep = (key, name, complete, stack = false, dy = 0) => ({
+  t: 'debug', key, name, complete, stack, dy
+});
+export const writeStep = (key, name) => ({ t: 'write', key, name });
+
+// The three log lanes every flow tab ends with. Errors caught anywhere in
+// the tab and all log lines go to one CSV file per month in the data lake:
+// <root>/logs/<flow name>/log_YYYY-MM.csv. Returns the next free row.
+export function addLogLanes(b, r, flowName) {
+  const replace = { __FLOW__: flowName };
+  b.lane(r++, 'ERRORS',
+    'a catch node takes every error raised by a node of this tab and turns it into a log line with the name of the node and the message of the API (for example the limit message of evaluateKPIs). Errors of the log nodes themselves are not logged again, a failed read of the log file goes to the append step.',
+    [
+      catchStep('errCatch', 'Catch errors'),
+      fn('errFn', 'Describe error', 'l1-describe-error.js', ['next', 'APPEND']),
+      end('LOG')
+    ]);
+  b.lane(r++, 'LOG',
+    'every log line arrives here through the link "to LOG". 1 turns a line into a row (time, flow, site, production day, level) and shows it in the debug sidebar. The join collects the rows for 30 s, the delay lets one batch pass every 10 s so two writes do not overlap, 3 sets the file of the month and the read node loads the old file. The log is written whatever the dry-run switch says.',
+    [
+      linkInStep('LOG'),
+      fn('logFmt', 'Format log line', 'l2-format-line.js', ['next'], replace, false, 'logDebug'),
+      joinTimeout('logJoin', 'Collect log lines', 30),
+      debugStep('logDebug', 'Run log', 'line', true, 80),
+      delay('logDelay', 'One log batch per 10 s', 10),
+      fn('logBuild', 'Build log write', 'l3-build-log-write.js', ['next'], replace),
+      readStep('logRead', 'Read log file'),
+      end('APPEND')
+    ]);
+  b.lane(r++, 'LOG WRITE',
+    'adds the rows of the batch to the old file and writes the whole file back (the data lake has no append). Columns: ts_utc, seq, flow, site, production_day, mode, level, source, message. Every field is quoted, line breaks become a space. If the old file cannot be read for another reason than "not found", a new file with a time stamp is written, so the history is never replaced.',
+    [
+      linkInStep('APPEND'),
+      fn('logAppend', 'Append log rows', 'l4-append-log.js', ['next']),
+      writeStep('logWrite', 'Log to data lake')
+    ]);
+  return r;
+}

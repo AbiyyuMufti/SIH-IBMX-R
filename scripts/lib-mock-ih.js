@@ -5,7 +5,8 @@
 //   not-finished  one more asset answers 400 "configuration not finished"
 //   no-data       one more asset answers with an empty result list
 //   token-fail, list-fail, empty, only-unconfigured
-//   details-fail, kpi-fail, stops-fail, stops-paged   (each fails asset A1)
+//   details-fail, kpi-fail, kpi-413, stops-fail, stops-paged   (each fails asset A1)
+//   kpi-413 answers with the real limit text: Too many status changes
 //   ref-config-fail  A1 config and thresholds answer 500 (reference flows)
 //   ref-detail-fail  the first tree, collection and calendar answer 500
 export const SCENARIOS = [
@@ -19,6 +20,7 @@ export const SCENARIOS = [
   'only-unconfigured',
   'details-fail',
   'kpi-fail',
+  'kpi-413',
   'stops-fail',
   'stops-paged',
   'ref-config-fail',
@@ -166,6 +168,9 @@ export function makeMockFetch(scenario = 'ok') {
       const body = JSON.parse(init.body);
       const asset = Object.values(ASSETS).find((a) => a.id === body.assetId);
       if (scenario === 'kpi-fail' && asset === ASSETS.A1) return reply(500, { error: 'boom' });
+      if (scenario === 'kpi-413' && asset === ASSETS.A1) {
+        return reply(413, { errors: [{ code: 'tooManyStatusChanges', message: 'Too many status changes (12345)' }] });
+      }
       if (asset === ASSETS.A5) return reply(400, { message: 'Asset configuration not finished' });
       if (asset === ASSETS.A6) return reply(200, { productUnit: 'pcs', results: [] });
       return reply(200, kpiBody(asset, scenario, body.scope.from));

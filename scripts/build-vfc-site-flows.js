@@ -19,7 +19,7 @@ import vm from 'node:vm';
 import { validateFlow } from './validate-flow.js';
 import {
   code, S, B, I, D, TS, makeBuilder, fn, http, linkInStep, end, split,
-  delay, join
+  delay, join, addLogLanes
 } from './lib-flow-builder.js';
 
 // One entry per site. cron = the daily schedule (UTC): one hour after the
@@ -217,14 +217,8 @@ function buildSiteFlow(site, index) {
   lane(r++, 'WRITE fact_loss',
     'parquet node, path and write object for fact_loss. Same pattern as the stage before.',
     [linkInStep('WRITE fact_loss'), ...tableEnd('fact_loss', lossSchema)]);
-  lane(r, 'LOG',
-    'every log line arrives here through the link "to LOG": one line per day (debug sidebar): rows per asset, sum of total time, skipped assets, KPI names without a column, FAILED / NOTHING WRITTEN, or the dry-run row counts and first rows.',
-    [linkInStep('LOG'), { t: 'debug', key: 'log' }]);
-  b.nodes.push({
-    z: b.TAB, id: id('log'), type: 'debug', name: `${site.name} day log`,
-    active: true, tosidebar: true, console: false, tostatus: false,
-    complete: 'payload', x: col(1), y: rowY(r), wires: []
-  });
+  // errors and the shared log
+  addLogLanes(b, r, site.name.toLowerCase());
 
   b.nodes.unshift({
     id: b.TAB, type: 'tab', label: `${site.name} daily report`,

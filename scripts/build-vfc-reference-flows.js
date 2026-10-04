@@ -13,7 +13,7 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { validateFlow } from './validate-flow.js';
 import {
   code, S, B, I, D, TS, makeBuilder, fn, http, linkInStep, end, split,
-  delay, join
+  delay, join, addLogLanes
 } from './lib-flow-builder.js';
 
 const SCHEMAS = {
@@ -187,14 +187,8 @@ function buildReferenceFlow() {
       ]);
   }
 
-  // the shared log
-  lane(r, 'LOG',
-    'every log line arrives here through the link "to LOG": one line per table and run (debug sidebar): row count, skipped assets, FAILED / NOTHING WRITTEN, or the dry-run row count and first rows.',
-    [linkInStep('LOG'), { t: 'debug', key: 'log' }]);
-  b.nodes.push({
-    z: b.TAB, id: id('log'), type: 'debug', name: 'Run log', active: true, tosidebar: true,
-    console: false, tostatus: false, complete: 'payload', x: b.col(1), y: b.rowY(r), wires: []
-  });
+  // errors and the shared log
+  addLogLanes(b, r, 'reference');
 
   b.nodes.unshift({
     id: b.TAB, type: 'tab', label: 'Reference tables', disabled: false, allowCycles: false,

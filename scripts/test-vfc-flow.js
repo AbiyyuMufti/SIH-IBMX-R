@@ -45,5 +45,8 @@ console.log('mode:', mode, mockArg ? `| ${mockArg}` : '', '| http calls:', stats
 for (const line of stats.logs) console.log('LOG:', String(line).slice(0, 600));
 console.log('parquet rows validated against column types:', JSON.stringify(stats.parquetRows));
 console.log('write object paths:', JSON.stringify(stats.written));
+for (const [path, text] of stats.lake) {
+  if (path.includes('/logs/')) console.log('LAKE', path + ':\n' + text);
+}
 for (const e of stats.errors) console.log('ERROR:', e);
 if (stats.errors.length) process.exitCode = 1;

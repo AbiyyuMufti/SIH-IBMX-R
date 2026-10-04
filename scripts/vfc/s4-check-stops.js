@@ -20,9 +20,20 @@ function failedResult(text) {
 }
 
 var body = msg.payload;
+// Short text of the API error (errors[0].message), else the raw body.
+function apiMessage(payload) {
+  var list = payload && (payload.errors ||
+    (payload.data && payload.data.errors));
+  if (list && list.length && list[0].message) {
+    return String(list[0].message);
+  }
+  return JSON.stringify(payload).slice(0, 200);
+}
+
 if (msg.statusCode !== 200 || !body || typeof body !== 'object') {
+  var why = msg.statusCode === 200 ? '' : ': ' + apiMessage(body);
   return failedResult(
-    name + ': downtimeReasons failed, HTTP ' + msg.statusCode
+    name + ': downtimeReasons failed, HTTP ' + msg.statusCode + why
   );
 }
 if (body.page && body.page.totalPages > 1) {

@@ -2,7 +2,8 @@
 // Function nodes run in a sandbox WITHOUT fetch, require, process or
 // setTimeout (as in the VFC). Messages are JSON-serialised between nodes
 // (Dates become text), as the VFC does. http request nodes call fetchImpl.
-// split, join, delay, link in/out, parquet and write object are simulated.
+// split, join (auto and custom), delay, link in/out, parquet, catch and
+// read/write object (an in-memory data lake) are simulated.
 import vm from 'node:vm';
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -49,6 +50,9 @@ export async function runFlow(nodes, options) {
   };
   const queue = [];
   const joins = new Map();
+  // In-memory data lake: path -> text. Pass options.lake to keep it between runs.
+  const lake = options.lake || new Map();
+  const customJoins = new Map();
   const stats = {
     requests: [],
     logs: [],
@@ -56,7 +60,8 @@ export async function runFlow(nodes, options) {
     parquetRows: {},
     parquetPayloads: {},
     status: [],
-    errors: []
+    errors: [],
+    lake
   };
 
   function emit(node, outputs) {
@@ -101,7 +106,14 @@ export async function runFlow(nodes, options) {
       msg.statusCode = res.status;
       emit(n, [msg]);
     } else if (n.type === 'debug') {
-      stats.logs.push(msg.payload);
+      const prop = n.complete && n.complete !== 'true' ? n.complete : 'payload';
+      stats.logs.push(msg[prop]);
+    } else if (n.type === 'catch') {
+      emit(n, [msg]);
+    } else if (n.type === 'read object') {
+      if (!lake.has(msg.path)) throw new Error('file not found: ' + msg.path);
+      msg.payload = Buffer.from(lake.get(msg.path), 'utf8');
+      emit(n, [msg]);
     } else if (n.type === 'delay' || n.type === 'link in') {
       emit(n, [msg]);
     } else if (n.type === 'link out') {
@@ -112,6 +124,11 @@ export async function runFlow(nodes, options) {
         const part = { id: groupId, index: i, count: msg.payload.length, type: 'array' };
         emit(n, [{ ...msg, payload: el, parts: part }]);
       });
+    } else if (n.type === 'join' && n.mode === 'custom') {
+      const g = customJoins.get(n.id) || { items: [] };
+      g.items.push(msg.payload);
+      g.last = msg;
+      customJoins.set(n.id, g);
     } else if (n.type === 'join') {
       const joinKey = n.id + ':' + msg.parts.id;
       const g = joins.get(joinKey) || { items: [], count: msg.parts.count };
@@ -141,6 +158,7 @@ export async function runFlow(nodes, options) {
       emit(n, [msg]);
     } else if (n.type === 'write object') {
       stats.written.push(msg.path);
+      if (typeof msg.payload === 'string') lake.set(msg.path, msg.payload);
     }
   }
 
@@ -152,14 +170,32 @@ export async function runFlow(nodes, options) {
   }
   const config = nodes.find((n) => n.type === 'function' && /CONFIG|SETTINGS/.test(n.name));
   queue.push([config.id, { payload: { start: startDay, end: endDay } }]);
+  const catchNodes = nodes.filter((n) => n.type === 'catch');
   let guard = 0;
-  while (queue.length && guard++ < 20000) {
+  for (;;) {
+    if (!queue.length) {
+      // A custom join sends its batch when its timeout runs out: here, when
+      // the queue is empty.
+      for (const [joinId, g] of [...customJoins]) {
+        customJoins.delete(joinId);
+        emit(byId.get(joinId), [{ ...g.last, payload: g.items }]);
+      }
+      if (!queue.length) break;
+    }
+    if (guard++ > 20000) break;
     const [id, msg] = queue.shift();
     try {
       await run(id, msg);
     } catch (e) {
-      // the VFC logs the error and drops the message
-      stats.errors.push(`${byId.get(id).name}: ${e.message}`);
+      const n = byId.get(id);
+      if (catchNodes.length) {
+        const m = { ...msg };
+        m.error = { message: e.message, source: { id: n.id, name: n.name, type: n.type } };
+        for (const c of catchNodes) queue.push([c.id, clone(m)]);
+      } else {
+        // the VFC logs the error and drops the message
+        stats.errors.push(`${n.name}: ${e.message}`);
+      }
     }
   }
   return stats;

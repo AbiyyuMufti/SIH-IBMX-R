@@ -481,7 +481,7 @@
     "id": "80f62.75b68e",
     "type": "function",
     "name": "3.3 Check KPI response",
-    "func": "// Checks the evaluateKPIs response of one asset.\n// In: the response. Out 1: the same message when it holds KPI results.\n// Out 2: the asset result for the join when the call failed, the asset\n// configuration is not finished or there is no data.\nvar name = msg.h.asset_name;\nvar body = msg.payload;\n\nfunction toJoin(note) {\n  msg.payload = {\n    assetId: msg.asset.id,\n    name: name,\n    failed: note.failed || null,\n    skipped: note.skipped || null,\n    kpiRows: [],\n    lossRows: []\n  };\n  return [null, msg];\n}\n\nvar notFinished = msg.statusCode === 400 &&\n  /configuration not finished/i.test(JSON.stringify(body));\nif (notFinished) {\n  return toJoin({ skipped: name + ' configuration not finished' });\n}\nif (msg.statusCode !== 200 || !body || typeof body !== 'object') {\n  return toJoin({\n    failed: name + ': evaluateKPIs failed, HTTP ' + msg.statusCode\n  });\n}\nif (!body.results || !body.results.length) {\n  return toJoin({ skipped: name + ' no data' });\n}\nreturn [msg, null];\n",
+    "func": "// Checks the evaluateKPIs response of one asset.\n// In: the response. Out 1: the same message when it holds KPI results.\n// Out 2: the asset result for the join when the call failed, the asset\n// configuration is not finished or there is no data.\nvar name = msg.h.asset_name;\nvar body = msg.payload;\n\nfunction toJoin(note) {\n  msg.payload = {\n    assetId: msg.asset.id,\n    name: name,\n    failed: note.failed || null,\n    skipped: note.skipped || null,\n    kpiRows: [],\n    lossRows: []\n  };\n  return [null, msg];\n}\n\nvar notFinished = msg.statusCode === 400 &&\n  /configuration not finished/i.test(JSON.stringify(body));\nif (notFinished) {\n  return toJoin({ skipped: name + ' configuration not finished' });\n}\n// Short text of the API error (errors[0].message), else the raw body.\nfunction apiMessage(payload) {\n  var list = payload && (payload.errors ||\n    (payload.data && payload.data.errors));\n  if (list && list.length && list[0].message) {\n    return String(list[0].message);\n  }\n  return JSON.stringify(payload).slice(0, 200);\n}\n\nif (msg.statusCode !== 200 || !body || typeof body !== 'object') {\n  var why = msg.statusCode === 200 ? '' : ': ' + apiMessage(body);\n  return toJoin({\n    failed: name + ': evaluateKPIs failed, HTTP ' + msg.statusCode + why\n  });\n}\nif (!body.results || !body.results.length) {\n  return toJoin({ skipped: name + ' no data' });\n}\nreturn [msg, null];\n",
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
@@ -624,7 +624,7 @@
     "id": "925c9.84186f",
     "type": "function",
     "name": "4.2 Check stops response",
-    "func": "// Checks the downtimeReasons response of one asset.\n// In: the response. Out 1: msg.stops = the list of stops.\n// Out 2: the asset result for the join when the call failed or has more\n// than one page. The KPI rows of the asset are dropped then (no half days).\nvar name = msg.h.asset_name;\n\nfunction failedResult(text) {\n  msg.payload = {\n    assetId: msg.asset.id,\n    name: name,\n    failed: text,\n    skipped: null,\n    kpiRows: [],\n    lossRows: [],\n    unmapped: msg.unmapped\n  };\n  delete msg.kpiRows;\n  delete msg.unmapped;\n  return [null, msg];\n}\n\nvar body = msg.payload;\nif (msg.statusCode !== 200 || !body || typeof body !== 'object') {\n  return failedResult(\n    name + ': downtimeReasons failed, HTTP ' + msg.statusCode\n  );\n}\nif (body.page && body.page.totalPages > 1) {\n  return failedResult(\n    name + ': downtimeReasons has more than one page (' +\n      body.page.totalElements + ' rows), raise PAGE_SIZE in node 4.1'\n  );\n}\n\nmsg.stops = (body._embedded && body._embedded.downtimeReasons) || [];\ndelete msg.payload;\nreturn [msg, null];\n",
+    "func": "// Checks the downtimeReasons response of one asset.\n// In: the response. Out 1: msg.stops = the list of stops.\n// Out 2: the asset result for the join when the call failed or has more\n// than one page. The KPI rows of the asset are dropped then (no half days).\nvar name = msg.h.asset_name;\n\nfunction failedResult(text) {\n  msg.payload = {\n    assetId: msg.asset.id,\n    name: name,\n    failed: text,\n    skipped: null,\n    kpiRows: [],\n    lossRows: [],\n    unmapped: msg.unmapped\n  };\n  delete msg.kpiRows;\n  delete msg.unmapped;\n  return [null, msg];\n}\n\nvar body = msg.payload;\n// Short text of the API error (errors[0].message), else the raw body.\nfunction apiMessage(payload) {\n  var list = payload && (payload.errors ||\n    (payload.data && payload.data.errors));\n  if (list && list.length && list[0].message) {\n    return String(list[0].message);\n  }\n  return JSON.stringify(payload).slice(0, 200);\n}\n\nif (msg.statusCode !== 200 || !body || typeof body !== 'object') {\n  var why = msg.statusCode === 200 ? '' : ': ' + apiMessage(body);\n  return failedResult(\n    name + ': downtimeReasons failed, HTTP ' + msg.statusCode + why\n  );\n}\nif (body.page && body.page.totalPages > 1) {\n  return failedResult(\n    name + ': downtimeReasons has more than one page (' +\n      body.page.totalElements + ' rows), raise PAGE_SIZE in node 4.1'\n  );\n}\n\nmsg.stops = (body._embedded && body._embedded.downtimeReasons) || [];\ndelete msg.payload;\nreturn [msg, null];\n",
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
@@ -1293,10 +1293,81 @@
     "z": "48e4f.475eb9",
     "id": "c2b20.ac0be0",
     "type": "comment",
-    "name": "[8] LOG",
-    "info": "STAGE 8 - every log line arrives here through the link \"to LOG\": one line per day (debug sidebar): rows per asset, sum of total time, skipped assets, KPI names without a column, FAILED / NOTHING WRITTEN, or the dry-run row counts and first rows.",
+    "name": "[8] ERRORS",
+    "info": "STAGE 8 - a catch node takes every error raised by a node of this tab and turns it into a log line with the name of the node and the message of the API (for example the limit message of evaluateKPIs). Errors of the log nodes themselves are not logged again, a failed read of the log file goes to the append step.",
     "x": 120,
     "y": 1580,
+    "wires": []
+  },
+  {
+    "z": "48e4f.475eb9",
+    "id": "c68fe.af3e12",
+    "type": "catch",
+    "name": "Catch errors",
+    "scope": null,
+    "uncaught": false,
+    "x": 120,
+    "y": 1660,
+    "wires": [
+      [
+        "c4a0f.ada4f9"
+      ]
+    ]
+  },
+  {
+    "z": "48e4f.475eb9",
+    "id": "c87ed.b0d72b",
+    "type": "link out",
+    "name": "to LOG",
+    "mode": "link",
+    "links": [
+      "63f61.5dbe17"
+    ],
+    "x": 640,
+    "y": 1660,
+    "wires": []
+  },
+  {
+    "z": "48e4f.475eb9",
+    "id": "cc5cb.b4095d",
+    "type": "link out",
+    "name": "to APPEND",
+    "mode": "link",
+    "links": [
+      "ca6dc.b27044"
+    ],
+    "x": 500,
+    "y": 1720,
+    "wires": []
+  },
+  {
+    "z": "48e4f.475eb9",
+    "id": "c4a0f.ada4f9",
+    "type": "function",
+    "name": "8.1 Describe error",
+    "func": "// Turns an error caught by the catch node into a log line.\n// In: the message of a catch node (msg.error). Out 1: a log line for the\n// shared log. Out 2: a failed read of the log file, for the append step.\n// Errors of the log nodes themselves never go to out 1 (no log loop).\nvar err = msg.error || {};\nvar source = (err.source && err.source.name) || 'unknown node';\n\nfunction textOf(value) {\n  if (value === undefined || value === null) {\n    return '';\n  }\n  if (typeof value === 'string') {\n    return value;\n  }\n  return JSON.stringify(value);\n}\n\n// Takes the API message out of an error body when there is one.\nfunction apiMessage(value) {\n  var body = value;\n  if (typeof value === 'string') {\n    try {\n      body = JSON.parse(value);\n    } catch (e) {\n      return value;\n    }\n  }\n  var data = body && body.data;\n  var list = (data && data.errors) || (body && body.errors);\n  if (list && list.length && list[0].message) {\n    return list[0].message;\n  }\n  return textOf(value);\n}\n\nvar detail = apiMessage(err.message);\n\nif (msg.logBatch) {\n  if (msg.logStep === 'read') {\n    msg.logReadError = detail;\n    return [null, msg];\n  }\n  node.status({\n    fill: 'red',\n    shape: 'ring',\n    text: 'log write failed'\n  });\n  return [null, null];\n}\n\nvar text = '';\nif (msg.day) {\n  text += msg.day + ' [' + msg.mode + '] ';\n}\ntext += 'ERROR in ' + source + ': ' + detail;\nvar line = {\n  topic: 'log',\n  payload: text,\n  level: 'error',\n  source: source\n};\nreturn [line, null];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 380,
+    "y": 1660,
+    "wires": [
+      [
+        "c87ed.b0d72b"
+      ],
+      [
+        "cc5cb.b4095d"
+      ]
+    ]
+  },
+  {
+    "z": "48e4f.475eb9",
+    "id": "ce4ba.b5a276",
+    "type": "comment",
+    "name": "[9] LOG",
+    "info": "STAGE 9 - every log line arrives here through the link \"to LOG\". 1 turns a line into a row (time, flow, site, production day, level) and shows it in the debug sidebar. The join collects the rows for 30 s, the delay lets one batch pass every 10 s so two writes do not overlap, 3 sets the file of the month and the read node loads the old file. The log is written whatever the dry-run switch says.",
+    "x": 120,
+    "y": 1800,
     "wires": []
   },
   {
@@ -1308,28 +1379,201 @@
       "65e50.5f5730",
       "6bb1d.64227b",
       "a7a0e.95ac82",
-      "b14b9.9da9ff"
+      "b14b9.9da9ff",
+      "c87ed.b0d72b"
     ],
     "x": 120,
-    "y": 1660,
+    "y": 1880,
     "wires": [
       [
-        "c4a0f.ada4f9"
+        "d03a9.b73b8f"
       ]
     ]
   },
   {
     "z": "48e4f.475eb9",
-    "id": "c4a0f.ada4f9",
+    "id": "d03a9.b73b8f",
+    "type": "function",
+    "name": "9.1 Format log line",
+    "func": "// Turns one log message into a row for the log file.\n// In: msg.payload = log text (optional msg.level and msg.source).\n// Out: msg.payload = the row, msg.line = the text for the debug node.\nvar FLOW_NAME = 'hull';\nvar cfg = flow.get('cfg') || {};\nvar text = String(msg.payload);\n\nvar seq = (flow.get('logSeq') || 0) + 1;\nflow.set('logSeq', seq);\n\n// Most lines start with the production day and the mode: \"2026-09-01 [x] \".\nvar day = '';\nvar mode = '';\nvar message = text;\nvar parts = /^(\\d{4}-\\d{2}-\\d{2}) \\[([^\\]]*)\\] ([\\s\\S]*)$/.exec(text);\nif (parts) {\n  day = parts[1];\n  mode = parts[2];\n  message = parts[3];\n}\n\nvar level = msg.level;\nif (!level) {\n  if (/FAILED/.test(message)) {\n    level = 'failed';\n  } else if (/NOTHING TO WRITE/.test(message)) {\n    level = 'warn';\n  } else {\n    level = 'info';\n  }\n}\n\nmsg.line = text;\nmsg.payload = {\n  ts_utc: new Date().toISOString(),\n  seq: seq,\n  flow: FLOW_NAME,\n  site: cfg.site || 'all',\n  production_day: day,\n  mode: mode,\n  level: level,\n  source: msg.source || 'flow',\n  message: message\n};\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 380,
+    "y": 1880,
+    "wires": [
+      [
+        "d2298.b8d4a8",
+        "d4187.ba6dc1"
+      ]
+    ]
+  },
+  {
+    "z": "48e4f.475eb9",
+    "id": "d2298.b8d4a8",
+    "type": "join",
+    "name": "Collect log lines",
+    "mode": "custom",
+    "build": "array",
+    "property": "payload",
+    "propertyType": "msg",
+    "key": "topic",
+    "joiner": "\\n",
+    "joinerType": "str",
+    "accumulate": false,
+    "useparts": false,
+    "timeout": "30",
+    "count": "",
+    "reduceRight": false,
+    "reduceExp": "",
+    "reduceInit": "",
+    "reduceInitType": "",
+    "reduceFixup": "",
+    "x": 640,
+    "y": 1880,
+    "wires": [
+      [
+        "d6076.bc06da"
+      ]
+    ]
+  },
+  {
+    "z": "48e4f.475eb9",
+    "id": "d4187.ba6dc1",
     "type": "debug",
-    "name": "Hull day log",
+    "name": "Run log",
     "active": true,
     "tosidebar": true,
     "console": false,
     "tostatus": false,
-    "complete": "payload",
+    "complete": "line",
+    "targetType": "msg",
+    "x": 640,
+    "y": 1960,
+    "wires": []
+  },
+  {
+    "z": "48e4f.475eb9",
+    "id": "d6076.bc06da",
+    "type": "delay",
+    "name": "One log batch per 10 s",
+    "pauseType": "rate",
+    "timeout": "1",
+    "timeoutUnits": "seconds",
+    "rate": "1",
+    "nbRateUnits": "10",
+    "rateUnits": "second",
+    "randomFirst": "1",
+    "randomLast": "1",
+    "randomUnits": "seconds",
+    "drop": false,
+    "powerMode": false,
+    "x": 900,
+    "y": 1880,
+    "wires": [
+      [
+        "d7f65.bd9ff3"
+      ]
+    ]
+  },
+  {
+    "z": "48e4f.475eb9",
+    "id": "d7f65.bd9ff3",
+    "type": "function",
+    "name": "9.2 Build log write",
+    "func": "// Prepares the write of one batch of log rows (the read node runs next).\n// In: msg.payload = array of log rows from the join node.\n// Out: msg.path = the file of the month, msg.logRows = the rows.\n// msg.logBatch keeps errors of the log nodes themselves out of the log.\nvar FLOW_NAME = 'hull';\nvar cfg = flow.get('cfg') || {};\nvar root = cfg.root || 'logs_without_root';\nvar rows = msg.payload;\nvar month = rows[0].ts_utc.slice(0, 7);\n\nmsg.logRows = rows;\nmsg.path = root + '/logs/' + FLOW_NAME + '/log_' + month + '.csv';\nmsg.logBatch = true;\nmsg.logStep = 'read';\nmsg.payload = '';\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 1160,
+    "y": 1880,
+    "wires": [
+      [
+        "d9e54.bf390c"
+      ]
+    ]
+  },
+  {
+    "z": "48e4f.475eb9",
+    "id": "dbd43.c0d225",
+    "type": "link out",
+    "name": "to APPEND",
+    "mode": "link",
+    "links": [
+      "ca6dc.b27044"
+    ],
+    "x": 1680,
+    "y": 1880,
+    "wires": []
+  },
+  {
+    "z": "48e4f.475eb9",
+    "id": "d9e54.bf390c",
+    "type": "read object",
+    "name": "Read log file",
+    "path": "",
+    "mode": "object",
+    "x": 1420,
+    "y": 1880,
+    "wires": [
+      [
+        "dbd43.c0d225"
+      ]
+    ]
+  },
+  {
+    "z": "48e4f.475eb9",
+    "id": "ddc32.c26b3e",
+    "type": "comment",
+    "name": "[10] LOG WRITE",
+    "info": "STAGE 10 - adds the rows of the batch to the old file and writes the whole file back (the data lake has no append). Columns: ts_utc, seq, flow, site, production_day, mode, level, source, message. Every field is quoted, line breaks become a space. If the old file cannot be read for another reason than \"not found\", a new file with a time stamp is written, so the history is never replaced.",
+    "x": 120,
+    "y": 2020,
+    "wires": []
+  },
+  {
+    "z": "48e4f.475eb9",
+    "id": "ca6dc.b27044",
+    "type": "link in",
+    "name": "APPEND",
+    "links": [
+      "cc5cb.b4095d",
+      "dbd43.c0d225"
+    ],
+    "x": 120,
+    "y": 2100,
+    "wires": [
+      [
+        "dfb21.c40457"
+      ]
+    ]
+  },
+  {
+    "z": "48e4f.475eb9",
+    "id": "dfb21.c40457",
+    "type": "function",
+    "name": "10.1 Append log rows",
+    "func": "// Appends the rows of one batch to the log file of the month.\n// In: the old file as msg.payload, or msg.logReadError if the read failed.\n// Out: msg.payload = the whole new file (the data lake has no append).\nvar SEPARATOR = ',';\nvar NOT_FOUND = /not.?found|no such|does not exist|404/i;\nvar COLUMNS = [\n  'ts_utc',\n  'seq',\n  'flow',\n  'site',\n  'production_day',\n  'mode',\n  'level',\n  'source',\n  'message'\n];\n\n// Quotes inside a field are doubled, line breaks become a space.\nfunction quote(value) {\n  var text = (value === undefined || value === null) ? '' : String(value);\n  text = text.replace(/\"/g, '\"\"').replace(/[\\r\\n]+/g, ' ');\n  return '\"' + text + '\"';\n}\n\nfunction lineOf(row) {\n  return COLUMNS.map(function (name) {\n    return quote(row[name]);\n  }).join(SEPARATOR);\n}\n\n// The read node gives text, or a serialised buffer.\nfunction decode(payload) {\n  if (typeof payload === 'string') {\n    return payload;\n  }\n  if (payload && payload.type === 'Buffer' && payload.data) {\n    var bin = '';\n    payload.data.forEach(function (byte) {\n      bin += String.fromCharCode(byte);\n    });\n    try {\n      return decodeURIComponent(escape(bin));\n    } catch (e) {\n      return bin;\n    }\n  }\n  return '';\n}\n\nvar rows = msg.logRows.slice();\nrows.sort(function (a, b) {\n  if (a.ts_utc !== b.ts_utc) {\n    return a.ts_utc < b.ts_utc ? -1 : 1;\n  }\n  return a.seq - b.seq;\n});\n\nvar path = msg.path;\nvar old = '';\nif (msg.logReadError) {\n  if (!NOT_FOUND.test(msg.logReadError)) {\n    // Unclear read error: never replace the old file, start a new one.\n    var stamp = new Date().toISOString().replace(/[-:.TZ]/g, '');\n    path = path.replace(/\\.csv$/, '_' + stamp + '.csv');\n    rows.push({\n      ts_utc: new Date().toISOString(),\n      seq: 0,\n      flow: rows[0].flow,\n      site: rows[0].site,\n      production_day: '',\n      mode: '',\n      level: 'error',\n      source: 'log',\n      message: 'log read failed (' + msg.logReadError + '), wrote ' + path\n    });\n  }\n} else {\n  old = decode(msg.payload);\n}\n\nvar lines = [];\nif (!old) {\n  lines.push(COLUMNS.map(quote).join(SEPARATOR));\n} else if (old.slice(-1) !== '\\n') {\n  old += '\\n';\n}\nrows.forEach(function (row) {\n  lines.push(lineOf(row));\n});\n\nmsg.payload = old + lines.join('\\n') + '\\n';\nmsg.path = path;\nmsg.logStep = 'write';\ndelete msg.logReadError;\ndelete msg.logRows;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
     "x": 380,
-    "y": 1660,
+    "y": 2100,
+    "wires": [
+      [
+        "e1a10.c59d70"
+      ]
+    ]
+  },
+  {
+    "z": "48e4f.475eb9",
+    "id": "e1a10.c59d70",
+    "type": "write object",
+    "name": "Log to data lake",
+    "path": "",
+    "mode": "object",
+    "x": 640,
+    "y": 2100,
     "wires": []
   }
 ]

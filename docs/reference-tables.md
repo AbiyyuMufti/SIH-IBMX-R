@@ -23,7 +23,7 @@
 | 4 BUNDLES & ROUTE | One bundle per asset, join, then one message per table |
 | 5 dim_asset, 6 ref_target_seed | Collect, decide, write |
 | 7 to 12 | For `dim_reason`, `dim_product`, `dim_shift`: pick the distinct ids, read the master list for names, one call per id, join, collect, decide, write |
-| 13 LOG | One debug node, fed by `to LOG` links |
+| 13 ERRORS, LOG, LOG WRITE | Catch, debug and CSV log, see [logging.md](logging.md) |
 
 The config call of an asset is made once and feeds `dim_asset`, `dim_product` and `dim_shift`. The reason tree id comes with the asset list.
 

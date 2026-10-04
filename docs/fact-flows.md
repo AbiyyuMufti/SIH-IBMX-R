@@ -16,7 +16,7 @@
 ## Add a site (for example Nottingham)
 1. In `1.1 CONFIG` on the Config tab, add an entry to `sites`: `name`, `dayStartHour`, `assetIds`. Click `Apply`.
 2. Create the flow, either way:
-   - **No Node needed:** import `flows/vfc-site-hull.json` again, then change `SITE_NAME` in `1.1 SITE SETTINGS`, the tab name, the debug node name and the cron of the schedule inject.
+   - **No Node needed:** import `flows/vfc-site-hull.json` again, then change `SITE_NAME` in `1.1 SITE SETTINGS`, the tab name, the log flow name (`site.name` in the builder) and the cron of the schedule inject.
    - **Generated:** add `{ name: 'Nottingham', cron: '...' }` to `SITES` in `scripts/build-vfc-site-flows.js` and run `node scripts/build-vfc-site-flows.js`.
 3. Run with `DRY_RUN` true first, then set it to false.
 Each site fails on its own: a failed call in one site writes nothing for that site and day, other sites are not touched.
