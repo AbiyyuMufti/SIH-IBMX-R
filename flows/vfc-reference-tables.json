@@ -2,10 +2,10 @@
   {
     "id": "9f487.49a2c1",
     "type": "tab",
-    "label": "Mufti OEE reference tables",
+    "label": "Reference tables",
     "disabled": false,
     "allowCycles": false,
-    "info": "Writes five reference tables to the data lake: dim_asset, ref_target_seed, dim_reason, dim_product, dim_shift. Read calls only against Insights Hub. Needs the Config tab."
+    "info": "Writes five reference tables to the data lake:\ndim_asset,\nref_target_seed,\ndim_reason,\ndim_product,\ndim_shift.\nRead calls only against Insights Hub.\nNeeds the Config tab."
   },
   {
     "z": "9f487.49a2c1",
@@ -76,7 +76,7 @@
     "id": "a5154.4e6e0c",
     "type": "function",
     "name": "1.1 TASK SETTINGS (edit here)",
-    "func": "// TASK SETTINGS: the settings of this flow only (dry run per table).\n// In: any message from an inject node. Out: the same message.\n// It copies the shared settings from global context into flow context.\nvar DRY_RUN = {\n  dim_asset: true,\n  ref_target_seed: true,\n  dim_reason: true,\n  dim_product: true,\n  dim_shift: true\n};\nvar shared = global.get('cfg');\nif (!shared) {\n  node.status({\n    fill: 'red',\n    shape: 'ring',\n    text: 'CONFIG not run'\n  });\n  node.error('global cfg is missing: deploy or run the Config tab first');\n  return null;\n}\n\nvar cfg = Object.assign({}, shared);\ncfg.dryRun = DRY_RUN;\ncfg.paths = {};\nObject.keys(DRY_RUN).forEach(function (table) {\n  cfg.paths[table] = shared.root + '/' + table + '/' + table + '.parquet';\n});\ncfg.assetIds = [];\nshared.sites.forEach(function (site) {\n  cfg.assetIds = cfg.assetIds.concat(site.assetIds);\n});\nflow.set('cfg', cfg);\n\nvar writing = Object.keys(DRY_RUN).filter(function (table) {\n  return !DRY_RUN[table];\n});\nnode.status({\n  fill: writing.length ? 'green' : 'yellow',\n  shape: 'dot',\n  text: writing.length ? writing.length + ' table(s) WRITE' : 'DRY RUN'\n});\nreturn msg;\n",
+    "func": "// TASK SETTINGS: the settings of this flow only (dry run per table).\n// In: any message from an inject node. Out: the same message.\n// It copies the shared settings from global context into flow context.\nvar DRY_RUN = {\n  dim_asset: true,\n  ref_target_seed: true,\n  dim_reason: true,\n  dim_product: true,\n  dim_shift: true\n};\nvar shared = glob.get('cfg');\nif (!shared) {\n  node.status({\n    fill: 'red',\n    shape: 'ring',\n    text: 'CONFIG not run'\n  });\n  node.error('global cfg is missing: deploy or run the Config tab first');\n  return null;\n}\n\nvar cfg = Object.assign({}, shared);\ncfg.dryRun = DRY_RUN;\ncfg.paths = {};\nObject.keys(DRY_RUN).forEach(function (table) {\n  cfg.paths[table] = shared.root + '/' + table + '/' + table + '.parquet';\n});\ncfg.assetIds = [];\nshared.sites.forEach(function (site) {\n  cfg.assetIds = cfg.assetIds.concat(site.assetIds);\n});\nflow.set('cfg', cfg);\n\nvar writing = Object.keys(DRY_RUN).filter(function (table) {\n  return !DRY_RUN[table];\n});\nnode.status({\n  fill: writing.length ? 'green' : 'yellow',\n  shape: 'dot',\n  text: writing.length ? writing.length + ' table(s) WRITE' : 'DRY RUN'\n});\nreturn msg;\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
