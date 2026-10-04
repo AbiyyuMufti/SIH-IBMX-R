@@ -137,3 +137,7 @@ Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `sc
 - Same logs as before in ok, unmapped, stops-paged, empty (compared with the saved baselines).
 - The `3.x` and `4.x` check nodes now put the API message in the FAILED text.
 - First VFC run (user imported, I ran Backfill, dry run): the run line showed, but `read object` on the missing file only printed a yellow warning (404) and sent nothing. The catch never saw it, so nothing was written. Tried: read, then catch for the error. Fix (approved): the batch also goes through a 10 s wait to the append step; the append writes once per batch id, assumes a missing file when there is no payload, and writes a time-stamped file instead of replacing a file it knows. Runner: a read of a missing file now only warns; a delay in delay mode sends when the flow is quiet.
+
+## Data lake download (2026-10-05)
+- The Data Explorer manual describes no download or zip. The API has `POST /api/datalake/v3/generateDownloadObjectUrls` (body `{paths:[{path}]}`, answer `objectUrls[{path, signedUrl}]`, URLs valid 120 min, no zip).
+- User approved this POST. `scripts/datalake-download.js` (probe one path, or all days of a known file name pattern, then zip). Tested only against a local fake server: no credentials in the cloud clone. To confirm on the real tenant: does the technical user have data lake rights, how does the API answer for a path that does not exist.

@@ -7,3 +7,4 @@ node_modules/
 # VFC flow copies that contain real credentials, and downloaded data files
 flows/*.local.json
 *.parquet
+downloads/
