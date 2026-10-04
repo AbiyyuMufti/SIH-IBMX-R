@@ -78,7 +78,7 @@ export async function runFlow(nodes, options) {
         send: () => {},
         warn: () => {}
       };
-      const fn = vm.runInNewContext('(function(flow,node,msg,Buffer,Promise,global){' + n.func + '\n})', {});
+      const fn = vm.runInNewContext('(function(flow,node,msg,Buffer,Promise,glob){' + n.func + '\n})', {});
       const r = fn(flowContext, node, msg, Buffer, Promise, globalContext);
       if (r === null || r === undefined) return;
       if (n.outputs !== 1) return emit(n, r);
@@ -147,7 +147,7 @@ export async function runFlow(nodes, options) {
   if (options.configNodes) {
     const shared = options.configNodes.find((n) => n.type === 'function');
     const node = { status: () => {}, error: (e) => stats.errors.push(`CONFIG: ${e}`), send: () => {}, warn: () => {} };
-    const fn = vm.runInNewContext('(function(flow,node,msg,Buffer,Promise,global){' + shared.func + '\n})', {});
+    const fn = vm.runInNewContext('(function(flow,node,msg,Buffer,Promise,glob){' + shared.func + '\n})', {});
     fn(flowContext, node, {}, Buffer, Promise, globalContext);
   }
   const config = nodes.find((n) => n.type === 'function' && /CONFIG|SETTINGS/.test(n.name));

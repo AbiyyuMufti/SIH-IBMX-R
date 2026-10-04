@@ -2,10 +2,10 @@
   {
     "id": "1cecf.e45a39",
     "type": "tab",
-    "label": "Mufti OEE config",
+    "label": "Config",
     "disabled": false,
     "allowCycles": false,
-    "info": "Shared settings of the Mufti OEE flows, stored in global context."
+    "info": "Shared settings of the flows, stored in global context."
   },
   {
     "z": "1cecf.e45a39",

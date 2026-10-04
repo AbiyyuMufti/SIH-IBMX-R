@@ -227,7 +227,7 @@ function buildSiteFlow(site, index) {
   });
 
   b.nodes.unshift({
-    id: b.TAB, type: 'tab', label: `Mufti OEE ${site.name} (fact_kpi, fact_loss)`,
+    id: b.TAB, type: 'tab', label: `${site.name} daily report`,
     disabled: false, allowCycles: false,
     info: `Writes the two daily parquet tables of site ${site.name} to the data lake. Read calls only against Insights Hub. Needs the Config tab.`
   });

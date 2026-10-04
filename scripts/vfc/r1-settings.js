@@ -4,7 +4,7 @@
 var DRY_RUN = {
 __DRY_RUN__
 };
-var shared = global.get('cfg');
+var shared = glob.get('cfg');
 if (!shared) {
   node.status({
     fill: 'red',
