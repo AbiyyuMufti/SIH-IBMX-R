@@ -1,13 +1,14 @@
 // Decides what happens with the table __TABLE__.
 // In: msg.rows, msg.failed, msg.skipped. Out 1: msg.payload = rows for the
 // parquet node. Out 2: a log line. A failed item means nothing is written.
+var TABLE = '__TABLE__';
 var cfg = flow.get('cfg');
 var rows = msg.rows;
 var tail = '';
 if (msg.skipped.length) {
   tail += ' | skipped: ' + msg.skipped.join('; ');
 }
-var sizes = '__TABLE__ ' + rows.length + ' rows from ' +
+var sizes = TABLE + ' ' + rows.length + ' rows from ' +
   msg.itemCount + ' item(s)';
 
 function logOnly(text) {
@@ -36,7 +37,7 @@ if (!rows.length) {
   });
   return logOnly('NOTHING TO WRITE: ' + sizes + tail);
 }
-if (cfg.dryRun) {
+if (cfg.dryRun[TABLE]) {
   node.status({
     fill: 'yellow',
     shape: 'dot',

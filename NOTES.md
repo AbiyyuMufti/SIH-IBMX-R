@@ -2,7 +2,7 @@
 
 ## Status
 - API exploration done (Phase A and B). VFC flow `fact_kpi` / `fact_loss` built, refactored to the readability rules, tested on the mock.
-- Reference tables (`dim_asset`, `dim_reason`, `dim_product`, `dim_shift`, `ref_target_seed`): five separate flows built and tested on the mock (2026-10-04). Not yet imported into the VFC or run against the real tenant.
+- Reference tables (`dim_asset`, `dim_reason`, `dim_product`, `dim_shift`, `ref_target_seed`): one tab `flows/vfc-reference-tables.json` plus the Config tab `flows/vfc-config.json` (global context). Tested on the mock (2026-10-04). The first version (five flows) ran in the VFC and wrote files.
 
 ## Processing queue (source/, sizes in bytes)
 - [x] CADIT Insights Hub Services Testing.postman_collection.json (17,731): 16 calls
@@ -75,8 +75,9 @@ Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `sc
 - Many Node-RED calls are copies across tabs; distinct endpoints are far fewer than the call counts.
 
 ## Next
-- You: import the five `flows/vfc-ref-*.json` in the VFC, fill in CONFIG, run with dryRun true, and report what differs (link nodes, calendar events shape, unconfigured asset config).
-- Then: `fact_kpi_shift`, `fact_manual_entry`, run rate per product, synthetic files for `ref_cu`, `dim_sku`, `ref_target` (plan from the dashboard design artifact).
+- You: import `flows/vfc-config.json` and `flows/vfc-reference-tables.json`, fill in CONFIG, run with dryRun true. Check: `global` context works, all five tables, one `flows/vfc-group-test.json` import (do group nodes exist in the VFC?).
+- Step 3 (agreed plan): per-site fact flows (generated, one tab per site, site subfolders `fact_kpi/<site>/`, per-site production-day start, failure per site), same grid layout. The fact flow still overlaps in 14 places by estimate and is off the 20 px grid.
+- Then group 2 on the same config and site structure. Group 3 waits for Reckitt.
 
 ## VFC flow (fact_kpi, fact_loss) - in progress (2026-10-02)
 - Paul-Flow.json is available. Pattern: function builds msg.method/url/headers -> http request (method "use", ret "obj") -> function; parquet node (engine parquetjs, option write, multi, columns [{column,type}]) -> function sets msg.path -> write object (mode object).
@@ -101,3 +102,12 @@ Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `sc
 - New files: `scripts/build-vfc-reference-flows.js` (own small layout helpers; the fact flow generator was not touched, its JSON rebuilds byte-identical), `scripts/vfc/r*.js`, `flows/vfc-ref-*.json`. `test-vfc-flow.js` takes `file=<flow json>`. `lib-mock-ih.js` has routes for config, thresholds, reason trees, product collections and calendars, and two scenarios: `ref-config-fail`, `ref-detail-fail`.
 - Result: all five flows pass `validate-flow.js`. Mock runs: ok, token-fail, list-fail, empty, only-unconfigured, ref-config-fail, ref-detail-fail behave as intended (nothing written on any failure). Old flow: mock output for ok, unmapped, stops-paged and empty identical to before.
 - Decision: the five flows each repeat the setup stage (token, asset list, choose assets). Duplicated on purpose so each file stands alone.
+
+## Config tab and single reference tab (2026-10-04, step 1 and 2 of the agreed plan)
+- Decisions by the user: global context (not tenant, other people should not see it), subfolders in the data lake work (confirmed), one flow per site for facts, one shared flow for dims and refs, shared settings in one place, dry run per task.
+- New: `flows/vfc-config.json` (node 1.1 CONFIG sets `global.get('cfg')`, sites list), `flows/vfc-reference-tables.json` (129 nodes, was 248 in five flows), `flows/vfc-group-test.json` (import to test group nodes, then delete). Removed the five `flows/vfc-ref-*.json`.
+- Per-asset stage now makes one config call per asset for three tables, and reads the hierarchy once for all of them, so Test Line is excluded in every table (intentional change, was dim_asset only). Mock: 35 http calls became 16.
+- Proof: new tab vs the five old flows on the mock, 9 scenarios, all/configured asset lists, 5 tables: 90 checks, 0 differences in parquet rows and in what is written (Test Line exclusion switched off in the comparison for the four tables that did not have it).
+- Runner: `global` context, join state per join node (was shared by parts id), `dryRun` as an object per table, runs the Config tab first. The fact flow output is unchanged (mock ok, unmapped, stops-paged, empty identical).
+- Layout: 260 px columns, 220 px rows, everything on the 20 px grid, side link outs below their node, fan-out link outs stacked to the right. Estimated overlaps in the new tab: 0. The cause of the old overlaps: fixed 190 px columns with node widths that depend on the name, and side link outs placed on top of the next node.
+- Secrets: not rotated yet. Siemens has a how-to "OAuth Client Secret Rotation" and a page "Rotating app credentials"; the pages did not load in this session, so no rotation interval or mechanism is recorded here.

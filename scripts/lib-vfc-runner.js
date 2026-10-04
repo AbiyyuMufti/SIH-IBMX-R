@@ -17,11 +17,20 @@ const typeOk = (type, v) => {
   return false;
 };
 
-// options: {startDay, endDay, write, allAssets, fetchImpl, clientId, clientSecret}
+// options: {startDay, endDay, write, allAssets, fetchImpl, clientId, clientSecret,
+//           configNodes}. configNodes = the Config tab: its CONFIG function is
+//           run once first and stores the shared settings in global context.
 export async function runFlow(nodes, options) {
   const { startDay, endDay = startDay, write = false, allAssets = false, fetchImpl } = options;
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const context = {};
+  const globalData = {};
+  const globalContext = {
+    get: (key) => globalData[key],
+    set: (key, value) => {
+      globalData[key] = value;
+    }
+  };
   const flowContext = {
     get: (key) => context[key],
     set: (key, value) => {
@@ -29,7 +38,11 @@ export async function runFlow(nodes, options) {
       if (key === 'cfg') {
         value.clientId = options.clientId;
         value.clientSecret = options.clientSecret;
-        value.dryRun = !write;
+        if (value.dryRun && typeof value.dryRun === 'object') {
+          for (const table of Object.keys(value.dryRun)) value.dryRun[table] = !write;
+        } else {
+          value.dryRun = !write;
+        }
         if (allAssets) value.assetIds = [];
       }
     }
@@ -65,8 +78,8 @@ export async function runFlow(nodes, options) {
         send: () => {},
         warn: () => {}
       };
-      const fn = vm.runInNewContext('(function(flow,node,msg,Buffer,Promise){' + n.func + '\n})', {});
-      const r = fn(flowContext, node, msg, Buffer, Promise);
+      const fn = vm.runInNewContext('(function(flow,node,msg,Buffer,Promise,global){' + n.func + '\n})', {});
+      const r = fn(flowContext, node, msg, Buffer, Promise, globalContext);
       if (r === null || r === undefined) return;
       if (n.outputs !== 1) return emit(n, r);
       if (!Array.isArray(r)) return emit(n, [r]);
@@ -100,10 +113,11 @@ export async function runFlow(nodes, options) {
         emit(n, [{ ...msg, payload: el, parts: part }]);
       });
     } else if (n.type === 'join') {
-      const g = joins.get(msg.parts.id) || { items: [], count: msg.parts.count };
+      const joinKey = n.id + ':' + msg.parts.id;
+      const g = joins.get(joinKey) || { items: [], count: msg.parts.count };
       g.items[msg.parts.index] = msg.payload;
       g.last = msg;
-      joins.set(msg.parts.id, g);
+      joins.set(joinKey, g);
       if (g.items.filter((x) => x !== undefined).length === g.count) {
         const out = { ...g.last, payload: g.items };
         delete out.parts;
@@ -130,7 +144,13 @@ export async function runFlow(nodes, options) {
     }
   }
 
-  const config = nodes.find((n) => n.type === 'function' && /CONFIG/.test(n.name));
+  if (options.configNodes) {
+    const shared = options.configNodes.find((n) => n.type === 'function');
+    const node = { status: () => {}, error: (e) => stats.errors.push(`CONFIG: ${e}`), send: () => {}, warn: () => {} };
+    const fn = vm.runInNewContext('(function(flow,node,msg,Buffer,Promise,global){' + shared.func + '\n})', {});
+    fn(flowContext, node, {}, Buffer, Promise, globalContext);
+  }
+  const config = nodes.find((n) => n.type === 'function' && /CONFIG|SETTINGS/.test(n.name));
   queue.push([config.id, { payload: { start: startDay, end: endDay } }]);
   let guard = 0;
   while (queue.length && guard++ < 20000) {

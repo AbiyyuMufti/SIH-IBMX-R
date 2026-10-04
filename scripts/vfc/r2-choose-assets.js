@@ -1,7 +1,6 @@
-// Chooses the assets to read for a reference table.
+// Chooses the assets to read for the reference tables.
 // In: the OEE asset list. Out 1: msg.payload = [{id, name, isManual,
-// isConfigured, reasonTreeId}] for the next node. Out 2: a log message.
-var KEEP_UNCONFIGURED = __KEEP__;
+// isConfigured, reasonTreeId}] for the split node. Out 2: a log message.
 var cfg = flow.get('cfg');
 var byId = {};
 var skipped = [];
@@ -36,10 +35,6 @@ ids.forEach(function (id) {
   }
   if (cfg.excludeNames.indexOf(o.name) >= 0) {
     skipped.push(o.name + ' excluded');
-    return;
-  }
-  if (o.isConfigured === false && !KEEP_UNCONFIGURED) {
-    skipped.push(o.name + ' not configured');
     return;
   }
   targets.push({

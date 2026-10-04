@@ -1,8 +1,9 @@
-// Builds the dim_asset row of one asset.
-// In: the OEE config response, msg.h (hierarchy) and msg.asset.
-// Out: msg.payload = an item {name, failed, skipped, rows} for the join.
+// Builds the dim_asset item (one row) of one asset.
+// In: msg.h (hierarchy), msg.configInfo and msg.asset. An unconfigured
+// asset is kept, with empty ids. Out: msg.dimItem = {name, failed, skipped,
+// rows}.
 var asset = msg.asset;
-var config = msg.payload || {};
+var info = msg.configInfo || {};
 var item = {
   name: asset.name,
   failed: null,
@@ -10,34 +11,33 @@ var item = {
   rows: []
 };
 
-if (msg.statusCode !== 200) {
-  // An asset that is not configured has no config: keep it, ids empty.
-  config = {};
-  if (asset.isConfigured) {
-    var text = asset.name + ': asset config failed, HTTP ';
-    item.failed = text + msg.statusCode;
-    msg.payload = item;
-    return msg;
-  }
-}
-
 var isManual = null;
 if (asset.isManual !== null && asset.isManual !== undefined) {
   isManual = !!asset.isManual;
 }
-item.rows.push({
-  asset_id: asset.id,
-  asset_name: msg.h.asset_name,
-  site: msg.h.site,
-  area: msg.h.area,
-  line: msg.h.line,
-  machine: msg.h.machine,
-  is_manual: isManual,
-  is_configured: asset.isConfigured,
-  calendar_id: config.calendarId || null,
-  product_collection_id: config.productCollectionId || null,
-  reason_tree_id: asset.reasonTreeId,
-  loaded_at: msg.loadedAt
-});
-msg.payload = item;
+
+if (msg.amFail) {
+  item.failed = msg.amFail;
+} else if (msg.skip === 'excluded') {
+  item.skipped = asset.name + ' excluded';
+} else if (asset.isConfigured && info.status !== 200) {
+  var text = asset.name + ': asset config failed, HTTP ';
+  item.failed = text + info.status;
+} else {
+  item.rows.push({
+    asset_id: asset.id,
+    asset_name: msg.h.asset_name,
+    site: msg.h.site,
+    area: msg.h.area,
+    line: msg.h.line,
+    machine: msg.h.machine,
+    is_manual: isManual,
+    is_configured: asset.isConfigured,
+    calendar_id: info.calendarId || null,
+    product_collection_id: info.productCollectionId || null,
+    reason_tree_id: asset.reasonTreeId,
+    loaded_at: msg.loadedAt
+  });
+}
+msg.dimItem = item;
 return msg;

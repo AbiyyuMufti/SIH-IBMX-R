@@ -6,6 +6,7 @@
 //   all      = every configured OEE asset instead of the list in CONFIG
 //   mock     = synthetic answers, no network and no .env (see lib-mock-ih.js)
 //   file=<path>  run another flow file (default: the fact_kpi / fact_loss flow)
+//                the Config tab flows/vfc-config.json runs first (global context)
 import { readFileSync } from 'node:fs';
 import { runFlow } from './lib-vfc-runner.js';
 import { makeMockFetch } from './lib-mock-ih.js';
@@ -20,6 +21,12 @@ const flowFile = fileArg ? fileArg.slice(5) : 'flows/vfc-fact-kpi-fact-loss.json
 const nodes = JSON.parse(readFileSync(new URL('../' + flowFile, import.meta.url), 'utf8'));
 
 const options = { startDay: start, endDay: end, write, allAssets: args.includes('all') };
+// The Config tab (shared settings in global context) runs first when it exists.
+try {
+  options.configNodes = JSON.parse(readFileSync(new URL('../flows/vfc-config.json', import.meta.url), 'utf8'));
+} catch (e) {
+  options.configNodes = null;
+}
 if (mockArg) {
   options.fetchImpl = makeMockFetch(mockArg.split('=')[1] || 'ok');
   options.clientId = 'mock-id';

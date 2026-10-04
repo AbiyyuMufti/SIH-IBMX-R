@@ -1,7 +1,7 @@
-// Collects the distinct ids of the assets. The field to read is ID_FIELD.
-// In: msg.payload = array of items. Out 1: msg.ids (list of ids).
-// Out 2: a log line when an item failed or there is no id at all.
-var ID_FIELD = '__FIELD__';
+// Collects the distinct ids of the assets.
+// In: msg.payload = array of items {name, value, failed, skipped}.
+// Out 1: msg.ids (list of ids). Out 2: a log line when an item failed or
+// there is no id at all.
 var seen = {};
 var ids = [];
 var failures = [];
@@ -19,7 +19,10 @@ msg.payload.forEach(function (item) {
     failures.push(item.failed);
     return;
   }
-  var id = item[ID_FIELD];
+  if (item.skipped) {
+    return;
+  }
+  var id = item.value;
   if (!id) {
     without.push(item.name);
     return;

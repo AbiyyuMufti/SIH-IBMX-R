@@ -3,6 +3,6 @@
 // Out: the same message with msg.path and msg.filename. The file name is
 // fixed, so every run replaces the file and never duplicates it.
 var cfg = flow.get('cfg');
-msg.path = cfg.path;
+msg.path = cfg.paths['__TABLE__'];
 msg.filename = msg.path.split('/').pop();
 return msg;

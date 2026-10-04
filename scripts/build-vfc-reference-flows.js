@@ -1,13 +1,15 @@
-// Builds the five importable VFC flows for the reference tables
-// -> flows/vfc-ref-<table>.json
+// Builds the importable VFC flows for the reference tables:
+//   flows/vfc-config.json            the Config tab (shared settings)
+//   flows/vfc-reference-tables.json  one tab, five tables
+//   flows/vfc-group-test.json        a tiny file to test group nodes
 // Usage: node scripts/build-vfc-reference-flows.js
 //
-// One flow file per table: dim_asset, dim_reason, dim_product, dim_shift,
-// ref_target_seed. The function-node code lives in scripts/vfc/r*.js. Edit
-// those files, then run this script. Do not edit the JSON by hand.
+// The function-node code lives in scripts/vfc/c*.js and r*.js. Edit those
+// files, then run this script. Do not edit the JSON by hand.
 // Function nodes in the VFC have NO fetch, require or process, so every API
 // call is an http request node. No loops: one message per asset or id (split),
-// collected again by a join. Layout: one lane per row, left to right.
+// collected again by a join. Layout: one lane per row, left to right, on the
+// 20 px editor grid.
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { validateFlow } from './validate-flow.js';
 
@@ -27,6 +29,10 @@ const SCHEMAS = {
     ['machine', S], ['is_manual', B], ['is_configured', B], ['calendar_id', S],
     ['product_collection_id', S], ['reason_tree_id', S], ['loaded_at', TS]
   ],
+  ref_target_seed: [
+    ['asset_id', S], ['asset_name', S], ['kpi', S], ['warning', D],
+    ['error', D], ['is_set', B], ['loaded_at', TS]
+  ],
   dim_reason: [
     ['reason_tree_id', S], ['tree_name', S], ['reason_id', S], ['reason_name', S],
     ['parent_id', S], ['level', I], ['top_level_name', S], ['full_path', S],
@@ -43,206 +49,37 @@ const SCHEMAS = {
     ['event_id', S], ['shift_name', S], ['description', S],
     ['time_model_category_id', S], ['duration_ms', I], ['freq', S],
     ['interval', I], ['start_utc', TS], ['until_utc', TS], ['loaded_at', TS]
-  ],
-  ref_target_seed: [
-    ['asset_id', S], ['asset_name', S], ['kpi', S], ['warning', D],
-    ['error', D], ['is_set', B], ['loaded_at', TS]
   ]
 };
-
-// ---------- steps ----------
-// A step is one node in a lane. outs lists where each output goes: 'next'
-// = the next node in the lane, any other word = a link out "to <WORD>".
-const fn = (key, name, file, outs, replace = {}) => ({ t: 'fn', key, name, file, outs, replace });
-const http = (key, name) => ({ t: 'http', key, name });
-const linkInStep = (key) => ({ t: 'linkin', key });
-const split = (key) => ({ t: 'split', key });
-const delay = (key, name, seconds) => ({ t: 'delay', key, name, seconds });
-const join = (key, name) => ({ t: 'join', key, name });
-
-const SETUP_STEPS = (keep) => [
-  linkInStep('SETUP'),
-  fn('tokenFn', 'Build token request', 's2-token-request.js', ['next']),
-  http('tokenHttp', 'POST token'),
-  fn('listFn', 'Build asset list request', 's2-asset-list-request.js', ['next', 'LOG']),
-  http('listHttp', 'GET OEE assets'),
-  fn('chooseFn', 'Choose assets', 'r2-choose-assets.js', ['next', 'LOG'], {
-    __KEEP__: String(keep)
-  })
-];
-const SPLIT_ASSETS = (end) => [
-  split('split'),
-  delay('assetDelay', 'One asset per second', 1),
-  { t: 'end', key: end }
-];
-
-// Pick ids, read the master list, split per id (stage with the list call).
-const IDS_STEPS = (field, listPath, listKey, extraField) => [
-  fn('pickFn', 'Pick ids', 'r3-pick-ids.js', ['next', 'LOG'], { __FIELD__: field }),
-  fn('listReqFn', 'Build master list request', 'r3-list-request.js', ['next'], {
-    __LIST_PATH__: listPath
-  }),
-  http('masterHttp', 'GET master list'),
-  fn('chooseIdsFn', 'Choose ids', 'r3-choose-ids.js', ['next', 'LOG'], {
-    __LIST_KEY__: listKey,
-    __EXTRA_FIELD__: extraField
-  }),
-  split('idSplit'),
-  delay('idDelay', 'One id per second', 1),
-  { t: 'end', key: 'DETAIL' }
-];
-
-const DETAIL_LANE = (before, after, withWindow, rowsFile) => [
-  linkInStep('DETAIL'),
-  fn('detailFn', 'Build detail request', 'r4-detail-request.js', ['next'], {
-    __BEFORE__: before,
-    __AFTER__: after,
-    __WINDOW__: String(withWindow)
-  }),
-  http('detailHttp', 'GET details'),
-  fn('rowsFn', 'Build rows', rowsFile, ['next']),
-  { t: 'end', key: 'JOIN' }
-];
-
-const CONFIG_IDS_LANES = (field) => [
-  {
-    title: 'ASSET CONFIG',
-    info:
-      'One message per asset. GET the OEE config of the asset and read one id from it. The result goes to the join of this stage ("to JOIN IDS"). A failed call is carried to the log, nothing is written.',
-    steps: [
-      linkInStep('CONFIG'),
-      fn('cfgReqFn', 'Build config request', 'r3-config-request.js', ['next']),
-      http('cfgHttp', 'GET asset config'),
-      fn('cfgIdsFn', 'Read config id', 'r3-config-ids.js', ['next'], { __FIELD__: field }),
-      { t: 'end', key: 'JOIN IDS' }
-    ]
-  },
-  {
-    title: 'COLLECT IDS',
-    info:
-      'Waits for all assets, then keeps the distinct ids. The master list gives the names. One message per id goes on to the detail calls.',
-    steps: [
-      linkInStep('JOIN IDS'),
-      join('idsJoin', 'Wait for all assets'),
-      ...IDS_STEPS('value', '__LIST_PATH__', '__LIST_KEY__', '__EXTRA_FIELD__')
-    ]
-  }
-];
-
-// ---------- the five flows ----------
-const FLOWS = {
-  dim_asset: {
-    label: 'Mufti OEE reference: dim_asset',
-    keep: true,
-    extra: '',
-    setupEnd: 'ASSET',
-    lanes: [
-      {
-        title: 'ASSET',
-        info:
-          'One message per asset. Asset Management GET asset (hierarchyPath), then the OEE config of the asset (calendar and product collection ids). Unconfigured assets are kept: they get a row with empty ids. Every asset ends at the join, also when failed or excluded ("to JOIN").',
-        steps: [
-          linkInStep('ASSET'),
-          fn('assetFn', 'Build asset request', 's3-asset-request.js', ['next']),
-          http('assetHttp', 'GET asset (hierarchy)'),
-          fn('cfgReqFn', 'Build config request', 'r3-asset-config-request.js', ['next', 'JOIN']),
-          http('cfgHttp', 'GET asset config'),
-          fn('rowFn', 'Build asset row', 'r3-asset-row.js', ['next']),
-          { t: 'end', key: 'JOIN' }
-        ]
-      }
-    ]
-  },
-  ref_target_seed: {
-    label: 'Mufti OEE reference: ref_target_seed',
-    keep: false,
-    extra: '',
-    setupEnd: 'ASSET',
-    lanes: [
-      {
-        title: 'ASSET TARGETS',
-        info:
-          'One message per asset. GET the OEE asset (thresholds: warning and error per KPI), then one row per KPI. These are the KPI targets set in Insights Hub (0 = not set). Loss and category targets are not in the API.',
-        steps: [
-          linkInStep('ASSET'),
-          fn('thrReqFn', 'Build thresholds request', 'r3-thresholds-request.js', ['next']),
-          http('thrHttp', 'GET asset thresholds'),
-          fn('rowFn', 'Build target rows', 'r3-target-rows.js', ['next']),
-          { t: 'end', key: 'JOIN' }
-        ]
-      }
-    ]
-  },
+// The tables with a master list and one detail call per id.
+const ID_TABLES = {
   dim_reason: {
-    label: 'Mufti OEE reference: dim_reason',
-    keep: false,
-    extra: '',
-    setupEnd: 'TREES',
-    lanes: [
-      {
-        title: 'REASON TREES',
-        info:
-          'The reason tree id of every asset comes with the OEE asset list. Keep the distinct ids, read the list of trees for the names, then one message per tree.',
-        steps: [
-          linkInStep('TREES'),
-          ...IDS_STEPS('reasonTreeId', 'reasontrees', 'reasonTrees', '')
-        ]
-      },
-      {
-        title: 'REASONS',
-        info:
-          'One message per tree. GET the flat reason list (parentId) and build level, top level name and full path. The result goes to the join ("to JOIN").',
-        steps: DETAIL_LANE('reasontrees/', '/reasons', false, 'r4-reason-rows.js')
-      }
-    ]
+    ids: 'REASON IDS', detail: 'REASON DETAIL', listPath: 'reasontrees',
+    listKey: 'reasonTrees', extra: '', before: 'reasontrees/', after: '/reasons',
+    window: false, rowsFile: 'r4-reason-rows.js', what: 'reason tree'
   },
   dim_product: {
-    label: 'Mufti OEE reference: dim_product',
-    keep: false,
-    extra: '',
-    setupEnd: 'CONFIG',
-    lanes: [
-      ...CONFIG_IDS_LANES('productCollectionId'),
-      {
-        title: 'PRODUCTS',
-        info:
-          'One message per product collection. GET the products (code, name, design speed) and convert the speed to units per hour. The result goes to the join ("to JOIN").',
-        steps: DETAIL_LANE('productCollections/', '/products', false, 'r4-product-rows.js')
-      }
-    ],
-    listPath: 'productCollections',
-    listKey: 'productCollections',
-    extraField: ''
+    ids: 'PRODUCT IDS', detail: 'PRODUCT DETAIL', listPath: 'productCollections',
+    listKey: 'productCollections', extra: '', before: 'productCollections/',
+    after: '/products', window: false, rowsFile: 'r4-product-rows.js',
+    what: 'product collection'
   },
   dim_shift: {
-    label: 'Mufti OEE reference: dim_shift',
-    keep: false,
-    extra:
-      '  // Only dim_shift: calendar events are read for this many days.\n' +
-      '  calendarWindowDays: 31,',
-    setupEnd: 'CONFIG',
-    lanes: [
-      ...CONFIG_IDS_LANES('calendarId'),
-      {
-        title: 'SHIFTS',
-        info:
-          'One message per calendar. GET the calendar events (shift name, duration, recurrence) for the window set in CONFIG. The result goes to the join ("to JOIN").',
-        steps: DETAIL_LANE('calendars/', '/calendarEvents', true, 'r4-shift-rows.js')
-      }
-    ],
-    listPath: 'calendars',
-    listKey: '',
-    extraField: 'timeZoneText'
+    ids: 'CALENDAR IDS', detail: 'CALENDAR DETAIL', listPath: 'calendars',
+    listKey: '', extra: 'timeZoneText', before: 'calendars/',
+    after: '/calendarEvents', window: true, rowsFile: 'r4-shift-rows.js',
+    what: 'calendar'
   }
 };
+const ALL_TABLES = ['dim_asset', 'ref_target_seed', 'dim_reason', 'dim_product', 'dim_shift'];
 
-// ---------- one flow ----------
-const COL_WIDTH = 190;
+// ---------- layout ----------
+const COL_WIDTH = 260;
 const FIRST_COL = 120;
-const ROW_STEP = 215;
-const FIRST_ROW = 115;
+const ROW_STEP = 220;
+const FIRST_ROW = 120;
 
-function buildFlow(table, spec, flowIndex) {
+function makeBuilder(flowIndex) {
   let counter = flowIndex * 1000;
   const newId = () => {
     counter++;
@@ -280,18 +117,20 @@ function buildFlow(table, spec, flowIndex) {
       x: col(c), y: rowY(r), wires: [[next]]
     });
   };
-
   const comment = (name, info, r) =>
-    add({ id: newId(), type: 'comment', name, info, x: 140, y: rowY(r) - 65, wires: [] });
+    add({ id: newId(), type: 'comment', name, info, x: 120, y: rowY(r) - 80, wires: [] });
 
-  // Places the steps of one lane. fnNo numbers the function nodes of a stage.
   let stageNo = 0;
-  function lane(r, title, info, steps, startCol = 0) {
+
+  // Places the steps of one lane. A function node is named
+  // "<stage>.<number> <name>". Outputs: 'next' = the next node, any other
+  // word = a link out "to <WORD>" below the node (fan: stacked to the right).
+  function lane(r, title, info, steps) {
     stageNo++;
     comment(`[${stageNo}] ${title}`, `STAGE ${stageNo} - ${info}`, r);
     let fnNo = 0;
     steps.forEach((step, i) => {
-      const c = startCol + i;
+      const c = i;
       const nextStep = steps[i + 1];
       let nextId = null;
       if (nextStep && nextStep.t === 'end') {
@@ -299,10 +138,11 @@ function buildFlow(table, spec, flowIndex) {
       } else if (nextStep) {
         nextId = id(nextStep.key);
       }
-      const wiresFor = (outs) =>
+      const wiresFor = (outs, fan) =>
         outs.map((o, k) => {
           if (o === 'next') return [nextId];
-          return [linkOut(o, col(c) + 120, rowY(r) + 60 + (k - 1) * 40)];
+          if (fan) return [linkOut(o, col(c + 1), rowY(r) + (k - (outs.length - 1) / 2) * 40)];
+          return [linkOut(o, col(c) + 120, rowY(r) + 60)];
         });
       const pos = { x: col(c), y: rowY(r) };
       if (step.t === 'linkin') {
@@ -310,13 +150,13 @@ function buildFlow(table, spec, flowIndex) {
       } else if (step.t === 'fn') {
         fnNo++;
         let func = code(step.file);
-        for (const [from, to] of Object.entries(step.replace)) {
+        for (const [from, to] of Object.entries(step.replace || {})) {
           func = func.replaceAll(from, to);
         }
         add({
           id: id(step.key), type: 'function', name: `${stageNo}.${fnNo} ${step.name}`,
           func, outputs: step.outs.length, language: 'javascript', noerr: 0, ...pos,
-          wires: wiresFor(step.outs)
+          wires: wiresFor(step.outs, step.fan)
         });
       } else if (step.t === 'http') {
         add({
@@ -332,9 +172,9 @@ function buildFlow(table, spec, flowIndex) {
       } else if (step.t === 'delay') {
         add({
           id: id(step.key), type: 'delay', name: step.name, pauseType: 'rate',
-          timeout: String(step.seconds), timeoutUnits: 'seconds', rate: '1',
-          nbRateUnits: String(step.seconds), rateUnits: 'second', randomFirst: '1', randomLast: '1',
-          randomUnits: 'seconds', drop: false, powerMode: false, ...pos, wires: [[nextId]]
+          timeout: '1', timeoutUnits: 'seconds', rate: '1', nbRateUnits: '1', rateUnits: 'second',
+          randomFirst: '1', randomLast: '1', randomUnits: 'seconds', drop: false,
+          powerMode: false, ...pos, wires: [[nextId]]
         });
       } else if (step.t === 'join') {
         add({
@@ -342,145 +182,231 @@ function buildFlow(table, spec, flowIndex) {
           property: 'payload', propertyType: 'msg', key: 'topic', joiner: '\\n', joinerType: 'str',
           accumulate: false, timeout: '', count: '', ...pos, wires: [[nextId]]
         });
+      } else if (step.t === 'parquet') {
+        add({
+          id: id(step.key), type: 'parquet', name: `Write ${step.table} parquet`, option: 'write',
+          columns: SCHEMAS[step.table].map(([column, type]) => ({ column, type })), rcolumns: '',
+          multi: 'multiple', outputPty: 'payload', outputPtyType: 'msg', engine: 'parquetjs',
+          ...pos, wires: [[nextId]]
+        });
+      } else if (step.t === 'write') {
+        add({
+          id: id(step.key), type: 'write object', name: `${step.table} to data lake`, path: '',
+          mode: 'object', ...pos, wires: []
+        });
       }
     });
   }
+  return { nodes, TAB, add, newId, id, col, rowY, comment, lane, linkOut, nextStage: () => ++stageNo };
+}
 
-  // ----- stage 1: triggers and config -----
-  const first = (key) => id(key);
-  let lanesRow = 1;
-  stageNo++;
+// ---------- step helpers ----------
+const fn = (key, name, file, outs, replace = {}, fan = false) => ({ t: 'fn', key, name, file, outs, replace, fan });
+const http = (key, name) => ({ t: 'http', key, name });
+const linkInStep = (key) => ({ t: 'linkin', key });
+const end = (key) => ({ t: 'end', key });
+const split = (key) => ({ t: 'split', key });
+const delay = (key, name) => ({ t: 'delay', key, name });
+const join = (key, name) => ({ t: 'join', key, name });
+
+// Collect, decide, parquet, path, write: the end of every table lane.
+const tableEnd = (table) => [
+  fn(`${table}_collect`, `Collect ${table}`, 'r5-collect.js', ['next']),
+  fn(`${table}_decide`, `Decide ${table}`, 'r5-decide.js', ['next', 'LOG'], { __TABLE__: table }),
+  { t: 'parquet', key: `${table}_pq`, table },
+  fn(`${table}_path`, `Set ${table} path`, 'r6-set-path.js', ['next'], { __TABLE__: table }),
+  { t: 'write', key: `${table}_write`, table }
+];
+
+// ---------- the reference flow ----------
+function buildReferenceFlow() {
+  const b = makeBuilder(1);
+  const { add, id, col, rowY, comment, lane, linkOut } = b;
+  let r = 1;
+
+  // stage 1: triggers and task settings
+  const stage1 = b.nextStage();
   comment(
-    '[1] TRIGGER & CONFIG',
-    `STAGE 1 - TRIGGER AND CONFIG. Writes the table ${table} to the data lake. Schedule: weekly, Monday 07:00 UTC. The Run now button starts it by hand. Both go through 1.1 CONFIG, the only node to edit: output path, dry-run switch, credentials, asset list. dryRun is true by default: set it to false to write the file. The file name is fixed, so every run replaces the file.`,
-    1
+    `[${stage1}] TRIGGER & TASK SETTINGS`,
+    `STAGE ${stage1} - TRIGGER AND TASK SETTINGS. Writes five reference tables to the data lake. Schedule: weekly, Monday 07:00 UTC. The Run now button starts it by hand. Both go through 1.1 TASK SETTINGS: the dry-run switch per table. The shared settings (credentials, sites, asset ids, root folder) come from the Config tab through global context. dryRun is true by default. Every table file has a fixed name, so every run replaces it.`,
+    r
   );
-  add({
-    id: newId(), type: 'inject', name: 'Weekly Mon 07:00 UTC', topic: '', payload: '', payloadType: 'date',
-    repeat: '', repeatEnd: '0', endTime: '0', crontab: '0 7 * * 1', offset: 'NaN', once: false,
-    properties: '', timezone: 'UTC', betweentimesunit: 'm', showNextExecution: false, powerMode: false,
-    x: col(0), y: rowY(1) - 25, wires: [[first('cfg')]]
+  const inject = (name, dy, crontab) => add({
+    id: b.newId(), type: 'inject', name, topic: '', payload: '', payloadType: 'date',
+    repeat: '', repeatEnd: '0', endTime: '0', crontab, offset: 'NaN', once: false,
+    properties: '', timezone: 'UTC', betweentimesunit: 'm', showNextExecution: false,
+    powerMode: false, x: col(0), y: rowY(r) + dy, wires: [[id('settings')]]
   });
+  inject('Weekly Mon 07:00 UTC', -40, '0 7 * * 1');
+  inject('Run now', 40, '');
+  const dryRun = ALL_TABLES.map((t, i) => `  ${t}: true${i < ALL_TABLES.length - 1 ? ',' : ''}`).join('\n');
   add({
-    id: newId(), type: 'inject', name: 'Run now', topic: '', payload: '', payloadType: 'date',
-    repeat: '', repeatEnd: '0', endTime: '0', crontab: '', offset: 'NaN', once: false,
-    properties: '', timezone: 'utc', betweentimesunit: 'm', showNextExecution: false, powerMode: false,
-    x: col(0), y: rowY(1) + 25, wires: [[first('cfg')]]
-  });
-  const configCode = code('r1-config.js').replaceAll('__TABLE__', table).replace('__EXTRA__', spec.extra);
-  add({
-    id: id('cfg'), type: 'function', name: '1.1 CONFIG (edit here)', func: configCode, outputs: 1,
-    language: 'javascript', noerr: 0, x: col(1), y: rowY(1), wires: [[id('runFn')]]
+    id: id('settings'), type: 'function', name: '1.1 TASK SETTINGS (edit here)',
+    func: code('r1-settings.js').replace('__DRY_RUN__', dryRun), outputs: 1,
+    language: 'javascript', noerr: 0, x: col(1), y: rowY(r), wires: [[id('runFn')]]
   });
   add({
     id: id('runFn'), type: 'function', name: '1.2 Build run message', func: code('r1-run-message.js'),
-    outputs: 1, language: 'javascript', noerr: 0, x: col(2), y: rowY(1),
-    wires: [[linkOut('SETUP', col(3), rowY(1))]]
+    outputs: 1, language: 'javascript', noerr: 0, x: col(2), y: rowY(r),
+    wires: [[linkOut('SETUP', col(3), rowY(r))]]
   });
+  r++;
 
-  // ----- stage 2: setup -----
-  const setup = SETUP_STEPS(spec.keep);
-  const splitsHere = spec.setupEnd === 'ASSET' || spec.setupEnd === 'CONFIG';
-  const setupSteps = splitsHere
-    ? [...setup, ...SPLIT_ASSETS(spec.setupEnd)]
-    : [...setup, { t: 'end', key: spec.setupEnd }];
-  lane(
-    2,
-    'SETUP',
-    'token request, OEE asset list, choose the assets. Function nodes cannot use fetch in the VFC, so every call is an http request node: the function before it sets msg.method, msg.url and msg.headers. A failure goes to the LOG and nothing is written.',
-    setupSteps
-  );
+  lane(r++, 'SETUP',
+    'token request, OEE asset list, choose the assets, one message per asset. Function nodes cannot use fetch in the VFC, so every call is an http request node: the function before it sets msg.method, msg.url and msg.headers. A failure goes to the LOG and nothing is written.',
+    [
+      linkInStep('SETUP'),
+      fn('tokenFn', 'Build token request', 's2-token-request.js', ['next']),
+      http('tokenHttp', 'POST token'),
+      fn('listFn', 'Build asset list request', 's2-asset-list-request.js', ['next', 'LOG']),
+      http('listHttp', 'GET OEE assets'),
+      fn('chooseFn', 'Choose assets', 'r2-choose-assets.js', ['next', 'LOG']),
+      split('split'),
+      delay('assetDelay', 'One asset per second'),
+      end('ASSET')
+    ]);
+  lane(r++, 'ASSET',
+    'one message per asset, three calls: Asset Management GET asset (hierarchyPath), OEE config (calendar and product collection ids), OEE thresholds (KPI targets). An excluded or unconfigured asset skips the OEE calls and goes straight to 4.1 ("to BUILD").',
+    [
+      linkInStep('ASSET'),
+      fn('assetFn', 'Build asset request', 's3-asset-request.js', ['next']),
+      http('assetHttp', 'GET asset (hierarchy)'),
+      fn('cfgReqFn', 'Save hierarchy, ask config', 'r3-asset-config-request.js', ['next', 'BUILD']),
+      http('cfgHttp', 'GET asset config'),
+      fn('thrReqFn', 'Save config, ask targets', 'r3-thresholds-request.js', ['next']),
+      http('thrHttp', 'GET asset thresholds'),
+      end('BUILD')
+    ]);
+  lane(r++, 'BUNDLES & ROUTE',
+    'one bundle per asset: the dim_asset item, the target item and the three id items (product collection, calendar, reason tree). The join waits for all assets. 4.4 sends one message per table: output 1 dim_asset, 2 ref_target_seed, 3 product collection ids, 4 calendar ids, 5 reason tree ids.',
+    [
+      linkInStep('BUILD'),
+      fn('targetFn', 'Build target item', 'r3-target-rows.js', ['next']),
+      fn('dimFn', 'Build asset item', 'r3-asset-row.js', ['next']),
+      fn('idsFn', 'Build id items', 'r3-id-items.js', ['next']),
+      join('bundleJoin', 'Wait for all assets'),
+      fn('routeFn', 'Route to tables', 'r4-route-tables.js',
+        ['DIM ASSET', 'TARGETS', 'PRODUCT IDS', 'CALENDAR IDS', 'REASON IDS'], {}, true)
+    ]);
 
-  // ----- middle stages -----
-  let r = 3;
-  for (const l of spec.lanes) {
-    const steps = l.steps.map((s) => {
-      if (s.t !== 'fn') return s;
-      const replace = { ...s.replace };
-      for (const [k, v] of Object.entries(replace)) {
-        if (v === '__LIST_PATH__') replace[k] = spec.listPath;
-        if (v === '__LIST_KEY__') replace[k] = spec.listKey;
-        if (v === '__EXTRA_FIELD__') replace[k] = spec.extraField;
-      }
-      return { ...s, replace };
-    });
-    lane(r, l.title, l.info, steps);
-    r++;
+  // the two tables that come straight from the asset bundles
+  lane(r++, 'dim_asset', 'collect the asset items, decide (nothing is written when an asset failed, nothing in dry-run mode), write the parquet file. Unconfigured assets are kept, with empty ids.',
+    [linkInStep('DIM ASSET'), ...tableEnd('dim_asset')]);
+  lane(r++, 'ref_target_seed', 'collect the target items (KPI warning and error values), decide, write. The assets that were skipped are listed in the log.',
+    [linkInStep('TARGETS'), ...tableEnd('ref_target_seed')]);
+
+  // the three tables with a master list and one call per id
+  for (const [table, t] of Object.entries(ID_TABLES)) {
+    lane(r++, `${table} ids`,
+      `keep the distinct ${t.what} ids of the assets, read the master list for the names, then one message per id.`,
+      [
+        linkInStep(t.ids),
+        fn(`${table}_pick`, 'Pick ids', 'r3-pick-ids.js', ['next', 'LOG']),
+        fn(`${table}_listReq`, 'Build master list request', 'r3-list-request.js', ['next'], {
+          __LIST_PATH__: t.listPath
+        }),
+        http(`${table}_listHttp`, 'GET master list'),
+        fn(`${table}_chooseIds`, 'Choose ids', 'r3-choose-ids.js', ['next', 'LOG'], {
+          __LIST_KEY__: t.listKey,
+          __EXTRA_FIELD__: t.extra
+        }),
+        split(`${table}_split`),
+        delay(`${table}_delay`, 'One id per second'),
+        end(t.detail)
+      ]);
+    lane(r++, table,
+      `one message per ${t.what}: GET the details and build the rows, wait for all, collect, decide, write.`,
+      [
+        linkInStep(t.detail),
+        fn(`${table}_detail`, `Build ${t.what} request`, 'r4-detail-request.js', ['next'], {
+          __BEFORE__: t.before,
+          __AFTER__: t.after,
+          __WINDOW__: String(t.window)
+        }),
+        http(`${table}_detailHttp`, 'GET details'),
+        fn(`${table}_rows`, `Build ${table} rows`, t.rowsFile, ['next']),
+        join(`${table}_join`, 'Wait for all ids'),
+        ...tableEnd(table)
+      ]);
   }
 
-  // ----- join, decide, write, log -----
-  lane(
-    r,
-    'JOIN & DECIDE',
-    'The join waits for all items. Collect puts the rows in one list. Decide writes NOTHING if any item failed (no half tables) and nothing in dry-run mode. Output 1 = the rows for the parquet node, output 2 = the log.',
-    [
-      linkInStep('JOIN'),
-      join('join', 'Wait for all items'),
-      fn('collectFn', 'Collect rows', 'r5-collect.js', ['next']),
-      fn('decideFn', 'Decide write', 'r5-decide.js', ['WRITE', 'LOG'], { __TABLE__: table })
-    ]
-  );
-  r++;
-  stageNo++;
-  comment(
-    `[${stageNo}] WRITE ${table}`,
-    `STAGE ${stageNo} - parquet node, path and write object for ${table}. The path comes from CONFIG. Types: UTF8 (STRING), BOOLEAN, INT64, DOUBLE, TIMESTAMP_MILLIS (epoch ms).`,
-    r
-  );
-  linkIn('WRITE', 0, r, id('pq'));
-  add({
-    id: id('pq'), type: 'parquet', name: `Write ${table} parquet`, option: 'write',
-    columns: SCHEMAS[table].map(([column, type]) => ({ column, type })), rcolumns: '',
-    multi: 'multiple', outputPty: 'payload', outputPtyType: 'msg', engine: 'parquetjs',
-    x: col(1), y: rowY(r), wires: [[id('path')]]
-  });
-  add({
-    id: id('path'), type: 'function', name: `${stageNo}.1 Set path`, func: code('r6-set-path.js'),
-    outputs: 1, language: 'javascript', noerr: 0, x: col(2), y: rowY(r), wires: [[id('write')]]
-  });
-  add({
-    id: id('write'), type: 'write object', name: `${table} to data lake`, path: '', mode: 'object',
-    x: col(3), y: rowY(r), wires: []
-  });
-  r++;
-  stageNo++;
-  comment(
-    `[${stageNo}] LOG`,
-    `STAGE ${stageNo} - LOG. Every log line arrives here through the link "to LOG": one line per run (debug sidebar): row count, skipped assets, FAILED / NOTHING WRITTEN, or the dry-run row count and first rows.`,
-    r
-  );
-  linkIn('LOG', 0, r, id('log'));
-  add({
-    id: id('log'), type: 'debug', name: 'Run log', active: true, tosidebar: true, console: false,
-    tostatus: false, complete: 'payload', x: col(1), y: rowY(r), wires: []
+  // the shared log
+  lane(r, 'LOG',
+    'every log line arrives here through the link "to LOG": one line per table and run (debug sidebar): row count, skipped assets, FAILED / NOTHING WRITTEN, or the dry-run row count and first rows.',
+    [linkInStep('LOG'), { t: 'debug', key: 'log' }]);
+  b.nodes.push({
+    z: b.TAB, id: id('log'), type: 'debug', name: 'Run log', active: true, tosidebar: true,
+    console: false, tostatus: false, complete: 'payload', x: b.col(1), y: b.rowY(r), wires: []
   });
 
-  nodes.unshift({
-    id: TAB, type: 'tab', label: spec.label, disabled: false, allowCycles: false,
-    info: `Writes the reference table ${table} to the data lake. Read calls only against Insights Hub.`
+  b.nodes.unshift({
+    id: b.TAB, type: 'tab', label: 'Mufti OEE reference tables', disabled: false, allowCycles: false,
+    info: 'Writes five reference tables to the data lake: dim_asset, ref_target_seed, dim_reason, dim_product, dim_shift. Read calls only against Insights Hub. Needs the Config tab.'
   });
-  return nodes;
+  return b.nodes;
+}
+
+// ---------- the config tab ----------
+function buildConfigFlow() {
+  const b = makeBuilder(20);
+  b.comment(
+    '[1] CONFIG',
+    'STAGE 1 - CONFIG. The shared settings of ALL flows live in node 1.1 CONFIG, the only node to edit: root folder, credentials, sites with their asset ids and production-day start, exclusions. It stores them in global context (global.get("cfg")). It runs on deploy and when you click Apply. After a change, click Apply, then run the flow you want to test.',
+    1
+  );
+  const cfgId = b.id('cfg');
+  const inject = (name, dy, once) => b.add({
+    id: b.newId(), type: 'inject', name, topic: '', payload: '', payloadType: 'date',
+    repeat: '', repeatEnd: '0', endTime: '0', crontab: '', offset: 'NaN', once,
+    onceDelay: once ? 1 : 0.1, properties: '', timezone: 'UTC', betweentimesunit: 'm',
+    showNextExecution: false, powerMode: false, x: b.col(0), y: b.rowY(1) + dy, wires: [[cfgId]]
+  });
+  inject('On deploy', -40, true);
+  inject('Apply', 40, false);
+  b.add({
+    id: cfgId, type: 'function', name: '1.1 CONFIG (edit here)', func: code('c1-config.js'),
+    outputs: 1, language: 'javascript', noerr: 0, x: b.col(1), y: b.rowY(1), wires: [[]]
+  });
+  b.nodes.unshift({
+    id: b.TAB, type: 'tab', label: 'Mufti OEE config', disabled: false, allowCycles: false,
+    info: 'Shared settings of the Mufti OEE flows, stored in global context.'
+  });
+  return b.nodes;
+}
+
+// ---------- a tiny file to test group nodes ----------
+function buildGroupTest() {
+  const b = makeBuilder(30);
+  const groupId = b.newId();
+  const a = b.newId();
+  const c = b.newId();
+  b.nodes.push(
+    { z: b.TAB, id: a, g: groupId, type: 'inject', name: 'in group', topic: '', payload: '', payloadType: 'date', repeat: '', crontab: '', once: false, x: 180, y: 160, wires: [[c]] },
+    { z: b.TAB, id: c, g: groupId, type: 'debug', name: 'in group', active: true, tosidebar: true, console: false, tostatus: false, complete: 'payload', x: 440, y: 160, wires: [] },
+    { z: b.TAB, id: groupId, type: 'group', name: 'Test group', style: { label: true }, nodes: [a, c], x: 120, y: 100, w: 420, h: 120 }
+  );
+  b.nodes.unshift({ id: b.TAB, type: 'tab', label: 'Group test', disabled: false, info: 'Import to test whether the VFC supports group nodes. Delete afterwards.' });
+  return b.nodes;
 }
 
 // ---------- validation and output ----------
 mkdirSync(new URL('../flows/', import.meta.url), { recursive: true });
-let index = 0;
-for (const [table, spec] of Object.entries(FLOWS)) {
-  index++;
-  const nodes = buildFlow(table, spec, index);
+const OUTPUTS = [
+  ['vfc-config.json', buildConfigFlow],
+  ['vfc-reference-tables.json', buildReferenceFlow],
+  ['vfc-group-test.json', buildGroupTest]
+];
+for (const [file, build] of OUTPUTS) {
+  const nodes = build();
   const { errors, warnings, stats } = validateFlow(nodes);
   if (errors.length) {
-    throw new Error(`flow check failed for ${table}:\n  ${errors.join('\n  ')}`);
+    throw new Error(`flow check failed for ${file}:\n  ${errors.join('\n  ')}`);
   }
   const json = JSON.stringify(nodes, null, 2);
-  if (!/PUT_CLIENT/.test(json)) {
-    throw new Error('credential placeholders missing');
-  }
-  const file = `../flows/vfc-ref-${table}.json`;
-  writeFileSync(new URL(file, import.meta.url), json + '\n');
+  writeFileSync(new URL(`../flows/${file}`, import.meta.url), json + '\n');
   console.log(
-    `written flows/vfc-ref-${table}.json: ${stats.nodes} nodes, ` +
-      `${stats.linkIn} link in / ${stats.linkOut} link out, longest line ${stats.longestLine}`
+    `written flows/${file}: ${stats.nodes} nodes, ${stats.linkIn} link in / ` +
+      `${stats.linkOut} link out, longest line ${stats.longestLine}`
   );
   warnings.forEach((w) => console.log(`warn: ${w}`));
 }

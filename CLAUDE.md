@@ -4,7 +4,8 @@ Build and maintain Node-RED flows for Siemens Insights Hub (Reckitt OEE), based 
 ## Status
 - API exploration is done. All read-style OEE endpoints are tested; write calls are skipped on purpose
 - Done: the VFC flow that writes `fact_kpi` and `fact_loss` parquet tables (`flows/vfc-fact-kpi-fact-loss.json`)
-- Current work: reference table flows (`flows/vfc-ref-*.json`, see `docs/reference-tables.md`), then the other flows planned from the dashboard design
+- Done (mock only): Config tab `flows/vfc-config.json` and the single reference tab `flows/vfc-reference-tables.json` (see `docs/reference-tables.md`)
+- Current work: per-site fact flows (one tab per site, generated), then the other flows planned from the dashboard design
 - Read `docs/README.md` first, then only the doc for the area you are working on. Do not re-parse `source/` unless I ask
 
 ## Folders
@@ -23,7 +24,8 @@ Build and maintain Node-RED flows for Siemens Insights Hub (Reckitt OEE), based 
 
 ## Flow build
 - The flow JSON is generated: edit `scripts/vfc/*.js` (one file per function node, named `s<stage>-<name>.js`) and `scripts/build-vfc-flow.js`, then run `node scripts/build-vfc-flow.js`. Do not hand-edit the JSON
-- The reference table flows use `scripts/vfc/r<stage>-<name>.js` and `scripts/build-vfc-reference-flows.js` (one flow file per table). Test one with `node scripts/test-vfc-flow.js 2026-09-30 mock write file=flows/vfc-ref-dim_asset.json`
+- The Config tab and the reference tab use `scripts/vfc/c1-config.js`, `scripts/vfc/r<stage>-<name>.js` and `scripts/build-vfc-reference-flows.js`. Shared settings (credentials, sites, asset ids, root folder) live in ONE node, `1.1 CONFIG`, and are read from global context (`global.get('cfg')`). Test: `node scripts/test-vfc-flow.js 2026-09-30 mock write file=flows/vfc-reference-tables.json` (the runner runs the Config tab first)
+- Layout: columns 260 px, rows 220 px, all positions multiples of 20, side link outs below their node. `validate-flow.js` does not check overlaps yet: check them with the estimate in NOTES.md before commit
 - Committed flow files contain placeholders only. Real credentials only in `flows/*.local.json`
 - `dryRun` stays `true` by default. Writing files is my decision
 - Validate offline before every commit: `node scripts/validate-flow.js` (the checks below) and `node scripts/test-vfc-flow.js 2026-09-30 mock` (runs the flow against a fake Insights Hub, no network, no credentials). I import and run it in Node-RED and report back

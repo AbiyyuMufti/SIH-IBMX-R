@@ -1,6 +1,6 @@
-// Builds the ref_target_seed rows (one per KPI) of one asset.
-// In: the OEE asset response with thresholds. Out: msg.payload = an item
-// {name, failed, skipped, rows} for the join. is_set = a value above 0.
+// Builds the ref_target_seed item (one row per KPI) of one asset.
+// In: the thresholds response, or no payload when the asset was skipped.
+// Out: msg.targetItem = {name, failed, skipped, rows}. is_set = above 0.
 var KPI_NAMES = [
   'OEE',
   'Availability',
@@ -26,25 +26,28 @@ function valueOf(list, kpi) {
   return found;
 }
 
-if (msg.statusCode !== 200 || !body.thresholds) {
+if (msg.amFail) {
+  item.failed = msg.amFail;
+} else if (msg.skip) {
+  item.skipped = asset.name + ' ' + msg.skip;
+} else if (msg.statusCode !== 200 || !body.thresholds) {
   var text = asset.name + ': thresholds failed, HTTP ';
   item.failed = text + msg.statusCode;
-  msg.payload = item;
-  return msg;
-}
-
-KPI_NAMES.forEach(function (kpi) {
-  var warning = valueOf(body.thresholds.warnings, kpi);
-  var error = valueOf(body.thresholds.errors, kpi);
-  item.rows.push({
-    asset_id: asset.id,
-    asset_name: asset.name,
-    kpi: kpi,
-    warning: warning,
-    error: error,
-    is_set: warning > 0 || error > 0,
-    loaded_at: msg.loadedAt
+} else {
+  KPI_NAMES.forEach(function (kpi) {
+    var warning = valueOf(body.thresholds.warnings, kpi);
+    var error = valueOf(body.thresholds.errors, kpi);
+    item.rows.push({
+      asset_id: asset.id,
+      asset_name: asset.name,
+      kpi: kpi,
+      warning: warning,
+      error: error,
+      is_set: warning > 0 || error > 0,
+      loaded_at: msg.loadedAt
+    });
   });
-});
-msg.payload = item;
+}
+msg.targetItem = item;
+delete msg.payload;
 return msg;
