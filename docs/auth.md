@@ -82,3 +82,12 @@ The API host for all areas is `https://gateway.eu1.mindsphere.io`, followed by t
 - **Built-in Insights Hub auth** in Node-RED (`http request` nodes with `useMindsphereAuth`, and the SDK nodes): works only inside the Insights Hub runtime.
 
 See [auth-checklist.md](auth-checklist.md) for where each credential appears in the source files.
+
+## Client secret rotation (from the Siemens how-to, page dated 2024-08-02)
+- An expired client secret stops authentication. The page gives no expiry period, so none is recorded here.
+- Rotation without downtime: the Identity Management Service keeps up to **two secrets per client** at the same time.
+  1. **Introduce** a new secret: POST to `.../provider/oauth/clients/{clientId}/secrets` with header `Current-Secret` (the active secret) and a bearer token that has scope `prv.oc.sec.ch`. Body `{"newSecret": "..."}` for your own value, or `{}` to let Insights Hub generate one.
+  2. **Update every client** to the new secret.
+  3. **Remove** the old secret: DELETE on the same URL, again with `Current-Secret` and a token with that scope. The page recommends using one secret at a time.
+- Both calls are writes. They are not run from this repo (write calls need the user's approval).
+- Open: whether the technical user of the flows has the `prv.oc.sec.ch` scope, and who holds the active secret for the rotation call.

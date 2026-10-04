@@ -119,3 +119,7 @@ Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `sc
 - Day start (`dayStartHour`) is now a per-site setting read in nodes 1.2, 3.2, 4.1, 4.3 and 5.2; it was fixed at 06:00Z. `plannedRoots` moved to the Config tab.
 - Proof: old flow vs Hull flow on the mock, scenarios ok, unmapped, stops-paged, empty: same requests, logs and parquet rows. Only the path gained the `Hull` subfolder.
 - Still open: `local_date` uses a London offset rule (UK only). Global context in the VFC is unconfirmed.
+
+## Secret rotation (2026-10-04)
+- The user pasted the Siemens how-to. Facts are in `docs/auth.md` (two secrets in parallel, introduce / update clients / remove old, scope `prv.oc.sec.ch`). No expiry period is stated.
+- Design proposal (waiting for approval): the secret stays in node `1.1 CONFIG` only, so a rotation is one edit plus `Apply`, for all sites and flows. No automatic rotation inside the VFC.
