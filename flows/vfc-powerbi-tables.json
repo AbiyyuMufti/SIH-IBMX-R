@@ -270,24 +270,12 @@
   {
     "z": "7fdaf.832459",
     "id": "a2a7d.9fe81b",
-    "type": "join",
-    "name": "Collect dim_asset rows",
-    "mode": "custom",
-    "build": "array",
-    "property": "payload",
-    "propertyType": "msg",
-    "key": "topic",
-    "joiner": "\\n",
-    "joinerType": "str",
-    "accumulate": false,
-    "useparts": false,
-    "timeout": "3",
-    "count": "",
-    "reduceRight": false,
-    "reduceExp": "",
-    "reduceInit": "",
-    "reduceInitType": "",
-    "reduceFixup": "",
+    "type": "function",
+    "name": "2.2 Keep dim_asset",
+    "func": "// Keeps the rows that were just read and sets the next file to read.\n// In: msg.payload = the rows of the parquet read node.\n// Out: msg.tables.dim_asset = the rows, msg.path = the file of dim_shift.\nvar KEEP = 'dim_asset';\nvar NEXT = 'dim_shift';\nvar cfg = flow.get('cfg');\nif (!Array.isArray(msg.payload)) {\n  node.error(KEEP + ': the file did not give a list of rows', msg);\n  return null;\n}\nmsg.tables[KEEP] = msg.payload;\ndelete msg.payload;\nif (NEXT) {\n  msg.path = cfg.paths[NEXT].replace('YYYY-MM-DD', msg.day);\n}\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
     "x": 1160,
     "y": 340,
     "wires": [
@@ -299,12 +287,10 @@
   {
     "z": "7fdaf.832459",
     "id": "a496c.a18134",
-    "type": "function",
-    "name": "2.2 Keep dim_asset",
-    "func": "// Keeps the rows that were just read and sets the next file to read.\n// In: msg.payload = the rows of the parquet read node.\n// Out: msg.tables.dim_asset = the rows, msg.path = the file of dim_shift.\nvar KEEP = 'dim_asset';\nvar NEXT = 'dim_shift';\nvar cfg = flow.get('cfg');\nif (!Array.isArray(msg.payload)) {\n  node.error(KEEP + ': the file did not give a list of rows', msg);\n  return null;\n}\nmsg.tables[KEEP] = msg.payload;\ndelete msg.payload;\nif (NEXT) {\n  msg.path = cfg.paths[NEXT].replace('YYYY-MM-DD', msg.day);\n}\nreturn msg;\n",
-    "outputs": 1,
-    "language": "javascript",
-    "noerr": 0,
+    "type": "read object",
+    "name": "Read dim_shift",
+    "path": "",
+    "mode": "object",
     "x": 1420,
     "y": 340,
     "wires": [
@@ -316,10 +302,15 @@
   {
     "z": "7fdaf.832459",
     "id": "a685b.a31a4d",
-    "type": "read object",
-    "name": "Read dim_shift",
-    "path": "",
-    "mode": "object",
+    "type": "parquet",
+    "name": "Parquet read dim_shift",
+    "option": "read",
+    "columns": [],
+    "rcolumns": "",
+    "multi": "multiple",
+    "outputPty": "payload",
+    "outputPtyType": "msg",
+    "engine": "parquetjs",
     "x": 1680,
     "y": 340,
     "wires": [
@@ -330,46 +321,27 @@
   },
   {
     "z": "7fdaf.832459",
-    "id": "a874a.a4b366",
-    "type": "parquet",
-    "name": "Parquet read dim_shift",
-    "option": "read",
-    "columns": [],
-    "rcolumns": "",
-    "multi": "multiple",
-    "outputPty": "payload",
-    "outputPtyType": "msg",
-    "engine": "parquetjs",
-    "x": 1940,
+    "id": "ac528.a7e598",
+    "type": "link out",
+    "name": "to FACTS",
+    "mode": "link",
+    "links": [
+      "aa639.a64c7f"
+    ],
+    "x": 2200,
     "y": 340,
-    "wires": [
-      [
-        "aa639.a64c7f"
-      ]
-    ]
+    "wires": []
   },
   {
     "z": "7fdaf.832459",
-    "id": "aa639.a64c7f",
-    "type": "join",
-    "name": "Collect dim_shift rows",
-    "mode": "custom",
-    "build": "array",
-    "property": "payload",
-    "propertyType": "msg",
-    "key": "topic",
-    "joiner": "\\n",
-    "joinerType": "str",
-    "accumulate": false,
-    "useparts": false,
-    "timeout": "3",
-    "count": "",
-    "reduceRight": false,
-    "reduceExp": "",
-    "reduceInit": "",
-    "reduceInitType": "",
-    "reduceFixup": "",
-    "x": 2200,
+    "id": "a874a.a4b366",
+    "type": "function",
+    "name": "2.3 Keep dim_shift",
+    "func": "// Keeps the rows that were just read and sets the next file to read.\n// In: msg.payload = the rows of the parquet read node.\n// Out: msg.tables.dim_shift = the rows, msg.path = the file of fact_kpi.\nvar KEEP = 'dim_shift';\nvar NEXT = 'fact_kpi';\nvar cfg = flow.get('cfg');\nif (!Array.isArray(msg.payload)) {\n  node.error(KEEP + ': the file did not give a list of rows', msg);\n  return null;\n}\nmsg.tables[KEEP] = msg.payload;\ndelete msg.payload;\nif (NEXT) {\n  msg.path = cfg.paths[NEXT].replace('YYYY-MM-DD', msg.day);\n}\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 1940,
     "y": 340,
     "wires": [
       [
@@ -379,37 +351,7 @@
   },
   {
     "z": "7fdaf.832459",
-    "id": "b0306.ab17ca",
-    "type": "link out",
-    "name": "to FACTS",
-    "mode": "link",
-    "links": [
-      "ae417.a97eb1"
-    ],
-    "x": 2720,
-    "y": 340,
-    "wires": []
-  },
-  {
-    "z": "7fdaf.832459",
-    "id": "ac528.a7e598",
-    "type": "function",
-    "name": "2.3 Keep dim_shift",
-    "func": "// Keeps the rows that were just read and sets the next file to read.\n// In: msg.payload = the rows of the parquet read node.\n// Out: msg.tables.dim_shift = the rows, msg.path = the file of fact_kpi.\nvar KEEP = 'dim_shift';\nvar NEXT = 'fact_kpi';\nvar cfg = flow.get('cfg');\nif (!Array.isArray(msg.payload)) {\n  node.error(KEEP + ': the file did not give a list of rows', msg);\n  return null;\n}\nmsg.tables[KEEP] = msg.payload;\ndelete msg.payload;\nif (NEXT) {\n  msg.path = cfg.paths[NEXT].replace('YYYY-MM-DD', msg.day);\n}\nreturn msg;\n",
-    "outputs": 1,
-    "language": "javascript",
-    "noerr": 0,
-    "x": 2460,
-    "y": 340,
-    "wires": [
-      [
-        "b0306.ab17ca"
-      ]
-    ]
-  },
-  {
-    "z": "7fdaf.832459",
-    "id": "b21f5.acb0e3",
+    "id": "ae417.a97eb1",
     "type": "comment",
     "name": "[3] LOAD FACTS",
     "info": "STAGE 3 - reads the day file of fact_kpi and then of fact_loss, with the same pattern. After the last file all four tables of the day are in the message (msg.tables).",
@@ -419,23 +361,23 @@
   },
   {
     "z": "7fdaf.832459",
-    "id": "ae417.a97eb1",
+    "id": "aa639.a64c7f",
     "type": "link in",
     "name": "FACTS",
     "links": [
-      "b0306.ab17ca"
+      "ac528.a7e598"
     ],
     "x": 120,
     "y": 560,
     "wires": [
       [
-        "b40e4.ae49fc"
+        "b0306.ab17ca"
       ]
     ]
   },
   {
     "z": "7fdaf.832459",
-    "id": "b40e4.ae49fc",
+    "id": "b0306.ab17ca",
     "type": "read object",
     "name": "Read fact_kpi",
     "path": "",
@@ -444,13 +386,13 @@
     "y": 560,
     "wires": [
       [
-        "b5fd3.afe315"
+        "b21f5.acb0e3"
       ]
     ]
   },
   {
     "z": "7fdaf.832459",
-    "id": "b5fd3.afe315",
+    "id": "b21f5.acb0e3",
     "type": "parquet",
     "name": "Parquet read fact_kpi",
     "option": "read",
@@ -464,6 +406,38 @@
     "y": 560,
     "wires": [
       [
+        "b40e4.ae49fc"
+      ]
+    ]
+  },
+  {
+    "z": "7fdaf.832459",
+    "id": "b40e4.ae49fc",
+    "type": "function",
+    "name": "3.1 Keep fact_kpi",
+    "func": "// Keeps the rows that were just read and sets the next file to read.\n// In: msg.payload = the rows of the parquet read node.\n// Out: msg.tables.fact_kpi = the rows, msg.path = the file of fact_loss.\nvar KEEP = 'fact_kpi';\nvar NEXT = 'fact_loss';\nvar cfg = flow.get('cfg');\nif (!Array.isArray(msg.payload)) {\n  node.error(KEEP + ': the file did not give a list of rows', msg);\n  return null;\n}\nmsg.tables[KEEP] = msg.payload;\ndelete msg.payload;\nif (NEXT) {\n  msg.path = cfg.paths[NEXT].replace('YYYY-MM-DD', msg.day);\n}\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 900,
+    "y": 560,
+    "wires": [
+      [
+        "b5fd3.afe315"
+      ]
+    ]
+  },
+  {
+    "z": "7fdaf.832459",
+    "id": "b5fd3.afe315",
+    "type": "read object",
+    "name": "Read fact_loss",
+    "path": "",
+    "mode": "object",
+    "x": 1160,
+    "y": 560,
+    "wires": [
+      [
         "b7ec2.b17c2e"
       ]
     ]
@@ -471,67 +445,6 @@
   {
     "z": "7fdaf.832459",
     "id": "b7ec2.b17c2e",
-    "type": "join",
-    "name": "Collect fact_kpi rows",
-    "mode": "custom",
-    "build": "array",
-    "property": "payload",
-    "propertyType": "msg",
-    "key": "topic",
-    "joiner": "\\n",
-    "joinerType": "str",
-    "accumulate": false,
-    "useparts": false,
-    "timeout": "3",
-    "count": "",
-    "reduceRight": false,
-    "reduceExp": "",
-    "reduceInit": "",
-    "reduceInitType": "",
-    "reduceFixup": "",
-    "x": 900,
-    "y": 560,
-    "wires": [
-      [
-        "b9db1.b31547"
-      ]
-    ]
-  },
-  {
-    "z": "7fdaf.832459",
-    "id": "b9db1.b31547",
-    "type": "function",
-    "name": "3.1 Keep fact_kpi",
-    "func": "// Keeps the rows that were just read and sets the next file to read.\n// In: msg.payload = the rows of the parquet read node.\n// Out: msg.tables.fact_kpi = the rows, msg.path = the file of fact_loss.\nvar KEEP = 'fact_kpi';\nvar NEXT = 'fact_loss';\nvar cfg = flow.get('cfg');\nif (!Array.isArray(msg.payload)) {\n  node.error(KEEP + ': the file did not give a list of rows', msg);\n  return null;\n}\nmsg.tables[KEEP] = msg.payload;\ndelete msg.payload;\nif (NEXT) {\n  msg.path = cfg.paths[NEXT].replace('YYYY-MM-DD', msg.day);\n}\nreturn msg;\n",
-    "outputs": 1,
-    "language": "javascript",
-    "noerr": 0,
-    "x": 1160,
-    "y": 560,
-    "wires": [
-      [
-        "bbca0.b4ae60"
-      ]
-    ]
-  },
-  {
-    "z": "7fdaf.832459",
-    "id": "bbca0.b4ae60",
-    "type": "read object",
-    "name": "Read fact_loss",
-    "path": "",
-    "mode": "object",
-    "x": 1420,
-    "y": 560,
-    "wires": [
-      [
-        "bdb8f.b64779"
-      ]
-    ]
-  },
-  {
-    "z": "7fdaf.832459",
-    "id": "bdb8f.b64779",
     "type": "parquet",
     "name": "Parquet read fact_loss",
     "option": "read",
@@ -541,76 +454,47 @@
     "outputPty": "payload",
     "outputPtyType": "msg",
     "engine": "parquetjs",
-    "x": 1680,
+    "x": 1420,
     "y": 560,
     "wires": [
       [
-        "bfa7e.b7e092"
+        "b9db1.b31547"
       ]
     ]
   },
   {
     "z": "7fdaf.832459",
-    "id": "bfa7e.b7e092",
-    "type": "join",
-    "name": "Collect fact_loss rows",
-    "mode": "custom",
-    "build": "array",
-    "property": "payload",
-    "propertyType": "msg",
-    "key": "topic",
-    "joiner": "\\n",
-    "joinerType": "str",
-    "accumulate": false,
-    "useparts": false,
-    "timeout": "3",
-    "count": "",
-    "reduceRight": false,
-    "reduceExp": "",
-    "reduceInit": "",
-    "reduceInitType": "",
-    "reduceFixup": "",
-    "x": 1940,
-    "y": 560,
-    "wires": [
-      [
-        "c196d.b979ab"
-      ]
-    ]
-  },
-  {
-    "z": "7fdaf.832459",
-    "id": "c574b.bcabdd",
+    "id": "bdb8f.b64779",
     "type": "link out",
     "name": "to BUILD",
     "mode": "link",
     "links": [
-      "c385c.bb12c4"
+      "bbca0.b4ae60"
     ],
-    "x": 2460,
+    "x": 1940,
     "y": 560,
     "wires": []
   },
   {
     "z": "7fdaf.832459",
-    "id": "c196d.b979ab",
+    "id": "b9db1.b31547",
     "type": "function",
     "name": "3.2 Keep fact_loss",
     "func": "// Keeps the rows that were just read and sets the next file to read.\n// In: msg.payload = the rows of the parquet read node.\n// Out: msg.tables.fact_loss = the rows, msg.path = the file of .\nvar KEEP = 'fact_loss';\nvar NEXT = '';\nvar cfg = flow.get('cfg');\nif (!Array.isArray(msg.payload)) {\n  node.error(KEEP + ': the file did not give a list of rows', msg);\n  return null;\n}\nmsg.tables[KEEP] = msg.payload;\ndelete msg.payload;\nif (NEXT) {\n  msg.path = cfg.paths[NEXT].replace('YYYY-MM-DD', msg.day);\n}\nreturn msg;\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 2200,
+    "x": 1680,
     "y": 560,
     "wires": [
       [
-        "c574b.bcabdd"
+        "bdb8f.b64779"
       ]
     ]
   },
   {
     "z": "7fdaf.832459",
-    "id": "c763a.be44f6",
+    "id": "bfa7e.b7e092",
     "type": "comment",
     "name": "[4] BUILD TABLES",
     "info": "STAGE 4 - the Power BI rows of the day. 4.1 groups the hourly fact_kpi rows to machine x production day x shift (pbi_plan_opt) and to machine x day (pbi_time_utilisation). 4.2 turns every stop into a row of pbi_daily_losses (local time, loss group, sub group, equipment). 4.3 builds one message per table plus the machine names and shift names of the site; in dry-run mode it writes nothing, only a log line. Columns without data in Insights Hub are written as null.",
@@ -620,23 +504,23 @@
   },
   {
     "z": "7fdaf.832459",
-    "id": "c385c.bb12c4",
+    "id": "bbca0.b4ae60",
     "type": "link in",
     "name": "BUILD",
     "links": [
-      "c574b.bcabdd"
+      "bdb8f.b64779"
     ],
     "x": 120,
     "y": 780,
     "wires": [
       [
-        "c9529.bfde0f"
+        "c196d.b979ab"
       ]
     ]
   },
   {
     "z": "7fdaf.832459",
-    "id": "c9529.bfde0f",
+    "id": "c196d.b979ab",
     "type": "function",
     "name": "4.1 Build plan opt rows",
     "func": "// Builds the pbi_plan_opt and pbi_time_utilisation rows of one day.\n// In: msg.tables (dim_asset, dim_shift, fact_kpi). Out: msg.planRows\n// (machine x day x shift) and msg.utilRows (machine x day).\nvar MIN_MS = 60000;\nvar DAY_MS = 86400000;\nvar MINUTES_PER_DAY = 1440;\nvar loadedAt = Date.now();\n\nfunction toMs(value) {\n  return typeof value === 'number' ? value : Date.parse(value);\n}\n\nvar calendarOf = {};\nmsg.tables.dim_asset.forEach(function (a) {\n  calendarOf[a.asset_id] = a.calendar_id;\n});\n\n// The shift of an instant: the calendar event whose recurrence covers it.\nfunction shiftOf(calendarId, ms) {\n  var found = null;\n  msg.tables.dim_shift.forEach(function (e) {\n    if (found || e.calendar_id !== calendarId) {\n      return;\n    }\n    var days = e.freq === 'WEEKLY' ? 7 : e.freq === 'DAILY' ? 1 : 0;\n    var start = toMs(e.start_utc);\n    var until = e.until_utc ? toMs(e.until_utc) : Infinity;\n    if (!days || ms < start || ms > until) {\n      return;\n    }\n    var step = days * e.interval * DAY_MS;\n    var occurrence = start + Math.floor((ms - start) / step) * step;\n    if (ms < occurrence + e.duration_ms) {\n      found = e.shift_name;\n    }\n  });\n  return found;\n}\n\n// Adds a value to a sum; a sum with no value at all stays null.\nfunction addTo(sum, key, value) {\n  if (value === null || value === undefined) {\n    return;\n  }\n  sum[key] = (sum[key] || 0) + value;\n}\n\nfunction minutes(ms) {\n  return ms === null || ms === undefined ? null : ms / MIN_MS;\n}\n\nvar groups = {};\nmsg.tables.fact_kpi.forEach(function (k) {\n  var shift = shiftOf(calendarOf[k.asset_id], toMs(k.period_start));\n  var key = k.asset_id + '|' + k.production_day + '|' + shift;\n  var g = groups[key];\n  if (!g) {\n    g = {\n      first: k,\n      shift: shift,\n      sum: {},\n      hours: 0\n    };\n    groups[key] = g;\n  }\n  g.hours += 1;\n  addTo(g.sum, 'good', k.good_parts);\n  var planned = k.planned_stop_shift_plan_ms;\n  if (k.total_time_ms !== null && planned !== null) {\n    addTo(g.sum, 'total', minutes(k.total_time_ms - planned));\n  }\n  addTo(g.sum, 'opt', minutes(k.operational_time_ms));\n  addTo(g.sum, 'oee', minutes(k.used_operational_time_ms));\n});\n\nfunction sumOrNull(sum, key) {\n  return sum[key] === undefined ? null : sum[key];\n}\n\nvar planRows = [];\nvar utilByMachine = {};\nObject.keys(groups).forEach(function (key) {\n  var g = groups[key];\n  var k = g.first;\n  planRows.push({\n    site_name: k.site,\n    area_name: k.area,\n    machine_name: k.asset_name,\n    unique_machine_name: k.asset_id,\n    date: k.production_day,\n    shift_name: g.shift,\n    part_name: null,\n    product_key: null,\n    good_parts: sumOrNull(g.sum, 'good'),\n    capacity: null,\n    downtime_units: null,\n    total_time: sumOrNull(g.sum, 'total'),\n    planned_opt: sumOrNull(g.sum, 'opt'),\n    oee_time: sumOrNull(g.sum, 'oee'),\n    oee_target: null,\n    pdt_target: null,\n    updt_target: null,\n    source_hours: g.hours,\n    loaded_at: loadedAt\n  });\n  var u = utilByMachine[k.asset_id];\n  if (!u) {\n    u = { first: k, sum: {} };\n    utilByMachine[k.asset_id] = u;\n  }\n  addTo(u.sum, 'total', g.sum.total);\n  addTo(u.sum, 'opt', g.sum.opt);\n  addTo(u.sum, 'oee', g.sum.oee);\n});\n\nvar utilRows = Object.keys(utilByMachine).map(function (id) {\n  var k = utilByMachine[id].first;\n  var sum = utilByMachine[id].sum;\n  return {\n    site_name: k.site,\n    machine_name: k.asset_name,\n    unique_machine_name: k.asset_id,\n    date: k.production_day,\n    total_time_total: sumOrNull(sum, 'total'),\n    planned_opt_total: sumOrNull(sum, 'opt'),\n    oee_time_total: sumOrNull(sum, 'oee'),\n    all_time: MINUTES_PER_DAY,\n    loaded_at: loadedAt\n  };\n});\n\nmsg.planRows = planRows;\nmsg.utilRows = utilRows;\nreturn msg;\n",
@@ -647,13 +531,13 @@
     "y": 780,
     "wires": [
       [
-        "cb418.c17728"
+        "c385c.bb12c4"
       ]
     ]
   },
   {
     "z": "7fdaf.832459",
-    "id": "cb418.c17728",
+    "id": "c385c.bb12c4",
     "type": "function",
     "name": "4.2 Build daily loss rows",
     "func": "// Builds the pbi_daily_losses rows of one day, one row per stop.\n// In: msg.tables (dim_asset, dim_shift, fact_loss). Out: msg.lossRows.\n// Columns without data in Insights Hub (units, targets, product) are null.\nvar MIN_MS = 60000;\nvar DAY_MS = 86400000;\nvar HOUR_MS = 3600000;\nvar cfg = flow.get('cfg');\n// The reason a stop gets when nobody chose one.\nvar DEFAULT_REASON = 'Unplanned Downtime';\nvar BREAKDOWN_CATEGORY = 'Breakdown';\nvar loadedAt = Date.now();\n\nfunction toMs(value) {\n  return typeof value === 'number' ? value : Date.parse(value);\n}\n\nvar calendarOf = {};\nmsg.tables.dim_asset.forEach(function (a) {\n  calendarOf[a.asset_id] = a.calendar_id;\n});\n\n// Same rule as in 3.1: which calendar event covers the instant.\nfunction shiftOf(calendarId, ms) {\n  var found = null;\n  msg.tables.dim_shift.forEach(function (e) {\n    if (found || e.calendar_id !== calendarId) {\n      return;\n    }\n    var days = e.freq === 'WEEKLY' ? 7 : e.freq === 'DAILY' ? 1 : 0;\n    var start = toMs(e.start_utc);\n    var until = e.until_utc ? toMs(e.until_utc) : Infinity;\n    if (!days || ms < start || ms > until) {\n      return;\n    }\n    var step = days * e.interval * DAY_MS;\n    var occurrence = start + Math.floor((ms - start) / step) * step;\n    if (ms < occurrence + e.duration_ms) {\n      found = e.shift_name;\n    }\n  });\n  return found;\n}\n\n// Last Sunday of the month at 01:00 UTC. The month is 0-based.\nfunction lastSundayUtc(year, month) {\n  var d = new Date(Date.UTC(year, month + 1, 0, 1, 0, 0));\n  d.setUTCDate(d.getUTCDate() - d.getUTCDay());\n  return d.getTime();\n}\n\n// Europe/London offset in hours (UK sites only).\nfunction londonOffsetHours(ms) {\n  var year = new Date(ms).getUTCFullYear();\n  var inBst = ms >= lastSundayUtc(year, 2) && ms < lastSundayUtc(year, 9);\n  return inBst ? 1 : 0;\n}\n\nfunction lossGroup(row) {\n  if (cfg.plannedRoots.indexOf(row.reason_category) >= 0) {\n    return 'Planned Loss';\n  }\n  if (row.reason === DEFAULT_REASON) {\n    return 'Not Logged';\n  }\n  return 'Unplanned Loss';\n}\n\nmsg.lossRows = msg.tables.fact_loss.map(function (r) {\n  var startMs = toMs(r.event_start);\n  var localIso = new Date(startMs + londonOffsetHours(startMs) * HOUR_MS)\n    .toISOString();\n  var month = r.local_date.slice(0, 7);\n  var isBreakdown = r.reason_category === BREAKDOWN_CATEGORY;\n  return {\n    site_name: r.site,\n    machine_name: r.asset_name,\n    unique_machine_name: r.asset_id,\n    date: r.local_date,\n    time: localIso.slice(11, 19),\n    shift_start_date: r.production_day,\n    shift_name: shiftOf(calendarOf[r.asset_id], startMs),\n    duration: r.duration_ms / MIN_MS,\n    loss_units: null,\n    loss_lvl3_group: lossGroup(r),\n    loss_lvl3_sub_group: r.reason_category,\n    loss_lvl3_desc: r.reason,\n    loss_final_level: r.reason,\n    equipment: r.reason_subgroup,\n    breakdown_types: isBreakdown ? r.reason_subgroup : null,\n    batch_id: null,\n    comment_count: r.comment_count,\n    part_name: null,\n    product_key: null,\n    loss_target_key: r.line + '|' + r.reason_category + '|' + month,\n    value: null,\n    target: null,\n    volume_key: r.line + '|' + month,\n    volume_total: null,\n    loaded_at: loadedAt\n  };\n});\nreturn msg;\n",
@@ -664,18 +548,18 @@
     "y": 780,
     "wires": [
       [
-        "cd307.c31041"
+        "c574b.bcabdd"
       ]
     ]
   },
   {
     "z": "7fdaf.832459",
-    "id": "d10e5.c64273",
+    "id": "c9529.bfde0f",
     "type": "link out",
     "name": "to WRITE pbi_plan_opt",
     "mode": "link",
     "links": [
-      "cf1f6.c4a95a"
+      "c763a.be44f6"
     ],
     "x": 1160,
     "y": 680,
@@ -683,12 +567,12 @@
   },
   {
     "z": "7fdaf.832459",
-    "id": "d4ec3.c974a5",
+    "id": "cd307.c31041",
     "type": "link out",
     "name": "to WRITE pbi_time_utilisation",
     "mode": "link",
     "links": [
-      "d2fd4.c7db8c"
+      "cb418.c17728"
     ],
     "x": 1160,
     "y": 720,
@@ -696,12 +580,12 @@
   },
   {
     "z": "7fdaf.832459",
-    "id": "d8ca1.cca6d7",
+    "id": "d10e5.c64273",
     "type": "link out",
     "name": "to WRITE pbi_daily_losses",
     "mode": "link",
     "links": [
-      "d6db2.cb0dbe"
+      "cf1f6.c4a95a"
     ],
     "x": 1160,
     "y": 760,
@@ -709,12 +593,12 @@
   },
   {
     "z": "7fdaf.832459",
-    "id": "dca7f.cfd909",
+    "id": "d4ec3.c974a5",
     "type": "link out",
     "name": "to WRITE pbi_machine_names",
     "mode": "link",
     "links": [
-      "dab90.ce3ff0"
+      "d2fd4.c7db8c"
     ],
     "x": 1160,
     "y": 800,
@@ -722,12 +606,12 @@
   },
   {
     "z": "7fdaf.832459",
-    "id": "e085d.d30b3b",
+    "id": "d8ca1.cca6d7",
     "type": "link out",
     "name": "to WRITE pbi_shift_naming",
     "mode": "link",
     "links": [
-      "de96e.d17222"
+      "d6db2.cb0dbe"
     ],
     "x": 1160,
     "y": 840,
@@ -735,7 +619,7 @@
   },
   {
     "z": "7fdaf.832459",
-    "id": "e274c.d4a454",
+    "id": "dab90.ce3ff0",
     "type": "link out",
     "name": "to LOG",
     "mode": "link",
@@ -748,7 +632,7 @@
   },
   {
     "z": "7fdaf.832459",
-    "id": "cd307.c31041",
+    "id": "c574b.bcabdd",
     "type": "function",
     "name": "4.3 Build table messages",
     "func": "// Builds one message per table for the parquet nodes.\n// In: msg.planRows, utilRows, lossRows and msg.tables. Out 1 to 5: the\n// five day tables. Out 6: log line. Dry run writes nothing, only the log.\nvar day = msg.day;\nvar cfg = flow.get('cfg');\n\n// Machine names: the assets of this site, from dim_asset.\nvar machines = msg.tables.dim_asset.filter(function (a) {\n  return a.site === cfg.site;\n}).map(function (a) {\n  return {\n    site_name: a.site,\n    area: a.area,\n    dept: a.area,\n    machine_name: a.asset_name,\n    product_type: null,\n    unique_machine_name: a.asset_id,\n    loaded_at: Date.now()\n  };\n});\n\n// Shift names: the distinct shift names of the calendars of this site.\nvar calendars = {};\nmsg.tables.dim_asset.forEach(function (a) {\n  if (a.site === cfg.site) {\n    calendars[a.calendar_id] = true;\n  }\n});\nvar seen = {};\nvar shifts = [];\nmsg.tables.dim_shift.forEach(function (s) {\n  if (calendars[s.calendar_id] && !seen[s.shift_name]) {\n    seen[s.shift_name] = true;\n    shifts.push({ shift: s.shift_name, loaded_at: Date.now() });\n  }\n});\n\nvar counts = 'plan ' + msg.planRows.length +\n  ', util ' + msg.utilRows.length +\n  ', losses ' + msg.lossRows.length +\n  ', machines ' + machines.length +\n  ', shifts ' + shifts.length;\nif (cfg.dryRun) {\n  var dry = {\n    topic: 'log',\n    payload: day + ' [pbi] DRY RUN: ' + counts\n  };\n  return [null, null, null, null, null, dry];\n}\n\nfunction table(name, rows) {\n  if (!rows.length) {\n    return null;\n  }\n  return { topic: name, day: day, payload: rows };\n}\nvar line = {\n  topic: 'log',\n  payload: day + ' [pbi] WRITING ' + counts\n};\nreturn [\n  table('pbi_plan_opt', msg.planRows),\n  table('pbi_time_utilisation', msg.utilRows),\n  table('pbi_daily_losses', msg.lossRows),\n  table('pbi_machine_names', machines),\n  table('pbi_shift_naming', shifts),\n  line\n];\n",
@@ -759,6 +643,12 @@
     "y": 780,
     "wires": [
       [
+        "c9529.bfde0f"
+      ],
+      [
+        "cd307.c31041"
+      ],
+      [
         "d10e5.c64273"
       ],
       [
@@ -768,19 +658,13 @@
         "d8ca1.cca6d7"
       ],
       [
-        "dca7f.cfd909"
-      ],
-      [
-        "e085d.d30b3b"
-      ],
-      [
-        "e274c.d4a454"
+        "dab90.ce3ff0"
       ]
     ]
   },
   {
     "z": "7fdaf.832459",
-    "id": "e463b.d63d6d",
+    "id": "dca7f.cfd909",
     "type": "comment",
     "name": "[5] WRITE pbi_plan_opt",
     "info": "STAGE 5 - parquet node, path and write object for pbi_plan_opt (Plan OPT EU: machine x production day x shift). A rerun replaces the file. Types: UTF8 (STRING), INT64, DOUBLE, TIMESTAMP_MILLIS. Dates are text YYYY-MM-DD.",
@@ -790,23 +674,23 @@
   },
   {
     "z": "7fdaf.832459",
-    "id": "cf1f6.c4a95a",
+    "id": "c763a.be44f6",
     "type": "link in",
     "name": "WRITE pbi_plan_opt",
     "links": [
-      "d10e5.c64273"
+      "c9529.bfde0f"
     ],
     "x": 120,
     "y": 1000,
     "wires": [
       [
-        "e652a.d7d686"
+        "de96e.d17222"
       ]
     ]
   },
   {
     "z": "7fdaf.832459",
-    "id": "e652a.d7d686",
+    "id": "de96e.d17222",
     "type": "parquet",
     "name": "Write pbi_plan_opt parquet",
     "option": "write",
@@ -897,13 +781,13 @@
     "y": 1000,
     "wires": [
       [
-        "e8419.d96f9f"
+        "e085d.d30b3b"
       ]
     ]
   },
   {
     "z": "7fdaf.832459",
-    "id": "e8419.d96f9f",
+    "id": "e085d.d30b3b",
     "type": "function",
     "name": "5.1 Set pbi_plan_opt path",
     "func": "// Sets the file path in the data lake for the table pbi_plan_opt.\n// In: the output of the parquet node (msg.payload is passed on unchanged).\n// Out: the same message with msg.path and msg.filename. The text YYYY-MM-DD\n// in the path becomes the production day, so a rerun replaces the file.\nvar cfg = flow.get('cfg');\nmsg.path = cfg.paths.pbi_plan_opt.replace('YYYY-MM-DD', msg.day);\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
@@ -914,13 +798,13 @@
     "y": 1000,
     "wires": [
       [
-        "ea308.db08b8"
+        "e274c.d4a454"
       ]
     ]
   },
   {
     "z": "7fdaf.832459",
-    "id": "ea308.db08b8",
+    "id": "e274c.d4a454",
     "type": "write object",
     "name": "pbi_plan_opt to data lake",
     "path": "",
@@ -931,7 +815,7 @@
   },
   {
     "z": "7fdaf.832459",
-    "id": "ec1f7.dca1d1",
+    "id": "e463b.d63d6d",
     "type": "comment",
     "name": "[6] WRITE pbi_time_utilisation",
     "info": "STAGE 6 - parquet node, path and write object for pbi_time_utilisation (Time Utilisation EU: machine x day). A rerun replaces the file. Types: UTF8 (STRING), INT64, DOUBLE, TIMESTAMP_MILLIS. Dates are text YYYY-MM-DD.",
@@ -941,23 +825,23 @@
   },
   {
     "z": "7fdaf.832459",
-    "id": "d2fd4.c7db8c",
+    "id": "cb418.c17728",
     "type": "link in",
     "name": "WRITE pbi_time_utilisation",
     "links": [
-      "d4ec3.c974a5"
+      "cd307.c31041"
     ],
     "x": 120,
     "y": 1220,
     "wires": [
       [
-        "ee0e6.de3aea"
+        "e652a.d7d686"
       ]
     ]
   },
   {
     "z": "7fdaf.832459",
-    "id": "ee0e6.de3aea",
+    "id": "e652a.d7d686",
     "type": "parquet",
     "name": "Write pbi_time_utilisation parquet",
     "option": "write",
@@ -1008,13 +892,13 @@
     "y": 1220,
     "wires": [
       [
-        "effd5.dfd403"
+        "e8419.d96f9f"
       ]
     ]
   },
   {
     "z": "7fdaf.832459",
-    "id": "effd5.dfd403",
+    "id": "e8419.d96f9f",
     "type": "function",
     "name": "6.1 Set pbi_time_utilisation path",
     "func": "// Sets the file path in the data lake for the table pbi_time_utilisation.\n// In: the output of the parquet node (msg.payload is passed on unchanged).\n// Out: the same message with msg.path and msg.filename. The text YYYY-MM-DD\n// in the path becomes the production day, so a rerun replaces the file.\nvar cfg = flow.get('cfg');\nmsg.path = cfg.paths.pbi_time_utilisation.replace('YYYY-MM-DD', msg.day);\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
@@ -1025,13 +909,13 @@
     "y": 1220,
     "wires": [
       [
-        "f1ec4.e16d1c"
+        "ea308.db08b8"
       ]
     ]
   },
   {
     "z": "7fdaf.832459",
-    "id": "f1ec4.e16d1c",
+    "id": "ea308.db08b8",
     "type": "write object",
     "name": "pbi_time_utilisation to data lake",
     "path": "",
@@ -1042,7 +926,7 @@
   },
   {
     "z": "7fdaf.832459",
-    "id": "f3db3.e30635",
+    "id": "ec1f7.dca1d1",
     "type": "comment",
     "name": "[7] WRITE pbi_daily_losses",
     "info": "STAGE 7 - parquet node, path and write object for pbi_daily_losses (Daily Losses EU: one row per stop). A rerun replaces the file. Types: UTF8 (STRING), INT64, DOUBLE, TIMESTAMP_MILLIS. Dates are text YYYY-MM-DD.",
@@ -1052,23 +936,23 @@
   },
   {
     "z": "7fdaf.832459",
-    "id": "d6db2.cb0dbe",
+    "id": "cf1f6.c4a95a",
     "type": "link in",
     "name": "WRITE pbi_daily_losses",
     "links": [
-      "d8ca1.cca6d7"
+      "d10e5.c64273"
     ],
     "x": 120,
     "y": 1440,
     "wires": [
       [
-        "f5ca2.e49f4e"
+        "ee0e6.de3aea"
       ]
     ]
   },
   {
     "z": "7fdaf.832459",
-    "id": "f5ca2.e49f4e",
+    "id": "ee0e6.de3aea",
     "type": "parquet",
     "name": "Write pbi_daily_losses parquet",
     "option": "write",
@@ -1183,13 +1067,13 @@
     "y": 1440,
     "wires": [
       [
-        "f7b91.e63867"
+        "effd5.dfd403"
       ]
     ]
   },
   {
     "z": "7fdaf.832459",
-    "id": "f7b91.e63867",
+    "id": "effd5.dfd403",
     "type": "function",
     "name": "7.1 Set pbi_daily_losses path",
     "func": "// Sets the file path in the data lake for the table pbi_daily_losses.\n// In: the output of the parquet node (msg.payload is passed on unchanged).\n// Out: the same message with msg.path and msg.filename. The text YYYY-MM-DD\n// in the path becomes the production day, so a rerun replaces the file.\nvar cfg = flow.get('cfg');\nmsg.path = cfg.paths.pbi_daily_losses.replace('YYYY-MM-DD', msg.day);\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
@@ -1200,13 +1084,13 @@
     "y": 1440,
     "wires": [
       [
-        "f9a80.e7d180"
+        "f1ec4.e16d1c"
       ]
     ]
   },
   {
     "z": "7fdaf.832459",
-    "id": "f9a80.e7d180",
+    "id": "f1ec4.e16d1c",
     "type": "write object",
     "name": "pbi_daily_losses to data lake",
     "path": "",
@@ -1217,7 +1101,7 @@
   },
   {
     "z": "7fdaf.832459",
-    "id": "fb96f.e96a99",
+    "id": "f3db3.e30635",
     "type": "comment",
     "name": "[8] WRITE pbi_machine_names",
     "info": "STAGE 8 - parquet node, path and write object for pbi_machine_names (Machine Names EU: one row per machine). A rerun replaces the file. Types: UTF8 (STRING), INT64, DOUBLE, TIMESTAMP_MILLIS. Dates are text YYYY-MM-DD.",
@@ -1227,23 +1111,23 @@
   },
   {
     "z": "7fdaf.832459",
-    "id": "dab90.ce3ff0",
+    "id": "d2fd4.c7db8c",
     "type": "link in",
     "name": "WRITE pbi_machine_names",
     "links": [
-      "dca7f.cfd909"
+      "d4ec3.c974a5"
     ],
     "x": 120,
     "y": 1660,
     "wires": [
       [
-        "fd85e.eb03b2"
+        "f5ca2.e49f4e"
       ]
     ]
   },
   {
     "z": "7fdaf.832459",
-    "id": "fd85e.eb03b2",
+    "id": "f5ca2.e49f4e",
     "type": "parquet",
     "name": "Write pbi_machine_names parquet",
     "option": "write",
@@ -1286,13 +1170,13 @@
     "y": 1660,
     "wires": [
       [
-        "ff74d.ec9ccb"
+        "f7b91.e63867"
       ]
     ]
   },
   {
     "z": "7fdaf.832459",
-    "id": "ff74d.ec9ccb",
+    "id": "f7b91.e63867",
     "type": "function",
     "name": "8.1 Set pbi_machine_names path",
     "func": "// Sets the file path in the data lake for the table pbi_machine_names.\n// In: the output of the parquet node (msg.payload is passed on unchanged).\n// Out: the same message with msg.path and msg.filename. The text YYYY-MM-DD\n// in the path becomes the production day, so a rerun replaces the file.\nvar cfg = flow.get('cfg');\nmsg.path = cfg.paths.pbi_machine_names.replace('YYYY-MM-DD', msg.day);\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
@@ -1303,13 +1187,13 @@
     "y": 1660,
     "wires": [
       [
-        "0163c.ee35e4"
+        "f9a80.e7d180"
       ]
     ]
   },
   {
     "z": "7fdaf.832459",
-    "id": "0163c.ee35e4",
+    "id": "f9a80.e7d180",
     "type": "write object",
     "name": "pbi_machine_names to data lake",
     "path": "",
@@ -1320,7 +1204,7 @@
   },
   {
     "z": "7fdaf.832459",
-    "id": "0352b.efcefd",
+    "id": "fb96f.e96a99",
     "type": "comment",
     "name": "[9] WRITE pbi_shift_naming",
     "info": "STAGE 9 - parquet node, path and write object for pbi_shift_naming (Shift Naming EU: one row per shift). A rerun replaces the file. Types: UTF8 (STRING), INT64, DOUBLE, TIMESTAMP_MILLIS. Dates are text YYYY-MM-DD.",
@@ -1330,23 +1214,23 @@
   },
   {
     "z": "7fdaf.832459",
-    "id": "de96e.d17222",
+    "id": "d6db2.cb0dbe",
     "type": "link in",
     "name": "WRITE pbi_shift_naming",
     "links": [
-      "e085d.d30b3b"
+      "d8ca1.cca6d7"
     ],
     "x": 120,
     "y": 1880,
     "wires": [
       [
-        "0541a.f16816"
+        "fd85e.eb03b2"
       ]
     ]
   },
   {
     "z": "7fdaf.832459",
-    "id": "0541a.f16816",
+    "id": "fd85e.eb03b2",
     "type": "parquet",
     "name": "Write pbi_shift_naming parquet",
     "option": "write",
@@ -1369,13 +1253,13 @@
     "y": 1880,
     "wires": [
       [
-        "07309.f3012f"
+        "ff74d.ec9ccb"
       ]
     ]
   },
   {
     "z": "7fdaf.832459",
-    "id": "07309.f3012f",
+    "id": "ff74d.ec9ccb",
     "type": "function",
     "name": "9.1 Set pbi_shift_naming path",
     "func": "// Sets the file path in the data lake for the table pbi_shift_naming.\n// In: the output of the parquet node (msg.payload is passed on unchanged).\n// Out: the same message with msg.path and msg.filename. The text YYYY-MM-DD\n// in the path becomes the production day, so a rerun replaces the file.\nvar cfg = flow.get('cfg');\nmsg.path = cfg.paths.pbi_shift_naming.replace('YYYY-MM-DD', msg.day);\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
@@ -1386,13 +1270,13 @@
     "y": 1880,
     "wires": [
       [
-        "091f8.f49a48"
+        "0163c.ee35e4"
       ]
     ]
   },
   {
     "z": "7fdaf.832459",
-    "id": "091f8.f49a48",
+    "id": "0163c.ee35e4",
     "type": "write object",
     "name": "pbi_shift_naming to data lake",
     "path": "",
@@ -1403,7 +1287,7 @@
   },
   {
     "z": "7fdaf.832459",
-    "id": "0b0e7.f63361",
+    "id": "0352b.efcefd",
     "type": "comment",
     "name": "[10] WRITE pbi_calendar",
     "info": "STAGE 10 - parquet node, path and write object for pbi_calendar (Calendar: one row per date). A rerun replaces the file. Types: UTF8 (STRING), INT64, DOUBLE, TIMESTAMP_MILLIS. Dates are text YYYY-MM-DD.",
@@ -1423,13 +1307,13 @@
     "y": 2100,
     "wires": [
       [
-        "0cfd6.f7cc7a"
+        "0541a.f16816"
       ]
     ]
   },
   {
     "z": "7fdaf.832459",
-    "id": "0cfd6.f7cc7a",
+    "id": "0541a.f16816",
     "type": "parquet",
     "name": "Write pbi_calendar parquet",
     "option": "write",
@@ -1488,13 +1372,13 @@
     "y": 2100,
     "wires": [
       [
-        "0eec5.f96593"
+        "07309.f3012f"
       ]
     ]
   },
   {
     "z": "7fdaf.832459",
-    "id": "0eec5.f96593",
+    "id": "07309.f3012f",
     "type": "function",
     "name": "10.1 Set pbi_calendar path",
     "func": "// Sets the file path in the data lake for the table pbi_calendar.\n// In: the output of the parquet node (msg.payload is passed on unchanged).\n// Out: the same message with msg.path and msg.filename. The text YYYY-MM-DD\n// in the path becomes the production day, so a rerun replaces the file.\nvar cfg = flow.get('cfg');\nmsg.path = cfg.paths.pbi_calendar.replace('YYYY-MM-DD', msg.day);\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
@@ -1505,13 +1389,13 @@
     "y": 2100,
     "wires": [
       [
-        "10db4.fafeac"
+        "091f8.f49a48"
       ]
     ]
   },
   {
     "z": "7fdaf.832459",
-    "id": "10db4.fafeac",
+    "id": "091f8.f49a48",
     "type": "write object",
     "name": "pbi_calendar to data lake",
     "path": "",
@@ -1522,7 +1406,7 @@
   },
   {
     "z": "7fdaf.832459",
-    "id": "12ca3.fc97c5",
+    "id": "0b0e7.f63361",
     "type": "comment",
     "name": "[11] ERRORS",
     "info": "STAGE 11 - a catch node takes every error raised by a node of this tab and turns it into a log line with the name of the node and the message of the API (for example the limit message of evaluateKPIs). Errors of the log nodes themselves are not logged again.",
@@ -1532,7 +1416,7 @@
   },
   {
     "z": "7fdaf.832459",
-    "id": "16a81.ffc9f7",
+    "id": "0eec5.f96593",
     "type": "catch",
     "name": "Catch errors",
     "scope": null,
@@ -1541,13 +1425,13 @@
     "y": 2320,
     "wires": [
       [
-        "14b92.fe30de"
+        "0cfd6.f7cc7a"
       ]
     ]
   },
   {
     "z": "7fdaf.832459",
-    "id": "18970.016310",
+    "id": "10db4.fafeac",
     "type": "link out",
     "name": "to LOG",
     "mode": "link",
@@ -1560,7 +1444,7 @@
   },
   {
     "z": "7fdaf.832459",
-    "id": "14b92.fe30de",
+    "id": "0cfd6.f7cc7a",
     "type": "function",
     "name": "11.1 Describe error",
     "func": "// Turns an error caught by the catch node into a log line.\n// In: the message of a catch node (msg.error).\n// Out: a log line for the shared log. Errors of the log nodes themselves\n// are dropped (no log loop).\nvar err = msg.error || {};\nvar source = (err.source && err.source.name) || 'unknown node';\n\nfunction textOf(value) {\n  if (value === undefined || value === null) {\n    return '';\n  }\n  if (typeof value === 'string') {\n    return value;\n  }\n  return JSON.stringify(value);\n}\n\n// Takes the API message out of an error body when there is one.\nfunction apiMessage(value) {\n  var body = value;\n  if (typeof value === 'string') {\n    try {\n      body = JSON.parse(value);\n    } catch (e) {\n      return value;\n    }\n  }\n  var data = body && body.data;\n  var list = (data && data.errors) || (body && body.errors);\n  if (list && list.length && list[0].message) {\n    return list[0].message;\n  }\n  return textOf(value);\n}\n\nif (msg.logBatch) {\n  node.status({\n    fill: 'red',\n    shape: 'ring',\n    text: 'log write failed'\n  });\n  return null;\n}\n\nvar text = '';\nif (msg.day) {\n  text += msg.day + ' [' + msg.mode + '] ';\n}\ntext += 'ERROR in ' + source + ': ' + apiMessage(err.message);\nreturn {\n  topic: 'log',\n  payload: text,\n  level: 'error',\n  source: source\n};\n",
@@ -1571,13 +1455,13 @@
     "y": 2320,
     "wires": [
       [
-        "18970.016310"
+        "10db4.fafeac"
       ]
     ]
   },
   {
     "z": "7fdaf.832459",
-    "id": "1a85f.02fc29",
+    "id": "12ca3.fc97c5",
     "type": "comment",
     "name": "[12] LOG",
     "info": "STAGE 12 - every log line arrives here through the link \"to LOG\". 1 turns a line into a row (time, flow, site, production day, level) and shows it in the debug sidebar. The join collects the rows for 30 s, the delay lets one batch pass every 10 s so two writes do not overlap, 3 sets the file of the month and the read node loads the old file. A read of a file that does not exist answers nothing (only a warning), so the same batch also goes through a 10 s wait to the append step. The log is written whatever the dry-run switch says.",
@@ -1592,20 +1476,20 @@
     "name": "LOG",
     "links": [
       "98fd2.97ea9e",
-      "e274c.d4a454",
-      "18970.016310"
+      "dab90.ce3ff0",
+      "10db4.fafeac"
     ],
     "x": 120,
     "y": 2540,
     "wires": [
       [
-        "1c74e.049542"
+        "14b92.fe30de"
       ]
     ]
   },
   {
     "z": "7fdaf.832459",
-    "id": "1c74e.049542",
+    "id": "14b92.fe30de",
     "type": "function",
     "name": "12.1 Format log line",
     "func": "// Turns one log message into a row for the log file.\n// In: msg.payload = log text (optional msg.level and msg.source).\n// Out: msg.payload = the row, msg.line = the text for the debug node.\nvar FLOW_NAME = 'powerbi';\nvar cfg = flow.get('cfg') || {};\nvar text = String(msg.payload);\n\nvar seq = (flow.get('logSeq') || 0) + 1;\nflow.set('logSeq', seq);\n\n// Most lines start with the production day and the mode: \"2026-09-01 [x] \".\nvar day = '';\nvar mode = '';\nvar message = text;\nvar parts = /^(\\d{4}-\\d{2}-\\d{2}) \\[([^\\]]*)\\] ([\\s\\S]*)$/.exec(text);\nif (parts) {\n  day = parts[1];\n  mode = parts[2];\n  message = parts[3];\n}\n\nvar level = msg.level;\nif (!level) {\n  if (/FAILED/.test(message)) {\n    level = 'failed';\n  } else if (/NOTHING TO WRITE/.test(message)) {\n    level = 'warn';\n  } else {\n    level = 'info';\n  }\n}\n\nmsg.line = text;\nmsg.payload = {\n  ts_utc: new Date().toISOString(),\n  seq: seq,\n  flow: FLOW_NAME,\n  site: cfg.site || 'all',\n  production_day: day,\n  mode: mode,\n  level: level,\n  source: msg.source || 'flow',\n  message: message\n};\nreturn msg;\n",
@@ -1616,14 +1500,14 @@
     "y": 2540,
     "wires": [
       [
-        "1e63d.062e5b",
-        "2052c.07c774"
+        "16a81.ffc9f7",
+        "18970.016310"
       ]
     ]
   },
   {
     "z": "7fdaf.832459",
-    "id": "1e63d.062e5b",
+    "id": "16a81.ffc9f7",
     "type": "join",
     "name": "Collect log lines",
     "mode": "custom",
@@ -1646,13 +1530,13 @@
     "y": 2540,
     "wires": [
       [
-        "2241b.09608d"
+        "1a85f.02fc29"
       ]
     ]
   },
   {
     "z": "7fdaf.832459",
-    "id": "2052c.07c774",
+    "id": "18970.016310",
     "type": "debug",
     "name": "Run log",
     "active": true,
@@ -1667,7 +1551,7 @@
   },
   {
     "z": "7fdaf.832459",
-    "id": "2241b.09608d",
+    "id": "1a85f.02fc29",
     "type": "delay",
     "name": "One log batch per 10 s",
     "pauseType": "rate",
@@ -1685,13 +1569,13 @@
     "y": 2540,
     "wires": [
       [
-        "2430a.0af9a6"
+        "1c74e.049542"
       ]
     ]
   },
   {
     "z": "7fdaf.832459",
-    "id": "2430a.0af9a6",
+    "id": "1c74e.049542",
     "type": "function",
     "name": "12.2 Build log write",
     "func": "// Prepares the write of one batch of log rows (the read node runs next).\n// In: msg.payload = array of log rows from the join node.\n// Out: msg.path = file of the month, msg.logRows, msg.logBatchId, no payload.\n// msg.logBatch keeps errors of the log nodes themselves out of the log.\nvar FLOW_NAME = 'powerbi';\nvar cfg = flow.get('cfg') || {};\nvar root = cfg.root || 'logs_without_root';\nvar rows = msg.payload;\nvar month = rows[0].ts_utc.slice(0, 7);\n\nvar batchNo = (flow.get('logBatchNo') || 0) + 1;\nflow.set('logBatchNo', batchNo);\n\nmsg.logRows = rows;\nmsg.path = root + '/logs/' + FLOW_NAME + '/log_' + month + '.csv';\nmsg.logBatch = true;\nmsg.logBatchId = rows[0].ts_utc + '#' + batchNo;\ndelete msg.payload;\nreturn msg;\n",
@@ -1702,19 +1586,19 @@
     "y": 2540,
     "wires": [
       [
-        "261f9.0c92bf",
-        "280e8.0e2bd8"
+        "1e63d.062e5b",
+        "2052c.07c774"
       ]
     ]
   },
   {
     "z": "7fdaf.832459",
-    "id": "2bec6.115e0a",
+    "id": "2430a.0af9a6",
     "type": "link out",
     "name": "to APPEND",
     "mode": "link",
     "links": [
-      "29fd7.0fc4f1"
+      "2241b.09608d"
     ],
     "x": 1680,
     "y": 2540,
@@ -1722,7 +1606,7 @@
   },
   {
     "z": "7fdaf.832459",
-    "id": "261f9.0c92bf",
+    "id": "1e63d.062e5b",
     "type": "read object",
     "name": "Read log file",
     "path": "",
@@ -1731,18 +1615,18 @@
     "y": 2540,
     "wires": [
       [
-        "2bec6.115e0a"
+        "2430a.0af9a6"
       ]
     ]
   },
   {
     "z": "7fdaf.832459",
-    "id": "2ddb5.12f723",
+    "id": "261f9.0c92bf",
     "type": "link out",
     "name": "to APPEND",
     "mode": "link",
     "links": [
-      "29fd7.0fc4f1"
+      "2241b.09608d"
     ],
     "x": 1680,
     "y": 2620,
@@ -1750,7 +1634,7 @@
   },
   {
     "z": "7fdaf.832459",
-    "id": "280e8.0e2bd8",
+    "id": "2052c.07c774",
     "type": "delay",
     "name": "Wait for read 10 s",
     "pauseType": "delay",
@@ -1768,13 +1652,13 @@
     "y": 2620,
     "wires": [
       [
-        "2ddb5.12f723"
+        "261f9.0c92bf"
       ]
     ]
   },
   {
     "z": "7fdaf.832459",
-    "id": "2fca4.14903c",
+    "id": "280e8.0e2bd8",
     "type": "comment",
     "name": "[13] LOG WRITE",
     "info": "STAGE 13 - adds the rows of the batch to the old file and writes the whole file back (the data lake has no append). Columns: ts_utc, seq, flow, site, production_day, mode, level, source, message. Every field is quoted, line breaks become a space. The batch arrives twice (read answer and the wait) and is written once. If the read gives no answer for a file this flow wrote before, a new file with a time stamp is written, so the history is never replaced.",
@@ -1784,24 +1668,24 @@
   },
   {
     "z": "7fdaf.832459",
-    "id": "29fd7.0fc4f1",
+    "id": "2241b.09608d",
     "type": "link in",
     "name": "APPEND",
     "links": [
-      "2bec6.115e0a",
-      "2ddb5.12f723"
+      "2430a.0af9a6",
+      "261f9.0c92bf"
     ],
     "x": 120,
     "y": 2760,
     "wires": [
       [
-        "31b93.162955"
+        "29fd7.0fc4f1"
       ]
     ]
   },
   {
     "z": "7fdaf.832459",
-    "id": "31b93.162955",
+    "id": "29fd7.0fc4f1",
     "type": "function",
     "name": "13.1 Append log rows",
     "func": "// Adds the rows of one batch to the log file of the month.\n// In: msg.payload = the old file (read answered) or nothing (no answer).\n// Out: msg.payload = the whole new file, the data lake has no append.\n// The same batch can arrive twice (read answer, then the wait): once only.\nvar SEPARATOR = ',';\nvar KEEP_IDS = 50;\nvar COLUMNS = [\n  'ts_utc',\n  'seq',\n  'flow',\n  'site',\n  'production_day',\n  'mode',\n  'level',\n  'source',\n  'message'\n];\n\n// Quotes inside a field are doubled, line breaks become a space.\nfunction quote(value) {\n  var text = (value === undefined || value === null) ? '' : String(value);\n  text = text.replace(/\"/g, '\"\"').replace(/[\\r\\n]+/g, ' ');\n  return '\"' + text + '\"';\n}\n\nfunction lineOf(row) {\n  return COLUMNS.map(function (name) {\n    return quote(row[name]);\n  }).join(SEPARATOR);\n}\n\n// The read node gives text, or a serialised buffer.\nfunction decode(payload) {\n  if (typeof payload === 'string') {\n    return payload;\n  }\n  if (payload && payload.type === 'Buffer' && payload.data) {\n    var bin = '';\n    payload.data.forEach(function (byte) {\n      bin += String.fromCharCode(byte);\n    });\n    try {\n      return decodeURIComponent(escape(bin));\n    } catch (e) {\n      return bin;\n    }\n  }\n  return null;\n}\n\nvar rows = msg.logRows.slice();\nrows.sort(function (a, b) {\n  if (a.ts_utc !== b.ts_utc) {\n    return a.ts_utc < b.ts_utc ? -1 : 1;\n  }\n  return a.seq - b.seq;\n});\n\nvar done = flow.get('logDone') || [];\nvar known = flow.get('logKnown') || [];\nif (done.indexOf(msg.logBatchId) >= 0) {\n  return null;\n}\n\nvar path = msg.path;\nvar old = '';\nvar problem = '';\nif (msg.payload === undefined || msg.payload === null) {\n  if (known.indexOf(path) >= 0) {\n    problem = 'read gave no answer for a file written before';\n  }\n} else {\n  old = decode(msg.payload);\n  if (old === null) {\n    old = '';\n    problem = 'old file is not text';\n  }\n}\nif (problem) {\n  // Never replace the old file: write a new one with a time stamp.\n  var stamp = new Date().toISOString().replace(/[-:.TZ]/g, '');\n  path = path.replace(/\\.csv$/, '_' + stamp + '.csv');\n  rows.push({\n    ts_utc: new Date().toISOString(),\n    seq: 0,\n    flow: rows[0].flow,\n    site: rows[0].site,\n    production_day: '',\n    mode: '',\n    level: 'error',\n    source: 'log',\n    message: problem + ', wrote ' + path\n  });\n} else if (known.indexOf(path) < 0) {\n  known.push(path);\n  flow.set('logKnown', known);\n}\n\nvar lines = [];\nif (!old) {\n  lines.push(COLUMNS.map(quote).join(SEPARATOR));\n} else if (old.slice(-1) !== '\\n') {\n  old += '\\n';\n}\nrows.forEach(function (row) {\n  lines.push(lineOf(row));\n});\n\ndone.push(msg.logBatchId);\nflow.set('logDone', done.slice(-KEEP_IDS));\n\nmsg.payload = old + lines.join('\\n') + '\\n';\nmsg.path = path;\ndelete msg.logRows;\nreturn msg;\n",
@@ -1812,13 +1696,13 @@
     "y": 2760,
     "wires": [
       [
-        "33a82.17c26e"
+        "2bec6.115e0a"
       ]
     ]
   },
   {
     "z": "7fdaf.832459",
-    "id": "33a82.17c26e",
+    "id": "2bec6.115e0a",
     "type": "write object",
     "name": "Log to data lake",
     "path": "",
