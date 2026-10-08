@@ -42,7 +42,7 @@ const util = rows('Write pbi_time_utilisation parquet');
 const loss = rows('Write pbi_daily_losses parquet');
 check(stats.errors.length === 0, 'no error');
 check(plan.length > 0 && util.length > 0 && loss.length > 0, 'plan, util and loss rows exist');
-check(rows('Write pbi_calendar parquet').length === 1095, 'calendar has 1095 dates');
+check(rows('Write pbi_calendar parquet').length === 122, 'calendar has 122 dates');
 check(rows('Write pbi_machine_names parquet').length > 0, 'machine names written');
 check(rows('Write pbi_shift_naming parquet').length > 0, 'shift names written');
 if (plan.length) console.log('plan row 1:', JSON.stringify(plan[0]));

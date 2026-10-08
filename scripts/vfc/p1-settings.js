@@ -9,8 +9,8 @@ var REBUILD_DAYS = 2;
 // Folder prefix of the site folder: fact_kpi/<prefix><site>/...
 var FOLDER_PREFIX = 'site=';
 // First and last date of the calendar table.
-var CALENDAR_START = '2025-01-01';
-var CALENDAR_END = '2027-12-31';
+var CALENDAR_START = '2026-09-01';
+var CALENDAR_END = '2026-12-31';
 
 var shared = glob.get('cfg');
 if (!shared) {
