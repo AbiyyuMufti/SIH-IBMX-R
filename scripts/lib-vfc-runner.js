@@ -156,8 +156,9 @@ export async function runFlow(nodes, options) {
         : msg.payload && msg.payload.type === 'Buffer'
           ? Buffer.from(msg.payload.data).toString('utf8')
           : String(msg.payload);
-      msg.payload = JSON.parse(text);
-      emit(n, [msg]);
+      // Default output of the VFC node: one message per row.
+      const rows = JSON.parse(text);
+      for (const row of rows) emit(n, [{ ...msg, payload: row }]);
     } else if (n.type === 'parquet') {
       const columns = new Map(n.columns.map((c) => [c.column, c.type]));
       for (const row of msg.payload) {
