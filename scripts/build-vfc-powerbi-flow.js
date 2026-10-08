@@ -9,7 +9,7 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 import { validateFlow } from './validate-flow.js';
 import {
   code, S, I, D, TS, makeBuilder, fn, linkInStep, end, split, delay,
-  addLogLanes, pqRead, readStep
+  addLogLanes, pqRead, readStep, joinTimeout
 } from './lib-flow-builder.js';
 
 // cron = daily schedule (UTC), 30 minutes after the fact flow (07:00).
@@ -134,9 +134,11 @@ function buildFlow(site, index) {
       fn('firstFn', 'Set dim_asset path', 'p2-first-path.js', ['next']),
       readStep('rdAsset', 'Read dim_asset'),
       pqRead('pqAsset', 'Parquet read dim_asset'),
+      joinTimeout('jnAsset', 'Collect dim_asset rows', 3),
       keep('keepAsset', 'Keep dim_asset', 'dim_asset', 'dim_shift'),
       readStep('rdShift', 'Read dim_shift'),
       pqRead('pqShift', 'Parquet read dim_shift'),
+      joinTimeout('jnShift', 'Collect dim_shift rows', 3),
       keep('keepShift', 'Keep dim_shift', 'dim_shift', 'fact_kpi'),
       end('FACTS')
     ]);
@@ -146,9 +148,11 @@ function buildFlow(site, index) {
       linkInStep('FACTS'),
       readStep('rdKpi', 'Read fact_kpi'),
       pqRead('pqKpi', 'Parquet read fact_kpi'),
+      joinTimeout('jnKpi', 'Collect fact_kpi rows', 3),
       keep('keepKpi', 'Keep fact_kpi', 'fact_kpi', 'fact_loss'),
       readStep('rdLoss', 'Read fact_loss'),
       pqRead('pqLoss', 'Parquet read fact_loss'),
+      joinTimeout('jnLoss', 'Collect fact_loss rows', 3),
       keep('keepLoss', 'Keep fact_loss', 'fact_loss', ''),
       end('BUILD')
     ]);

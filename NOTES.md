@@ -146,3 +146,6 @@ Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `sc
 - Built from the user's Excel mapping: one flow reads dim_asset, dim_shift, fact_kpi, fact_loss and writes six pbi_* tables, no API call. See `docs/powerbi-tables.md`.
 - Open: the parquet READ node settings are a guess (the user's working read node JSON is needed). Plan OPT product, capacity, loss units, targets and volume total stay null.
 - The user's VFC copies equal the repo code except settings (write mode, `site=` folders, log folder from cfg.site, arrow functions, Config with real values).
+
+### Parquet read sends one message per row (2026-10-08)
+Tried: Power BI flow with `Keep dim_asset` expecting an array. Error: "the file did not give a list of rows". The modern parquet engine of the VFC sends ONE message per row (payload = one row object). Fix: a custom join (3 s timeout) after each parquet read node (`Collect <table> rows`). The mock runner now emits one message per row too.
