@@ -176,7 +176,7 @@ export function makeBuilder(flowIndex) {
         add({
           id: id(step.key), type: 'parquet', name: step.name, option: 'read',
           columns: [], rcolumns: '', multi: 'multiple', outputPty: 'payload',
-          outputPtyType: 'msg', engine: 'parquetjs', ...pos, wires: [[nextId]]
+          outputPtyType: 'msg', engine: 'hyparquet', ...pos, wires: [[nextId]]
         });
       } else if (step.t === 'write') {
         add({
