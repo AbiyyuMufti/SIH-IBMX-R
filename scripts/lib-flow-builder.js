@@ -178,6 +178,11 @@ export function makeBuilder(flowIndex) {
           columns: [], rcolumns: '', multi: 'multiple', outputPty: 'payload',
           outputPtyType: 'msg', engine: 'hyparquet', ...pos, wires: [[nextId]]
         });
+      } else if (step.t === 'raw') {
+        add({
+          id: id(step.key), ...step.node, ...pos,
+          wires: nextId ? [[nextId]] : []
+        });
       } else if (step.t === 'write') {
         add({
           id: id(step.key), type: 'write object',
@@ -211,6 +216,7 @@ export const debugStep = (key, name, complete, stack = false, dy = 0) => ({
   t: 'debug', key, name, complete, stack, dy
 });
 export const pqRead = (key, name) => ({ t: 'pqread', key, name });
+export const rawStep = (key, node) => ({ t: 'raw', key, node });
 export const writeStep = (key, name) => ({ t: 'write', key, name });
 
 // The three log lanes every flow tab ends with. Errors caught anywhere in

@@ -156,3 +156,5 @@ Tried: Power BI flow with `Keep dim_asset` expecting an array. Error: "the file 
 - Palette facts (from the user's node JSON): `list objects` (fields subtenant, path), read/write/delete/subscribe object; `http in` has access `key`.
 - Built `flows/vfc-lake-api-spike.json` (`scripts/build-vfc-lake-spike.js`, `scripts/vfc/k*.js`, `scripts/test-vfc-lake-spike.js`). To test in the VFC: bytes vs base64, how the key is sent, output of `list objects`.
 - The user pasted a real http in key in chat: advise to regenerate it. Never write it to the repo.
+- Spike result (2026-10-08): GET with `?key=<key>&path=<file>` works, bytes open in polars. Missing file did NOT hang: the read gave a non-parquet answer and the spike returned 200 with junk (polars: "must end with PAR1"). `list objects` returns `[{key,lastModified,contentSize,storageClass}]`, msg.path = folder.
+- Built `flows/vfc-lake-api.json` (endpoint `/parquet-data-lake`, path or list mode, existence check with 404, log per request, 502 for non-parquet). Offline test `scripts/test-vfc-lake-api.js`. Open: link nodes keep msg.res?; list cap.
