@@ -149,3 +149,6 @@ Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `sc
 
 ### Parquet read sends one message per row (2026-10-08)
 Tried: Power BI flow with `Keep dim_asset` expecting an array. Error: "the file did not give a list of rows". The modern parquet engine of the VFC sends ONE message per row (payload = one row object). Fix: a custom join (3 s timeout) after each parquet read node (`Collect <table> rows`). The mock runner now emits one message per row too.
+
+### Parquet read output setting (2026-10-08)
+Tried: Power BI flow with `Keep dim_asset` expecting an array. Error: "the file did not give a list of rows". The parquet read node of the VFC outputs one message per row by default. Fix: set the node output to one message with an array in msg.payload (all four parquet read nodes). A join after the node was built and reverted. Exact setting name to be copied from the user's node JSON into `pqread` in `lib-flow-builder.js`.
