@@ -150,3 +150,9 @@ Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `sc
 ### Parquet read output setting (2026-10-08)
 Tried: Power BI flow with `Keep dim_asset` expecting an array. Error: "the file did not give a list of rows". The parquet read node of the VFC outputs one message per row by default. Fix: set the node output to one message with an array in msg.payload (all four parquet read nodes). A join after the node was built and reverted. Exact setting name to be copied from the user's node JSON into `pqread` in `lib-flow-builder.js`.
 - Update (11:50): the Power BI flow now works with either parquet output setting: a join (3 s, grouped by msg.topic = the day) after each parquet read collects rows, and `p2-keep-next.js` flattens a list of lists. A parquet file with zero rows sends no message, so the day stops silently there.
+
+## Lake API spike (2026-10-08)
+- Plan with the user: Python (polars) GET on an `http in` node of the VFC, `?path=<file>.parquet`, flow reads the file and answers bytes (default) or base64 JSON. Read only. Key = platform key of the `http in` node. Log per request and the existence check are NOT in the spike.
+- Palette facts (from the user's node JSON): `list objects` (fields subtenant, path), read/write/delete/subscribe object; `http in` has access `key`.
+- Built `flows/vfc-lake-api-spike.json` (`scripts/build-vfc-lake-spike.js`, `scripts/vfc/k*.js`, `scripts/test-vfc-lake-spike.js`). To test in the VFC: bytes vs base64, how the key is sent, output of `list objects`.
+- The user pasted a real http in key in chat: advise to regenerate it. Never write it to the repo.
