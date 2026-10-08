@@ -7,7 +7,8 @@
 | Why | The Insights Hub data lake API did not work directly from Python |
 | Status | SPIKE built (`flows/vfc-lake-api-spike.json`), not run yet |
 | Direction | Read only. Write back is a later step |
-| Auth | Platform key of the `http in` node (access: key). Generated in the VFC, never in the repo |
+| Auth | Platform key of the `http in` node (access: key), sent as the query parameter `key`. Generated in the VFC, never in the repo |
+| URL | `https://<vfc-host>/public/<tenant>/parquet-data-lake-spike?key=<key>&path=<file>.parquet` (copy the real one from the node) |
 | Allowed paths | Any path in the lake, but only `.parquet`, no `..`, no leading `/` |
 | Formats | `bytes` (default) or `base64` (JSON). Rows as JSON only if both fail |
 
@@ -21,7 +22,7 @@ Tab `Lake API spike`, script `scripts/build-vfc-lake-spike.js`, function code `s
 Test: `node scripts/test-vfc-lake-spike.js` (offline, checks the two functions only).
 
 ## Python
-Use your own URL and key. How the key is sent depends on the VFC (to be confirmed).
+Use your own URL, and keep the key in an environment variable (`LAKE_KEY`).
 ```python
 import io
 import requests
@@ -29,8 +30,10 @@ import polars as pl
 
 r = requests.get(
     URL,
-    params={"path": "reports/fact_kpi/site=Hull/fact_kpi_2026-09-30.parquet"},
-    headers=KEY_HEADER,
+    params={
+        "key": KEY,
+        "path": "reports/fact_kpi/site=Hull/fact_kpi_2026-09-30.parquet",
+    },
     timeout=60,
 )
 r.raise_for_status()
@@ -47,5 +50,4 @@ pandas works the same: `pd.read_parquet(io.BytesIO(...))`.
 
 ## Open
 - Does `http response` send a Buffer unchanged (bytes mode)? The VFC serialises messages between nodes.
-- How is the key sent (header or query)?
 - Output of `list objects` (for the existence check, so Python gets "file does not exist" at once).
