@@ -141,3 +141,8 @@ Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `sc
 ## Data lake download (2026-10-05)
 - The Data Explorer manual describes no download or zip. The API has `POST /api/datalake/v3/generateDownloadObjectUrls` (body `{paths:[{path}]}`, answer `objectUrls[{path, signedUrl}]`, URLs valid 120 min, no zip).
 - User approved this POST. `scripts/datalake-download.js` (probe one path, or all days of a known file name pattern, then zip). Tested only against a local fake server: no credentials in the cloud clone. To confirm on the real tenant: does the technical user have data lake rights, how does the API answer for a path that does not exist.
+
+## Power BI tables flow (2026-10-08)
+- Built from the user's Excel mapping: one flow reads dim_asset, dim_shift, fact_kpi, fact_loss and writes six pbi_* tables, no API call. See `docs/powerbi-tables.md`.
+- Open: the parquet READ node settings are a guess (the user's working read node JSON is needed). Plan OPT product, capacity, loss units, targets and volume total stay null.
+- The user's VFC copies equal the repo code except settings (write mode, `site=` folders, log folder from cfg.site, arrow functions, Config with real values).

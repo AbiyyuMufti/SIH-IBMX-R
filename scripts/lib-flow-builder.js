@@ -172,6 +172,12 @@ export function makeBuilder(flowIndex) {
           multi: 'multiple', outputPty: 'payload', outputPtyType: 'msg', engine: 'parquetjs',
           ...pos, wires: [[nextId]]
         });
+      } else if (step.t === 'pqread') {
+        add({
+          id: id(step.key), type: 'parquet', name: step.name, option: 'read',
+          columns: [], rcolumns: '', multi: 'multiple', outputPty: 'payload',
+          outputPtyType: 'msg', engine: 'parquetjs', ...pos, wires: [[nextId]]
+        });
       } else if (step.t === 'write') {
         add({
           id: id(step.key), type: 'write object',
@@ -204,6 +210,7 @@ export const joinTimeout = (key, name, seconds) => ({ t: 'joinTimeout', key, nam
 export const debugStep = (key, name, complete, stack = false, dy = 0) => ({
   t: 'debug', key, name, complete, stack, dy
 });
+export const pqRead = (key, name) => ({ t: 'pqread', key, name });
 export const writeStep = (key, name) => ({ t: 'write', key, name });
 
 // The three log lanes every flow tab ends with. Errors caught anywhere in
