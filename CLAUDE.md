@@ -6,7 +6,9 @@ Build and maintain Node-RED flows for Siemens Insights Hub (Reckitt OEE), based 
 - Done: one VFC flow per site that writes `fact_kpi` and `fact_loss` parquet tables (`flows/vfc-site-hull.json`, see `docs/fact-flows.md`). checked by the user in the VFC (dry run)
 - Done (checked by the user in the VFC, dry run): Config tab `flows/vfc-config.json` and the single reference tab `flows/vfc-reference-tables.json` (see `docs/reference-tables.md`)
 - Done (mock tests pass; first VFC run found the missing-file read, fix built, to re-check in the VFC): CSV run log in the data lake plus `catch`, see `docs/logging.md`. Test: `node scripts/test-vfc-log.js`
-- Current work: first dashboard draft on the group 1 tables (Config, reference tables, Hull facts). Group 2 (shift KPIs, manual entries, run rate, derived loss columns) is DECIDE LATER, not planned. Group 3 waits for Reckitt
+- Done (spike checked by the user in the VFC): Python reads parquet files of the data lake through an `http in` endpoint, `flows/vfc-lake-api.json`, see `docs/lake-api.md`. Final flow built, to re-check in the VFC
+- Current work: Power BI tables straight from the API, `flows/vfc-pbi-daily-hull.json` and `flows/vfc-pbi-reference.json`, see `docs/powerbi-direct.md` (mock tests pass, not run in the VFC yet). They replace the two-step chain (facts, then conversion); the old flows stay in the repo, the user disables them
+- Earlier work: first dashboard draft on the group 1 tables (Config, reference tables, Hull facts). Group 2 (shift KPIs, manual entries, run rate, derived loss columns) is DECIDE LATER, not planned. Group 3 waits for Reckitt
 - `dryRun` is set in the VFC by the user, not in dev work: do not change the default
 - Read `docs/README.md` first, then only the doc for the area you are working on. Do not re-parse `source/` unless I ask
 

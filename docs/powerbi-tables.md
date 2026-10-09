@@ -2,7 +2,7 @@
 
 | At a glance | |
 |---|---|
-| **What** | One flow that writes the Power BI tables we can rebuild, from the files our other flows already wrote. No call to Insights Hub |
+| **What** | OLD two-step way, replaced by [powerbi-direct.md](powerbi-direct.md) (flows that call the API directly). One flow that writes the Power BI tables we can rebuild, from the files our other flows already wrote. No call to Insights Hub |
 | **Source** | Excel mapping `Reckitt_IH_vs_PowerBI_Overview_mapping.xlsx` (Table summary, PBI column mapping) |
 | **Reads** | `dim_asset`, `dim_shift`, and per day `fact_kpi`, `fact_loss` |
 | **Writes** | `pbi_plan_opt`, `pbi_time_utilisation`, `pbi_daily_losses` (per day), `pbi_machine_names`, `pbi_shift_naming` (per site), `pbi_calendar` (once) |

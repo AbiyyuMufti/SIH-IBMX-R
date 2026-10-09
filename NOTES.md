@@ -158,3 +158,10 @@ Tried: Power BI flow with `Keep dim_asset` expecting an array. Error: "the file 
 - The user pasted a real http in key in chat: advise to regenerate it. Never write it to the repo.
 - Spike result (2026-10-08): GET with `?key=<key>&path=<file>` works, bytes open in polars. Missing file did NOT hang: the read gave a non-parquet answer and the spike returned 200 with junk (polars: "must end with PAR1"). `list objects` returns `[{key,lastModified,contentSize,storageClass}]`, msg.path = folder.
 - Built `flows/vfc-lake-api.json` (endpoint `/parquet-data-lake`, path or list mode, existence check with 404, log per request, 502 for non-parquet). Offline test `scripts/test-vfc-lake-api.js`. Open: link nodes keep msg.res?; list cap.
+
+## Power BI tables straight from the API (2026-10-09)
+- Decision (user, with the Power BI tab view colleague): the data source must be the Power BI format from the first run. No switch for raw facts. Two new tabs written like the original flows: `flows/vfc-pbi-daily-hull.json` (plan opt, time utilisation, daily losses) and `flows/vfc-pbi-reference.json` (machine names, shift naming, calendar). The three older flows (fact, reference, conversion) stay in the repo; the user disables them.
+- Shift per hour/stop: two extra GETs per asset and day (OEE config for the calendar id, calendarEvents for the production day), evaluated with the recurrence rule in UTC. Real-tenant behaviour of `calendarEvents?from&to` with a one-day window is not checked.
+- Proof: `node scripts/test-vfc-pbi-direct.js` runs the old chain and the new flows on the same mock: equal rows for all five day/site tables. One difference: a stop without duration is null now (old chain: 0).
+- Column lists moved to `scripts/lib-pbi-schemas.js` (old generator output unchanged).
+- Next: the user imports both tabs (Config tab first), runs with dryRun, checks the log lines, then sets dryRun false per flow. Open: Changeover events in `pbi_shift_naming`, local time for non-UK sites, DST for shifts, targets/product/capacity (Reckitt), single shared engine for several sites.

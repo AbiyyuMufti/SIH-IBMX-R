@@ -28,7 +28,8 @@
 | [config-and-master-data.md](config-and-master-data.md) | How OEE is set up; reason trees, calendars, products and other lists | Tested |
 | [reference-tables.md](reference-tables.md) | The five reference tables (assets, reasons, products, shifts, KPI targets), the Config tab and the single flow that writes them | Dry run in the VFC |
 | [powerbi-tables.md](powerbi-tables.md) | The flow that rebuilds the Power BI tables from our own tables, and which node makes which table | Mock only |
-| [lake-api.md](lake-api.md) | Spike: Python downloads parquet files from the data lake through an `http in` endpoint of the VFC | Mock only (functions) |
+| [powerbi-direct.md](powerbi-direct.md) | Two flows that write the Power BI tables straight from the API (daily per site, reference for all sites). Replaces the two-step chain | Mock only |
+| [lake-api.md](lake-api.md) | Python downloads parquet files or folder lists from the data lake through an `http in` endpoint of the VFC (spike checked in the VFC, final flow built) | Spike in the VFC |
 | [logging.md](logging.md) | The CSV run log in the data lake (one file per month and flow) and the error catch | Mock only |
 | [fact-flows.md](fact-flows.md) | The per-site flows that write `fact_kpi` and `fact_loss`, and how to add a site | Hull, dry run in the VFC |
 

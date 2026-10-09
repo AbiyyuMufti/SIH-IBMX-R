@@ -1,0 +1,1557 @@
+[
+  {
+    "id": "3c4ff.2b4a89",
+    "type": "tab",
+    "label": "Power BI reference",
+    "disabled": false,
+    "allowCycles": false,
+    "info": "Writes the reference Power BI tables (pbi_machine_names, pbi_shift_naming, pbi_calendar) straight from the Insights Hub API. Read calls only. Needs the Config tab."
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "3e3ee.2ce3a2",
+    "type": "comment",
+    "name": "[1] TRIGGER & TASK SETTINGS",
+    "info": "STAGE 1 - TRIGGER AND TASK SETTINGS. Writes the three reference Power BI tables straight from the Insights Hub API: pbi_machine_names (one row per machine, all sites of the Config tab), pbi_shift_naming (the distinct shift names of their calendars) and pbi_calendar (generated, no API call). Schedule: weekly, Monday 07:00 UTC. The Run now button starts it by hand. Both go through 1.1 TASK SETTINGS: the dry-run switch per table and the calendar range. The shared settings (credentials, sites, asset ids, root folder) come from the Config tab through global context. dryRun is true by default. Every table file has a fixed name, so every run replaces it.",
+    "x": 120,
+    "y": 40,
+    "wires": []
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "402dd.2e7cbb",
+    "type": "inject",
+    "name": "Weekly Mon 07:00 UTC",
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "repeat": "",
+    "repeatEnd": "0",
+    "endTime": "0",
+    "crontab": "0 7 * * 1",
+    "offset": "NaN",
+    "once": false,
+    "properties": "",
+    "timezone": "UTC",
+    "betweentimesunit": "m",
+    "showNextExecution": false,
+    "powerMode": false,
+    "x": 120,
+    "y": 80,
+    "wires": [
+      [
+        "421cc.3015d4"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "440bb.31aeed",
+    "type": "inject",
+    "name": "Run now",
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "repeat": "",
+    "repeatEnd": "0",
+    "endTime": "0",
+    "crontab": "",
+    "offset": "NaN",
+    "once": false,
+    "properties": "",
+    "timezone": "UTC",
+    "betweentimesunit": "m",
+    "showNextExecution": false,
+    "powerMode": false,
+    "x": 120,
+    "y": 160,
+    "wires": [
+      [
+        "421cc.3015d4"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "421cc.3015d4",
+    "type": "function",
+    "name": "1.1 TASK SETTINGS (edit here)",
+    "func": "// TASK SETTINGS: the settings of this flow only (dry run per table).\n// In: any message from an inject node. Out: the same message.\n// It copies the shared settings from global context into flow context and\n// builds the file path of every table.\nvar DRY_RUN = {\n  pbi_machine_names: true,\n  pbi_shift_naming: true,\n  pbi_calendar: true\n};\n// First and last date of the calendar table.\nvar CALENDAR_START = '2026-09-01';\nvar CALENDAR_END = '2026-12-31';\n\nvar shared = glob.get('cfg');\nif (!shared) {\n  node.status({\n    fill: 'red',\n    shape: 'ring',\n    text: 'CONFIG not run'\n  });\n  node.error('global cfg is missing: deploy or run the Config tab first');\n  return null;\n}\n\nvar cfg = Object.assign({}, shared);\ncfg.dryRun = DRY_RUN;\ncfg.calendarStart = CALENDAR_START;\ncfg.calendarEnd = CALENDAR_END;\ncfg.paths = {};\nObject.keys(DRY_RUN).forEach(function (table) {\n  cfg.paths[table] = shared.root + '/' + table + '/' + table + '.parquet';\n});\ncfg.assetIds = [];\nshared.sites.forEach(function (site) {\n  cfg.assetIds = cfg.assetIds.concat(site.assetIds);\n});\nflow.set('cfg', cfg);\n\nvar writing = Object.keys(DRY_RUN).filter(function (table) {\n  return !DRY_RUN[table];\n});\nnode.status({\n  fill: writing.length ? 'green' : 'yellow',\n  shape: 'dot',\n  text: writing.length ? writing.length + ' table(s) WRITE' : 'DRY RUN'\n});\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 380,
+    "y": 120,
+    "wires": [
+      [
+        "45faa.334806",
+        "47e99.34e11f"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "4bc77.381351",
+    "type": "link out",
+    "name": "to SETUP",
+    "mode": "link",
+    "links": [
+      "49d88.367a38"
+    ],
+    "x": 900,
+    "y": 120,
+    "wires": []
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "45faa.334806",
+    "type": "function",
+    "name": "1.2 Build run message",
+    "func": "// Starts one run. In: any message from CONFIG (inject or test start).\n// Out: msg.payload = the run day text YYYY-MM-DD, and msg.mode.\n// A start like {start: 'YYYY-MM-DD'} fixes the day, otherwise it is today.\nvar day = new Date().toISOString().slice(0, 10);\nvar start = msg.payload;\nif (start && typeof start === 'object' && start.start) {\n  day = start.start;\n}\nmsg.payload = day;\nmsg.mode = 'reference';\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 640,
+    "y": 120,
+    "wires": [
+      [
+        "4bc77.381351"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "4fa55.3b4583",
+    "type": "link out",
+    "name": "to WRITE pbi_calendar",
+    "mode": "link",
+    "links": [
+      "4db66.39ac6a"
+    ],
+    "x": 900,
+    "y": 220,
+    "wires": []
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "53833.3e77b5",
+    "type": "link out",
+    "name": "to LOG",
+    "mode": "link",
+    "links": [
+      "51944.3cde9c"
+    ],
+    "x": 900,
+    "y": 280,
+    "wires": []
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "47e99.34e11f",
+    "type": "function",
+    "name": "1.3 Build calendar rows",
+    "func": "// Builds the pbi_calendar table: one row per date, Monday week start.\n// In: any message after the settings node. Out 1: msg.payload = the rows\n// (topic pbi_calendar). Out 2: a log line. Dry run sends only the log line.\nvar DAY_MS = 86400000;\nvar cfg = flow.get('cfg');\nvar MONTHS = [\n  'January',\n  'February',\n  'March',\n  'April',\n  'May',\n  'June',\n  'July',\n  'August',\n  'September',\n  'October',\n  'November',\n  'December'\n];\n\nfunction pad(n) {\n  return n < 10 ? '0' + n : String(n);\n}\n\n// ISO week number (Monday start, week 1 holds the first Thursday).\nfunction isoWeek(ms) {\n  var d = new Date(ms);\n  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));\n  var yearStart = Date.UTC(d.getUTCFullYear(), 0, 1);\n  return Math.ceil(((d.getTime() - yearStart) / DAY_MS + 1) / 7);\n}\n\nvar rows = [];\nvar start = Date.parse(cfg.calendarStart + 'T00:00:00Z');\nvar end = Date.parse(cfg.calendarEnd + 'T00:00:00Z');\nfor (var t = start; t <= end; t += DAY_MS) {\n  var d = new Date(t);\n  var month = d.getUTCMonth();\n  var year = d.getUTCFullYear();\n  var quarter = Math.floor(month / 3) + 1;\n  var mondayOffset = (d.getUTCDay() + 6) % 7;\n  rows.push({\n    date: d.toISOString().slice(0, 10),\n    year: year,\n    month_number: month + 1,\n    month: MONTHS[month],\n    month_short_name: MONTHS[month].slice(0, 3),\n    month_year: MONTHS[month].slice(0, 3) + ' ' + year,\n    month_year_number: pad(month + 1) + ' ' + String(year).slice(2),\n    quarter: 'QTR' + quarter,\n    quarter_number: quarter,\n    week_number: isoWeek(t),\n    week_start: new Date(t - mondayOffset * DAY_MS).toISOString().slice(0, 10)\n  });\n}\n\nvar text = 'pbi_calendar ' + rows.length + ' rows';\nif (cfg.dryRun.pbi_calendar) {\n  var line = {\n    topic: 'log',\n    payload: 'calendar [setup] DRY RUN: ' + text\n  };\n  return [null, line];\n}\nvar table = {\n  topic: 'pbi_calendar',\n  day: '',\n  payload: rows\n};\nreturn [table, null];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 640,
+    "y": 220,
+    "wires": [
+      [
+        "4fa55.3b4583"
+      ],
+      [
+        "53833.3e77b5"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "55722.4010ce",
+    "type": "comment",
+    "name": "[2] SETUP",
+    "info": "STAGE 2 - token request, OEE asset list, choose the assets, one message per asset. Function nodes cannot use fetch in the VFC, so every call is an http request node: the function before it sets msg.method, msg.url and msg.headers. A failure goes to the LOG and nothing is written.",
+    "x": 120,
+    "y": 260,
+    "wires": []
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "49d88.367a38",
+    "type": "link in",
+    "name": "SETUP",
+    "links": [
+      "4bc77.381351"
+    ],
+    "x": 120,
+    "y": 340,
+    "wires": [
+      [
+        "57611.41a9e7"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "57611.41a9e7",
+    "type": "function",
+    "name": "2.1 Build token request",
+    "func": "// Builds the token request. The next node is an http request node.\n// In: a day message {payload: 'YYYY-MM-DD', mode}.\n// Out: msg.method, msg.url and msg.headers for the token POST.\nvar cfg = flow.get('cfg');\nvar credentials = cfg.clientId + ':' + cfg.clientSecret;\nmsg.day = msg.payload;\nmsg.loadedAt = Date.now();\nmsg.method = 'POST';\nmsg.url = 'https://' + cfg.tenantName +\n  '.piam.eu1.mindsphere.io/oauth/token?grant_type=client_credentials';\nmsg.headers = {\n  'Authorization': 'Basic ' + Buffer.from(credentials).toString('base64'),\n  'Accept': 'application/json'\n};\ndelete msg.payload;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 380,
+    "y": 340,
+    "wires": [
+      [
+        "59500.434300"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "59500.434300",
+    "type": "http request",
+    "name": "POST token",
+    "method": "use",
+    "ret": "obj",
+    "url": "",
+    "timeout": "",
+    "mindspherePath": "",
+    "useMindsphereAuth": false,
+    "isAdmin": false,
+    "x": 640,
+    "y": 340,
+    "wires": [
+      [
+        "5b3ef.44dc19"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "5f1cd.480e4b",
+    "type": "link out",
+    "name": "to LOG",
+    "mode": "link",
+    "links": [
+      "51944.3cde9c"
+    ],
+    "x": 1020,
+    "y": 400,
+    "wires": []
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "5b3ef.44dc19",
+    "type": "function",
+    "name": "2.2 Build asset list request",
+    "func": "// Keeps the token and builds the OEE asset list request (isConfigured,\n// isManual). In: the token response. Out 1: the request for the http node.\n// Out 2: a log message when the token request failed.\nvar cfg = flow.get('cfg');\nvar token = msg.payload && msg.payload.access_token;\n\nfunction logMessage(text) {\n  return {\n    topic: 'log',\n    payload: msg.day + ' [' + msg.mode + '] ' + text\n  };\n}\n\nif (msg.statusCode !== 200 || !token) {\n  var failed = 'FAILED, NOTHING WRITTEN: token request failed, HTTP ';\n  return [null, logMessage(failed + msg.statusCode)];\n}\nmsg.token = token;\nmsg.method = 'GET';\nmsg.url = cfg.gateway + '/api/oee/v3/assets';\nmsg.headers = {\n  'Authorization': 'Bearer ' + msg.token,\n  'Accept': 'application/json'\n};\ndelete msg.payload;\nreturn [msg, null];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 900,
+    "y": 340,
+    "wires": [
+      [
+        "5d2de.467532"
+      ],
+      [
+        "5f1cd.480e4b"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "5d2de.467532",
+    "type": "http request",
+    "name": "GET OEE assets",
+    "method": "use",
+    "ret": "obj",
+    "url": "",
+    "timeout": "",
+    "mindspherePath": "",
+    "useMindsphereAuth": false,
+    "isAdmin": false,
+    "x": 1160,
+    "y": 340,
+    "wires": [
+      [
+        "610bc.49a764"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "64e9a.4cd996",
+    "type": "link out",
+    "name": "to LOG",
+    "mode": "link",
+    "links": [
+      "51944.3cde9c"
+    ],
+    "x": 1540,
+    "y": 400,
+    "wires": []
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "610bc.49a764",
+    "type": "function",
+    "name": "2.3 Choose assets",
+    "func": "// Chooses the assets to read for the reference tables.\n// In: the OEE asset list. Out 1: msg.payload = [{id, name, isManual,\n// isConfigured, reasonTreeId}] for the split node. Out 2: a log message.\nvar cfg = flow.get('cfg');\nvar byId = {};\nvar skipped = [];\nvar targets = [];\n\nfunction logMessage(text) {\n  return {\n    topic: 'log',\n    payload: msg.day + ' [' + msg.mode + '] ' + text\n  };\n}\n\nif (msg.statusCode !== 200 || !Array.isArray(msg.payload)) {\n  var failed = 'FAILED, NOTHING WRITTEN: OEE asset list failed, HTTP ';\n  return [null, logMessage(failed + msg.statusCode)];\n}\n\nmsg.payload.forEach(function (o) {\n  byId[o.assetId] = o;\n});\nvar ids = cfg.assetIds;\nif (!ids || !ids.length) {\n  ids = msg.payload.map(function (o) {\n    return o.assetId;\n  });\n}\nids.forEach(function (id) {\n  var o = byId[id];\n  if (!o) {\n    skipped.push(String(id).slice(0, 6) + '... not an OEE asset');\n    return;\n  }\n  if (cfg.excludeNames.indexOf(o.name) >= 0) {\n    skipped.push(o.name + ' excluded');\n    return;\n  }\n  targets.push({\n    id: id,\n    name: o.name,\n    isManual: o.isManual,\n    isConfigured: o.isConfigured !== false,\n    reasonTreeId: o.reasonTreeId || null\n  });\n});\nmsg.planSkipped = skipped;\n\nif (!targets.length) {\n  var nothing = 'NOTHING TO WRITE (no assets to read)';\n  if (skipped.length) {\n    nothing += ' | skipped: ' + skipped.join('; ');\n  }\n  return [null, logMessage(nothing)];\n}\nmsg.payload = targets;\nnode.status({\n  fill: 'blue',\n  shape: 'dot',\n  text: targets.length + ' asset(s)'\n});\nreturn [msg, null];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 1420,
+    "y": 340,
+    "wires": [
+      [
+        "62fab.4b407d"
+      ],
+      [
+        "64e9a.4cd996"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "62fab.4b407d",
+    "type": "split",
+    "name": "Split per item",
+    "splt": "\\n",
+    "spltType": "str",
+    "arraySplt": 1,
+    "arraySpltType": "len",
+    "stream": false,
+    "addname": "index",
+    "x": 1680,
+    "y": 340,
+    "wires": [
+      [
+        "66d89.4e72af"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "6ab67.51a4e1",
+    "type": "link out",
+    "name": "to ASSET",
+    "mode": "link",
+    "links": [
+      "68c78.500bc8"
+    ],
+    "x": 2200,
+    "y": 340,
+    "wires": []
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "66d89.4e72af",
+    "type": "delay",
+    "name": "One asset per second",
+    "pauseType": "rate",
+    "timeout": "1",
+    "timeoutUnits": "seconds",
+    "rate": "1",
+    "nbRateUnits": "1",
+    "rateUnits": "second",
+    "randomFirst": "1",
+    "randomLast": "1",
+    "randomUnits": "seconds",
+    "drop": false,
+    "powerMode": false,
+    "x": 1940,
+    "y": 340,
+    "wires": [
+      [
+        "6ab67.51a4e1"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "6ca56.533dfa",
+    "type": "comment",
+    "name": "[3] ASSET",
+    "info": "STAGE 3 - one message per asset, two calls: Asset Management GET asset (hierarchyPath: site, area, line, machine) and OEE config (the calendar id). An excluded or unconfigured asset skips the config call and goes straight to 4.1 (\"to BUILD\").",
+    "x": 120,
+    "y": 480,
+    "wires": []
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "68c78.500bc8",
+    "type": "link in",
+    "name": "ASSET",
+    "links": [
+      "6ab67.51a4e1"
+    ],
+    "x": 120,
+    "y": 560,
+    "wires": [
+      [
+        "6e945.54d713"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "6e945.54d713",
+    "type": "function",
+    "name": "3.1 Build asset request",
+    "func": "// Builds the Asset Management request for one asset (to get hierarchyPath).\n// In: one asset {id, isManual, name} from the split node.\n// Out: msg.method, msg.url and msg.headers for the http request node.\nvar cfg = flow.get('cfg');\nmsg.asset = msg.payload;\nmsg.method = 'GET';\nmsg.url = cfg.gateway + '/api/assetmanagement/v3/assets/' +\n  encodeURIComponent(msg.asset.id);\nmsg.headers = {\n  'Authorization': 'Bearer ' + msg.token,\n  'Accept': 'application/hal+json'\n};\ndelete msg.payload;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 380,
+    "y": 560,
+    "wires": [
+      [
+        "70834.56702c"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "70834.56702c",
+    "type": "http request",
+    "name": "GET asset (hierarchy)",
+    "method": "use",
+    "ret": "obj",
+    "url": "",
+    "timeout": "",
+    "mindspherePath": "",
+    "useMindsphereAuth": false,
+    "isAdmin": false,
+    "x": 640,
+    "y": 560,
+    "wires": [
+      [
+        "72723.580945"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "783f0.5cd490",
+    "type": "link out",
+    "name": "to BUILD",
+    "mode": "link",
+    "links": [
+      "76501.5b3b77"
+    ],
+    "x": 1020,
+    "y": 620,
+    "wires": []
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "72723.580945",
+    "type": "function",
+    "name": "3.2 Save hierarchy, ask config",
+    "func": "// Saves the hierarchy of one asset and builds the OEE config request.\n// In: the Asset Management response. Out 1: the config request.\n// Out 2: the message for stage 3.4 when no config call is needed\n// (details failed, asset excluded or asset not configured).\nvar cfg = flow.get('cfg');\n\n// Names are root first. Tenant layout: [0] tenant, [1] region, [2] site,\n// [3] area, [4] line, [5] machine. GT4 has no machine, so it is the line.\nfunction hierarchyFromNames(names) {\n  return {\n    asset_name: names[names.length - 1] || null,\n    site: names[2] || null,\n    area: names[3] || null,\n    line: names[4] || null,\n    machine: names[5] || null\n  };\n}\n\nvar details = msg.payload;\nmsg.amFail = null;\nmsg.skip = null;\nmsg.h = null;\nif (msg.statusCode !== 200 || !details || !details.name) {\n  var text = msg.asset.name + ': asset details failed, HTTP ';\n  msg.amFail = text + msg.statusCode;\n} else {\n  var names = (details.hierarchyPath || []).map(function (p) {\n    return p.name;\n  });\n  names.push(details.name);\n  msg.h = hierarchyFromNames(names);\n  var excluded = cfg.excludeNames.indexOf(details.name) >= 0;\n  var parentExcluded = names.slice(0, -1).some(function (n) {\n    return cfg.excludeAncestorNames.indexOf(n) >= 0;\n  });\n  if (excluded || parentExcluded) {\n    msg.skip = 'excluded';\n  } else if (!msg.asset.isConfigured) {\n    msg.skip = 'not configured';\n  }\n}\n\nif (msg.amFail || msg.skip) {\n  delete msg.payload;\n  return [null, msg];\n}\nmsg.method = 'GET';\nmsg.url = cfg.gateway + '/api/oee/v3/assets/' +\n  encodeURIComponent(msg.asset.id) + '/config';\nmsg.headers = {\n  'Authorization': 'Bearer ' + msg.token,\n  'Accept': 'application/json'\n};\ndelete msg.payload;\nreturn [msg, null];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 900,
+    "y": 560,
+    "wires": [
+      [
+        "74612.59a25e"
+      ],
+      [
+        "783f0.5cd490"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "7a2df.5e6da9",
+    "type": "link out",
+    "name": "to BUILD",
+    "mode": "link",
+    "links": [
+      "76501.5b3b77"
+    ],
+    "x": 1420,
+    "y": 560,
+    "wires": []
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "74612.59a25e",
+    "type": "http request",
+    "name": "GET asset config",
+    "method": "use",
+    "ret": "obj",
+    "url": "",
+    "timeout": "",
+    "mindspherePath": "",
+    "useMindsphereAuth": false,
+    "isAdmin": false,
+    "x": 1160,
+    "y": 560,
+    "wires": [
+      [
+        "7a2df.5e6da9"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "7c1ce.6006c2",
+    "type": "comment",
+    "name": "[4] BUNDLES & ROUTE",
+    "info": "STAGE 4 - one bundle per asset: the machine name row and the calendar id. The join waits for all assets. 4.2 sends one message per table: output 1 pbi_machine_names, output 2 the calendar ids for pbi_shift_naming.",
+    "x": 120,
+    "y": 700,
+    "wires": []
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "76501.5b3b77",
+    "type": "link in",
+    "name": "BUILD",
+    "links": [
+      "783f0.5cd490",
+      "7a2df.5e6da9"
+    ],
+    "x": 120,
+    "y": 780,
+    "wires": [
+      [
+        "7e0bd.619fdb"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "7e0bd.619fdb",
+    "type": "function",
+    "name": "4.1 Build asset items",
+    "func": "// Builds the two items of one asset: its machine name row and its calendar.\n// In: msg.asset, msg.h, msg.amFail, msg.skip, the OEE config response.\n// Out: msg.payload = {machine, calendar}. machine = {name, failed, skipped,\n// rows}. calendar = {name, value (the calendar id), failed, skipped}.\nvar asset = msg.asset;\nvar config = msg.payload || {};\nvar machine = {\n  name: asset.name,\n  failed: null,\n  skipped: null,\n  rows: []\n};\nvar calendar = {\n  name: asset.name,\n  value: null,\n  failed: null,\n  skipped: null\n};\n\nif (msg.amFail) {\n  machine.failed = msg.amFail;\n  calendar.failed = msg.amFail;\n} else if (msg.skip === 'excluded') {\n  machine.skipped = asset.name + ' excluded';\n  calendar.skipped = asset.name + ' excluded';\n} else {\n  machine.rows.push({\n    site_name: msg.h.site,\n    area: msg.h.area,\n    dept: msg.h.area,\n    machine_name: msg.h.asset_name,\n    product_type: null,\n    unique_machine_name: asset.id,\n    loaded_at: msg.loadedAt\n  });\n  if (msg.skip === 'not configured') {\n    calendar.skipped = asset.name + ' not configured';\n  } else if (msg.statusCode !== 200) {\n    calendar.failed = asset.name + ': config failed, HTTP ' + msg.statusCode;\n  } else {\n    calendar.value = config.calendarId || null;\n  }\n}\n\nmsg.payload = {\n  machine: machine,\n  calendar: calendar\n};\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 380,
+    "y": 780,
+    "wires": [
+      [
+        "7ffac.6338f4"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "7ffac.6338f4",
+    "type": "join",
+    "name": "Wait for all assets",
+    "mode": "auto",
+    "build": "array",
+    "property": "payload",
+    "propertyType": "msg",
+    "key": "topic",
+    "joiner": "\\n",
+    "joinerType": "str",
+    "accumulate": false,
+    "timeout": "",
+    "count": "",
+    "x": 640,
+    "y": 780,
+    "wires": [
+      [
+        "81e9b.64d20d"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "85c79.68043f",
+    "type": "link out",
+    "name": "to MACHINES",
+    "mode": "link",
+    "links": [
+      "83d8a.666b26"
+    ],
+    "x": 1160,
+    "y": 760,
+    "wires": []
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "89a57.6b3671",
+    "type": "link out",
+    "name": "to CALENDAR IDS",
+    "mode": "link",
+    "links": [
+      "87b68.699d58"
+    ],
+    "x": 1160,
+    "y": 800,
+    "wires": []
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "81e9b.64d20d",
+    "type": "function",
+    "name": "4.2 Route to tables",
+    "func": "// Splits the asset bundles into one message per table.\n// In: msg.payload = array of {machine, calendar}.\n// Out 1: the machine items. Out 2: the calendar items (for the shift names).\nvar KEYS = [\n  'machine',\n  'calendar'\n];\nvar bundles = msg.payload;\n\nfunction messageFor(key) {\n  var copy = Object.assign({}, msg);\n  copy.payload = bundles.map(function (bundle) {\n    return bundle[key];\n  });\n  return copy;\n}\n\nnode.status({\n  fill: 'blue',\n  shape: 'dot',\n  text: bundles.length + ' asset(s)'\n});\nreturn KEYS.map(messageFor);\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 900,
+    "y": 780,
+    "wires": [
+      [
+        "85c79.68043f"
+      ],
+      [
+        "89a57.6b3671"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "8b946.6ccf8a",
+    "type": "comment",
+    "name": "[5] pbi_machine_names",
+    "info": "STAGE 5 - collect the machine rows, decide (nothing is written when an asset failed, nothing in dry-run mode), write the parquet file. Machine Names EU: site, area, dept (= area), machine, product type (null: not in Insights Hub), unique machine name (= asset id).",
+    "x": 120,
+    "y": 920,
+    "wires": []
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "83d8a.666b26",
+    "type": "link in",
+    "name": "MACHINES",
+    "links": [
+      "85c79.68043f"
+    ],
+    "x": 120,
+    "y": 1000,
+    "wires": [
+      [
+        "8d835.6e68a3"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "8d835.6e68a3",
+    "type": "function",
+    "name": "5.1 Collect pbi_machine_names",
+    "func": "// Collects the items that the join delivered into one list of rows.\n// In: msg.payload = array of items {name, failed, skipped, rows}.\n// Out: msg.rows, msg.failed and msg.skipped (lists), msg.itemCount.\nvar items = Array.isArray(msg.payload) ? msg.payload : [msg.payload];\nvar rows = [];\nvar failed = [];\nvar skipped = (msg.planSkipped || []).slice();\n\nitems.forEach(function (item) {\n  if (!item) {\n    return;\n  }\n  if (item.failed) {\n    failed.push(item.failed);\n  }\n  if (item.skipped) {\n    skipped.push(item.skipped);\n  }\n  rows = rows.concat(item.rows || []);\n});\nmsg.rows = rows;\nmsg.failed = failed;\nmsg.skipped = skipped;\nmsg.itemCount = items.length;\ndelete msg.payload;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 380,
+    "y": 1000,
+    "wires": [
+      [
+        "8f724.7001bc"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "93502.7333ee",
+    "type": "link out",
+    "name": "to LOG",
+    "mode": "link",
+    "links": [
+      "51944.3cde9c"
+    ],
+    "x": 760,
+    "y": 1060,
+    "wires": []
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "8f724.7001bc",
+    "type": "function",
+    "name": "5.2 Decide pbi_machine_names",
+    "func": "// Decides what happens with the table pbi_machine_names.\n// In: msg.rows, msg.failed, msg.skipped. Out 1: msg.payload = rows for the\n// parquet node. Out 2: a log line. A failed item means nothing is written.\nvar TABLE = 'pbi_machine_names';\nvar cfg = flow.get('cfg');\nvar rows = msg.rows;\nvar tail = '';\nif (msg.skipped.length) {\n  tail += ' | skipped: ' + msg.skipped.join('; ');\n}\nvar sizes = TABLE + ' ' + rows.length + ' rows from ' +\n  msg.itemCount + ' item(s)';\n\nfunction logOnly(text) {\n  var line = {\n    topic: 'log',\n    payload: msg.day + ' [' + msg.mode + '] ' + text\n  };\n  return [null, line];\n}\n\nif (msg.failed.length) {\n  node.status({\n    fill: 'red',\n    shape: 'ring',\n    text: 'FAILED, nothing written'\n  });\n  return logOnly(\n    'FAILED, NOTHING WRITTEN: ' + msg.failed.join(' | ') + tail\n  );\n}\nif (!rows.length) {\n  node.status({\n    fill: 'grey',\n    shape: 'ring',\n    text: 'nothing to write'\n  });\n  return logOnly('NOTHING TO WRITE: ' + sizes + tail);\n}\nif (cfg.dryRun[TABLE]) {\n  node.status({\n    fill: 'yellow',\n    shape: 'dot',\n    text: 'dry run ' + rows.length\n  });\n  var firstRows = JSON.stringify(rows.slice(0, 2));\n  return logOnly('DRY RUN: ' + sizes + '. First rows: ' + firstRows + tail);\n}\n\nnode.status({\n  fill: 'green',\n  shape: 'dot',\n  text: 'writing ' + rows.length\n});\nvar writing = {\n  topic: 'log',\n  payload: msg.day + ' [' + msg.mode + '] WRITING ' + sizes + tail\n};\nmsg.payload = rows;\ndelete msg.rows;\nreturn [msg, writing];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 640,
+    "y": 1000,
+    "wires": [
+      [
+        "91613.719ad5"
+      ],
+      [
+        "93502.7333ee"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "91613.719ad5",
+    "type": "parquet",
+    "name": "Write pbi_machine_names parquet",
+    "option": "write",
+    "columns": [
+      {
+        "column": "site_name",
+        "type": "UTF8"
+      },
+      {
+        "column": "area",
+        "type": "UTF8"
+      },
+      {
+        "column": "dept",
+        "type": "UTF8"
+      },
+      {
+        "column": "machine_name",
+        "type": "UTF8"
+      },
+      {
+        "column": "product_type",
+        "type": "UTF8"
+      },
+      {
+        "column": "unique_machine_name",
+        "type": "UTF8"
+      },
+      {
+        "column": "loaded_at",
+        "type": "TIMESTAMP_MILLIS"
+      }
+    ],
+    "rcolumns": "",
+    "multi": "multiple",
+    "outputPty": "payload",
+    "outputPtyType": "msg",
+    "engine": "parquetjs",
+    "x": 900,
+    "y": 1000,
+    "wires": [
+      [
+        "953f1.74cd07"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "953f1.74cd07",
+    "type": "function",
+    "name": "5.3 Set pbi_machine_names path",
+    "func": "// Sets the file path in the data lake.\n// In: the output of the parquet node (msg.payload is passed on unchanged).\n// Out: the same message with msg.path and msg.filename. The file name is\n// fixed, so every run replaces the file and never duplicates it.\nvar cfg = flow.get('cfg');\nmsg.path = cfg.paths['pbi_machine_names'];\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 1160,
+    "y": 1000,
+    "wires": [
+      [
+        "972e0.766620"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "972e0.766620",
+    "type": "write object",
+    "name": "pbi_machine_names to data lake",
+    "path": "",
+    "mode": "object",
+    "x": 1420,
+    "y": 1000,
+    "wires": []
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "991cf.77ff39",
+    "type": "comment",
+    "name": "[6] calendar ids",
+    "info": "STAGE 6 - keep the distinct calendar ids of the assets, then one message per calendar (one per second).",
+    "x": 120,
+    "y": 1140,
+    "wires": []
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "87b68.699d58",
+    "type": "link in",
+    "name": "CALENDAR IDS",
+    "links": [
+      "89a57.6b3671"
+    ],
+    "x": 120,
+    "y": 1220,
+    "wires": [
+      [
+        "9b0be.799852"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "9ee9c.7cca84",
+    "type": "link out",
+    "name": "to LOG",
+    "mode": "link",
+    "links": [
+      "51944.3cde9c"
+    ],
+    "x": 500,
+    "y": 1280,
+    "wires": []
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "9b0be.799852",
+    "type": "function",
+    "name": "6.1 Pick ids",
+    "func": "// Collects the distinct ids of the assets.\n// In: msg.payload = array of items {name, value, failed, skipped}.\n// Out 1: msg.ids (list of ids). Out 2: a log line when an item failed or\n// there is no id at all.\nvar seen = {};\nvar ids = [];\nvar failures = [];\nvar without = [];\n\nfunction logMessage(text) {\n  return {\n    topic: 'log',\n    payload: msg.day + ' [' + msg.mode + '] ' + text\n  };\n}\n\nmsg.payload.forEach(function (item) {\n  if (item.failed) {\n    failures.push(item.failed);\n    return;\n  }\n  if (item.skipped) {\n    return;\n  }\n  var id = item.value;\n  if (!id) {\n    without.push(item.name);\n    return;\n  }\n  if (!seen[id]) {\n    seen[id] = true;\n    ids.push(id);\n  }\n});\n\nif (failures.length) {\n  var failed = 'FAILED, NOTHING WRITTEN: ' + failures.join(' | ');\n  return [null, logMessage(failed)];\n}\nif (!ids.length) {\n  var nothing = 'NOTHING TO WRITE (no ids found)';\n  if (without.length) {\n    nothing += ' | assets without id: ' + without.join(', ');\n  }\n  return [null, logMessage(nothing)];\n}\nif (without.length) {\n  var note = ' | assets without id: ' + without.join(', ');\n  msg.planSkipped = (msg.planSkipped || []).concat(note);\n}\nmsg.ids = ids;\ndelete msg.payload;\nreturn [msg, null];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 380,
+    "y": 1220,
+    "wires": [
+      [
+        "9cfad.7b316b"
+      ],
+      [
+        "9ee9c.7cca84"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "9cfad.7b316b",
+    "type": "function",
+    "name": "6.2 Choose calendars",
+    "func": "// Turns the distinct calendar ids into one target per id.\n// In: msg.ids (list of calendar ids). Out: msg.payload = [{id, name, extra}]\n// for the split node.\nmsg.payload = msg.ids.map(function (id) {\n  return {\n    id: id,\n    name: null,\n    extra: null\n  };\n});\ndelete msg.ids;\nnode.status({\n  fill: 'blue',\n  shape: 'dot',\n  text: msg.payload.length + ' calendar(s)'\n});\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 640,
+    "y": 1220,
+    "wires": [
+      [
+        "a0d8b.7e639d"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "a0d8b.7e639d",
+    "type": "split",
+    "name": "Split per item",
+    "splt": "\\n",
+    "spltType": "str",
+    "arraySplt": 1,
+    "arraySpltType": "len",
+    "stream": false,
+    "addname": "index",
+    "x": 900,
+    "y": 1220,
+    "wires": [
+      [
+        "a2c7a.7ffcb6"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "a6a58.832ee8",
+    "type": "link out",
+    "name": "to SHIFT DETAIL",
+    "mode": "link",
+    "links": [
+      "a4b69.8195cf"
+    ],
+    "x": 1420,
+    "y": 1220,
+    "wires": []
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "a2c7a.7ffcb6",
+    "type": "delay",
+    "name": "One id per second",
+    "pauseType": "rate",
+    "timeout": "1",
+    "timeoutUnits": "seconds",
+    "rate": "1",
+    "nbRateUnits": "1",
+    "rateUnits": "second",
+    "randomFirst": "1",
+    "randomLast": "1",
+    "randomUnits": "seconds",
+    "drop": false,
+    "powerMode": false,
+    "x": 1160,
+    "y": 1220,
+    "wires": [
+      [
+        "a6a58.832ee8"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "a8947.84c801",
+    "type": "comment",
+    "name": "[7] pbi_shift_naming",
+    "info": "STAGE 7 - one message per calendar: GET the calendar events (window from the run day, calendarWindowDays of the Config tab) and build the shift rows, wait for all, collect, keep every name once, decide, write. Shift Naming EU: the event names of the calendars (this includes the Changeover events: the category filter is still open).",
+    "x": 120,
+    "y": 1360,
+    "wires": []
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "a4b69.8195cf",
+    "type": "link in",
+    "name": "SHIFT DETAIL",
+    "links": [
+      "a6a58.832ee8"
+    ],
+    "x": 120,
+    "y": 1440,
+    "wires": [
+      [
+        "aa836.86611a"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "aa836.86611a",
+    "type": "function",
+    "name": "7.1 Build calendar request",
+    "func": "// Builds the GET request for one id (reason tree, collection or calendar).\n// In: one target {id, name, extra} from the split node.\n// Out: msg.method, msg.url and msg.headers for the http request node.\nvar PATH_BEFORE = 'calendars/';\nvar PATH_AFTER = '/calendarEvents';\nvar WITH_WINDOW = true;\nvar DAY_MS = 86400000;\nvar cfg = flow.get('cfg');\nmsg.target = msg.payload;\nvar url = cfg.gateway + '/api/oee/v3/' + PATH_BEFORE +\n  encodeURIComponent(msg.target.id) + PATH_AFTER;\n\n// Calendar events are read for a window that starts on the run day.\nif (WITH_WINDOW) {\n  var from = Date.parse(msg.day + 'T00:00:00.000Z');\n  var to = from + cfg.calendarWindowDays * DAY_MS;\n  url += '?from=' + new Date(from).toISOString();\n  url += '&to=' + new Date(to).toISOString();\n}\nmsg.method = 'GET';\nmsg.url = url;\nmsg.headers = {\n  'Authorization': 'Bearer ' + msg.token,\n  'Accept': 'application/json'\n};\ndelete msg.payload;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 380,
+    "y": 1440,
+    "wires": [
+      [
+        "ac725.87fa33"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "ac725.87fa33",
+    "type": "http request",
+    "name": "GET calendar events",
+    "method": "use",
+    "ret": "obj",
+    "url": "",
+    "timeout": "",
+    "mindspherePath": "",
+    "useMindsphereAuth": false,
+    "isAdmin": false,
+    "x": 640,
+    "y": 1440,
+    "wires": [
+      [
+        "ae614.89934c"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "ae614.89934c",
+    "type": "function",
+    "name": "7.2 Build shift rows",
+    "func": "// Builds the shift name rows of one calendar: one row per event name.\n// In: the calendarEvents response and msg.target (the calendar id).\n// Out: msg.payload = an item {name, failed, skipped, rows} for the join.\nvar target = msg.target;\nvar label = 'calendar ' + String(target.id).slice(0, 6) + '...';\nvar item = {\n  name: label,\n  failed: null,\n  skipped: null,\n  rows: []\n};\n\nvar events = msg.payload && msg.payload.calendarEvents;\nif (msg.statusCode !== 200 || !Array.isArray(events)) {\n  item.failed = label + ' failed, HTTP ' + msg.statusCode;\n  msg.payload = item;\n  return msg;\n}\n\nevents.forEach(function (e) {\n  if (e.name) {\n    item.rows.push({\n      shift: e.name,\n      loaded_at: msg.loadedAt\n    });\n  }\n});\nmsg.payload = item;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 900,
+    "y": 1440,
+    "wires": [
+      [
+        "b0503.8b2c65"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "b0503.8b2c65",
+    "type": "join",
+    "name": "Wait for all calendars",
+    "mode": "auto",
+    "build": "array",
+    "property": "payload",
+    "propertyType": "msg",
+    "key": "topic",
+    "joiner": "\\n",
+    "joinerType": "str",
+    "accumulate": false,
+    "timeout": "",
+    "count": "",
+    "x": 1160,
+    "y": 1440,
+    "wires": [
+      [
+        "b23f2.8cc57e"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "b23f2.8cc57e",
+    "type": "function",
+    "name": "7.3 Collect pbi_shift_naming",
+    "func": "// Collects the items that the join delivered into one list of rows.\n// In: msg.payload = array of items {name, failed, skipped, rows}.\n// Out: msg.rows, msg.failed and msg.skipped (lists), msg.itemCount.\nvar items = Array.isArray(msg.payload) ? msg.payload : [msg.payload];\nvar rows = [];\nvar failed = [];\nvar skipped = (msg.planSkipped || []).slice();\n\nitems.forEach(function (item) {\n  if (!item) {\n    return;\n  }\n  if (item.failed) {\n    failed.push(item.failed);\n  }\n  if (item.skipped) {\n    skipped.push(item.skipped);\n  }\n  rows = rows.concat(item.rows || []);\n});\nmsg.rows = rows;\nmsg.failed = failed;\nmsg.skipped = skipped;\nmsg.itemCount = items.length;\ndelete msg.payload;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 1420,
+    "y": 1440,
+    "wires": [
+      [
+        "b42e1.8e5e97"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "b42e1.8e5e97",
+    "type": "function",
+    "name": "7.4 Keep distinct names",
+    "func": "// Keeps every shift name once.\n// In: msg.rows = the shift rows of all calendars (names repeat).\n// Out: msg.rows = the distinct shift names, in the order first seen.\nvar seen = {};\nmsg.rows = msg.rows.filter(function (row) {\n  if (seen[row.shift]) {\n    return false;\n  }\n  seen[row.shift] = true;\n  return true;\n});\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 1680,
+    "y": 1440,
+    "wires": [
+      [
+        "b61d0.8ff7b0"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "b9fae.9329e2",
+    "type": "link out",
+    "name": "to LOG",
+    "mode": "link",
+    "links": [
+      "51944.3cde9c"
+    ],
+    "x": 2060,
+    "y": 1500,
+    "wires": []
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "b61d0.8ff7b0",
+    "type": "function",
+    "name": "7.5 Decide pbi_shift_naming",
+    "func": "// Decides what happens with the table pbi_shift_naming.\n// In: msg.rows, msg.failed, msg.skipped. Out 1: msg.payload = rows for the\n// parquet node. Out 2: a log line. A failed item means nothing is written.\nvar TABLE = 'pbi_shift_naming';\nvar cfg = flow.get('cfg');\nvar rows = msg.rows;\nvar tail = '';\nif (msg.skipped.length) {\n  tail += ' | skipped: ' + msg.skipped.join('; ');\n}\nvar sizes = TABLE + ' ' + rows.length + ' rows from ' +\n  msg.itemCount + ' item(s)';\n\nfunction logOnly(text) {\n  var line = {\n    topic: 'log',\n    payload: msg.day + ' [' + msg.mode + '] ' + text\n  };\n  return [null, line];\n}\n\nif (msg.failed.length) {\n  node.status({\n    fill: 'red',\n    shape: 'ring',\n    text: 'FAILED, nothing written'\n  });\n  return logOnly(\n    'FAILED, NOTHING WRITTEN: ' + msg.failed.join(' | ') + tail\n  );\n}\nif (!rows.length) {\n  node.status({\n    fill: 'grey',\n    shape: 'ring',\n    text: 'nothing to write'\n  });\n  return logOnly('NOTHING TO WRITE: ' + sizes + tail);\n}\nif (cfg.dryRun[TABLE]) {\n  node.status({\n    fill: 'yellow',\n    shape: 'dot',\n    text: 'dry run ' + rows.length\n  });\n  var firstRows = JSON.stringify(rows.slice(0, 2));\n  return logOnly('DRY RUN: ' + sizes + '. First rows: ' + firstRows + tail);\n}\n\nnode.status({\n  fill: 'green',\n  shape: 'dot',\n  text: 'writing ' + rows.length\n});\nvar writing = {\n  topic: 'log',\n  payload: msg.day + ' [' + msg.mode + '] WRITING ' + sizes + tail\n};\nmsg.payload = rows;\ndelete msg.rows;\nreturn [msg, writing];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 1940,
+    "y": 1440,
+    "wires": [
+      [
+        "b80bf.9190c9"
+      ],
+      [
+        "b9fae.9329e2"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "b80bf.9190c9",
+    "type": "parquet",
+    "name": "Write pbi_shift_naming parquet",
+    "option": "write",
+    "columns": [
+      {
+        "column": "shift",
+        "type": "UTF8"
+      },
+      {
+        "column": "loaded_at",
+        "type": "TIMESTAMP_MILLIS"
+      }
+    ],
+    "rcolumns": "",
+    "multi": "multiple",
+    "outputPty": "payload",
+    "outputPtyType": "msg",
+    "engine": "parquetjs",
+    "x": 2200,
+    "y": 1440,
+    "wires": [
+      [
+        "bbe9d.94c2fb"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "bbe9d.94c2fb",
+    "type": "function",
+    "name": "7.6 Set pbi_shift_naming path",
+    "func": "// Sets the file path in the data lake.\n// In: the output of the parquet node (msg.payload is passed on unchanged).\n// Out: the same message with msg.path and msg.filename. The file name is\n// fixed, so every run replaces the file and never duplicates it.\nvar cfg = flow.get('cfg');\nmsg.path = cfg.paths['pbi_shift_naming'];\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 2460,
+    "y": 1440,
+    "wires": [
+      [
+        "bdd8c.965c14"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "bdd8c.965c14",
+    "type": "write object",
+    "name": "pbi_shift_naming to data lake",
+    "path": "",
+    "mode": "object",
+    "x": 2720,
+    "y": 1440,
+    "wires": []
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "bfc7b.97f52d",
+    "type": "comment",
+    "name": "[8] WRITE pbi_calendar",
+    "info": "STAGE 8 - parquet node, path and write object for pbi_calendar (generated by 1.3: one row per date from the calendar range in 1.1, Monday week start, ISO week number). Dates are text YYYY-MM-DD.",
+    "x": 120,
+    "y": 1580,
+    "wires": []
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "4db66.39ac6a",
+    "type": "link in",
+    "name": "WRITE pbi_calendar",
+    "links": [
+      "4fa55.3b4583"
+    ],
+    "x": 120,
+    "y": 1660,
+    "wires": [
+      [
+        "c1b6a.998e46"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "c1b6a.998e46",
+    "type": "parquet",
+    "name": "Write pbi_calendar parquet",
+    "option": "write",
+    "columns": [
+      {
+        "column": "date",
+        "type": "UTF8"
+      },
+      {
+        "column": "year",
+        "type": "INT64"
+      },
+      {
+        "column": "month_number",
+        "type": "INT64"
+      },
+      {
+        "column": "month",
+        "type": "UTF8"
+      },
+      {
+        "column": "month_short_name",
+        "type": "UTF8"
+      },
+      {
+        "column": "month_year",
+        "type": "UTF8"
+      },
+      {
+        "column": "month_year_number",
+        "type": "UTF8"
+      },
+      {
+        "column": "quarter",
+        "type": "UTF8"
+      },
+      {
+        "column": "quarter_number",
+        "type": "INT64"
+      },
+      {
+        "column": "week_number",
+        "type": "INT64"
+      },
+      {
+        "column": "week_start",
+        "type": "UTF8"
+      }
+    ],
+    "rcolumns": "",
+    "multi": "multiple",
+    "outputPty": "payload",
+    "outputPtyType": "msg",
+    "engine": "parquetjs",
+    "x": 380,
+    "y": 1660,
+    "wires": [
+      [
+        "c3a59.9b275f"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "c3a59.9b275f",
+    "type": "function",
+    "name": "8.1 Set pbi_calendar path",
+    "func": "// Sets the file path in the data lake.\n// In: the output of the parquet node (msg.payload is passed on unchanged).\n// Out: the same message with msg.path and msg.filename. The file name is\n// fixed, so every run replaces the file and never duplicates it.\nvar cfg = flow.get('cfg');\nmsg.path = cfg.paths['pbi_calendar'];\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 640,
+    "y": 1660,
+    "wires": [
+      [
+        "c5948.9cc078"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "c5948.9cc078",
+    "type": "write object",
+    "name": "pbi_calendar to data lake",
+    "path": "",
+    "mode": "object",
+    "x": 900,
+    "y": 1660,
+    "wires": []
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "c7837.9e5991",
+    "type": "comment",
+    "name": "[9] ERRORS",
+    "info": "STAGE 9 - a catch node takes every error raised by a node of this tab and turns it into a log line with the name of the node and the message of the API (for example the limit message of evaluateKPIs). Errors of the log nodes themselves are not logged again.",
+    "x": 120,
+    "y": 1800,
+    "wires": []
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "cb615.a18bc3",
+    "type": "catch",
+    "name": "Catch errors",
+    "scope": null,
+    "uncaught": false,
+    "x": 120,
+    "y": 1880,
+    "wires": [
+      [
+        "c9726.9ff2aa"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "cd504.a324dc",
+    "type": "link out",
+    "name": "to LOG",
+    "mode": "link",
+    "links": [
+      "51944.3cde9c"
+    ],
+    "x": 640,
+    "y": 1880,
+    "wires": []
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "c9726.9ff2aa",
+    "type": "function",
+    "name": "9.1 Describe error",
+    "func": "// Turns an error caught by the catch node into a log line.\n// In: the message of a catch node (msg.error).\n// Out: a log line for the shared log. Errors of the log nodes themselves\n// are dropped (no log loop).\nvar err = msg.error || {};\nvar source = (err.source && err.source.name) || 'unknown node';\n\nfunction textOf(value) {\n  if (value === undefined || value === null) {\n    return '';\n  }\n  if (typeof value === 'string') {\n    return value;\n  }\n  return JSON.stringify(value);\n}\n\n// Takes the API message out of an error body when there is one.\nfunction apiMessage(value) {\n  var body = value;\n  if (typeof value === 'string') {\n    try {\n      body = JSON.parse(value);\n    } catch (e) {\n      return value;\n    }\n  }\n  var data = body && body.data;\n  var list = (data && data.errors) || (body && body.errors);\n  if (list && list.length && list[0].message) {\n    return list[0].message;\n  }\n  return textOf(value);\n}\n\nif (msg.logBatch) {\n  node.status({\n    fill: 'red',\n    shape: 'ring',\n    text: 'log write failed'\n  });\n  return null;\n}\n\nvar text = '';\nif (msg.day) {\n  text += msg.day + ' [' + msg.mode + '] ';\n}\ntext += 'ERROR in ' + source + ': ' + apiMessage(err.message);\nreturn {\n  topic: 'log',\n  payload: text,\n  level: 'error',\n  source: source\n};\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 380,
+    "y": 1880,
+    "wires": [
+      [
+        "cd504.a324dc"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "cf3f3.a4bdf5",
+    "type": "comment",
+    "name": "[10] LOG",
+    "info": "STAGE 10 - every log line arrives here through the link \"to LOG\". 1 turns a line into a row (time, flow, site, production day, level) and shows it in the debug sidebar. The join collects the rows for 30 s, the delay lets one batch pass every 10 s so two writes do not overlap, 3 sets the file of the month and the read node loads the old file. A read of a file that does not exist answers nothing (only a warning), so the same batch also goes through a 10 s wait to the append step. The log is written whatever the dry-run switch says.",
+    "x": 120,
+    "y": 2020,
+    "wires": []
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "51944.3cde9c",
+    "type": "link in",
+    "name": "LOG",
+    "links": [
+      "53833.3e77b5",
+      "5f1cd.480e4b",
+      "64e9a.4cd996",
+      "93502.7333ee",
+      "9ee9c.7cca84",
+      "b9fae.9329e2",
+      "cd504.a324dc"
+    ],
+    "x": 120,
+    "y": 2100,
+    "wires": [
+      [
+        "d12e2.a6570e"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "d12e2.a6570e",
+    "type": "function",
+    "name": "10.1 Format log line",
+    "func": "// Turns one log message into a row for the log file.\n// In: msg.payload = log text (optional msg.level and msg.source).\n// Out: msg.payload = the row, msg.line = the text for the debug node.\nvar FLOW_NAME = 'pbi-reference';\nvar cfg = flow.get('cfg') || {};\nvar text = String(msg.payload);\n\nvar seq = (flow.get('logSeq') || 0) + 1;\nflow.set('logSeq', seq);\n\n// Most lines start with the production day and the mode: \"2026-09-01 [x] \".\nvar day = '';\nvar mode = '';\nvar message = text;\nvar parts = /^(\\d{4}-\\d{2}-\\d{2}) \\[([^\\]]*)\\] ([\\s\\S]*)$/.exec(text);\nif (parts) {\n  day = parts[1];\n  mode = parts[2];\n  message = parts[3];\n}\n\nvar level = msg.level;\nif (!level) {\n  if (/FAILED/.test(message)) {\n    level = 'failed';\n  } else if (/NOTHING TO WRITE/.test(message)) {\n    level = 'warn';\n  } else {\n    level = 'info';\n  }\n}\n\nmsg.line = text;\nmsg.payload = {\n  ts_utc: new Date().toISOString(),\n  seq: seq,\n  flow: FLOW_NAME,\n  site: cfg.site || 'all',\n  production_day: day,\n  mode: mode,\n  level: level,\n  source: msg.source || 'flow',\n  message: message\n};\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 380,
+    "y": 2100,
+    "wires": [
+      [
+        "d31d1.a7f027",
+        "d50c0.a98940"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "d31d1.a7f027",
+    "type": "join",
+    "name": "Collect log lines",
+    "mode": "custom",
+    "build": "array",
+    "property": "payload",
+    "propertyType": "msg",
+    "key": "topic",
+    "joiner": "\\n",
+    "joinerType": "str",
+    "accumulate": false,
+    "useparts": false,
+    "timeout": "30",
+    "count": "",
+    "reduceRight": false,
+    "reduceExp": "",
+    "reduceInit": "",
+    "reduceInitType": "",
+    "reduceFixup": "",
+    "x": 640,
+    "y": 2100,
+    "wires": [
+      [
+        "d6faf.ab2259"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "d50c0.a98940",
+    "type": "debug",
+    "name": "Run log",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "line",
+    "targetType": "msg",
+    "x": 640,
+    "y": 2180,
+    "wires": []
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "d6faf.ab2259",
+    "type": "delay",
+    "name": "One log batch per 10 s",
+    "pauseType": "rate",
+    "timeout": "1",
+    "timeoutUnits": "seconds",
+    "rate": "1",
+    "nbRateUnits": "10",
+    "rateUnits": "second",
+    "randomFirst": "1",
+    "randomLast": "1",
+    "randomUnits": "seconds",
+    "drop": false,
+    "powerMode": false,
+    "x": 900,
+    "y": 2100,
+    "wires": [
+      [
+        "d8e9e.acbb72"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "d8e9e.acbb72",
+    "type": "function",
+    "name": "10.2 Build log write",
+    "func": "// Prepares the write of one batch of log rows (the read node runs next).\n// In: msg.payload = array of log rows from the join node.\n// Out: msg.path = file of the month, msg.logRows, msg.logBatchId, no payload.\n// msg.logBatch keeps errors of the log nodes themselves out of the log.\nvar FLOW_NAME = 'pbi-reference';\nvar cfg = flow.get('cfg') || {};\nvar root = cfg.root || 'logs_without_root';\nvar rows = msg.payload;\nvar month = rows[0].ts_utc.slice(0, 7);\n\nvar batchNo = (flow.get('logBatchNo') || 0) + 1;\nflow.set('logBatchNo', batchNo);\n\nmsg.logRows = rows;\nmsg.path = root + '/logs/' + FLOW_NAME + '/log_' + month + '.csv';\nmsg.logBatch = true;\nmsg.logBatchId = rows[0].ts_utc + '#' + batchNo;\ndelete msg.payload;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 1160,
+    "y": 2100,
+    "wires": [
+      [
+        "dad8d.ae548b",
+        "dcc7c.afeda4"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "e0a5a.b31fd6",
+    "type": "link out",
+    "name": "to APPEND",
+    "mode": "link",
+    "links": [
+      "deb6b.b186bd"
+    ],
+    "x": 1680,
+    "y": 2100,
+    "wires": []
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "dad8d.ae548b",
+    "type": "read object",
+    "name": "Read log file",
+    "path": "",
+    "mode": "object",
+    "x": 1420,
+    "y": 2100,
+    "wires": [
+      [
+        "e0a5a.b31fd6"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "e2949.b4b8ef",
+    "type": "link out",
+    "name": "to APPEND",
+    "mode": "link",
+    "links": [
+      "deb6b.b186bd"
+    ],
+    "x": 1680,
+    "y": 2180,
+    "wires": []
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "dcc7c.afeda4",
+    "type": "delay",
+    "name": "Wait for read 10 s",
+    "pauseType": "delay",
+    "timeout": "10",
+    "timeoutUnits": "seconds",
+    "rate": "1",
+    "nbRateUnits": "1",
+    "rateUnits": "second",
+    "randomFirst": "1",
+    "randomLast": "5",
+    "randomUnits": "seconds",
+    "drop": false,
+    "powerMode": false,
+    "x": 1420,
+    "y": 2180,
+    "wires": [
+      [
+        "e2949.b4b8ef"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "e4838.b65208",
+    "type": "comment",
+    "name": "[11] LOG WRITE",
+    "info": "STAGE 11 - adds the rows of the batch to the old file and writes the whole file back (the data lake has no append). Columns: ts_utc, seq, flow, site, production_day, mode, level, source, message. Every field is quoted, line breaks become a space. The batch arrives twice (read answer and the wait) and is written once. If the read gives no answer for a file this flow wrote before, a new file with a time stamp is written, so the history is never replaced.",
+    "x": 120,
+    "y": 2240,
+    "wires": []
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "deb6b.b186bd",
+    "type": "link in",
+    "name": "APPEND",
+    "links": [
+      "e0a5a.b31fd6",
+      "e2949.b4b8ef"
+    ],
+    "x": 120,
+    "y": 2320,
+    "wires": [
+      [
+        "e6727.b7eb21"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "e6727.b7eb21",
+    "type": "function",
+    "name": "11.1 Append log rows",
+    "func": "// Adds the rows of one batch to the log file of the month.\n// In: msg.payload = the old file (read answered) or nothing (no answer).\n// Out: msg.payload = the whole new file, the data lake has no append.\n// The same batch can arrive twice (read answer, then the wait): once only.\nvar SEPARATOR = ',';\nvar KEEP_IDS = 50;\nvar COLUMNS = [\n  'ts_utc',\n  'seq',\n  'flow',\n  'site',\n  'production_day',\n  'mode',\n  'level',\n  'source',\n  'message'\n];\n\n// Quotes inside a field are doubled, line breaks become a space.\nfunction quote(value) {\n  var text = (value === undefined || value === null) ? '' : String(value);\n  text = text.replace(/\"/g, '\"\"').replace(/[\\r\\n]+/g, ' ');\n  return '\"' + text + '\"';\n}\n\nfunction lineOf(row) {\n  return COLUMNS.map(function (name) {\n    return quote(row[name]);\n  }).join(SEPARATOR);\n}\n\n// The read node gives text, or a serialised buffer.\nfunction decode(payload) {\n  if (typeof payload === 'string') {\n    return payload;\n  }\n  if (payload && payload.type === 'Buffer' && payload.data) {\n    var bin = '';\n    payload.data.forEach(function (byte) {\n      bin += String.fromCharCode(byte);\n    });\n    try {\n      return decodeURIComponent(escape(bin));\n    } catch (e) {\n      return bin;\n    }\n  }\n  return null;\n}\n\nvar rows = msg.logRows.slice();\nrows.sort(function (a, b) {\n  if (a.ts_utc !== b.ts_utc) {\n    return a.ts_utc < b.ts_utc ? -1 : 1;\n  }\n  return a.seq - b.seq;\n});\n\nvar done = flow.get('logDone') || [];\nvar known = flow.get('logKnown') || [];\nif (done.indexOf(msg.logBatchId) >= 0) {\n  return null;\n}\n\nvar path = msg.path;\nvar old = '';\nvar problem = '';\nif (msg.payload === undefined || msg.payload === null) {\n  if (known.indexOf(path) >= 0) {\n    problem = 'read gave no answer for a file written before';\n  }\n} else {\n  old = decode(msg.payload);\n  if (old === null) {\n    old = '';\n    problem = 'old file is not text';\n  }\n}\nif (problem) {\n  // Never replace the old file: write a new one with a time stamp.\n  var stamp = new Date().toISOString().replace(/[-:.TZ]/g, '');\n  path = path.replace(/\\.csv$/, '_' + stamp + '.csv');\n  rows.push({\n    ts_utc: new Date().toISOString(),\n    seq: 0,\n    flow: rows[0].flow,\n    site: rows[0].site,\n    production_day: '',\n    mode: '',\n    level: 'error',\n    source: 'log',\n    message: problem + ', wrote ' + path\n  });\n} else if (known.indexOf(path) < 0) {\n  known.push(path);\n  flow.set('logKnown', known);\n}\n\nvar lines = [];\nif (!old) {\n  lines.push(COLUMNS.map(quote).join(SEPARATOR));\n} else if (old.slice(-1) !== '\\n') {\n  old += '\\n';\n}\nrows.forEach(function (row) {\n  lines.push(lineOf(row));\n});\n\ndone.push(msg.logBatchId);\nflow.set('logDone', done.slice(-KEEP_IDS));\n\nmsg.payload = old + lines.join('\\n') + '\\n';\nmsg.path = path;\ndelete msg.logRows;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 380,
+    "y": 2320,
+    "wires": [
+      [
+        "e8616.b9843a"
+      ]
+    ]
+  },
+  {
+    "z": "3c4ff.2b4a89",
+    "id": "e8616.b9843a",
+    "type": "write object",
+    "name": "Log to data lake",
+    "path": "",
+    "mode": "object",
+    "x": 640,
+    "y": 2320,
+    "wires": []
+  }
+]
