@@ -165,3 +165,7 @@ Tried: Power BI flow with `Keep dim_asset` expecting an array. Error: "the file 
 - Proof: `node scripts/test-vfc-pbi-direct.js` runs the old chain and the new flows on the same mock: equal rows for all five day/site tables. One difference: a stop without duration is null now (old chain: 0).
 - Column lists moved to `scripts/lib-pbi-schemas.js` (old generator output unchanged).
 - Next: the user imports both tabs (Config tab first), runs with dryRun, checks the log lines, then sets dryRun false per flow. Open: Changeover events in `pbi_shift_naming`, local time for non-UK sites, DST for shifts, targets/product/capacity (Reckitt), single shared engine for several sites.
+
+## Product, order and time model probe (2026-10-12)
+- User wants `part_name` / `product_key` (product name and code) and `batch_id` (order) filled from Insights Hub, and asked to re-test the claim that only manual assets have product per time: the dashboard filters Product and Order on B2 Line (connected).
+- No credentials in the cloud clone, so the probe could not run here. `scripts/test-product-order.js` (GET plus the two approved read POSTs) is ready; the user runs it and reports back. Docs not changed until the output is known.
