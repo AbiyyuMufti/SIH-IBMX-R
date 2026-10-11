@@ -132,6 +132,8 @@ Which values exist in the window for the filters you can pass to KPI calls. HTTP
 ```
 Keys seen: `order`, `product`, `shift`. B2 Line returned 11 orders, 11 products and 15 shift values in 7 d; GT4 2, 1 and 2. The KPI request bodies in Postman and the flows use upper-case filter keys (`"PRODUCT"`, `"ORDER"`); here the keys come back in lower case.
 
+**Per day on B2 Line (Tested 2026-10-12, one call per production day 27 Sep to 10 Oct):** every day returned 2 to 5 orders and the same number of products (for example 2026-10-08: 2 orders, 2 products). So B2 Line runs a few orders a day and each order has one product.
+
 ### GET /assets/{assetId}/measure
 Returns `{ "measureCollectionId": "<id>" }` (GT4) or `{}` (B2 Line, none assigned). Same content as `/config` (see [config-and-master-data.md](config-and-master-data.md)).
 
@@ -435,7 +437,7 @@ return msg;
 | `plcCode` | Machine signal behind the segment, as a **string** (`"true"` for running, `"false"` for stopped here) |
 | `statusId` | Status ID, the same kind of ID as `statusId` in `downtimeReasons` |
 | `overwritten` | **String** (`"false"`): whether the status was changed afterwards |
-| `reasonId`, `reason`, `stateId`, `stateName` | `null` on all 469 segments of the test (no reason assigned in this window) |
+| `reasonId`, `reason`, `stateId`, `stateName` | `null` on all 469 segments of the first test (no reason assigned in this window). Also `null` on the 506 machine segments of the 2026-10-08 test |
 
 Totals computed from the 469 segments (they add up to exactly 24 h):
 | Time model / category | Segments | Total |
@@ -445,6 +447,16 @@ Totals computed from the 469 segments (they add up to exactly 24 h):
 
 The 591 minutes match `Downtime (duration)` of the KPI call (35464130 ms) for the same asset and window.
 
+**Second test, 2026-10-08 (06:00 to 06:00 UTC), B2 Line: HTTP 200, 507 segments** (checked 2026-10-12)
+| Time model / category / state / reason | Segments |
+|---|---|
+| `Availability loss` / `Unplanned Downtime` / null / null | 254 |
+| `Production time` / `Run` / null / null | 252 |
+| `Planned stop` / `Planned Downtime` | 1 (08:00 to 12:46 UTC) |
+
+- **The planned-stop segment has other fields.** It has only `colorCode`, `from`, `to`, `timeCategoryId`, `timeCategoryName`, `timeModelName`, `timeModelId` and `null` `statusId`, `id`, `stateId`. It has no `realFrom`, `realTo`, `plcCode`, `reasonId`, `overwritten`, `stateName` or `reason`. It comes from the shift calendar, not from a machine status. A script that reads `stateName` or `reason` gets `undefined` there, not `null`.
+- **No time category on reasons.** The categories (`Run`, `Unplanned Downtime`, `Planned Downtime`) only appear in these segments, the reason tree does not hold them.
+
 **Gotchas**
 - **Manual assets are rejected:** `GT4` returned HTTP 400 `{"errors":[{"code":"mdsp.core.oee.getTimeModelCategoryDistribution","message":"Assets with manual status are not supported"}]}`. Only automatic (connected) assets such as the B2 Line machines work.
 - **Large response:** about 470 segments for one line in one day (a machine flipping between run and stop every few minutes). Keep windows short or aggregate afterwards.
@@ -453,3 +465,19 @@ The 591 minutes match `Downtime (duration)` of the KPI call (35464130 ms) for th
 
 ## From source only (not tested)
 Write calls only. Everything read-only in the OEE sources has now been tested (the remaining GETs are single-item reads by ID of lists already tested).
+
+## Product and order per hour on B2 Line (Tested 2026-10-12)
+Question: can the product or order of each hour be found on a connected asset, although the hourly KPI rows have no product column?
+
+Method: `POST evaluateKPIs` with `groupedByDateTime: true` once per product (`filter` key `PRODUCT`) and once per order (key `ORDER`), values taken from `filterValues` of the same day. Day 2026-10-08, 06:00 to 06:00 UTC, B2 Line.
+
+| Filter value | HTTP | Hours with good parts |
+|---|---|---|
+| PRODUCT `0126982` | 200 | 8 |
+| PRODUCT `3110560` | 200 | 5 |
+| ORDER `AJT383` | 200 | 8 |
+| ORDER `AJT548` | 200 | 5 |
+
+- **No hour was claimed by two products, and none by two orders** (0 overlaps for each filter). So each hour with production can be matched to exactly one product and one order.
+- **Inferred use:** one hourly call per product (or order) of the day, then give each hour to the value whose `Good parts` is above 0. Cost: one extra call per product per asset and day (2 to 5 on B2 Line).
+- **Not proven:** hours without good parts (a stop, a changeover) cannot be assigned this way. Only one day and one asset were checked. That product 0126982 and order AJT383 are the same hours was not compared. The `Theoretical output` gotcha for the ORDER filter (see the evaluateKPIs section) still applies.

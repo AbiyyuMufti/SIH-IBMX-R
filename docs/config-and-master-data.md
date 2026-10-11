@@ -183,4 +183,21 @@ Findings from the check:
 - **Design speed has a different interval per collection.** The `SP4 Products` collection (82 products, description "SAP routing PLIQSP4; speeds are bottleneck rates") uses `designSpeedInterval` `HOUR` (for example 324.99), the B2 Line collection uses `MINUTE`. Convert to one interval before comparing.
 - **Product descriptions carry extra text.** In SP4 each product description reads like `24.000 EA; bottleneck PLIQSP4; 5.4165 KAR/min`. 5.4165 x 60 = 324.99, so the stored speed is in cartons (KAR) although the unit says `Piece`. The `24.000 EA` could be pieces per carton, a possible seed for a CU factor. **Inferred, not confirmed.**
 - **No OEE asset returned `SP4 Products`** from `/productCollection` (44 assets checked). It probably belongs to one of the unconfigured assets, not confirmed.
-- **Product per shift exists for manual assets.** `manualInputs` has `productName` and `order` per shift entry (GT4). The hourly KPI call has no product column.
+- **Product per shift exists for manual assets.** `manualInputs` has `productName` and `order` per shift entry (GT4). The hourly KPI call has no product column, but the product (and order) of each hour can still be found on connected assets such as B2 Line, see "Where product, order and design speed come from" below and [kpis.md](kpis.md).
+
+## Where product, order and design speed come from (Tested 2026-10-12)
+Read from `/assets/{id}/orderSource`, `/productSource`, `/designSpeedSource`, `/productCollection` and the product list. Same technical user, HTTP 200 on every call.
+
+| Asset | `orderSource` mode | `productSource` mode | `designSpeedSource` mode | Products in its collection |
+|---|---|---|---|---|
+| B2 Line (connected) | `CONNECTED` | `CONNECTED` | `VIA_PRODUCT` | 123 |
+| GT4 (manual) | `MANUAL` | `MANUAL` | `VIA_PRODUCT` | 15 |
+
+- **Keys of a source.** B2 Line: `orderSource` and `productSource` have `id`, `source`, `qualityCodeId`, `mode`. GT4: only `id` and `mode`. `designSpeedSource` has only `id` and `mode` on both.
+- **`source` is one string, not an object.** On B2 Line it has three parts separated by `/`: two IDs and a short signal code. The order source and the product source differ only in that code. So order and product of a connected asset come from a machine signal.
+- **Design speed comes from the product** (`VIA_PRODUCT`) on both assets: there is no separate speed signal.
+- **Product fields** (both assets): `id`, `name`, `description`, `designSpeedInterval`, `designSpeedUnit`, `designSpeedValue`, `designSpeedType`, `code`.
+  - B2 Line: `name` is a numeric code, `description` is a text such as `NURFN,BG,CHILD,ORG,12X100ML`, speed 210 `Piece` per `MINUTE` (`SPEED`).
+  - GT4: descriptive `name`, `description` is `null`, speed 200 or 160 `Carton` per `MINUTE`.
+- **Reasons do not carry a time category.** A reason has `id`, `name`, `description`, `parentId`, `justification`. The tree (`/reasontrees/{id}`) has `id`, `name`, `description`, `timeModelId`: one time model per tree, not per reason. B2 Line tree: 1034 reasons, GT4 tree: 482. The time category of a stop is only visible in the `timeModelCategoryDistribution` segments (see [kpis.md](kpis.md)).
+- **GT4 operator entries, last 60 days:** 39 entries (`manualInputs`), each with an `order` and a `productName`. Many recent shifts have `good` = 0, and one entry has the order `0`. Treat `good` = 0 and `order` = `0` as "nothing entered" before using them.
