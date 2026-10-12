@@ -69,9 +69,11 @@ Checked on 2026-10-12 against a copy of the Power BI Plan OPT EU table (provided
 ## Still null or approximate
 `product_type` (not in Insights Hub; ask Reckitt), `volume_total` (cross-day), all targets (Glidepaths), `equipment`, sub group and `breakdown_types` (the real reason tree is needed: see the empty-column check), `capacity`, `downtime_units` and `loss_units` (assumptions above), local time is Europe/London only, shift recurrence is evaluated in UTC (a shift defined in local time moves by one hour at the clock change: open point), `pbi_shift_naming` includes the Changeover events (category filter open). Planned stop segments of `timeModelCategoryDistribution` come from the shift calendar only and reasons carry no time category in the API, so the loss group still uses the planned roots of the Config tab.
 
-## Not tested on the real tenant yet
-- `calendarEvents?from&to` with a window of one production day: the mock returns the same events for any window. If the real answer is empty for a day, every shift is null: check `shift_name` in the dry-run log.
-- The `link` nodes between lanes (as in the other flows).
-- `filterValues` and the filtered `evaluateKPIs` calls inside the flow (the probe `scripts/test-product-order.js` ran them by hand on B2 Line and GT4). A manual asset (GT4) is expected to work the same way.
-- Whether the filter value is always the product NAME (B2 Line shows a number, GT4 a text): checked only on the dropdowns.
-- More API calls per asset and day than the fact flow: config, calendar events, filterValues, product list and one KPI call per product and order. Idle assets stop earlier ("no data").
+## Checked on the real tenant (dry run off, one day: 2026-09-15, B2 Line and GT4)
+- **Shifts:** the one-day `calendarEvents` window works. `shift_name` is filled (crew names on B2 Line, Shift 1 and Shift 2 on GT4).
+- **Product:** the filter value is the product name (B2 Line: the number, GT4: the text). Both assets got `part_name` and `product_key` on every plan row and every stop. B2 Line `part_name` is the product description, GT4 the name; the key is the code (B2 Line: a number, GT4: a text code).
+- **Capacity:** filled on both assets and equal to design speed per minute x planned OpT (B2 Line 136,800 = 190 per minute x 720 min). `loss_units` filled on all 196 stops.
+- **`oee_time` against good parts / design speed:** equal on GT4 (208.18 min), about 9 % higher on B2 Line (302.06 against 276.4). Not explained yet.
+- **`batch_id`:** filled on GT4 stops (the order), empty on all 193 B2 Line stops. To check: does B2 Line have orders on that day (Order dropdown of the OEE app)?
+- **Still empty as expected:** `breakdown_types` 100 %, `equipment` 54 %, targets, `volume_total`.
+- **Not checked yet:** the load (one filtered call per product and order, one per second) for a full day of all assets, and a day with several products.
