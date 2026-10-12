@@ -9,6 +9,10 @@
 //   kpi-413 answers with the real limit text: Too many status changes
 //   ref-config-fail  A1 config and thresholds answer 500 (reference flows)
 //   ref-detail-fail  the first tree, collection and calendar answer 500
+//   products      products and orders on A1 and A2 (filterValues, filtered KPIs)
+//   values-fail, products-fail, value-kpi-fail, no-collection   (A1, with
+//                 the products scenario data)
+// Every other scenario has no product and no order (empty filterValues).
 export const SCENARIOS = [
   'ok',
   'unmapped',
@@ -24,8 +28,58 @@ export const SCENARIOS = [
   'stops-fail',
   'stops-paged',
   'ref-config-fail',
-  'ref-detail-fail'
+  'ref-detail-fail',
+  'products',
+  'values-fail',
+  'products-fail',
+  'value-kpi-fail',
+  'no-collection'
 ];
+
+const PRODUCT_SCENARIOS = [
+  'products',
+  'values-fail',
+  'products-fail',
+  'value-kpi-fail',
+  'no-collection'
+];
+
+// Hours (0 to 23 of the production day) in which a value has parts.
+const VALUE_HOURS = {
+  '1001': [0, 9],
+  '1002': [12, 19],
+  'O-1': [0, 11],
+  'O-2': [12, 23],
+  Slow: [2, 5],
+  Unknown: [6, 8],
+  Odd: [9, 10]
+};
+
+// Products and orders of a day per asset (the filterValues answer).
+function valuesFor(asset, scenario) {
+  if (!PRODUCT_SCENARIOS.includes(scenario)) return { product: [], order: [] };
+  if (asset === ASSETS.A1) return { product: ['1001', '1002'], order: ['O-1', 'O-2'] };
+  if (asset === ASSETS.A2) return { product: ['Slow', 'Odd', 'Unknown'], order: [] };
+  return { product: [], order: [] };
+}
+
+function collectionOf(asset, scenario) {
+  if (scenario === 'no-collection' && asset === ASSETS.A1) return null;
+  if (PRODUCT_SCENARIOS.includes(scenario) && asset === ASSETS.A2) return 'pc-2';
+  return asset.pc;
+}
+
+// Parts only in the hours of one value (a product or an order).
+function restrictTo(body, value) {
+  const [a, b] = VALUE_HOURS[value] || [0, -1];
+  body.results.forEach((r) => {
+    if (r.name !== 'Total parts' && r.name !== 'Good parts') return;
+    r.groups.forEach((g, i) => {
+      if (i < a || i > b) g.value = 0;
+    });
+  });
+  return body;
+}
 
 const HOUR = 3600000;
 const hex = (c) => c.repeat(32);
@@ -69,6 +123,10 @@ function kpiBody(asset, scenario, fromIso) {
     series('Downtime (duration)', (i) => i * 1000),
     series('Micro stops (occurrence)', (i) => i % 3)
   ];
+  // The product scenarios also have an operational time (30 min per hour).
+  if (PRODUCT_SCENARIOS.includes(scenario)) {
+    results.push(series('Operational time', () => 1800000));
+  }
   // an hour that only some KPIs report on
   results[1].groups.pop();
   const body = { productUnit: 'pcs', results };
@@ -173,6 +231,12 @@ export function makeMockFetch(scenario = 'ok') {
       }
       if (asset === ASSETS.A5) return reply(400, { message: 'Asset configuration not finished' });
       if (asset === ASSETS.A6) return reply(200, { productUnit: 'pcs', results: [] });
+      const filter = Object.fromEntries((body.scope.filter || []).map((f) => [f.key, f.value]));
+      const value = (filter.PRODUCT || [])[0] || (filter.ORDER || [])[0];
+      if (value) {
+        if (scenario === 'value-kpi-fail' && asset === ASSETS.A1 && value === '1002') return reply(500, { error: 'boom' });
+        return reply(200, restrictTo(kpiBody(asset, scenario, body.scope.from), value));
+      }
       return reply(200, kpiBody(asset, scenario, body.scope.from));
     }
     const stops = path.match(/^\/api\/oee\/v3\/assets\/(\w+)\/downtimeReasons$/);
@@ -182,13 +246,20 @@ export function makeMockFetch(scenario = 'ok') {
       return reply(200, stopsBody(asset, scenario, u.searchParams.get('from')));
     }
 
+    const fv = path.match(/^\/api\/oee\/v3\/assets\/(\w+)\/filterValues$/);
+    if (fv) {
+      const asset = Object.values(ASSETS).find((a) => a.id === fv[1]);
+      if (scenario === 'values-fail' && asset === ASSETS.A1) return reply(500, { error: 'boom' });
+      const v = valuesFor(asset, scenario);
+      return reply(200, { filterValues: [{ key: 'order', value: v.order }, { key: 'product', value: v.product }, { key: 'shift', value: [] }] });
+    }
     const oeeAsset = path.match(/^\/api\/oee\/v3\/assets\/(\w+)(\/config)?$/);
     if (oeeAsset) {
       const asset = Object.values(ASSETS).find((a) => a.id === oeeAsset[1]);
       const failsA1 = scenario === 'ref-config-fail' && asset === ASSETS.A1;
       if (failsA1) return reply(500, { error: 'boom' });
       if (asset.unconfigured) return reply(400, { message: 'Asset configuration not finished' });
-      if (oeeAsset[2]) return reply(200, { calendarId: asset.cal, productCollectionId: asset.pc, hasManuals: asset.manual });
+      if (oeeAsset[2]) return reply(200, { calendarId: asset.cal, productCollectionId: collectionOf(asset, scenario), hasManuals: asset.manual });
       return reply(200, { assetId: asset.id, thresholds: thresholdsFor(asset) });
     }
     const firstFails = scenario === 'ref-detail-fail';
@@ -205,7 +276,7 @@ export function makeMockFetch(scenario = 'ok') {
     }
     const products = path.match(/^\/api\/oee\/v3\/productCollections\/([\w-]+)\/products$/);
     if (products) {
-      if (firstFails && products[1] === 'pc-1') return reply(500, { error: 'boom' });
+      if ((firstFails || scenario === 'products-fail') && products[1] === 'pc-1') return reply(500, { error: 'boom' });
       return reply(200, { products: productsFor(products[1]) });
     }
     if (path === '/api/oee/v3/calendars') {

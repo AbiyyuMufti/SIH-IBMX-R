@@ -149,6 +149,16 @@ export async function runFlow(nodes, options) {
         delete out.parts;
         emit(n, [out]);
       }
+    } else if (n.type === 'parquet' && n.option === 'read') {
+      // The test lake keeps tables as JSON text instead of parquet.
+      const text = Buffer.isBuffer(msg.payload)
+        ? msg.payload.toString('utf8')
+        : msg.payload && msg.payload.type === 'Buffer'
+          ? Buffer.from(msg.payload.data).toString('utf8')
+          : String(msg.payload);
+      // Default output of the VFC node: one message per row.
+      const rows = JSON.parse(text);
+      for (const row of rows) emit(n, [{ ...msg, payload: row }]);
     } else if (n.type === 'parquet') {
       const columns = new Map(n.columns.map((c) => [c.column, c.type]));
       for (const row of msg.payload) {
@@ -168,6 +178,10 @@ export async function runFlow(nodes, options) {
     } else if (n.type === 'write object') {
       stats.written.push(msg.path);
       if (typeof msg.payload === 'string') lake.set(msg.path, msg.payload);
+      // A parquet table in the test lake is kept as JSON text.
+      if (Array.isArray(msg.payload)) {
+        lake.set(msg.path, JSON.stringify(msg.payload));
+      }
     }
   }
 

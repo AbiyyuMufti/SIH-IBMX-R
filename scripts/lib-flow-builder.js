@@ -85,12 +85,15 @@ export function makeBuilder(flowIndex) {
       } else if (nextStep) {
         nextId = id(nextStep.key);
       }
-      const wiresFor = (outs, fan) =>
-        outs.map((o, k) => {
+      // Side link outs sit below their node, one more row of 40 px each.
+      const wiresFor = (outs, fan) => {
+        let side = 0;
+        return outs.map((o, k) => {
           if (o === 'next') return [nextId];
           if (fan) return [linkOut(o, col(c + 1), rowY(r) + (k - (outs.length - 1) / 2) * 40)];
-          return [linkOut(o, col(c) + 120, rowY(r) + 60)];
+          return [linkOut(o, col(c) + 120, rowY(r) + 60 + 40 * side++)];
         });
+      };
       const pos = { x: col(c), y: rowY(r) + (step.dy || 0) };
       if (step.t === 'linkin') {
         linkIn(step.key, c, r, nextId);
@@ -172,6 +175,17 @@ export function makeBuilder(flowIndex) {
           multi: 'multiple', outputPty: 'payload', outputPtyType: 'msg', engine: 'parquetjs',
           ...pos, wires: [[nextId]]
         });
+      } else if (step.t === 'pqread') {
+        add({
+          id: id(step.key), type: 'parquet', name: step.name, option: 'read',
+          columns: [], rcolumns: '', multi: 'multiple', outputPty: 'payload',
+          outputPtyType: 'msg', engine: 'hyparquet', ...pos, wires: [[nextId]]
+        });
+      } else if (step.t === 'raw') {
+        add({
+          id: id(step.key), ...step.node, ...pos,
+          wires: nextId ? [[nextId]] : []
+        });
       } else if (step.t === 'write') {
         add({
           id: id(step.key), type: 'write object',
@@ -204,6 +218,8 @@ export const joinTimeout = (key, name, seconds) => ({ t: 'joinTimeout', key, nam
 export const debugStep = (key, name, complete, stack = false, dy = 0) => ({
   t: 'debug', key, name, complete, stack, dy
 });
+export const pqRead = (key, name) => ({ t: 'pqread', key, name });
+export const rawStep = (key, node) => ({ t: 'raw', key, node });
 export const writeStep = (key, name) => ({ t: 'write', key, name });
 
 // The three log lanes every flow tab ends with. Errors caught anywhere in

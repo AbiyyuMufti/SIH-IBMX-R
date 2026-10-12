@@ -1,0 +1,198 @@
+[
+  {
+    "id": "0a147.39f001",
+    "type": "tab",
+    "label": "Lake API spike",
+    "disabled": false,
+    "allowCycles": false,
+    "info": "Test: can Python download a parquet file from the data lake through an http in endpoint of the VFC, as bytes or as base64 text? Also shows what list objects returns."
+  },
+  {
+    "z": "0a147.39f001",
+    "id": "0c036.3b891a",
+    "type": "comment",
+    "name": "[1] LAKE API SPIKE",
+    "info": "STAGE 1 - GET /parquet-data-lake-spike?path=<file>.parquet&format=bytes|base64. Set the access key on the http in node after the import (generate it there, never in the repo). 1.1 accepts only .parquet paths without .. and answers 400 otherwise. The read node sends nothing when the file does not exist, so a missing file makes the request hang: that is expected in this test. 1.2 sends the file as bytes (default) or as base64 text in JSON. Header x-parquet-magic tells if the file starts with PAR1.",
+    "x": 120,
+    "y": 40,
+    "wires": []
+  },
+  {
+    "z": "0a147.39f001",
+    "id": "0df25.3d2233",
+    "type": "http in",
+    "name": "Get parquet (spike)",
+    "endpoint": "/parquet-data-lake-spike",
+    "method": "get",
+    "upload": false,
+    "access": "key",
+    "key": "",
+    "users": "",
+    "powerMode": false,
+    "x": 120,
+    "y": 120,
+    "wires": [
+      [
+        "0fe14.3ebb4c"
+      ]
+    ]
+  },
+  {
+    "z": "0a147.39f001",
+    "id": "0fe14.3ebb4c",
+    "type": "function",
+    "name": "1.1 Check request",
+    "func": "// Checks the request of the lake API spike (GET with ?path=...).\n// In: msg.req.query.path = a .parquet file in the lake, query.format.\n// Out 1: msg.path and msg.format for the read node. Out 2: an error answer.\nvar DEFAULT_FORMAT = 'bytes';\nvar ALLOWED_FORMATS = [\n  'bytes',\n  'base64'\n];\nvar REQUIRED_ENDING = '.parquet';\n\nvar query = (msg.req && msg.req.query) || {};\nvar path = String(query.path || '');\nvar format = String(query.format || DEFAULT_FORMAT);\n\nvar problem = '';\nif (!path) {\n  problem = 'query parameter path is missing';\n} else if (path.slice(-REQUIRED_ENDING.length) !== REQUIRED_ENDING) {\n  problem = 'only ' + REQUIRED_ENDING + ' files can be requested';\n} else if (path.indexOf('..') !== -1 || path.indexOf('\\\\') !== -1) {\n  problem = 'the path must not contain .. or a backslash';\n} else if (path.charAt(0) === '/') {\n  problem = 'the path must not start with /';\n} else if (ALLOWED_FORMATS.indexOf(format) === -1) {\n  problem = 'format must be one of: ' + ALLOWED_FORMATS.join(', ');\n}\n\nif (problem) {\n  node.status({\n    fill: 'red',\n    shape: 'ring',\n    text: problem\n  });\n  msg.statusCode = 400;\n  msg.headers = {\n    'content-type': 'application/json'\n  };\n  msg.payload = {\n    error: problem\n  };\n  return [null, msg];\n}\n\nnode.status({\n  fill: 'green',\n  shape: 'dot',\n  text: format + ' ' + path\n});\nmsg.path = path;\nmsg.format = format;\nreturn [msg, null];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 380,
+    "y": 120,
+    "wires": [
+      [
+        "11d03.405465"
+      ],
+      [
+        "13bf2.41ed7e"
+      ]
+    ]
+  },
+  {
+    "z": "0a147.39f001",
+    "id": "11d03.405465",
+    "type": "read object",
+    "name": "Read parquet file",
+    "path": "",
+    "mode": "object",
+    "x": 640,
+    "y": 120,
+    "wires": [
+      [
+        "15ae1.438697"
+      ]
+    ]
+  },
+  {
+    "z": "0a147.39f001",
+    "id": "15ae1.438697",
+    "type": "function",
+    "name": "1.2 Shape answer",
+    "func": "// Turns the read result into the HTTP answer of the lake API spike.\n// In: msg.payload = file content (Buffer or serialised Buffer), msg.format.\n// Out: bytes = the file itself, base64 = JSON with the file as text.\n// Header x-parquet-magic tells if the first 4 bytes are PAR1.\nvar MAGIC = 'PAR1';\n\nvar content = msg.payload;\nvar bytes = null;\nif (Buffer.isBuffer(content)) {\n  bytes = content;\n} else if (content && content.type === 'Buffer' && content.data) {\n  bytes = Buffer.from(content.data);\n}\nif (!bytes) {\n  node.error('the read node did not give bytes: ' + typeof content, msg);\n  msg.statusCode = 500;\n  msg.headers = {\n    'content-type': 'application/json'\n  };\n  msg.payload = {\n    error: 'the read node did not give bytes'\n  };\n  return msg;\n}\n\nvar magic = bytes.slice(0, 4).toString('latin1') === MAGIC;\nvar name = String(msg.path).split('/').pop();\nnode.status({\n  fill: magic ? 'green' : 'red',\n  shape: 'dot',\n  text: msg.format + ' ' + bytes.length + ' bytes'\n});\n\nmsg.statusCode = 200;\nmsg.headers = {\n  'x-parquet-magic': magic ? 'ok' : 'bad',\n  'x-file-size': String(bytes.length)\n};\nif (msg.format === 'base64') {\n  msg.headers['content-type'] = 'application/json';\n  msg.payload = {\n    path: msg.path,\n    size: bytes.length,\n    magic: magic,\n    data: bytes.toString('base64')\n  };\n  return msg;\n}\n\nmsg.headers['content-type'] = 'application/octet-stream';\nmsg.headers['content-disposition'] = 'attachment; filename=\"' + name + '\"';\nmsg.payload = bytes;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 900,
+    "y": 120,
+    "wires": [
+      [
+        "179d0.451fb0"
+      ]
+    ]
+  },
+  {
+    "z": "0a147.39f001",
+    "id": "179d0.451fb0",
+    "type": "http response",
+    "name": "Send answer",
+    "statusCode": "",
+    "headers": {},
+    "x": 1160,
+    "y": 120,
+    "wires": []
+  },
+  {
+    "z": "0a147.39f001",
+    "id": "13bf2.41ed7e",
+    "type": "http response",
+    "name": "Send error answer",
+    "statusCode": "",
+    "headers": {},
+    "x": 640,
+    "y": 220,
+    "wires": []
+  },
+  {
+    "z": "0a147.39f001",
+    "id": "198bf.46b8c9",
+    "type": "comment",
+    "name": "[2] LIST OBJECTS TEST",
+    "info": "STAGE 2 - click the inject button with {\"path\":\"<folder in the lake>\"} and read the debug sidebar: it shows what the list objects node returns. If it lists nothing, also type the folder into the path field of the list objects node. This shows how a later flow can check that a file exists before it reads it.",
+    "x": 120,
+    "y": 260,
+    "wires": []
+  },
+  {
+    "z": "0a147.39f001",
+    "id": "1b7ae.4851e2",
+    "type": "inject",
+    "name": "List folder (edit payload)",
+    "topic": "",
+    "repeat": "",
+    "repeatEnd": "0",
+    "endTime": "0",
+    "offset": "NaN",
+    "once": false,
+    "properties": "",
+    "timezone": "UTC",
+    "betweentimesunit": "m",
+    "showNextExecution": false,
+    "powerMode": false,
+    "payload": "{\"path\":\"reports/fact_kpi\"}",
+    "payloadType": "json",
+    "crontab": "",
+    "x": 120,
+    "y": 340,
+    "wires": [
+      [
+        "1d69d.49eafb"
+      ]
+    ]
+  },
+  {
+    "z": "0a147.39f001",
+    "id": "1d69d.49eafb",
+    "type": "function",
+    "name": "2.1 Set list path",
+    "func": "// Sets the folder to list for the list objects test.\n// In: msg.payload = JSON {\"path\": \"<folder or file in the lake>\"}.\n// Out: msg.path for the list objects node. Read the result in the debug.\nvar path = msg.payload && msg.payload.path;\nif (!path) {\n  node.error('payload needs a path, e.g. {\"path\":\"reports/fact_kpi\"}', msg);\n  return null;\n}\nmsg.path = path;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 380,
+    "y": 340,
+    "wires": [
+      [
+        "1f58c.4b8414"
+      ]
+    ]
+  },
+  {
+    "z": "0a147.39f001",
+    "id": "1f58c.4b8414",
+    "type": "list objects",
+    "name": "List objects",
+    "subtenant": "",
+    "path": "",
+    "x": 640,
+    "y": 340,
+    "wires": [
+      [
+        "2147b.4d1d2d"
+      ]
+    ]
+  },
+  {
+    "z": "0a147.39f001",
+    "id": "2147b.4d1d2d",
+    "type": "debug",
+    "name": "Show list result",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "true",
+    "targetType": "full",
+    "x": 900,
+    "y": 340,
+    "wires": []
+  }
+]
