@@ -5,7 +5,7 @@ const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toStrin
 const scopes = payload.scope || [];
 console.log('token claims:', Object.keys(payload).join(', '));
 console.log('scope count:', scopes.length);
-console.log('scopes with "lake" or "mdl" or "datalake":', scopes.filter((s) => /lake|mdl|object/i.test(s)).join(', ') || 'none');
+console.log('scopes for data lake (lake, mdl, object, dl.):', scopes.filter((s) => /lake|mdl|object|:dl./i.test(s)).join(', ') || 'none');
 console.log('all scope prefixes:', [...new Set(scopes.map((s) => String(s).split('.').slice(0, 2).join('.')))].join(', '));
 for (const k of ['roles', 'authorities', 'ten', 'client_id']) {
   if (payload[k] !== undefined && k !== 'client_id' && k !== 'ten') console.log(k + ':', JSON.stringify(payload[k]).slice(0, 300));
