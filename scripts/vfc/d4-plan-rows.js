@@ -1,6 +1,7 @@
-// Builds the Power BI rows of one asset and one production day from the
-// hourly KPIs: pbi_plan_opt (per shift) and pbi_time_utilisation (per day).
-// In: msg.hours, msg.shiftRules, msg.h. Out: msg.planRows, msg.utilRows.
+// Builds the Power BI rows of one asset and day from the hourly KPIs:
+// pbi_plan_opt (per shift and product), pbi_time_utilisation (per day).
+// In: msg.hours (with hour.product), msg.shiftRules, msg.h.
+// Out: msg.planRows, msg.utilRows.
 var MIN_MS = 60000;
 var DAY_MS = 86400000;
 var MINUTES_PER_DAY = 1440;
@@ -52,11 +53,13 @@ var groups = {};
 var order = [];
 msg.hours.forEach(function (hour) {
   var shift = shiftOf(Date.parse(hour.time));
-  var key = String(shift);
+  var product = hour.product || null;
+  var key = String(shift) + '|' + String(product && product.product_key);
   var g = groups[key];
   if (!g) {
     g = {
       shift: shift,
+      product: product,
       sum: {},
       hours: 0
     };
@@ -72,7 +75,18 @@ msg.hours.forEach(function (hour) {
   }
   addTo(g.sum, 'opt', minutes(v.operational_time_ms));
   addTo(g.sum, 'oee', minutes(v.used_operational_time_ms));
+  addTo(g.sum, 'down', minutes(v.downtime_ms));
 });
+
+// Parts that fit in a time at the design speed. Null without a speed.
+function unitsOf(g, minutesKey) {
+  var perMinute = g.product && g.product.per_minute;
+  var time = g.sum[minutesKey];
+  if (perMinute === null || perMinute === undefined || time === undefined) {
+    return null;
+  }
+  return perMinute * time;
+}
 
 var daySum = {};
 msg.planRows = order.map(function (key) {
@@ -87,11 +101,11 @@ msg.planRows = order.map(function (key) {
     unique_machine_name: msg.asset.id,
     date: msg.day,
     shift_name: g.shift,
-    part_name: null,
-    product_key: null,
+    part_name: g.product ? g.product.part_name : null,
+    product_key: g.product ? g.product.product_key : null,
     good_parts: sumOrNull(g.sum, 'good'),
-    capacity: null,
-    downtime_units: null,
+    capacity: unitsOf(g, 'opt'),
+    downtime_units: unitsOf(g, 'down'),
     total_time: sumOrNull(g.sum, 'total'),
     planned_opt: sumOrNull(g.sum, 'opt'),
     oee_time: sumOrNull(g.sum, 'oee'),

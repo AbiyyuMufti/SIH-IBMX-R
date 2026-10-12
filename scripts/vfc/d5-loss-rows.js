@@ -1,7 +1,7 @@
 // Builds the pbi_daily_losses rows of one asset: one row per stop.
-// In: msg.stops, msg.shiftRules, msg.h. Out: msg.lossRows and
-// msg.droppedStops (stops that start outside the production day).
-// Columns without data in Insights Hub (units, targets, product) are null.
+// In: msg.stops, msg.shiftRules, msg.hourInfo, msg.h. Out: msg.lossRows and
+// msg.droppedStops. Product and order come from the hour of the stop.
+// Targets and volume total have no data yet and are null.
 var MIN_MS = 60000;
 var DAY_MS = 86400000;
 var HOUR_MS = 3600000;
@@ -75,6 +75,7 @@ function lossGroup(category, reason) {
 }
 
 // Only stops that start inside the production day are kept.
+var hourInfo = msg.hourInfo || {};
 var lossRows = [];
 var dropped = 0;
 msg.stops.forEach(function (r) {
@@ -89,6 +90,14 @@ msg.stops.forEach(function (r) {
   var localMs = start + londonOffsetHours(start) * HOUR_MS;
   var localIso = new Date(localMs).toISOString();
   var duration = numOrNull(r.duration);
+  var minutes = duration === null ? null : Math.round(duration) / MIN_MS;
+  var info = hourInfo[String(Math.floor(start / HOUR_MS) * HOUR_MS)] || {};
+  var product = info.product || {};
+  var perMinute = product.per_minute;
+  var units = null;
+  if (minutes !== null && perMinute !== null && perMinute !== undefined) {
+    units = minutes * perMinute;
+  }
   lossRows.push({
     site_name: msg.h.site,
     machine_name: msg.h.asset_name,
@@ -97,18 +106,18 @@ msg.stops.forEach(function (r) {
     time: localIso.slice(11, 19),
     shift_start_date: msg.day,
     shift_name: shiftOf(start),
-    duration: duration === null ? null : Math.round(duration) / MIN_MS,
-    loss_units: null,
+    duration: minutes,
+    loss_units: units,
     loss_lvl3_group: lossGroup(category, r.reason || null),
     loss_lvl3_sub_group: category,
     loss_lvl3_desc: r.reason || null,
     loss_final_level: r.reason || null,
     equipment: subgroup,
     breakdown_types: category === BREAKDOWN_CATEGORY ? subgroup : null,
-    batch_id: null,
+    batch_id: info.order || null,
     comment_count: numOrNull(r.commentCount),
-    part_name: null,
-    product_key: null,
+    part_name: product.part_name || null,
+    product_key: product.product_key || null,
     loss_target_key: msg.h.line + '|' + category + '|' + localIso.slice(0, 7),
     value: null,
     target: null,
@@ -121,4 +130,5 @@ msg.stops.forEach(function (r) {
 msg.lossRows = lossRows;
 msg.droppedStops = dropped;
 delete msg.stops;
+delete msg.hourInfo;
 return msg;

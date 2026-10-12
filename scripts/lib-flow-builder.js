@@ -85,12 +85,15 @@ export function makeBuilder(flowIndex) {
       } else if (nextStep) {
         nextId = id(nextStep.key);
       }
-      const wiresFor = (outs, fan) =>
-        outs.map((o, k) => {
+      // Side link outs sit below their node, one more row of 40 px each.
+      const wiresFor = (outs, fan) => {
+        let side = 0;
+        return outs.map((o, k) => {
           if (o === 'next') return [nextId];
           if (fan) return [linkOut(o, col(c + 1), rowY(r) + (k - (outs.length - 1) / 2) * 40)];
-          return [linkOut(o, col(c) + 120, rowY(r) + 60)];
+          return [linkOut(o, col(c) + 120, rowY(r) + 60 + 40 * side++)];
         });
+      };
       const pos = { x: col(c), y: rowY(r) + (step.dy || 0) };
       if (step.t === 'linkin') {
         linkIn(step.key, c, r, nextId);

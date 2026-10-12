@@ -1,7 +1,7 @@
-// Saves the calendar id and builds the calendar events request.
-// In: the OEE config response. Out 1: the calendarEvents request for the
-// production day. Out 2: the asset result for the join when the config
-// call failed or the asset has no calendar (no half days).
+// Saves the calendar and product collection ids, builds the events request.
+// In: the OEE config response. Out 1: the calendarEvents request. Out 2:
+// the asset result for the join when the config call failed or the asset
+// has no calendar (no half days).
 var cfg = flow.get('cfg');
 var DAY_MS = 86400000;
 var HOUR_MS = 3600000;
@@ -33,6 +33,7 @@ if (!config.calendarId) {
 // The events that cover the production day D (D start hour to D+1).
 var from = Date.parse(msg.day + 'T00:00:00.000Z') + cfg.dayStartHour * HOUR_MS;
 msg.calendarId = config.calendarId;
+msg.productCollectionId = config.productCollectionId || null;
 msg.method = 'GET';
 msg.url = cfg.gateway + '/api/oee/v3/calendars/' +
   encodeURIComponent(config.calendarId) + '/calendarEvents' +

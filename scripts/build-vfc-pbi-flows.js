@@ -116,7 +116,7 @@ function buildDailyFlow(site, index) {
       end('SHIFT')
     ]);
   lane(r++, 'ASSET SHIFTS',
-    'one asset. The shift of an hour comes from the calendar of the asset. 4.1 asks the OEE config for the calendar id, 4.2 asks the calendar events that cover the production day, 4.3 turns them into shift rules (freq, interval, start, until, duration), 4.4 groups the hourly KPIs per shift and builds the pbi_plan_opt rows (total time = total minus shift plan stop, planned OpT = operational time, OEE time = used operational time, all in minutes) and the pbi_time_utilisation row. An hour outside every shift gets shift_name null. A failed call or an asset without a calendar fails the day (link "to JOIN").',
+    'one asset. The shift of an hour comes from the calendar of the asset. 4.1 asks the OEE config for the calendar id and the product collection id, 4.2 asks the calendar events that cover the production day, 4.3 turns them into shift rules (freq, interval, start, until, duration). A failed call or an asset without a calendar fails the day (link "to JOIN").',
     [
       linkInStep('SHIFT'),
       fn('cfgFn', 'Build config request', 'd4-config-request.js', ['next']),
@@ -126,11 +126,45 @@ function buildDailyFlow(site, index) {
       http('evHttp', 'GET calendar events'),
       fn('rulesFn', 'Build shift rules', 'd4-shift-rules.js',
         ['next', 'JOIN']),
+      end('PRODUCTS')
+    ]);
+  lane(r++, 'ASSET PRODUCTS',
+    'one asset. 5.1 asks filterValues for the products and orders of the production day (the lists behind the Product and Order dropdowns of the OEE app). 5.2 checks the answer and asks the product list (name, code, description, design speed) of the product collection of the asset. A day without any product or order goes straight to "to ASSIGN"; an asset without a product collection goes on without master data ("to VALUES"). A failed call fails the day (link "to JOIN").',
+    [
+      linkInStep('PRODUCTS'),
+      fn('valReqFn', 'Build filter values request', 'd7-values-request.js',
+        ['next']),
+      http('valHttp', 'GET filter values'),
+      fn('prodReqFn', 'Build product list request', 'd7-products-request.js',
+        ['next', 'VALUES', 'ASSIGN', 'JOIN']),
+      http('prodHttp', 'GET product list'),
+      end('VALUES')
+    ]);
+  lane(r++, 'VALUE KPIs',
+    'one asset. 6.1 keeps the master data of the products of the day and sends ONE MESSAGE PER PRODUCT AND PER ORDER (one per second). 6.2 builds the evaluateKPIs POST (read-style, hourly) filtered on that product or order. 6.3 keeps the hours that have parts and waits until every value of the asset is in (the state is kept in flow context under valueRuns, so no second split is needed). A failed call fails the day (link "to JOIN").',
+    [
+      linkInStep('VALUES'),
+      fn('valMsgFn', 'Build value messages', 'd7-value-messages.js',
+        ['next', 'ASSIGN', 'JOIN']),
+      delay('valDelay', 'One value per second'),
+      fn('valKpiFn', 'Build value KPI request', 'd7-value-request.js',
+        ['next']),
+      http('valKpiHttp', 'POST evaluateKPIs (one value)'),
+      fn('valCollectFn', 'Collect value hours', 'd7-collect.js',
+        ['next', 'JOIN']),
+      end('ASSIGN')
+    ]);
+  lane(r++, 'ASSIGN & PLAN',
+    'one asset. 7.1 gives every hour its product and order: the value that has parts in that hour; an hour without parts takes the value of the hour before it (the first hours take the next value). 7.2 groups the hourly KPIs per shift AND product and builds the pbi_plan_opt rows (total time = total minus shift plan stop, planned OpT = operational time, OEE time = used operational time, all in minutes; capacity = design speed per minute x planned OpT; downtime units = design speed per minute x downtime minutes; part name = product description, else name; product key = product code) and the pbi_time_utilisation row. An hour outside every shift gets shift_name null.',
+    [
+      linkInStep('ASSIGN'),
+      fn('assignFn', 'Assign hours to products', 'd7-assign-hours.js',
+        ['next']),
       fn('planFn', 'Build plan rows', 'd4-plan-rows.js', ['next']),
       end('STOPS')
     ]);
   lane(r++, 'ASSET STOPS',
-    'one asset. 5.1 downtimeReasons GET (size 5000, one page), 5.2 checks the response, 5.3 builds the pbi_daily_losses rows (one per stop that starts inside the production day: local date and time, shift, duration in minutes, loss group, sub group, equipment), 5.4 builds the result of the asset and sends it to the join.',
+    'one asset. 8.1 downtimeReasons GET (size 5000, one page), 8.2 checks the response, 8.3 builds the pbi_daily_losses rows (one per stop that starts inside the production day: local date and time, shift, duration in minutes, loss group, sub group, equipment; product, part name and batch id (= order) of the hour of the stop; loss units = design speed per minute x duration), 8.4 builds the result of the asset and sends it to the join.',
     [
       linkInStep('STOPS'),
       fn('stopsReqFn', 'Build stops request', 's4-stops-request.js', ['next']),
@@ -142,7 +176,7 @@ function buildDailyFlow(site, index) {
       end('JOIN')
     ]);
   lane(r++, 'JOIN & BUILD TABLES',
-    'the join waits for all assets of the day. 6.1 collects the results, 6.2 decides: it writes NOTHING if any asset failed (no half days) and nothing in dry-run mode, 6.3 builds one message per table. Output 1 of 6.3 = pbi_plan_opt, 2 = pbi_time_utilisation, 3 = pbi_daily_losses, 4 = log.',
+    'the join waits for all assets of the day. 9.1 collects the results, 9.2 decides: it writes NOTHING if any asset failed (no half days) and nothing in dry-run mode, 9.3 builds one message per table. Output 1 of 9.3 = pbi_plan_opt, 2 = pbi_time_utilisation, 3 = pbi_daily_losses, 4 = log.',
     [
       linkInStep('JOIN'),
       join('dayJoin', 'Wait for all assets of the day'),
