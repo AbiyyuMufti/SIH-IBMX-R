@@ -8,3 +8,7 @@ node_modules/
 flows/*.local.json
 *.parquet
 downloads/
+
+# Function code extracted from flows (may come from *.local.json)
+flow-function/
+local-flow

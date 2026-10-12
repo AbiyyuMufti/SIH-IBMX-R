@@ -1,0 +1,10 @@
+{
+  "name": "sih-exploration-api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "flow-pack": "node scripts/flow-pack.js",
+    "flow-list": "node scripts/flow-functions.js",
+    "validate": "node scripts/validate-flow.js"
+  }
+}
