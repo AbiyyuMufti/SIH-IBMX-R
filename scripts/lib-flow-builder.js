@@ -3,7 +3,8 @@
 // lane steps. Used by build-vfc-reference-flows.js and build-vfc-site-flows.js.
 import { readFileSync } from 'node:fs';
 
-export const code = (file) => readFileSync(new URL(`./vfc/${file}`, import.meta.url), 'utf8');
+// Windows checkouts may have CRLF line endings: the flow always gets LF.
+export const code = (file) => readFileSync(new URL(`./vfc/${file}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 
 // Types as saved by the VFC: UTF8 (shown as STRING), BOOLEAN, INT64, DOUBLE,
 // TIMESTAMP_MILLIS. There is no DATE type.
@@ -255,4 +256,36 @@ export function addLogLanes(b, r, flowName) {
       writeStep('logWrite', 'Log to data lake')
     ]);
   return r;
+}
+
+// ---------- saved layout ----------
+// Node ids can shift when a node is added, so a saved layout is keyed by
+// type, name and the order of nodes with the same type and name.
+export function layoutKeys(nodes) {
+  const seen = {};
+  const keys = new Map();
+  nodes.forEach((node) => {
+    if (typeof node.x !== 'number') {
+      return;
+    }
+    const base = `${node.type}|${node.name || ''}`;
+    seen[base] = (seen[base] || 0) + 1;
+    keys.set(node, `${base}|${seen[base]}`);
+  });
+  return keys;
+}
+
+// Moves nodes to the positions in a layout object { key: [x, y] }.
+// Nodes without a saved position keep the generated one.
+export function applyLayout(nodes, layout) {
+  let moved = 0;
+  layoutKeys(nodes).forEach((key, node) => {
+    const pos = layout[key];
+    if (pos) {
+      node.x = pos[0];
+      node.y = pos[1];
+      moved++;
+    }
+  });
+  return moved;
 }

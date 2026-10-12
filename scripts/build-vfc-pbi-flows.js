@@ -9,11 +9,13 @@
 // s*, r*, p1 files that the earlier flows use too. Do not edit the JSON.
 // Function nodes in the VFC have NO fetch, require or process, so every API
 // call is an http request node. No loops. One lane per row, left to right.
-import { writeFileSync, mkdirSync } from 'node:fs';
+import {
+  writeFileSync, mkdirSync, existsSync, readFileSync
+} from 'node:fs';
 import { validateFlow } from './validate-flow.js';
 import {
   code, makeBuilder, fn, http, linkInStep, end, split, delay, join,
-  addLogLanes
+  addLogLanes, applyLayout
 } from './lib-flow-builder.js';
 import {
   planSchema, utilSchema, lossSchema, machineSchema, shiftSchema,
@@ -354,6 +356,11 @@ const OUTPUTS = [
 ];
 for (const [file, build] of OUTPUTS) {
   const nodes = build();
+  // Positions saved from the VFC editor (scripts/save-layout.js)
+  const layoutUrl = new URL(`../flows/layouts/${file}`, import.meta.url);
+  if (existsSync(layoutUrl)) {
+    applyLayout(nodes, JSON.parse(readFileSync(layoutUrl, 'utf8')));
+  }
   const { errors, warnings, stats } = validateFlow(nodes);
   if (errors.length) {
     throw new Error(`flow check failed for ${file}:\n  ${errors.join('\n  ')}`);

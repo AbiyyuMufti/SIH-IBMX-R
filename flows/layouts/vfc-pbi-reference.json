@@ -1,0 +1,358 @@
+{
+  "catch|Catch errors|1": [
+    110,
+    1260
+  ],
+  "comment|[1] TRIGGER & TASK SETTINGS|1": [
+    160,
+    40
+  ],
+  "comment|[2] SETUP|1": [
+    100,
+    220
+  ],
+  "comment|[3] ASSET|1": [
+    100,
+    380
+  ],
+  "comment|[4] BUNDLES & ROUTE|1": [
+    140,
+    520
+  ],
+  "comment|[5] pbi_machine_names|1": [
+    140,
+    660
+  ],
+  "comment|[6] calendar ids|1": [
+    120,
+    800
+  ],
+  "comment|[7] pbi_shift_naming|1": [
+    130,
+    940
+  ],
+  "comment|[8] WRITE pbi_calendar|1": [
+    140,
+    1060
+  ],
+  "comment|[9] ERRORS|1": [
+    100,
+    1200
+  ],
+  "comment|[10] LOG|1": [
+    100,
+    1340
+  ],
+  "comment|[11] LOG WRITE|1": [
+    120,
+    1480
+  ],
+  "debug|Run log|1": [
+    400,
+    1420
+  ],
+  "delay|One asset per second|1": [
+    1400,
+    260
+  ],
+  "delay|One id per second|1": [
+    790,
+    860
+  ],
+  "delay|One log batch per 10 s|1": [
+    640,
+    1400
+  ],
+  "delay|Wait for read 10 s|1": [
+    1090,
+    1420
+  ],
+  "function|1.1 TASK SETTINGS (edit here)|1": [
+    430,
+    120
+  ],
+  "function|1.2 Build run message|1": [
+    700,
+    80
+  ],
+  "function|1.3 Build calendar rows|1": [
+    700,
+    160
+  ],
+  "function|2.1 Build token request|1": [
+    200,
+    280
+  ],
+  "function|2.2 Build asset list request|1": [
+    590,
+    280
+  ],
+  "function|2.3 Choose assets|1": [
+    1010,
+    260
+  ],
+  "function|3.1 Build asset request|1": [
+    200,
+    440
+  ],
+  "function|3.2 Save hierarchy, ask config|1": [
+    700,
+    440
+  ],
+  "function|4.1 Build asset items|1": [
+    200,
+    580
+  ],
+  "function|4.2 Route to tables|1": [
+    650,
+    580
+  ],
+  "function|5.1 Collect pbi_machine_names|1": [
+    230,
+    720
+  ],
+  "function|5.2 Decide pbi_machine_names|1": [
+    530,
+    720
+  ],
+  "function|5.3 Set pbi_machine_names path|1": [
+    1160,
+    720
+  ],
+  "function|6.1 Pick ids|1": [
+    170,
+    860
+  ],
+  "function|6.2 Choose calendars|1": [
+    380,
+    840
+  ],
+  "function|7.1 Build calendar request|1": [
+    210,
+    1000
+  ],
+  "function|7.2 Build shift rows|1": [
+    690,
+    1000
+  ],
+  "function|7.3 Collect pbi_shift_naming|1": [
+    1180,
+    1000
+  ],
+  "function|7.4 Keep distinct names|1": [
+    1450,
+    1000
+  ],
+  "function|7.5 Decide pbi_shift_naming|1": [
+    1720,
+    1000
+  ],
+  "function|7.6 Set pbi_shift_naming path|1": [
+    2310,
+    1000
+  ],
+  "function|8.1 Set pbi_calendar path|1": [
+    490,
+    1120
+  ],
+  "function|9.1 Describe error|1": [
+    310,
+    1260
+  ],
+  "function|10.1 Format log line|1": [
+    200,
+    1400
+  ],
+  "function|10.2 Build log write|1": [
+    870,
+    1400
+  ],
+  "function|11.1 Append log rows|1": [
+    200,
+    1540
+  ],
+  "http request|POST token|1": [
+    390,
+    280
+  ],
+  "http request|GET OEE assets|1": [
+    820,
+    260
+  ],
+  "http request|GET asset (hierarchy)|1": [
+    440,
+    440
+  ],
+  "http request|GET asset config|1": [
+    940,
+    420
+  ],
+  "http request|GET calendar events|1": [
+    460,
+    1000
+  ],
+  "inject|Weekly Mon 07:00 UTC|1": [
+    170,
+    100
+  ],
+  "inject|Run now|1": [
+    120,
+    140
+  ],
+  "join|Wait for all assets|1": [
+    430,
+    580
+  ],
+  "join|Wait for all calendars|1": [
+    920,
+    1000
+  ],
+  "join|Collect log lines|1": [
+    420,
+    1380
+  ],
+  "link in|SETUP|1": [
+    55,
+    280
+  ],
+  "link in|ASSET|1": [
+    55,
+    440
+  ],
+  "link in|BUILD|1": [
+    60,
+    580
+  ],
+  "link in|MACHINES|1": [
+    55,
+    720
+  ],
+  "link in|CALENDAR IDS|1": [
+    55,
+    860
+  ],
+  "link in|SHIFT DETAIL|1": [
+    55,
+    1000
+  ],
+  "link in|WRITE pbi_calendar|1": [
+    55,
+    1120
+  ],
+  "link in|LOG|1": [
+    55,
+    1400
+  ],
+  "link in|APPEND|1": [
+    55,
+    1540
+  ],
+  "link out|to SETUP|1": [
+    845,
+    80
+  ],
+  "link out|to WRITE pbi_calendar|1": [
+    845,
+    140
+  ],
+  "link out|to LOG|1": [
+    845,
+    180
+  ],
+  "link out|to LOG|2": [
+    755,
+    300
+  ],
+  "link out|to LOG|3": [
+    1145,
+    280
+  ],
+  "link out|to ASSET|1": [
+    1545,
+    260
+  ],
+  "link out|to BUILD|1": [
+    875,
+    460
+  ],
+  "link out|to BUILD|2": [
+    1065,
+    440
+  ],
+  "link out|to MACHINES|1": [
+    795,
+    560
+  ],
+  "link out|to CALENDAR IDS|1": [
+    795,
+    600
+  ],
+  "link out|to LOG|4": [
+    715,
+    740
+  ],
+  "link out|to LOG|5": [
+    295,
+    880
+  ],
+  "link out|to SHIFT DETAIL|1": [
+    935,
+    860
+  ],
+  "link out|to LOG|6": [
+    1895,
+    1020
+  ],
+  "link out|to LOG|7": [
+    455,
+    1260
+  ],
+  "link out|to APPEND|1": [
+    1185,
+    1380
+  ],
+  "link out|to APPEND|2": [
+    1235,
+    1420
+  ],
+  "parquet|Write pbi_machine_names parquet|1": [
+    840,
+    700
+  ],
+  "parquet|Write pbi_shift_naming parquet|1": [
+    2010,
+    980
+  ],
+  "parquet|Write pbi_calendar parquet|1": [
+    220,
+    1120
+  ],
+  "read object|Read log file|1": [
+    1070,
+    1380
+  ],
+  "split|Split per item|1": [
+    1200,
+    240
+  ],
+  "split|Split per item|2": [
+    590,
+    860
+  ],
+  "write object|pbi_machine_names to data lake|1": [
+    1470,
+    720
+  ],
+  "write object|pbi_shift_naming to data lake|1": [
+    2600,
+    1000
+  ],
+  "write object|pbi_calendar to data lake|1": [
+    750,
+    1120
+  ],
+  "write object|Log to data lake|1": [
+    420,
+    1540
+  ]
+}
