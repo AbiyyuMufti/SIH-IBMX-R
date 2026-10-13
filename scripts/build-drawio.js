@@ -116,7 +116,7 @@ const EP = {
   prod: 'GET /api/oee/v3/productCollections/{collectionId}/products',
   down: 'GET /api/oee/v3/assets/{assetId}/downtimeReasons',
 };
-const NO_SRC = 'No Insights Hub source. Comes from a file (see the status on the right).';
+const NO_SRC = 'No Insights Hub source. Comes from a file (see the status above).';
 const FROM_AM = (level) => `${EP.am} -> hierarchyPath, ${level}`;
 const SIH_SRC = {
   'Machine Names EU|MachineName': `${EP.am} -> asset name (line level)`,
