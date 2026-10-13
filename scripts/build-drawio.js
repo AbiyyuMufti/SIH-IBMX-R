@@ -103,6 +103,110 @@ const TABLE_NOTE = {
   Calendar: 'Dates from the calendarStart and calendarEnd settings of the flow. Monday week start.',
 };
 
+// ---- Insights Hub (SIH) source of every column ------------------------------------------------
+// Paths are for the legacy platform (gateway.eu1.mindsphere.io). On xcelerator the host is
+// api.eu1.siemens.app and the service name gets the suffix -1000001700 (docs/platform-switch.md).
+const EP = {
+  assets: 'GET /api/oee/v3/assets',
+  am: 'GET /api/assetmanagement/v3/assets/{assetId}',
+  config: 'GET /api/oee/v3/assets/{assetId}/config',
+  cal: 'GET /api/oee/v3/calendars/{calendarId}/calendarEvents',
+  kpi: 'POST /api/oee/v3/expressions/evaluateKPIs',
+  filter: 'GET /api/oee/v3/assets/{assetId}/filterValues',
+  prod: 'GET /api/oee/v3/productCollections/{collectionId}/products',
+  down: 'GET /api/oee/v3/assets/{assetId}/downtimeReasons',
+};
+const NO_SRC = 'No Insights Hub source. Comes from a file (see the status on the right).';
+const FROM_AM = (level) => `${EP.am} -> hierarchyPath, ${level}`;
+const SIH_SRC = {
+  'Machine Names EU|MachineName': `${EP.am} -> asset name (line level)`,
+  'Machine Names EU|Dept': `${FROM_AM('area level')}. Stand-in: Insights Hub has no department`,
+  'Machine Names EU|Area': FROM_AM('area level'),
+  'Machine Names EU|Product Type': `${FROM_AM('area level')}. Stand-in: Insights Hub has no product type`,
+  'Machine Names EU|SiteName': FROM_AM('site level'),
+  'Machine Names EU|Unique Machine Name': `${EP.assets} -> assetId`,
+  'Plan OPT EU|Date': `No endpoint: the production day (06:00 to 06:00 UTC) is set in the flow. Hours come from ${EP.kpi}`,
+  'Plan OPT EU|AreaName': FROM_AM('area level'),
+  'Plan OPT EU|MachineName': `${EP.am} -> asset name`,
+  'Plan OPT EU|ShiftName': `${EP.cal} -> event name and recurrence. The calendarId comes from ${EP.config}`,
+  'Plan OPT EU|PartName': `${EP.filter} -> product names, then ${EP.prod} -> description`,
+  'Plan OPT EU|Good Parts': `${EP.kpi}, hourly, KPI "Good parts" (one call per product)`,
+  'Plan OPT EU|Capacity': `${EP.prod} -> design speed, multiplied by KPI "Operational time" of ${EP.kpi}`,
+  'Plan OPT EU|Downtime Units': `${EP.prod} -> design speed, multiplied by KPI "Downtime (duration)" of ${EP.kpi}`,
+  'Plan OPT EU|Total Time': `${EP.kpi}: KPI "Total time" minus KPI "Planned stop from shift plan"`,
+  'Plan OPT EU|Planned OpT': `${EP.kpi}: KPI "Operational time"`,
+  'Plan OPT EU|OEE Time': `${EP.kpi}: KPI "Used operational time"`,
+  'Plan OPT EU|OEE Target': NO_SRC,
+  'Plan OPT EU|PDT Target': NO_SRC,
+  'Plan OPT EU|UPDT Target': NO_SRC,
+  'Plan OPT EU|SiteName': FROM_AM('site level'),
+  'Plan OPT EU|Unique Machine Name': `${EP.assets} -> assetId`,
+  'Plan OPT EU|Product Key': `${EP.filter} -> product names, then ${EP.prod} -> code`,
+  'Time Utilisation EU|SiteName': FROM_AM('site level'),
+  'Time Utilisation EU|MachineName': `${EP.am} -> asset name`,
+  'Time Utilisation EU|Unique Machine Name': `${EP.assets} -> assetId`,
+  'Time Utilisation EU|Date': 'No endpoint: sum of the Plan OPT rows per machine and day',
+  'Time Utilisation EU|Total Time Total': `Sum of Plan OPT Total Time (${EP.kpi})`,
+  'Time Utilisation EU|Planned OPT Total': `Sum of Plan OPT Planned OpT (${EP.kpi})`,
+  'Time Utilisation EU|OEE Time Total': `Sum of Plan OPT OEE Time (${EP.kpi})`,
+  'Time Utilisation EU|All Time': 'No endpoint: 1,440 minutes per day, a constant in the flow',
+  'Daily Losses EU|SiteName': FROM_AM('site level'),
+  'Daily Losses EU|MachineName': `${EP.am} -> asset name`,
+  'Daily Losses EU|Unique Machine Name': `${EP.assets} -> assetId`,
+  'Daily Losses EU|Date': `${EP.down} -> from (start of the stop), changed to local time`,
+  'Daily Losses EU|Time': `${EP.down} -> from (start of the stop), changed to local time`,
+  'Daily Losses EU|ShiftStartDate': 'No endpoint: the production day set in the flow',
+  'Daily Losses EU|ShiftName': `${EP.cal} -> event of the stop start. The calendarId comes from ${EP.config}`,
+  'Daily Losses EU|Duration': `${EP.down} -> duration (ms), changed to minutes`,
+  'Daily Losses EU|Loss Units': `${EP.prod} -> design speed, multiplied by duration of ${EP.down}`,
+  'Daily Losses EU|OEELossLvl3Group': `${EP.down} -> reasonFullPath (top level) and the planned roots of the Config tab`,
+  'Daily Losses EU|OEELossLvl3SubGroup': `${EP.down} -> reasonFullPath (top level). Stand-in`,
+  'Daily Losses EU|OEELossLvl3Desc': `${EP.down} -> reason (leaf)`,
+  'Daily Losses EU|Loss Final Level': `${EP.down} -> reason (leaf)`,
+  'Daily Losses EU|Equipment': `${EP.down} -> reasonFullPath (second level)`,
+  'Daily Losses EU|Breakdown Types': `${EP.down} -> reasonFullPath (second level under Breakdown)`,
+  'Daily Losses EU|Batch ID': `${EP.filter} -> order numbers, with ${EP.kpi} filter ORDER (order of the hour of the stop)`,
+  'Daily Losses EU|Comment': `${EP.down} -> commentCount (count only; the text endpoint /assets/{assetId}/comment returned no records)`,
+  'Daily Losses EU|PartName': `Product of the hour of the stop: ${EP.filter}, ${EP.kpi} filter PRODUCT, ${EP.prod}`,
+  'Daily Losses EU|Product Key': `Product of the hour of the stop: ${EP.filter}, ${EP.kpi} filter PRODUCT, ${EP.prod} -> code`,
+  'Daily Losses EU|Loss Target Key': 'No endpoint: built in the flow from the line name, the loss category and the month',
+  'Daily Losses EU|Value': NO_SRC,
+  'Daily Losses EU|Target': NO_SRC,
+  'Daily Losses EU|Volume Key': 'No endpoint: built in the flow from the line name and the month',
+  'Daily Losses EU|Volume Total': NO_SRC,
+  'Shift Naming EU|Shift': `${EP.cal} -> distinct event names. The calendarId comes from ${EP.config}`,
+};
+const sihSource = (table, column, color) => {
+  if (table === 'Calendar') {
+    return 'No endpoint: generated in the flow from calendarStart and calendarEnd (settings)';
+  }
+  if (SIH_SRC[`${table}|${column}`]) {
+    return SIH_SRC[`${table}|${column}`];
+  }
+  return color === 'none' ? 'Not needed. Power BI helper column' : 'Not mapped';
+};
+const TABLE_ENDPOINTS = {
+  'Machine Names EU': 'OEE /assets, Asset Management /assets/{assetId}',
+  'Plan OPT EU': 'OEE evaluateKPIs (hourly, filter PRODUCT), filterValues, productCollections/{id}/products, calendars/{id}/calendarEvents, assets/{id}/config; Asset Management /assets/{assetId}',
+  'Time Utilisation EU': 'Same as Plan OPT EU (sums per machine and day)',
+  'Daily Losses EU': 'OEE downtimeReasons, evaluateKPIs (filter PRODUCT and ORDER), filterValues, productCollections/{id}/products, calendarEvents, assets/{id}/config; Asset Management /assets/{assetId}',
+  'Shift Naming EU': 'OEE assets/{id}/config, calendars/{id}/calendarEvents',
+  Calendar: 'None: generated in the flow',
+};
+const NC_SIH = {
+  'Run Rates EU': 'possible: evaluateKPIs hourly (KPI "Good parts") and the design speed',
+  'Volume CoV EU': 'possible: evaluateKPIs per shift',
+  'Format List EU': 'productCollections/{id}/products (name, code, description, design speed). Brand, size and count: none',
+  'Targets Losses EU': 'none (Glidepaths file)',
+  'OEE Targets EU': 'none (Glidepaths file)',
+  'PDT Targets EU': 'none (Glidepaths file)',
+  'UPDT Targets EU': 'none (Glidepaths file)',
+  'Equipment Coding N': 'none. The reason names are in /reasontrees/{id}/reasons',
+  'Volume Loss Correction N': 'none (Insights Hub has no loss units)',
+  'Targets Volume N': 'probable: evaluateKPIs "Good parts", added up per month',
+};
+const COLOR_SIH = ['#d5efee', '#3c9a96'];
+
 // ---- Helpers ---------------------------------------------------------------
 const esc = (s) =>
   String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -146,6 +250,7 @@ const COLOR = {
   assumed: ['#ffe6cc', '#d79b00'],
   empty: ['#f8cecc', '#b85450'],
   file: ['#e1d5e7', '#9673a6'],
+  sih: ['#d5efee', '#3c9a96'],
   none: ['#eeeeee', '#999999'],
   neutral: ['#ffffff', '#666666'],
   pbi: ['#dae8fc', '#6c8ebf'],
@@ -388,7 +493,7 @@ legend.forEach(([level, label], i) => {
 
 overview.text(40, 170, 1500, 24, bold('Tables created from Insights Hub today (6): the number is the number of its sheet'), 'fontSize=14;');
 const CARD_W = 480;
-const CARD_H = 330;
+const CARD_H = 410;
 TABLES.forEach((t, i) => {
   const x = 40 + (i % 3) * (CARD_W + 30);
   const y = 205 + Math.floor(i / 3) * (CARD_H + 30);
@@ -404,6 +509,7 @@ TABLES.forEach((t, i) => {
     esc(`Insights Hub table: ${prof.rows} rows, ${prof.columns.length} columns (Hull, downloaded 2026-10-13)`),
     esc(`Used on pages: ${used.ordered.length ? used.ordered.join(', ') : 'no visual reads it directly'}${used.viaMeasure ? ' (some through measures)' : ''}`),
     esc(`Columns in Power BI: ${total}`),
+    bold('Insights Hub endpoints: ') + esc(TABLE_ENDPOINTS[t.pbi] ?? ''),
   ];
   // Border colour follows the worst column.
   const worst = c.empty > 0 ? 'empty' : c.file > 0 ? 'file' : c.assumed > 0 ? 'assumed' : c.partial > 0 ? 'partial' : 'ok';
@@ -428,12 +534,13 @@ overview.box(
   40,
   keysY + 34,
   1500,
-  120,
+  150,
   [
     bold('Machine key') + esc(': every fact table joins to Machine Names EU on Unique Machine Name (hidden key, never shown). Power BI local copy = machine-site text; Insights Hub = asset ID. Decision open.'),
     bold('Product key') + esc(': Plan OPT, Daily Losses and Run Rates join to the product master (Format List EU). Power BI local copy key = machine + part name; Insights Hub = product code. Own product table decided 2026-10-13.'),
     bold('Shift') + esc(': every fact table joins to Shift Naming EU on the shift name. All Insights Hub shift names must exist there.'),
     bold('Date') + esc(': every fact table joins to Calendar on the date (Daily Losses: on the shift start date).'),
+    bold('Endpoints') + esc(': paths are for the legacy platform (gateway.eu1.mindsphere.io). On xcelerator the host is api.eu1.siemens.app and the service name gets the suffix -1000001700 (docs/platform-switch.md).'),
   ].join('<br><br>'),
   'neutral',
   'verticalAlign=top;spacingTop=8;',
@@ -452,7 +559,7 @@ const NOT_CREATED = [
   { pbi: 'Volume Loss Correction N', shown: 'Volume Loss Correction (N, H, W)', status: 'empty', hidden: true, state: 'Waits for Reckitt files', what: 'Corrects loss units by machine, loss group and time (rule not known)' },
   { pbi: 'Targets Volume N', shown: 'Targets Volume (N, H, W, M)', status: 'empty', hidden: true, state: 'Waits for Reckitt files', what: 'Monthly good-parts volume per machine (weight for the targets)' },
 ];
-const ncY = keysY + 190;
+const ncY = keysY + 220;
 const shownN = NOT_CREATED.filter((t) => !t.hidden).length;
 const hiddenN = NOT_CREATED.length - shownN;
 const modelHidden = model.tables.filter((t) => t.hidden).length;
@@ -467,7 +574,7 @@ overview.text(
 );
 NOT_CREATED.forEach((t, i) => {
   const x = 40 + (i % 4) * 375;
-  const y = ncY + 84 + Math.floor(i / 4) * 190;
+  const y = ncY + 84 + Math.floor(i / 4) * 250;
   const used = pagesOf(t.pbi);
   const mt = modelTable(t.pbi);
   const lines = [
@@ -475,9 +582,10 @@ NOT_CREATED.forEach((t, i) => {
     esc(t.what),
     esc(`${mt.columns.length} columns. Used on: ${used.ordered.length ? used.ordered.join(', ') : 'no visual reads it directly'}`),
     bold(t.state),
+    esc('SIH source: ' + (NC_SIH[t.pbi] ?? 'none')),
     t.hidden ? esc('Hidden table: not shown in the Data pane') : '',
   ].filter(Boolean);
-  overview.box(x, y, 355, 170, lines.join('<br><br>'), t.status, 'verticalAlign=top;spacingTop=8;fontSize=10.5;');
+  overview.box(x, y, 355, 230, lines.join('<br><br>'), t.status, 'verticalAlign=top;spacingTop=8;fontSize=10.5;');
 });
 pages.push(overview);
 
@@ -492,7 +600,7 @@ for (const t of TABLES) {
   page.box(
     40,
     62,
-    1260,
+    1560,
     96,
     [
       esc(`Holds: ${s ? s[1] : ''}. One row is: ${s ? s[2] : ''}.`),
@@ -504,7 +612,8 @@ for (const t of TABLES) {
   );
   page.text(40, 172, 270, 20, bold('Power BI column') + ' (blue) and example (below it)', 'fontSize=11;');
   page.text(380, 172, 270, 20, bold('Insights Hub column') + ' and example (below it)', 'fontSize=11;');
-  page.text(700, 172, 600, 20, bold('Difference'), 'fontSize=11;');
+  page.text(700, 172, 340, 20, bold('SIH source') + ' (API endpoint and field)', 'fontSize=11;');
+  page.text(1060, 172, 500, 20, bold('SIH integration') + ' (status and difference)', 'fontSize=11;');
   let y = 200;
   for (const r of rows) {
     const pbiHtml = `${bold(r.col.name)}<br>${small(`${r.col.type}${r.col.calculated ? ', calculated' : ''}${r.pages ? `, used on ${r.pages} page${r.pages > 1 ? 's' : ''}` : ''}`)}`;
@@ -521,15 +630,18 @@ for (const t of TABLES) {
       b = page.box(380, y, 280, 38, `${bold('(no column)')}<br>${small('not created from Insights Hub')}`, 'empty', 'dashed=1;');
     }
     page.edge(a, b, COLOR[r.color][1], !r.our);
-    page.box(700, y, 600, 82, `${bold(r.label)}<br>${esc(r.text)}`, r.color, 'verticalAlign=top;spacingTop=4;fontSize=10.5;');
+    const src = sihSource(t.pbi, r.col.name, r.color);
+    const noSrc = /^(No |Not )/.test(src);
+    page.box(700, y, 340, 82, `${bold('SIH source')}<br>${esc(src)}`, noSrc ? 'none' : 'sih', 'verticalAlign=top;spacingTop=4;fontSize=10;');
+    page.box(1060, y, 500, 82, `${bold(r.label)}<br>${esc(r.text)}`, r.color, 'verticalAlign=top;spacingTop=4;fontSize=10.5;');
     y += ROW;
   }
   if (extras.length) {
-    page.text(40, y + 6, 1260, 20, bold('Columns added from Insights Hub that the report does not have'), 'fontSize=11;');
+    page.text(40, y + 6, 1560, 20, bold('Columns added from Insights Hub that the report does not have'), 'fontSize=11;');
     page.box(
       40,
       y + 32,
-      1260,
+      1560,
       44,
       esc(extras.map((c) => `${c.name} (${typeName(c.type)}, ${Math.round(c.filled_share * 100)}% filled)`).join('   |   ')),
       'none',
@@ -819,11 +931,12 @@ NOT_CREATED.forEach((t, i) => {
     esc(t.what),
     esc(`Used on: ${used.ordered.length ? used.ordered.join(', ') : 'no visual reads it directly'}`),
     bold(t.state),
+    esc('SIH source: ' + (NC_SIH[t.pbi] ?? 'none')),
     esc(t.note ?? ''),
     t.hidden ? esc('Hidden table: not shown in the Data pane') : '',
   ].filter(Boolean);
   const x = 40 + col * 510;
-  const hHead = 150 + (t.note ? 20 : 0);
+  const hHead = 200 + (t.note ? 20 : 0);
   nc.box(x, colY[col], 480, hHead, head.join('<br><br>'), t.status, 'verticalAlign=top;spacingTop=6;fontSize=10.5;');
   let y = colY[col] + hHead + 6;
   for (const c of mt.columns) {

@@ -15,7 +15,10 @@
 3. `node scripts/build-drawio.js` writes the diagram. The paths of the Power BI files are constants at the top of the script.
 4. `node scripts/validate-drawio.js` checks ids, arrows, overlaps and whether the text fits the boxes.
 
-## Where the text of the "difference" box comes from
+## Columns on a table sheet (left to right)
+Power BI column and example, Insights Hub column and example, **SIH source** (the API endpoint and field the column is built from; teal box, grey when there is no Insights Hub source) and **SIH integration** (status and difference; the colour levels below). The endpoint texts are in the `SIH_SRC` map of `scripts/build-drawio.js` (key: `Power BI table|column`). Paths are for the legacy platform; on xcelerator see [platform-switch.md](platform-switch.md). The overview cards list the endpoints of each table, and the last sheet shows the possible source of each missing table.
+
+## Where the text of the "SIH integration" box comes from
 - The notes written by hand are in the `NOTE` table of `scripts/build-drawio.js` (key: `Power BI table|column`). They hold what we decided and what we know now, for example the capacity assumption. Change a note there, not in the diagram.
 - A column without a hand-written note takes its text from the mapping workbook (sheet "PBI column mapping").
 - The colour also follows the data: a column with no values is red, a column below 99.5 % filled gets the "partly filled" label.

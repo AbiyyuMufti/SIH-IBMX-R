@@ -40,7 +40,7 @@ for (const d of xml.matchAll(/<diagram name="([^"]*)"[\s\S]*?<\/diagram>/g)) {
         target: (attrs.match(/target="([^"]+)"/) || [])[1],
       });
     } else if (attrs.includes('vertex="1"')) {
-      const rest = page.slice(c.index, c.index + 1200);
+      const rest = page.slice(c.index, c.index + 6000);
       const g = rest.match(/<mxGeometry x="([-\d.]+)" y="([-\d.]+)" width="([\d.]+)" height="([\d.]+)"/);
       const value = unescape((attrs.match(/value="([^"]*)"/) || [, ''])[1]);
       const isText = /style="text;/.test(attrs);
