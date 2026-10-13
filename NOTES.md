@@ -232,3 +232,9 @@ Tried: Power BI flow with `Keep dim_asset` expecting an array. Error: "the file 
 
 ## Product type checked in the lake (2026-10-13)
 - Reference flow run in the VFC, new `pbi_machine_name.parquet` downloaded: 2 rows, `product_type` = `area` (Bottles for B2 Line, Blisters for GT4), no empty column. Diagram refreshed (profile and Machine Names page).
+
+## Real Hull Plan OPT files (2026-10-13)
+- Read the data lineage document (SharePoint folders per table, same as the model queries) and 4 downloaded Hull Plan OPT files. Doc: `docs/powerbi-source-files.md`.
+- B2: our good parts are 96.6 % of the real file over 38 days (correlation 0.86); differences come from planned stops (real Planned OpT below 1,440). GT4: ours is 43.6 % of the real good parts over 24 days (correlation 0.62), different product on some days. Not explained yet.
+- Failed attempts: the zip was in `downloads/` of the repo, not the Windows Downloads folder; the files are UTF-16 with bare CR line endings (first reads gave 1 row, then garbage); a `Total:` row sits in each file.
+- Open: ask the file owner how GT4 is filled, whether the files are edited by hand, and for the Hull machine scope (24 of 34 machines after the report filter). Next: decide whether to add a source-location line to every table page of the diagram.
