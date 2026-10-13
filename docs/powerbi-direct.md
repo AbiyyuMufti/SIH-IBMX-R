@@ -66,6 +66,13 @@ Checked on 2026-10-12 against a copy of the Power BI Plan OPT EU table (provided
 | Targets | filled for about 90 % of Hull | null | Glidepaths (Reckitt) |
 | Duplicates | 1,384 Hull rows share date, machine, shift and part (two sources) | none | Copy only |
 
+### Checked against the real Hull Plan OPT files (2026-10-13)
+The sample above is a copy; the real monthly files of the Hull SharePoint folder (4 files: Jul, Aug, Sep 2026 and the current month) were compared with `pbi_plan_opt` on the overlap days. Details and file format: [powerbi-source-files.md](powerbi-source-files.md).
+- B2 (B2 Auto in the files = B2 Line): our good parts are 96.6 % of the real ones over 38 days (day correlation 0.86). Real Planned OpT is below the day length on some days (planned stops), ours stays at 1,440, so `planned_opt` and `capacity` are higher in ours on those days. This supports the open point on planned stops (the loss group "Planned Loss" is not verified in the API data).
+- GT4 (manual production entries): our good parts are 43.6 % of the real ones over 24 days (correlation 0.62), real total time is often 630 to 720 min where ours is 1,440, and the product differs on some days. Not explained: manual entries on other hours, product assignment, or hand edits in the real files.
+- Grain: the real file has one row per shift segment and product with the real start time; ours has one row per shift and product.
+- The real files give the keys: Unique Machine Name = machine name + `-Hull`, Product Key = that + part name. The report query keeps 24 of the 34 Hull machines (hard-coded exclusion list).
+
 ## Still null or approximate
 `product_type`, `dept` and `area` all carry the Insights Hub area (Bottles, Blisters) since 2026-10-13: Insights Hub has no department or product type, so the three columns are redundant until Reckitt gives the real mapping (the Power BI local copy has Liquids Pack / Liquids / Bottles for B2 and Dries Pack / Dries / Blisters for GT4; the lake files keep the old empty value until the reference flow is run again), `volume_total` (cross-day), all targets (Glidepaths), `equipment`, sub group and `breakdown_types` (the real reason tree is needed: see the empty-column check), `capacity`, `downtime_units` and `loss_units` (assumptions above), local time is Europe/London only, shift recurrence is evaluated in UTC (a shift defined in local time moves by one hour at the clock change: open point), `pbi_shift_naming` includes the Changeover events (category filter open). Planned stop segments of `timeModelCategoryDistribution` come from the shift calendar only and reasons carry no time category in the API, so the loss group still uses the planned roots of the Config tab.
 
