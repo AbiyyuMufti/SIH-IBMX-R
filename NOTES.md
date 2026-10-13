@@ -238,3 +238,9 @@ Tried: Power BI flow with `Keep dim_asset` expecting an array. Error: "the file 
 - B2: our good parts are 96.6 % of the real file over 38 days (correlation 0.86); differences come from planned stops (real Planned OpT below 1,440). GT4: ours is 43.6 % of the real good parts over 24 days (correlation 0.62), different product on some days. Not explained yet.
 - Failed attempts: the zip was in `downloads/` of the repo, not the Windows Downloads folder; the files are UTF-16 with bare CR line endings (first reads gave 1 row, then garbage); a `Total:` row sits in each file.
 - Open: ask the file owner how GT4 is filled, whether the files are edited by hand, and for the Hull machine scope (24 of 34 machines after the report filter). Next: decide whether to add a source-location line to every table page of the diagram.
+
+## Shift (management) report data map (2026-10-13)
+- The user shared one PDF of the existing B2 shift report (kept outside the repo). It is to be rebuilt in Tableau (live, PDF, email).
+- Mapping in `prompt-response/shift-report-data-map.md`, diagram `diagrams/shift-report-data-map.drawio` (`node scripts/build-drawio-shift-report.js`, validated with `scripts/validate-drawio.js`).
+- Line figures: have now. Machine figures: in the API (7 machine assets) but never tested for KPIs or stops. Not available: per-head fill weight and cap torque, reject costs, batch target and work order, changeover and clean targets, product dumped.
+- Proposal (not approved): a separate flow per site writing `rpt_*` tables with a `window` column (day and each shift). Read-only tests listed in the doc come first.
