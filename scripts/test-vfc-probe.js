@@ -1,7 +1,7 @@
 // Probe for the VFC flow: one production day on B2 Line and GT4. Read calls only, plus the
 // read-style evaluateKPIs POST (approved earlier). Saves raw redacted responses to samples/vfc_*.
 // Usage: node scripts/test-vfc-probe.js 2026-09-30
-import { getToken, apiGet, cfg, saveSample } from './lib-ih.js';
+import { getToken, apiGet, cfg, apiPath, saveSample } from './lib-ih.js';
 import { writeFileSync } from 'node:fs';
 
 const day = process.argv[2] || '2026-09-30';
@@ -10,7 +10,7 @@ const to = new Date(Date.parse(from) + 86400000).toISOString();
 const { token } = await getToken();
 
 async function post(path, body) {
-  const res = await fetch(cfg.gateway + path, {
+  const res = await fetch(cfg.gateway + apiPath(path), {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify(body),

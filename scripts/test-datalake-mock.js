@@ -49,6 +49,7 @@ function run(args, extraEnv = {}) {
     ...process.env,
     IH_GATEWAY_URL: `http://127.0.0.1:${port}`,
     RECKITT_IAM_TOKEN_URL: `http://127.0.0.1:${port}/oauth/token`,
+    IH_PLATFORM: 'legacy',
     RECKITT_API_TECHUSER_CLIENT_ID: 'x',
     RECKITT_API_TECHUSER_CLIENT_SECRET: 'x',
     ...extraEnv
