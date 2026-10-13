@@ -13,7 +13,7 @@
     "type": "comment",
     "name": "[1] TRIGGERS & SITE SETTINGS",
     "info": "STAGE 1 - TRIGGERS AND SITE SETTINGS. Site Hull. Writes the three DAILY Power BI tables straight from the Insights Hub API: pbi_plan_opt (machine x production day x shift), pbi_time_utilisation (machine x day) and pbi_daily_losses (one row per stop). There are no fact files in between. Schedule: daily, builds yesterday and the days before it (REBUILD_DAYS in 1.1). Backfill: edit the inject payload {\"start\":\"YYYY-MM-DD\",\"end\":\"YYYY-MM-DD\"} (production days) and click the button. Both go through 1.1 SITE SETTINGS, the only node of this flow to edit: site name, dry-run switch, rebuild days, folder prefix. The shared settings (credentials, root folder, asset ids, production-day start, planned reason roots) come from the Config tab through global context. dryRun is true by default: set it to false to write files. 1.2 sends ONE MESSAGE PER DAY; the delay node starts one day every 5 s.",
-    "x": 120,
+    "x": 180,
     "y": 40,
     "wires": []
   },
@@ -33,7 +33,7 @@
     "betweentimesunit": "m",
     "showNextExecution": false,
     "powerMode": false,
-    "x": 120,
+    "x": 140,
     "y": 80,
     "wires": [
       [
@@ -60,7 +60,7 @@
     "betweentimesunit": "m",
     "showNextExecution": false,
     "powerMode": false,
-    "x": 120,
+    "x": 160,
     "y": 160,
     "wires": [
       [
@@ -80,7 +80,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 380,
+    "x": 420,
     "y": 120,
     "wires": [
       [
@@ -97,7 +97,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 640,
+    "x": 680,
     "y": 120,
     "wires": [
       [
@@ -114,7 +114,7 @@
     "links": [
       "c4598.ca19a8"
     ],
-    "x": 1000,
+    "x": 1040,
     "y": 120,
     "wires": []
   },
@@ -134,7 +134,7 @@
     "randomUnits": "seconds",
     "drop": false,
     "powerMode": false,
-    "x": 860,
+    "x": 900,
     "y": 120,
     "wires": [
       [
@@ -160,7 +160,7 @@
     "links": [
       "c6487.cbb2c1"
     ],
-    "x": 120,
+    "x": 60,
     "y": 340,
     "wires": [
       [
@@ -177,7 +177,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 280,
+    "x": 220,
     "y": 340,
     "wires": [
       [
@@ -197,7 +197,7 @@
     "mindspherePath": "",
     "useMindsphereAuth": false,
     "isAdmin": false,
-    "x": 480,
+    "x": 420,
     "y": 340,
     "wires": [
       [
@@ -214,7 +214,7 @@
     "links": [
       "d1e21.d54957"
     ],
-    "x": 880,
+    "x": 820,
     "y": 400,
     "wires": []
   },
@@ -227,7 +227,7 @@
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
-    "x": 700,
+    "x": 640,
     "y": 340,
     "wires": [
       [
@@ -250,7 +250,7 @@
     "mindspherePath": "",
     "useMindsphereAuth": false,
     "isAdmin": false,
-    "x": 940,
+    "x": 880,
     "y": 340,
     "wires": [
       [
@@ -267,7 +267,7 @@
     "links": [
       "d1e21.d54957"
     ],
-    "x": 1280,
+    "x": 1220,
     "y": 400,
     "wires": []
   },
@@ -280,7 +280,7 @@
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
-    "x": 1140,
+    "x": 1080,
     "y": 340,
     "wires": [
       [
@@ -302,7 +302,7 @@
     "arraySpltType": "len",
     "stream": false,
     "addname": "index",
-    "x": 1340,
+    "x": 1280,
     "y": 340,
     "wires": [
       [
@@ -319,7 +319,7 @@
     "links": [
       "dd7bb.dedfed"
     ],
-    "x": 1680,
+    "x": 1620,
     "y": 340,
     "wires": []
   },
@@ -339,7 +339,7 @@
     "randomUnits": "seconds",
     "drop": false,
     "powerMode": false,
-    "x": 1540,
+    "x": 1480,
     "y": 340,
     "wires": [
       [
@@ -365,7 +365,7 @@
     "links": [
       "df6aa.e07906"
     ],
-    "x": 120,
+    "x": 60,
     "y": 560,
     "wires": [
       [
@@ -382,7 +382,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 280,
+    "x": 220,
     "y": 560,
     "wires": [
       [
@@ -402,7 +402,7 @@
     "mindspherePath": "",
     "useMindsphereAuth": false,
     "isAdmin": false,
-    "x": 520,
+    "x": 460,
     "y": 560,
     "wires": [
       [
@@ -419,7 +419,7 @@
     "links": [
       "eb044.ea0f9c"
     ],
-    "x": 920,
+    "x": 860,
     "y": 620,
     "wires": []
   },
@@ -432,7 +432,7 @@
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
-    "x": 760,
+    "x": 700,
     "y": 560,
     "wires": [
       [
@@ -455,7 +455,7 @@
     "mindspherePath": "",
     "useMindsphereAuth": false,
     "isAdmin": false,
-    "x": 980,
+    "x": 920,
     "y": 560,
     "wires": [
       [
@@ -472,7 +472,7 @@
     "links": [
       "eb044.ea0f9c"
     ],
-    "x": 1360,
+    "x": 1300,
     "y": 620,
     "wires": []
   },
@@ -485,7 +485,7 @@
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
-    "x": 1200,
+    "x": 1140,
     "y": 560,
     "wires": [
       [
@@ -505,7 +505,7 @@
     "links": [
       "f4aef.f20d19"
     ],
-    "x": 1600,
+    "x": 1540,
     "y": 560,
     "wires": []
   },
@@ -518,7 +518,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 1440,
+    "x": 1380,
     "y": 560,
     "wires": [
       [
@@ -532,7 +532,7 @@
     "type": "comment",
     "name": "[4] ASSET SHIFTS",
     "info": "STAGE 4 - one asset. The shift of an hour comes from the calendar of the asset. 4.1 asks the OEE config for the calendar id and the product collection id, 4.2 asks the calendar events that cover the production day, 4.3 turns them into shift rules (freq, interval, start, until, duration). A failed call or an asset without a calendar fails the day (link \"to JOIN\").",
-    "x": 120,
+    "x": 140,
     "y": 700,
     "wires": []
   },
@@ -544,7 +544,7 @@
     "links": [
       "f69de.f3a632"
     ],
-    "x": 120,
+    "x": 60,
     "y": 780,
     "wires": [
       [
@@ -561,7 +561,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 280,
+    "x": 220,
     "y": 780,
     "wires": [
       [
@@ -581,7 +581,7 @@
     "mindspherePath": "",
     "useMindsphereAuth": false,
     "isAdmin": false,
-    "x": 520,
+    "x": 460,
     "y": 780,
     "wires": [
       [
@@ -598,7 +598,7 @@
     "links": [
       "eb044.ea0f9c"
     ],
-    "x": 980,
+    "x": 920,
     "y": 840,
     "wires": []
   },
@@ -611,7 +611,7 @@
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
-    "x": 780,
+    "x": 720,
     "y": 780,
     "wires": [
       [
@@ -634,7 +634,7 @@
     "mindspherePath": "",
     "useMindsphereAuth": false,
     "isAdmin": false,
-    "x": 1060,
+    "x": 1000,
     "y": 780,
     "wires": [
       [
@@ -651,7 +651,7 @@
     "links": [
       "06156.006efa"
     ],
-    "x": 1460,
+    "x": 1400,
     "y": 780,
     "wires": []
   },
@@ -664,7 +664,7 @@
     "links": [
       "eb044.ea0f9c"
     ],
-    "x": 1460,
+    "x": 1400,
     "y": 840,
     "wires": []
   },
@@ -677,7 +677,7 @@
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
-    "x": 1300,
+    "x": 1240,
     "y": 780,
     "wires": [
       [
@@ -694,7 +694,7 @@
     "type": "comment",
     "name": "[5] ASSET PRODUCTS",
     "info": "STAGE 5 - one asset. 5.1 asks filterValues for the products and orders of the production day (the lists behind the Product and Order dropdowns of the OEE app). 5.2 checks the answer and asks the product list (name, code, description, design speed) of the product collection of the asset. A day without any product or order goes straight to \"to ASSIGN\"; an asset without a product collection goes on without master data (\"to VALUES\"). A failed call fails the day (link \"to JOIN\").",
-    "x": 120,
+    "x": 140,
     "y": 920,
     "wires": []
   },
@@ -706,7 +706,7 @@
     "links": [
       "08045.020813"
     ],
-    "x": 120,
+    "x": 60,
     "y": 1000,
     "wires": [
       [
@@ -723,7 +723,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 300,
+    "x": 240,
     "y": 1000,
     "wires": [
       [
@@ -743,7 +743,7 @@
     "mindspherePath": "",
     "useMindsphereAuth": false,
     "isAdmin": false,
-    "x": 560,
+    "x": 500,
     "y": 1000,
     "wires": [
       [
@@ -760,7 +760,7 @@
     "links": [
       "158ce.0d37c2"
     ],
-    "x": 1000,
+    "x": 940,
     "y": 1060,
     "wires": []
   },
@@ -773,7 +773,7 @@
     "links": [
       "196ac.1069f4"
     ],
-    "x": 1000,
+    "x": 940,
     "y": 1100,
     "wires": []
   },
@@ -786,7 +786,7 @@
     "links": [
       "eb044.ea0f9c"
     ],
-    "x": 1000,
+    "x": 940,
     "y": 1140,
     "wires": []
   },
@@ -799,7 +799,7 @@
     "outputs": 4,
     "language": "javascript",
     "noerr": 0,
-    "x": 820,
+    "x": 760,
     "y": 1000,
     "wires": [
       [
@@ -825,7 +825,7 @@
     "links": [
       "158ce.0d37c2"
     ],
-    "x": 1220,
+    "x": 1160,
     "y": 1000,
     "wires": []
   },
@@ -841,7 +841,7 @@
     "mindspherePath": "",
     "useMindsphereAuth": false,
     "isAdmin": false,
-    "x": 1080,
+    "x": 1020,
     "y": 1000,
     "wires": [
       [
@@ -868,7 +868,7 @@
       "177bd.0ed0db",
       "1f379.15353f"
     ],
-    "x": 120,
+    "x": 60,
     "y": 1220,
     "wires": [
       [
@@ -885,7 +885,7 @@
     "links": [
       "196ac.1069f4"
     ],
-    "x": 440,
+    "x": 380,
     "y": 1280,
     "wires": []
   },
@@ -898,7 +898,7 @@
     "links": [
       "eb044.ea0f9c"
     ],
-    "x": 440,
+    "x": 380,
     "y": 1320,
     "wires": []
   },
@@ -911,7 +911,7 @@
     "outputs": 3,
     "language": "javascript",
     "noerr": 0,
-    "x": 280,
+    "x": 220,
     "y": 1220,
     "wires": [
       [
@@ -941,7 +941,7 @@
     "randomUnits": "seconds",
     "drop": false,
     "powerMode": false,
-    "x": 520,
+    "x": 460,
     "y": 1220,
     "wires": [
       [
@@ -958,7 +958,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 780,
+    "x": 720,
     "y": 1220,
     "wires": [
       [
@@ -978,7 +978,7 @@
     "mindspherePath": "",
     "useMindsphereAuth": false,
     "isAdmin": false,
-    "x": 1060,
+    "x": 1000,
     "y": 1220,
     "wires": [
       [
@@ -995,7 +995,7 @@
     "links": [
       "196ac.1069f4"
     ],
-    "x": 1480,
+    "x": 1420,
     "y": 1220,
     "wires": []
   },
@@ -1008,7 +1008,7 @@
     "links": [
       "eb044.ea0f9c"
     ],
-    "x": 1480,
+    "x": 1420,
     "y": 1280,
     "wires": []
   },
@@ -1021,7 +1021,7 @@
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
-    "x": 1320,
+    "x": 1260,
     "y": 1220,
     "wires": [
       [
@@ -1038,7 +1038,7 @@
     "type": "comment",
     "name": "[7] ASSIGN & PLAN",
     "info": "STAGE 7 - one asset. 7.1 gives every hour its product and order: the value that has parts in that hour; an hour without parts takes the value of the hour before it (the first hours take the next value). 7.2 groups the hourly KPIs per shift AND product and builds the pbi_plan_opt rows (total time = total minus shift plan stop, planned OpT = operational time, OEE time = used operational time, all in minutes; capacity = design speed per minute x planned OpT; downtime units = design speed per minute x downtime minutes; part name = product description, else name; product key = product code) and the pbi_time_utilisation row. An hour outside every shift gets shift_name null.",
-    "x": 120,
+    "x": 140,
     "y": 1360,
     "wires": []
   },
@@ -1052,7 +1052,7 @@
       "26f35.1b99a3",
       "309e0.239720"
     ],
-    "x": 120,
+    "x": 60,
     "y": 1440,
     "wires": [
       [
@@ -1069,7 +1069,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 300,
+    "x": 240,
     "y": 1440,
     "wires": [
       [
@@ -1086,7 +1086,7 @@
     "links": [
       "3a48b.2b949d"
     ],
-    "x": 700,
+    "x": 640,
     "y": 1440,
     "wires": []
   },
@@ -1099,7 +1099,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 560,
+    "x": 500,
     "y": 1440,
     "wires": [
       [
@@ -1113,7 +1113,7 @@
     "type": "comment",
     "name": "[8] ASSET STOPS",
     "info": "STAGE 8 - one asset. 8.1 downtimeReasons GET (size 5000, one page), 8.2 checks the response, 8.3 builds the pbi_daily_losses rows (one per stop that starts inside the production day: local date and time, shift, duration in minutes, loss group, sub group, equipment; product, part name and batch id (= order) of the hour of the stop; loss units = design speed per minute x duration), 8.4 builds the result of the asset and sends it to the join.",
-    "x": 120,
+    "x": 140,
     "y": 1580,
     "wires": []
   },
@@ -1125,7 +1125,7 @@
     "links": [
       "3c37a.2d2db6"
     ],
-    "x": 120,
+    "x": 60,
     "y": 1660,
     "wires": [
       [
@@ -1142,7 +1142,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 280,
+    "x": 220,
     "y": 1660,
     "wires": [
       [
@@ -1162,7 +1162,7 @@
     "mindspherePath": "",
     "useMindsphereAuth": false,
     "isAdmin": false,
-    "x": 520,
+    "x": 460,
     "y": 1660,
     "wires": [
       [
@@ -1179,7 +1179,7 @@
     "links": [
       "eb044.ea0f9c"
     ],
-    "x": 920,
+    "x": 860,
     "y": 1720,
     "wires": []
   },
@@ -1192,7 +1192,7 @@
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
-    "x": 760,
+    "x": 700,
     "y": 1660,
     "wires": [
       [
@@ -1212,7 +1212,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 1000,
+    "x": 940,
     "y": 1660,
     "wires": [
       [
@@ -1229,7 +1229,7 @@
     "links": [
       "eb044.ea0f9c"
     ],
-    "x": 1400,
+    "x": 1340,
     "y": 1660,
     "wires": []
   },
@@ -1242,7 +1242,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 1240,
+    "x": 1180,
     "y": 1660,
     "wires": [
       [
@@ -1256,7 +1256,7 @@
     "type": "comment",
     "name": "[9] JOIN & BUILD TABLES",
     "info": "STAGE 9 - the join waits for all assets of the day. 9.1 collects the results, 9.2 decides: it writes NOTHING if any asset failed (no half days) and nothing in dry-run mode, 9.3 builds one message per table. Output 1 of 9.3 = pbi_plan_opt, 2 = pbi_time_utilisation, 3 = pbi_daily_losses, 4 = log.",
-    "x": 120,
+    "x": 160,
     "y": 1800,
     "wires": []
   },
@@ -1276,7 +1276,7 @@
       "47d14.36c44c",
       "4baf2.39f67e"
     ],
-    "x": 120,
+    "x": 60,
     "y": 1880,
     "wires": [
       [
@@ -1299,7 +1299,7 @@
     "accumulate": false,
     "timeout": "",
     "count": "",
-    "x": 300,
+    "x": 240,
     "y": 1880,
     "wires": [
       [
@@ -1316,7 +1316,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 560,
+    "x": 500,
     "y": 1880,
     "wires": [
       [
@@ -1333,7 +1333,7 @@
     "links": [
       "d1e21.d54957"
     ],
-    "x": 880,
+    "x": 820,
     "y": 1940,
     "wires": []
   },
@@ -1346,7 +1346,7 @@
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
-    "x": 760,
+    "x": 700,
     "y": 1880,
     "wires": [
       [
@@ -1366,7 +1366,7 @@
     "links": [
       "5937b.45262d"
     ],
-    "x": 1140,
+    "x": 1080,
     "y": 1820,
     "wires": []
   },
@@ -1379,7 +1379,7 @@
     "links": [
       "5d159.48585f"
     ],
-    "x": 1140,
+    "x": 1080,
     "y": 1860,
     "wires": []
   },
@@ -1392,7 +1392,7 @@
     "links": [
       "60f37.4b8a91"
     ],
-    "x": 1140,
+    "x": 1080,
     "y": 1900,
     "wires": []
   },
@@ -1405,7 +1405,7 @@
     "links": [
       "d1e21.d54957"
     ],
-    "x": 1140,
+    "x": 1080,
     "y": 1940,
     "wires": []
   },
@@ -1418,7 +1418,7 @@
     "outputs": 4,
     "language": "javascript",
     "noerr": 0,
-    "x": 980,
+    "x": 920,
     "y": 1880,
     "wires": [
       [
@@ -1441,7 +1441,7 @@
     "type": "comment",
     "name": "[10] WRITE pbi_plan_opt",
     "info": "STAGE 10 - parquet node, path and write object for pbi_plan_opt (Plan OPT EU: machine x production day x shift). The path is <root>/pbi_plan_opt/<site folder>/pbi_plan_opt_<production day>.parquet, the same on every rerun, so a rerun replaces the day. Types: UTF8 (STRING), INT64, DOUBLE, TIMESTAMP_MILLIS. Dates are text YYYY-MM-DD.",
-    "x": 120,
+    "x": 160,
     "y": 2020,
     "wires": []
   },
@@ -1453,7 +1453,7 @@
     "links": [
       "5b26a.46bf46"
     ],
-    "x": 120,
+    "x": 60,
     "y": 2100,
     "wires": [
       [
@@ -1550,7 +1550,7 @@
     "outputPty": "payload",
     "outputPtyType": "msg",
     "engine": "parquetjs",
-    "x": 280,
+    "x": 220,
     "y": 2100,
     "wires": [
       [
@@ -1567,7 +1567,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 540,
+    "x": 480,
     "y": 2100,
     "wires": [
       [
@@ -1582,7 +1582,7 @@
     "name": "pbi_plan_opt to data lake",
     "path": "",
     "mode": "object",
-    "x": 800,
+    "x": 740,
     "y": 2100,
     "wires": []
   },
@@ -1592,7 +1592,7 @@
     "type": "comment",
     "name": "[11] WRITE pbi_time_utilisation",
     "info": "STAGE 11 - parquet node, path and write object for pbi_time_utilisation (Time Utilisation EU: machine x day). The path is <root>/pbi_time_utilisation/<site folder>/pbi_time_utilisation_<production day>.parquet, the same on every rerun, so a rerun replaces the day. Types: UTF8 (STRING), INT64, DOUBLE, TIMESTAMP_MILLIS. Dates are text YYYY-MM-DD.",
-    "x": 120,
+    "x": 180,
     "y": 2240,
     "wires": []
   },
@@ -1604,7 +1604,7 @@
     "links": [
       "5f048.49f178"
     ],
-    "x": 120,
+    "x": 60,
     "y": 2320,
     "wires": [
       [
@@ -1661,7 +1661,7 @@
     "outputPty": "payload",
     "outputPtyType": "msg",
     "engine": "parquetjs",
-    "x": 320,
+    "x": 260,
     "y": 2320,
     "wires": [
       [
@@ -1678,7 +1678,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 640,
+    "x": 580,
     "y": 2320,
     "wires": [
       [
@@ -1693,7 +1693,7 @@
     "name": "pbi_time_utilisation to data lake",
     "path": "",
     "mode": "object",
-    "x": 960,
+    "x": 900,
     "y": 2320,
     "wires": []
   },
@@ -1703,7 +1703,7 @@
     "type": "comment",
     "name": "[12] WRITE pbi_daily_losses",
     "info": "STAGE 12 - parquet node, path and write object for pbi_daily_losses (Daily Losses EU: one row per stop). The path is <root>/pbi_daily_losses/<site folder>/pbi_daily_losses_<production day>.parquet, the same on every rerun, so a rerun replaces the day. Types: UTF8 (STRING), INT64, DOUBLE, TIMESTAMP_MILLIS. Dates are text YYYY-MM-DD.",
-    "x": 120,
+    "x": 180,
     "y": 2460,
     "wires": []
   },
@@ -1715,7 +1715,7 @@
     "links": [
       "62e26.4d23aa"
     ],
-    "x": 120,
+    "x": 60,
     "y": 2540,
     "wires": [
       [
@@ -1836,7 +1836,7 @@
     "outputPty": "payload",
     "outputPtyType": "msg",
     "engine": "parquetjs",
-    "x": 300,
+    "x": 240,
     "y": 2540,
     "wires": [
       [
@@ -1853,7 +1853,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 600,
+    "x": 540,
     "y": 2540,
     "wires": [
       [
@@ -1868,7 +1868,7 @@
     "name": "pbi_daily_losses to data lake",
     "path": "",
     "mode": "object",
-    "x": 900,
+    "x": 840,
     "y": 2540,
     "wires": []
   },
@@ -1933,7 +1933,7 @@
     "type": "comment",
     "name": "[14] LOG",
     "info": "STAGE 14 - every log line arrives here through the link \"to LOG\". 1 turns a line into a row (time, flow, site, production day, level) and shows it in the debug sidebar. The join collects the rows for 30 s, the delay lets one batch pass every 10 s so two writes do not overlap, 3 sets the file of the month and the read node loads the old file. A read of a file that does not exist answers nothing (only a warning), so the same batch also goes through a 10 s wait to the append step. The log is written whatever the dry-run switch says.",
-    "x": 120,
+    "x": 100,
     "y": 2900,
     "wires": []
   },
@@ -1949,7 +1949,7 @@
       "64d15.4ebcc3",
       "83c05.684e53"
     ],
-    "x": 120,
+    "x": 60,
     "y": 2980,
     "wires": [
       [
@@ -1966,7 +1966,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 260,
+    "x": 200,
     "y": 2980,
     "wires": [
       [
@@ -1996,7 +1996,7 @@
     "reduceInit": "",
     "reduceInitType": "",
     "reduceFixup": "",
-    "x": 480,
+    "x": 420,
     "y": 2980,
     "wires": [
       [
@@ -2015,7 +2015,7 @@
     "tostatus": false,
     "complete": "line",
     "targetType": "msg",
-    "x": 440,
+    "x": 380,
     "y": 3060,
     "wires": []
   },
@@ -2035,7 +2035,7 @@
     "randomUnits": "seconds",
     "drop": false,
     "powerMode": false,
-    "x": 700,
+    "x": 640,
     "y": 2980,
     "wires": [
       [
@@ -2052,7 +2052,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 940,
+    "x": 880,
     "y": 2980,
     "wires": [
       [
@@ -2070,7 +2070,7 @@
     "links": [
       "9526c.76b034"
     ],
-    "x": 1260,
+    "x": 1200,
     "y": 2980,
     "wires": []
   },
@@ -2081,7 +2081,7 @@
     "name": "Read log file",
     "path": "",
     "mode": "object",
-    "x": 1140,
+    "x": 1080,
     "y": 2980,
     "wires": [
       [
@@ -2098,7 +2098,7 @@
     "links": [
       "9526c.76b034"
     ],
-    "x": 1300,
+    "x": 1240,
     "y": 3060,
     "wires": []
   },
@@ -2118,7 +2118,7 @@
     "randomUnits": "seconds",
     "drop": false,
     "powerMode": false,
-    "x": 1160,
+    "x": 1100,
     "y": 3060,
     "wires": [
       [
@@ -2145,7 +2145,7 @@
       "9715b.78494d",
       "9904a.79e266"
     ],
-    "x": 120,
+    "x": 60,
     "y": 3200,
     "wires": [
       [
@@ -2162,7 +2162,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 260,
+    "x": 200,
     "y": 3200,
     "wires": [
       [
@@ -2177,7 +2177,7 @@
     "name": "Log to data lake",
     "path": "",
     "mode": "object",
-    "x": 480,
+    "x": 420,
     "y": 3200,
     "wires": []
   }

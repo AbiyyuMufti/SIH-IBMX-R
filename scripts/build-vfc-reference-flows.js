@@ -13,7 +13,7 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { validateFlow } from './validate-flow.js';
 import {
   code, S, B, I, D, TS, makeBuilder, fn, http, linkInStep, end, split,
-  delay, join, addLogLanes
+  delay, join, addLogLanes, compactLanes
 } from './lib-flow-builder.js';
 
 const SCHEMAS = {
@@ -233,6 +233,8 @@ const OUTPUTS = [
 ];
 for (const [file, build] of OUTPUTS) {
   const nodes = build();
+  // Layout rule of lib-flow-builder.js
+  compactLanes(nodes);
   const { errors, warnings, stats } = validateFlow(nodes);
   if (errors.length) {
     throw new Error(`flow check failed for ${file}:\n  ${errors.join('\n  ')}`);

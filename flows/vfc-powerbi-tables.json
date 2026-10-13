@@ -13,7 +13,7 @@
     "type": "comment",
     "name": "[1] TRIGGERS & SETTINGS",
     "info": "STAGE 1 - TRIGGERS AND SETTINGS. Site Hull. Schedule: daily at 30 7 * * * (UTC), 30 minutes after the fact flow. Backfill: edit the inject payload {\"start\":\"YYYY-MM-DD\",\"end\":\"YYYY-MM-DD\"} (production days) and click the button. 1.1 is the only node to edit: site name, dry-run switch, rebuild days, calendar range. The shared settings come from the Config tab. dryRun is true by default. 1.2 sends ONE MESSAGE PER DAY (one per 5 s). 1.3 builds the calendar table once per run. This flow only READS files from the data lake that the fact flow and the reference flow wrote. It never calls Insights Hub.",
-    "x": 120,
+    "x": 160,
     "y": 40,
     "wires": []
   },
@@ -33,7 +33,7 @@
     "betweentimesunit": "m",
     "showNextExecution": false,
     "powerMode": false,
-    "x": 120,
+    "x": 140,
     "y": 80,
     "wires": [
       [
@@ -60,7 +60,7 @@
     "betweentimesunit": "m",
     "showNextExecution": false,
     "powerMode": false,
-    "x": 120,
+    "x": 160,
     "y": 160,
     "wires": [
       [
@@ -80,7 +80,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 380,
+    "x": 440,
     "y": 120,
     "wires": [
       [
@@ -98,7 +98,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 640,
+    "x": 720,
     "y": 120,
     "wires": [
       [
@@ -115,7 +115,7 @@
     "links": [
       "8f527.8fed21"
     ],
-    "x": 1160,
+    "x": 1080,
     "y": 120,
     "wires": []
   },
@@ -135,7 +135,7 @@
     "randomUnits": "seconds",
     "drop": false,
     "powerMode": false,
-    "x": 900,
+    "x": 940,
     "y": 120,
     "wires": [
       [
@@ -152,7 +152,7 @@
     "links": [
       "93305.931f53"
     ],
-    "x": 900,
+    "x": 880,
     "y": 220,
     "wires": []
   },
@@ -165,7 +165,7 @@
     "links": [
       "970e3.965185"
     ],
-    "x": 900,
+    "x": 880,
     "y": 280,
     "wires": []
   },
@@ -178,7 +178,7 @@
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
-    "x": 640,
+    "x": 720,
     "y": 220,
     "wires": [
       [
@@ -195,7 +195,7 @@
     "type": "comment",
     "name": "[2] LOAD REFERENCE",
     "info": "STAGE 2 - one message per day. 2.1 sets the path of dim_asset, the read object node loads the file and the parquet node turns it into rows. 2.2 keeps the rows and sets the path of dim_shift, 2.3 keeps them and sets the path of the day file of fact_kpi. A file that does not exist only gives a warning in the debug sidebar and the day stops here (the read node sends nothing).",
-    "x": 120,
+    "x": 140,
     "y": 260,
     "wires": []
   },
@@ -207,7 +207,7 @@
     "links": [
       "91416.91863a"
     ],
-    "x": 120,
+    "x": 60,
     "y": 340,
     "wires": [
       [
@@ -224,7 +224,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 380,
+    "x": 220,
     "y": 340,
     "wires": [
       [
@@ -239,7 +239,7 @@
     "name": "Read dim_asset",
     "path": "",
     "mode": "object",
-    "x": 640,
+    "x": 440,
     "y": 340,
     "wires": [
       [
@@ -259,7 +259,7 @@
     "outputPty": "payload",
     "outputPtyType": "msg",
     "engine": "hyparquet",
-    "x": 900,
+    "x": 660,
     "y": 340,
     "wires": [
       [
@@ -288,7 +288,7 @@
     "reduceInit": "",
     "reduceInitType": "",
     "reduceFixup": "",
-    "x": 1160,
+    "x": 900,
     "y": 340,
     "wires": [
       [
@@ -305,7 +305,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 1420,
+    "x": 1140,
     "y": 340,
     "wires": [
       [
@@ -320,7 +320,7 @@
     "name": "Read dim_shift",
     "path": "",
     "mode": "object",
-    "x": 1680,
+    "x": 1340,
     "y": 340,
     "wires": [
       [
@@ -340,7 +340,7 @@
     "outputPty": "payload",
     "outputPtyType": "msg",
     "engine": "hyparquet",
-    "x": 1940,
+    "x": 1560,
     "y": 340,
     "wires": [
       [
@@ -369,7 +369,7 @@
     "reduceInit": "",
     "reduceInitType": "",
     "reduceFixup": "",
-    "x": 2200,
+    "x": 1800,
     "y": 340,
     "wires": [
       [
@@ -386,7 +386,7 @@
     "links": [
       "ae417.a97eb1"
     ],
-    "x": 2720,
+    "x": 2180,
     "y": 340,
     "wires": []
   },
@@ -399,7 +399,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 2460,
+    "x": 2040,
     "y": 340,
     "wires": [
       [
@@ -425,7 +425,7 @@
     "links": [
       "b0306.ab17ca"
     ],
-    "x": 120,
+    "x": 60,
     "y": 560,
     "wires": [
       [
@@ -440,7 +440,7 @@
     "name": "Read fact_kpi",
     "path": "",
     "mode": "object",
-    "x": 380,
+    "x": 180,
     "y": 560,
     "wires": [
       [
@@ -460,7 +460,7 @@
     "outputPty": "payload",
     "outputPtyType": "msg",
     "engine": "hyparquet",
-    "x": 640,
+    "x": 400,
     "y": 560,
     "wires": [
       [
@@ -489,7 +489,7 @@
     "reduceInit": "",
     "reduceInitType": "",
     "reduceFixup": "",
-    "x": 900,
+    "x": 640,
     "y": 560,
     "wires": [
       [
@@ -506,7 +506,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 1160,
+    "x": 860,
     "y": 560,
     "wires": [
       [
@@ -521,7 +521,7 @@
     "name": "Read fact_loss",
     "path": "",
     "mode": "object",
-    "x": 1420,
+    "x": 1060,
     "y": 560,
     "wires": [
       [
@@ -541,7 +541,7 @@
     "outputPty": "payload",
     "outputPtyType": "msg",
     "engine": "hyparquet",
-    "x": 1680,
+    "x": 1280,
     "y": 560,
     "wires": [
       [
@@ -570,7 +570,7 @@
     "reduceInit": "",
     "reduceInitType": "",
     "reduceFixup": "",
-    "x": 1940,
+    "x": 1520,
     "y": 560,
     "wires": [
       [
@@ -587,7 +587,7 @@
     "links": [
       "c385c.bb12c4"
     ],
-    "x": 2460,
+    "x": 1900,
     "y": 560,
     "wires": []
   },
@@ -600,7 +600,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 2200,
+    "x": 1760,
     "y": 560,
     "wires": [
       [
@@ -614,7 +614,7 @@
     "type": "comment",
     "name": "[4] BUILD TABLES",
     "info": "STAGE 4 - the Power BI rows of the day. 4.1 groups the hourly fact_kpi rows to machine x production day x shift (pbi_plan_opt) and to machine x day (pbi_time_utilisation). 4.2 turns every stop into a row of pbi_daily_losses (local time, loss group, sub group, equipment). 4.3 builds one message per table plus the machine names and shift names of the site; in dry-run mode it writes nothing, only a log line. Columns without data in Insights Hub are written as null.",
-    "x": 120,
+    "x": 140,
     "y": 700,
     "wires": []
   },
@@ -626,7 +626,7 @@
     "links": [
       "c574b.bcabdd"
     ],
-    "x": 120,
+    "x": 60,
     "y": 780,
     "wires": [
       [
@@ -643,7 +643,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 380,
+    "x": 220,
     "y": 780,
     "wires": [
       [
@@ -660,7 +660,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 640,
+    "x": 480,
     "y": 780,
     "wires": [
       [
@@ -677,7 +677,7 @@
     "links": [
       "cf1f6.c4a95a"
     ],
-    "x": 1160,
+    "x": 900,
     "y": 680,
     "wires": []
   },
@@ -690,7 +690,7 @@
     "links": [
       "d2fd4.c7db8c"
     ],
-    "x": 1160,
+    "x": 900,
     "y": 720,
     "wires": []
   },
@@ -703,7 +703,7 @@
     "links": [
       "d6db2.cb0dbe"
     ],
-    "x": 1160,
+    "x": 900,
     "y": 760,
     "wires": []
   },
@@ -716,7 +716,7 @@
     "links": [
       "dab90.ce3ff0"
     ],
-    "x": 1160,
+    "x": 900,
     "y": 800,
     "wires": []
   },
@@ -729,7 +729,7 @@
     "links": [
       "de96e.d17222"
     ],
-    "x": 1160,
+    "x": 900,
     "y": 840,
     "wires": []
   },
@@ -742,7 +742,7 @@
     "links": [
       "970e3.965185"
     ],
-    "x": 1160,
+    "x": 900,
     "y": 880,
     "wires": []
   },
@@ -755,7 +755,7 @@
     "outputs": 6,
     "language": "javascript",
     "noerr": 0,
-    "x": 900,
+    "x": 740,
     "y": 780,
     "wires": [
       [
@@ -784,7 +784,7 @@
     "type": "comment",
     "name": "[5] WRITE pbi_plan_opt",
     "info": "STAGE 5 - parquet node, path and write object for pbi_plan_opt (Plan OPT EU: machine x production day x shift). A rerun replaces the file. Types: UTF8 (STRING), INT64, DOUBLE, TIMESTAMP_MILLIS. Dates are text YYYY-MM-DD.",
-    "x": 120,
+    "x": 160,
     "y": 920,
     "wires": []
   },
@@ -796,7 +796,7 @@
     "links": [
       "d10e5.c64273"
     ],
-    "x": 120,
+    "x": 60,
     "y": 1000,
     "wires": [
       [
@@ -893,7 +893,7 @@
     "outputPty": "payload",
     "outputPtyType": "msg",
     "engine": "parquetjs",
-    "x": 380,
+    "x": 220,
     "y": 1000,
     "wires": [
       [
@@ -910,7 +910,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 640,
+    "x": 480,
     "y": 1000,
     "wires": [
       [
@@ -925,7 +925,7 @@
     "name": "pbi_plan_opt to data lake",
     "path": "",
     "mode": "object",
-    "x": 900,
+    "x": 740,
     "y": 1000,
     "wires": []
   },
@@ -935,7 +935,7 @@
     "type": "comment",
     "name": "[6] WRITE pbi_time_utilisation",
     "info": "STAGE 6 - parquet node, path and write object for pbi_time_utilisation (Time Utilisation EU: machine x day). A rerun replaces the file. Types: UTF8 (STRING), INT64, DOUBLE, TIMESTAMP_MILLIS. Dates are text YYYY-MM-DD.",
-    "x": 120,
+    "x": 180,
     "y": 1140,
     "wires": []
   },
@@ -947,7 +947,7 @@
     "links": [
       "d4ec3.c974a5"
     ],
-    "x": 120,
+    "x": 60,
     "y": 1220,
     "wires": [
       [
@@ -1004,7 +1004,7 @@
     "outputPty": "payload",
     "outputPtyType": "msg",
     "engine": "parquetjs",
-    "x": 380,
+    "x": 260,
     "y": 1220,
     "wires": [
       [
@@ -1021,7 +1021,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 640,
+    "x": 580,
     "y": 1220,
     "wires": [
       [
@@ -1046,7 +1046,7 @@
     "type": "comment",
     "name": "[7] WRITE pbi_daily_losses",
     "info": "STAGE 7 - parquet node, path and write object for pbi_daily_losses (Daily Losses EU: one row per stop). A rerun replaces the file. Types: UTF8 (STRING), INT64, DOUBLE, TIMESTAMP_MILLIS. Dates are text YYYY-MM-DD.",
-    "x": 120,
+    "x": 160,
     "y": 1360,
     "wires": []
   },
@@ -1058,7 +1058,7 @@
     "links": [
       "d8ca1.cca6d7"
     ],
-    "x": 120,
+    "x": 60,
     "y": 1440,
     "wires": [
       [
@@ -1179,7 +1179,7 @@
     "outputPty": "payload",
     "outputPtyType": "msg",
     "engine": "parquetjs",
-    "x": 380,
+    "x": 240,
     "y": 1440,
     "wires": [
       [
@@ -1196,7 +1196,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 640,
+    "x": 540,
     "y": 1440,
     "wires": [
       [
@@ -1211,7 +1211,7 @@
     "name": "pbi_daily_losses to data lake",
     "path": "",
     "mode": "object",
-    "x": 900,
+    "x": 820,
     "y": 1440,
     "wires": []
   },
@@ -1221,7 +1221,7 @@
     "type": "comment",
     "name": "[8] WRITE pbi_machine_names",
     "info": "STAGE 8 - parquet node, path and write object for pbi_machine_names (Machine Names EU: one row per machine). A rerun replaces the file. Types: UTF8 (STRING), INT64, DOUBLE, TIMESTAMP_MILLIS. Dates are text YYYY-MM-DD.",
-    "x": 120,
+    "x": 180,
     "y": 1580,
     "wires": []
   },
@@ -1233,7 +1233,7 @@
     "links": [
       "dca7f.cfd909"
     ],
-    "x": 120,
+    "x": 60,
     "y": 1660,
     "wires": [
       [
@@ -1282,7 +1282,7 @@
     "outputPty": "payload",
     "outputPtyType": "msg",
     "engine": "parquetjs",
-    "x": 380,
+    "x": 240,
     "y": 1660,
     "wires": [
       [
@@ -1299,7 +1299,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 640,
+    "x": 540,
     "y": 1660,
     "wires": [
       [
@@ -1314,7 +1314,7 @@
     "name": "pbi_machine_names to data lake",
     "path": "",
     "mode": "object",
-    "x": 900,
+    "x": 840,
     "y": 1660,
     "wires": []
   },
@@ -1324,7 +1324,7 @@
     "type": "comment",
     "name": "[9] WRITE pbi_shift_naming",
     "info": "STAGE 9 - parquet node, path and write object for pbi_shift_naming (Shift Naming EU: one row per shift). A rerun replaces the file. Types: UTF8 (STRING), INT64, DOUBLE, TIMESTAMP_MILLIS. Dates are text YYYY-MM-DD.",
-    "x": 120,
+    "x": 160,
     "y": 1800,
     "wires": []
   },
@@ -1336,7 +1336,7 @@
     "links": [
       "e085d.d30b3b"
     ],
-    "x": 120,
+    "x": 60,
     "y": 1880,
     "wires": [
       [
@@ -1365,7 +1365,7 @@
     "outputPty": "payload",
     "outputPtyType": "msg",
     "engine": "parquetjs",
-    "x": 380,
+    "x": 240,
     "y": 1880,
     "wires": [
       [
@@ -1382,7 +1382,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 640,
+    "x": 540,
     "y": 1880,
     "wires": [
       [
@@ -1397,7 +1397,7 @@
     "name": "pbi_shift_naming to data lake",
     "path": "",
     "mode": "object",
-    "x": 900,
+    "x": 820,
     "y": 1880,
     "wires": []
   },
@@ -1407,7 +1407,7 @@
     "type": "comment",
     "name": "[10] WRITE pbi_calendar",
     "info": "STAGE 10 - parquet node, path and write object for pbi_calendar (Calendar: one row per date). A rerun replaces the file. Types: UTF8 (STRING), INT64, DOUBLE, TIMESTAMP_MILLIS. Dates are text YYYY-MM-DD.",
-    "x": 120,
+    "x": 160,
     "y": 2020,
     "wires": []
   },
@@ -1419,7 +1419,7 @@
     "links": [
       "951f4.94b86c"
     ],
-    "x": 120,
+    "x": 60,
     "y": 2100,
     "wires": [
       [
@@ -1484,7 +1484,7 @@
     "outputPty": "payload",
     "outputPtyType": "msg",
     "engine": "parquetjs",
-    "x": 380,
+    "x": 220,
     "y": 2100,
     "wires": [
       [
@@ -1501,7 +1501,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 640,
+    "x": 480,
     "y": 2100,
     "wires": [
       [
@@ -1516,7 +1516,7 @@
     "name": "pbi_calendar to data lake",
     "path": "",
     "mode": "object",
-    "x": 900,
+    "x": 740,
     "y": 2100,
     "wires": []
   },
@@ -1554,7 +1554,7 @@
     "links": [
       "970e3.965185"
     ],
-    "x": 640,
+    "x": 460,
     "y": 2320,
     "wires": []
   },
@@ -1567,7 +1567,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 380,
+    "x": 320,
     "y": 2320,
     "wires": [
       [
@@ -1581,7 +1581,7 @@
     "type": "comment",
     "name": "[12] LOG",
     "info": "STAGE 12 - every log line arrives here through the link \"to LOG\". 1 turns a line into a row (time, flow, site, production day, level) and shows it in the debug sidebar. The join collects the rows for 30 s, the delay lets one batch pass every 10 s so two writes do not overlap, 3 sets the file of the month and the read node loads the old file. A read of a file that does not exist answers nothing (only a warning), so the same batch also goes through a 10 s wait to the append step. The log is written whatever the dry-run switch says.",
-    "x": 120,
+    "x": 100,
     "y": 2460,
     "wires": []
   },
@@ -1595,7 +1595,7 @@
       "e274c.d4a454",
       "18970.016310"
     ],
-    "x": 120,
+    "x": 60,
     "y": 2540,
     "wires": [
       [
@@ -1612,7 +1612,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 380,
+    "x": 200,
     "y": 2540,
     "wires": [
       [
@@ -1642,7 +1642,7 @@
     "reduceInit": "",
     "reduceInitType": "",
     "reduceFixup": "",
-    "x": 640,
+    "x": 420,
     "y": 2540,
     "wires": [
       [
@@ -1661,7 +1661,7 @@
     "tostatus": false,
     "complete": "line",
     "targetType": "msg",
-    "x": 640,
+    "x": 380,
     "y": 2620,
     "wires": []
   },
@@ -1681,7 +1681,7 @@
     "randomUnits": "seconds",
     "drop": false,
     "powerMode": false,
-    "x": 900,
+    "x": 640,
     "y": 2540,
     "wires": [
       [
@@ -1698,7 +1698,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 1160,
+    "x": 880,
     "y": 2540,
     "wires": [
       [
@@ -1716,7 +1716,7 @@
     "links": [
       "29fd7.0fc4f1"
     ],
-    "x": 1680,
+    "x": 1200,
     "y": 2540,
     "wires": []
   },
@@ -1727,7 +1727,7 @@
     "name": "Read log file",
     "path": "",
     "mode": "object",
-    "x": 1420,
+    "x": 1080,
     "y": 2540,
     "wires": [
       [
@@ -1744,7 +1744,7 @@
     "links": [
       "29fd7.0fc4f1"
     ],
-    "x": 1680,
+    "x": 1240,
     "y": 2620,
     "wires": []
   },
@@ -1764,7 +1764,7 @@
     "randomUnits": "seconds",
     "drop": false,
     "powerMode": false,
-    "x": 1420,
+    "x": 1100,
     "y": 2620,
     "wires": [
       [
@@ -1791,7 +1791,7 @@
       "2bec6.115e0a",
       "2ddb5.12f723"
     ],
-    "x": 120,
+    "x": 60,
     "y": 2760,
     "wires": [
       [
@@ -1808,7 +1808,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 380,
+    "x": 200,
     "y": 2760,
     "wires": [
       [
@@ -1823,7 +1823,7 @@
     "name": "Log to data lake",
     "path": "",
     "mode": "object",
-    "x": 640,
+    "x": 420,
     "y": 2760,
     "wires": []
   }

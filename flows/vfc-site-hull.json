@@ -13,7 +13,7 @@
     "type": "comment",
     "name": "[1] TRIGGERS & SITE SETTINGS",
     "info": "STAGE 1 - TRIGGERS AND SITE SETTINGS. Site Hull. Schedule: daily, builds yesterday and the days before it (REBUILD_DAYS in 1.1). Backfill: edit the inject payload {\"start\":\"YYYY-MM-DD\",\"end\":\"YYYY-MM-DD\"} (production days) and click the button. Both go through 1.1 SITE SETTINGS, the only node of this flow to edit: site name, dry-run switch, rebuild days. The shared settings (credentials, root folder, asset ids, production-day start) come from the Config tab through global context. dryRun is true by default: set it to false to write files. 1.2 sends ONE MESSAGE PER DAY; the delay node starts one day every 5 s.",
-    "x": 120,
+    "x": 180,
     "y": 40,
     "wires": []
   },
@@ -33,7 +33,7 @@
     "betweentimesunit": "m",
     "showNextExecution": false,
     "powerMode": false,
-    "x": 120,
+    "x": 140,
     "y": 80,
     "wires": [
       [
@@ -60,7 +60,7 @@
     "betweentimesunit": "m",
     "showNextExecution": false,
     "powerMode": false,
-    "x": 120,
+    "x": 160,
     "y": 160,
     "wires": [
       [
@@ -80,7 +80,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 380,
+    "x": 420,
     "y": 120,
     "wires": [
       [
@@ -97,7 +97,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 640,
+    "x": 680,
     "y": 120,
     "wires": [
       [
@@ -114,7 +114,7 @@
     "links": [
       "566d8.528e68"
     ],
-    "x": 1160,
+    "x": 1040,
     "y": 120,
     "wires": []
   },
@@ -160,7 +160,7 @@
     "links": [
       "585c7.542781"
     ],
-    "x": 120,
+    "x": 60,
     "y": 340,
     "wires": [
       [
@@ -177,7 +177,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 380,
+    "x": 220,
     "y": 340,
     "wires": [
       [
@@ -197,7 +197,7 @@
     "mindspherePath": "",
     "useMindsphereAuth": false,
     "isAdmin": false,
-    "x": 640,
+    "x": 420,
     "y": 340,
     "wires": [
       [
@@ -214,7 +214,7 @@
     "links": [
       "63f61.5dbe17"
     ],
-    "x": 1020,
+    "x": 820,
     "y": 400,
     "wires": []
   },
@@ -227,7 +227,7 @@
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
-    "x": 900,
+    "x": 640,
     "y": 340,
     "wires": [
       [
@@ -250,7 +250,7 @@
     "mindspherePath": "",
     "useMindsphereAuth": false,
     "isAdmin": false,
-    "x": 1160,
+    "x": 880,
     "y": 340,
     "wires": [
       [
@@ -267,7 +267,7 @@
     "links": [
       "63f61.5dbe17"
     ],
-    "x": 1540,
+    "x": 1220,
     "y": 400,
     "wires": []
   },
@@ -280,7 +280,7 @@
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
-    "x": 1420,
+    "x": 1080,
     "y": 340,
     "wires": [
       [
@@ -302,7 +302,7 @@
     "arraySpltType": "len",
     "stream": false,
     "addname": "index",
-    "x": 1680,
+    "x": 1280,
     "y": 340,
     "wires": [
       [
@@ -319,7 +319,7 @@
     "links": [
       "6f8fb.6754ad"
     ],
-    "x": 2200,
+    "x": 1620,
     "y": 340,
     "wires": []
   },
@@ -339,7 +339,7 @@
     "randomUnits": "seconds",
     "drop": false,
     "powerMode": false,
-    "x": 1940,
+    "x": 1480,
     "y": 340,
     "wires": [
       [
@@ -365,7 +365,7 @@
     "links": [
       "717ea.68edc6"
     ],
-    "x": 120,
+    "x": 60,
     "y": 560,
     "wires": [
       [
@@ -382,7 +382,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 380,
+    "x": 220,
     "y": 560,
     "wires": [
       [
@@ -402,7 +402,7 @@
     "mindspherePath": "",
     "useMindsphereAuth": false,
     "isAdmin": false,
-    "x": 640,
+    "x": 460,
     "y": 560,
     "wires": [
       [
@@ -419,7 +419,7 @@
     "links": [
       "7d184.72845c"
     ],
-    "x": 1020,
+    "x": 860,
     "y": 620,
     "wires": []
   },
@@ -432,7 +432,7 @@
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
-    "x": 900,
+    "x": 700,
     "y": 560,
     "wires": [
       [
@@ -455,7 +455,7 @@
     "mindspherePath": "",
     "useMindsphereAuth": false,
     "isAdmin": false,
-    "x": 1160,
+    "x": 920,
     "y": 560,
     "wires": [
       [
@@ -472,7 +472,7 @@
     "links": [
       "7d184.72845c"
     ],
-    "x": 1540,
+    "x": 1300,
     "y": 620,
     "wires": []
   },
@@ -485,7 +485,7 @@
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
-    "x": 1420,
+    "x": 1140,
     "y": 560,
     "wires": [
       [
@@ -505,7 +505,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 1680,
+    "x": 1380,
     "y": 560,
     "wires": [
       [
@@ -522,7 +522,7 @@
     "links": [
       "88b1e.7c1af2"
     ],
-    "x": 2200,
+    "x": 1760,
     "y": 560,
     "wires": []
   },
@@ -535,7 +535,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 1940,
+    "x": 1620,
     "y": 560,
     "wires": [
       [
@@ -549,7 +549,7 @@
     "type": "comment",
     "name": "[4] ASSET STOPS",
     "info": "STAGE 4 - one asset. 4.1 downtimeReasons GET (size 5000, one page), 4.2 checks the response, 4.3 builds the fact_loss rows, 4.4 builds the result of the asset and sends it to the join.",
-    "x": 120,
+    "x": 140,
     "y": 700,
     "wires": []
   },
@@ -561,7 +561,7 @@
     "links": [
       "8aa0d.7db40b"
     ],
-    "x": 120,
+    "x": 60,
     "y": 780,
     "wires": [
       [
@@ -578,7 +578,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 380,
+    "x": 220,
     "y": 780,
     "wires": [
       [
@@ -598,7 +598,7 @@
     "mindspherePath": "",
     "useMindsphereAuth": false,
     "isAdmin": false,
-    "x": 640,
+    "x": 460,
     "y": 780,
     "wires": [
       [
@@ -615,7 +615,7 @@
     "links": [
       "7d184.72845c"
     ],
-    "x": 1020,
+    "x": 860,
     "y": 840,
     "wires": []
   },
@@ -628,7 +628,7 @@
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
-    "x": 900,
+    "x": 700,
     "y": 780,
     "wires": [
       [
@@ -648,7 +648,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 1160,
+    "x": 940,
     "y": 780,
     "wires": [
       [
@@ -665,7 +665,7 @@
     "links": [
       "7d184.72845c"
     ],
-    "x": 1680,
+    "x": 1340,
     "y": 780,
     "wires": []
   },
@@ -678,7 +678,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 1420,
+    "x": 1180,
     "y": 780,
     "wires": [
       [
@@ -692,7 +692,7 @@
     "type": "comment",
     "name": "[5] JOIN & BUILD TABLES",
     "info": "STAGE 5 - the join waits for all assets of the day. 5.1 collects the results, 5.2 adds production_day and local_date, 5.3 decides: it writes NOTHING if any asset failed (no half days) and nothing in dry-run mode, 5.4 builds one message per table. Output 1 of 5.4 = fact_kpi, output 2 = fact_loss, output 3 = log.",
-    "x": 120,
+    "x": 160,
     "y": 920,
     "wires": []
   },
@@ -707,7 +707,7 @@
       "963a7.874aa1",
       "9a185.8a7cd3"
     ],
-    "x": 120,
+    "x": 60,
     "y": 1000,
     "wires": [
       [
@@ -730,7 +730,7 @@
     "accumulate": false,
     "timeout": "",
     "count": "",
-    "x": 380,
+    "x": 240,
     "y": 1000,
     "wires": [
       [
@@ -747,7 +747,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 640,
+    "x": 500,
     "y": 1000,
     "wires": [
       [
@@ -764,7 +764,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 900,
+    "x": 720,
     "y": 1000,
     "wires": [
       [
@@ -781,7 +781,7 @@
     "links": [
       "63f61.5dbe17"
     ],
-    "x": 1280,
+    "x": 1040,
     "y": 1060,
     "wires": []
   },
@@ -794,7 +794,7 @@
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
-    "x": 1160,
+    "x": 920,
     "y": 1000,
     "wires": [
       [
@@ -814,7 +814,7 @@
     "links": [
       "a98fd.97459b"
     ],
-    "x": 1680,
+    "x": 1300,
     "y": 960,
     "wires": []
   },
@@ -827,7 +827,7 @@
     "links": [
       "ad6db.9a77cd"
     ],
-    "x": 1680,
+    "x": 1300,
     "y": 1000,
     "wires": []
   },
@@ -840,7 +840,7 @@
     "links": [
       "63f61.5dbe17"
     ],
-    "x": 1680,
+    "x": 1300,
     "y": 1040,
     "wires": []
   },
@@ -853,7 +853,7 @@
     "outputs": 3,
     "language": "javascript",
     "noerr": 0,
-    "x": 1420,
+    "x": 1140,
     "y": 1000,
     "wires": [
       [
@@ -873,7 +873,7 @@
     "type": "comment",
     "name": "[6] WRITE fact_kpi",
     "info": "STAGE 6 - parquet node, path and write object for fact_kpi. The path is <root>/fact_kpi/<site>/fact_kpi_<production day>.parquet, the same on every rerun, so a rerun replaces the day. Types: UTF8 (STRING), BOOLEAN, INT64, DOUBLE, TIMESTAMP_MILLIS (epoch ms, set in 5.4); days are text YYYY-MM-DD.",
-    "x": 120,
+    "x": 140,
     "y": 1140,
     "wires": []
   },
@@ -885,7 +885,7 @@
     "links": [
       "ab7ec.98deb4"
     ],
-    "x": 120,
+    "x": 60,
     "y": 1220,
     "wires": [
       [
@@ -1086,7 +1086,7 @@
     "outputPty": "payload",
     "outputPtyType": "msg",
     "engine": "parquetjs",
-    "x": 380,
+    "x": 220,
     "y": 1220,
     "wires": [
       [
@@ -1103,7 +1103,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 640,
+    "x": 460,
     "y": 1220,
     "wires": [
       [
@@ -1118,7 +1118,7 @@
     "name": "fact_kpi to data lake",
     "path": "",
     "mode": "object",
-    "x": 900,
+    "x": 700,
     "y": 1220,
     "wires": []
   },
@@ -1128,7 +1128,7 @@
     "type": "comment",
     "name": "[7] WRITE fact_loss",
     "info": "STAGE 7 - parquet node, path and write object for fact_loss. Same pattern as the stage before.",
-    "x": 120,
+    "x": 140,
     "y": 1360,
     "wires": []
   },
@@ -1140,7 +1140,7 @@
     "links": [
       "af5ca.9c10e6"
     ],
-    "x": 120,
+    "x": 60,
     "y": 1440,
     "wires": [
       [
@@ -1253,7 +1253,7 @@
     "outputPty": "payload",
     "outputPtyType": "msg",
     "engine": "parquetjs",
-    "x": 380,
+    "x": 220,
     "y": 1440,
     "wires": [
       [
@@ -1270,7 +1270,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 640,
+    "x": 460,
     "y": 1440,
     "wires": [
       [
@@ -1285,7 +1285,7 @@
     "name": "fact_loss to data lake",
     "path": "",
     "mode": "object",
-    "x": 900,
+    "x": 700,
     "y": 1440,
     "wires": []
   },
@@ -1323,7 +1323,7 @@
     "links": [
       "63f61.5dbe17"
     ],
-    "x": 640,
+    "x": 460,
     "y": 1660,
     "wires": []
   },
@@ -1336,7 +1336,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 380,
+    "x": 320,
     "y": 1660,
     "wires": [
       [
@@ -1350,7 +1350,7 @@
     "type": "comment",
     "name": "[9] LOG",
     "info": "STAGE 9 - every log line arrives here through the link \"to LOG\". 1 turns a line into a row (time, flow, site, production day, level) and shows it in the debug sidebar. The join collects the rows for 30 s, the delay lets one batch pass every 10 s so two writes do not overlap, 3 sets the file of the month and the read node loads the old file. A read of a file that does not exist answers nothing (only a warning), so the same batch also goes through a 10 s wait to the append step. The log is written whatever the dry-run switch says.",
-    "x": 120,
+    "x": 100,
     "y": 1800,
     "wires": []
   },
@@ -1366,7 +1366,7 @@
       "b14b9.9da9ff",
       "c87ed.b0d72b"
     ],
-    "x": 120,
+    "x": 60,
     "y": 1880,
     "wires": [
       [
@@ -1383,7 +1383,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 380,
+    "x": 200,
     "y": 1880,
     "wires": [
       [
@@ -1413,7 +1413,7 @@
     "reduceInit": "",
     "reduceInitType": "",
     "reduceFixup": "",
-    "x": 640,
+    "x": 420,
     "y": 1880,
     "wires": [
       [
@@ -1432,7 +1432,7 @@
     "tostatus": false,
     "complete": "line",
     "targetType": "msg",
-    "x": 640,
+    "x": 380,
     "y": 1960,
     "wires": []
   },
@@ -1452,7 +1452,7 @@
     "randomUnits": "seconds",
     "drop": false,
     "powerMode": false,
-    "x": 900,
+    "x": 640,
     "y": 1880,
     "wires": [
       [
@@ -1469,7 +1469,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 1160,
+    "x": 880,
     "y": 1880,
     "wires": [
       [
@@ -1487,7 +1487,7 @@
     "links": [
       "d9e54.bf390c"
     ],
-    "x": 1680,
+    "x": 1200,
     "y": 1880,
     "wires": []
   },
@@ -1498,7 +1498,7 @@
     "name": "Read log file",
     "path": "",
     "mode": "object",
-    "x": 1420,
+    "x": 1080,
     "y": 1880,
     "wires": [
       [
@@ -1515,7 +1515,7 @@
     "links": [
       "d9e54.bf390c"
     ],
-    "x": 1680,
+    "x": 1240,
     "y": 1960,
     "wires": []
   },
@@ -1535,7 +1535,7 @@
     "randomUnits": "seconds",
     "drop": false,
     "powerMode": false,
-    "x": 1420,
+    "x": 1100,
     "y": 1960,
     "wires": [
       [
@@ -1562,7 +1562,7 @@
       "dbd43.c0d225",
       "ddc32.c26b3e"
     ],
-    "x": 120,
+    "x": 60,
     "y": 2100,
     "wires": [
       [
@@ -1579,7 +1579,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 380,
+    "x": 200,
     "y": 2100,
     "wires": [
       [
@@ -1594,7 +1594,7 @@
     "name": "Log to data lake",
     "path": "",
     "mode": "object",
-    "x": 640,
+    "x": 420,
     "y": 2100,
     "wires": []
   }

@@ -5,6 +5,7 @@
 // The rules are in CLAUDE.md, section "Flow readability".
 import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { measureSpacing } from './lib-flow-builder.js';
 
 const MAX_LINE = 80;
 const MAX_ITEMS_ON_ONE_LINE = 3;
@@ -327,6 +328,12 @@ export function validateFlow(nodes) {
       stats.longestLine = r.longest;
       stats.longestIn = n.name;
     }
+  }
+  // Two nodes of one row whose estimated boxes overlap (estimate: see
+  // nodeWidth in lib-flow-builder.js).
+  const spacing = measureSpacing(nodes, 0);
+  if (spacing.overlaps) {
+    errors.push(`${spacing.overlaps} node pairs overlap in the editor (by the width estimate)`);
   }
   return { errors, warnings, stats };
 }

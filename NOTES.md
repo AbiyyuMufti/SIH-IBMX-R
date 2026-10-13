@@ -76,7 +76,7 @@ Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `sc
 - Many Node-RED calls are copies across tabs; distinct endpoints are far fewer than the call counts.
 
 ## Next
-- Platform switch: you re-import Config (`flows/vfc-config.local.json`, platform legacy first), BI reference (`flows/vfc-pbi-reference.local.json`) and Hull Power BI daily (`flows/vfc-pbi-daily-hull.json`), run with dryRun on legacy, then set `xcelerator`, Apply, run again and compare log lines and row counts. Add `IH_PLATFORM` (and keep `XC_TENANT_ID`) to `.env` for the scripts. Then confirm with Reckitt: assettypes now 200, OEE assets 55, when the old gateway stops. Layout proposal (variable column pitch instead of 260 px) waits for the user.
+- Platform switch: you re-import Config (`flows/vfc-config.local.json`, platform legacy first), BI reference (`flows/vfc-pbi-reference.local.json`) and Hull Power BI daily (`flows/vfc-pbi-daily-hull.json`), run with dryRun on legacy, then set `xcelerator`, Apply, run again and compare log lines and row counts. Add `IH_PLATFORM` (and keep `XC_TENANT_ID`) to `.env` for the scripts. Then confirm with Reckitt: assettypes now 200, OEE assets 55, when the old gateway stops. Layout rule changed (see "Layout rule" below): re-import the rebuilt flows when you enable them.
 - Logger (CSV in the data lake, `docs/logging.md`): re-import the Hull and Reference tabs (the first version could not create the file), run once, wait about 1 minute, check `logs/hull/log_2026-10.csv`; then the open points in the doc. Then re-run September to see the 413 and paging errors in the log.
 - You: import `flows/vfc-site-hull.json` (needs the Config tab), run with DRY_RUN true, then write. Check the files land in `fact_kpi/Hull/` and `fact_loss/Hull/`.
 - Waiting for you: the pasted Siemens page on secret rotation, then adapt the config and secret design.
@@ -196,3 +196,9 @@ Tried: Power BI flow with `Keep dim_asset` expecting an array. Error: "the file 
 - Found: assettypes 200 (docs 403), OEE assets 55 (docs 44), Asset Management `tenantId` is the tenant ID on xcelerator. Docs updated with the dates.
 - Local files (git-ignored): `flows/vfc-config.local.json` (real values from .env, platform legacy, root reports) and `flows/vfc-pbi-reference.local.json` (same as the build, placement kept).
 - Layout question (user): the 260 px column pitch leaves gaps of 0 to 165 px (median 60 px) in the generated Hull daily flow; the user's hand layout of BI reference has a median gap of 20 px and a pitch of 200 px. Cause: fixed pitch, node width depends on the name. Proposal not built.
+
+## Layout rule (2026-10-13, decided by the user after seeing Hull Power BI daily)
+- Old rule: fixed 260 px columns. Gaps between nodes were 0 to 165 px (median 60-70) and 4 pairs overlapped by the width estimate in the Hull daily flow.
+- New rule: `compactLanes` in `scripts/lib-flow-builder.js` (GAP 20 px, lane start with the left edge 40 px from the left border = 2 tiles, as in the hand-made BI reference). `nodeWidth`: 7 px per character + 57, rounded up to 20, minimum 100, link nodes 30. Checked on the hand layout of BI reference: 0 overlaps, gaps 0 to 40 px, median 30.
+- Applied to all generated flows (Config, Reference tables, Hull daily report, Hull Power BI daily, Power BI tables, BI reference without its saved layout). Rebuilt flows differ from the previous commit only in x (ids, y, wires, code unchanged). Not applied: the Lake API flows (their VFC tab differs from the repo file) and the BI reference tab (saved hand layout wins).
+- `validate-flow.js` now fails on overlapping nodes of a row by the estimate. The user's exports of the disabled tabs are in `flows/disabled/` (not committed).

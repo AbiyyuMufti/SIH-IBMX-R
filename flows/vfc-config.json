@@ -37,7 +37,7 @@
     "betweentimesunit": "m",
     "showNextExecution": false,
     "powerMode": false,
-    "x": 120,
+    "x": 100,
     "y": 80,
     "wires": [
       [
@@ -65,7 +65,7 @@
     "betweentimesunit": "m",
     "showNextExecution": false,
     "powerMode": false,
-    "x": 120,
+    "x": 100,
     "y": 160,
     "wires": [
       [
@@ -82,7 +82,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 380,
+    "x": 300,
     "y": 120,
     "wires": [
       []

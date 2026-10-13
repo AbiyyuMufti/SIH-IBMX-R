@@ -19,7 +19,7 @@ import vm from 'node:vm';
 import { validateFlow } from './validate-flow.js';
 import {
   code, S, B, I, D, TS, makeBuilder, fn, http, linkInStep, end, split,
-  delay, join, addLogLanes
+  delay, join, addLogLanes, compactLanes
 } from './lib-flow-builder.js';
 
 // One entry per site. cron = the daily schedule (UTC): one hour after the
@@ -233,6 +233,8 @@ mkdirSync(new URL('../flows/', import.meta.url), { recursive: true });
 SITES.forEach((site, index) => {
   const file = `vfc-site-${site.name.toLowerCase()}.json`;
   const nodes = buildSiteFlow(site, index);
+  // Layout rule of lib-flow-builder.js
+  compactLanes(nodes);
   const { errors, warnings, stats } = validateFlow(nodes);
   if (errors.length) {
     throw new Error(`flow check failed for ${file}:\n  ${errors.join('\n  ')}`);

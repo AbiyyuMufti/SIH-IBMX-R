@@ -9,7 +9,7 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 import { validateFlow } from './validate-flow.js';
 import {
   code, makeBuilder, fn, linkInStep, end, split, delay,
-  addLogLanes, pqRead, readStep, joinTimeout
+  addLogLanes, pqRead, readStep, joinTimeout, compactLanes
 } from './lib-flow-builder.js';
 import {
   planSchema, utilSchema, lossSchema, machineSchema, shiftSchema,
@@ -158,6 +158,8 @@ mkdirSync(new URL('../flows/', import.meta.url), { recursive: true });
 SITES.forEach((site, index) => {
   const file = 'vfc-powerbi-tables.json';
   const nodes = buildFlow(site, index);
+  // Layout rule of lib-flow-builder.js
+  compactLanes(nodes);
   const { errors, warnings, stats } = validateFlow(nodes);
   if (errors.length) {
     throw new Error(`flow check failed for ${file}:\n  ${errors.join('\n  ')}`);

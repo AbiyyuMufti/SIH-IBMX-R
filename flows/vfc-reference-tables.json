@@ -13,7 +13,7 @@
     "type": "comment",
     "name": "[1] TRIGGER & TASK SETTINGS",
     "info": "STAGE 1 - TRIGGER AND TASK SETTINGS. Writes five reference tables to the data lake. Schedule: weekly, Monday 07:00 UTC. The Run now button starts it by hand. Both go through 1.1 TASK SETTINGS: the dry-run switch per table. The shared settings (credentials, sites, asset ids, root folder) come from the Config tab through global context. dryRun is true by default. Every table file has a fixed name, so every run replaces it.",
-    "x": 120,
+    "x": 180,
     "y": 40,
     "wires": []
   },
@@ -36,7 +36,7 @@
     "betweentimesunit": "m",
     "showNextExecution": false,
     "powerMode": false,
-    "x": 120,
+    "x": 140,
     "y": 80,
     "wires": [
       [
@@ -63,7 +63,7 @@
     "betweentimesunit": "m",
     "showNextExecution": false,
     "powerMode": false,
-    "x": 120,
+    "x": 100,
     "y": 160,
     "wires": [
       [
@@ -80,7 +80,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 380,
+    "x": 400,
     "y": 120,
     "wires": [
       [
@@ -97,7 +97,7 @@
     "links": [
       "aae21.533957"
     ],
-    "x": 900,
+    "x": 820,
     "y": 120,
     "wires": []
   },
@@ -110,7 +110,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 640,
+    "x": 660,
     "y": 120,
     "wires": [
       [
@@ -124,7 +124,7 @@
     "type": "comment",
     "name": "[2] SETUP",
     "info": "STAGE 2 - token request, OEE asset list, choose the assets, one message per asset. Function nodes cannot use fetch in the VFC, so every call is an http request node: the function before it sets msg.method, msg.url and msg.headers. A failure goes to the LOG and nothing is written.",
-    "x": 120,
+    "x": 100,
     "y": 260,
     "wires": []
   },
@@ -136,7 +136,7 @@
     "links": [
       "acd10.54d270"
     ],
-    "x": 120,
+    "x": 60,
     "y": 340,
     "wires": [
       [
@@ -153,7 +153,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 380,
+    "x": 220,
     "y": 340,
     "wires": [
       [
@@ -173,7 +173,7 @@
     "mindspherePath": "",
     "useMindsphereAuth": false,
     "isAdmin": false,
-    "x": 640,
+    "x": 420,
     "y": 340,
     "wires": [
       [
@@ -190,7 +190,7 @@
     "links": [
       "b86aa.5e6906"
     ],
-    "x": 1020,
+    "x": 820,
     "y": 400,
     "wires": []
   },
@@ -203,7 +203,7 @@
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
-    "x": 900,
+    "x": 640,
     "y": 340,
     "wires": [
       [
@@ -226,7 +226,7 @@
     "mindspherePath": "",
     "useMindsphereAuth": false,
     "isAdmin": false,
-    "x": 1160,
+    "x": 880,
     "y": 340,
     "wires": [
       [
@@ -243,7 +243,7 @@
     "links": [
       "b86aa.5e6906"
     ],
-    "x": 1540,
+    "x": 1220,
     "y": 400,
     "wires": []
   },
@@ -256,7 +256,7 @@
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
-    "x": 1420,
+    "x": 1080,
     "y": 340,
     "wires": [
       [
@@ -278,7 +278,7 @@
     "arraySpltType": "len",
     "stream": false,
     "addname": "index",
-    "x": 1680,
+    "x": 1280,
     "y": 340,
     "wires": [
       [
@@ -295,7 +295,7 @@
     "links": [
       "c4044.67ff9c"
     ],
-    "x": 2200,
+    "x": 1620,
     "y": 340,
     "wires": []
   },
@@ -315,7 +315,7 @@
     "randomUnits": "seconds",
     "drop": false,
     "powerMode": false,
-    "x": 1940,
+    "x": 1480,
     "y": 340,
     "wires": [
       [
@@ -329,7 +329,7 @@
     "type": "comment",
     "name": "[3] ASSET",
     "info": "STAGE 3 - one message per asset, three calls: Asset Management GET asset (hierarchyPath), OEE config (calendar and product collection ids), OEE thresholds (KPI targets). An excluded or unconfigured asset skips the OEE calls and goes straight to 4.1 (\"to BUILD\").",
-    "x": 120,
+    "x": 100,
     "y": 480,
     "wires": []
   },
@@ -341,7 +341,7 @@
     "links": [
       "c5f33.6998b5"
     ],
-    "x": 120,
+    "x": 60,
     "y": 560,
     "wires": [
       [
@@ -358,7 +358,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 380,
+    "x": 220,
     "y": 560,
     "wires": [
       [
@@ -378,7 +378,7 @@
     "mindspherePath": "",
     "useMindsphereAuth": false,
     "isAdmin": false,
-    "x": 640,
+    "x": 460,
     "y": 560,
     "wires": [
       [
@@ -395,7 +395,7 @@
     "links": [
       "d18cd.732f4b"
     ],
-    "x": 1020,
+    "x": 920,
     "y": 620,
     "wires": []
   },
@@ -408,7 +408,7 @@
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
-    "x": 900,
+    "x": 740,
     "y": 560,
     "wires": [
       [
@@ -431,7 +431,7 @@
     "mindspherePath": "",
     "useMindsphereAuth": false,
     "isAdmin": false,
-    "x": 1160,
+    "x": 1000,
     "y": 560,
     "wires": [
       [
@@ -448,7 +448,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 1420,
+    "x": 1240,
     "y": 560,
     "wires": [
       [
@@ -465,7 +465,7 @@
     "links": [
       "d18cd.732f4b"
     ],
-    "x": 1940,
+    "x": 1640,
     "y": 560,
     "wires": []
   },
@@ -481,7 +481,7 @@
     "mindspherePath": "",
     "useMindsphereAuth": false,
     "isAdmin": false,
-    "x": 1680,
+    "x": 1500,
     "y": 560,
     "wires": [
       [
@@ -495,7 +495,7 @@
     "type": "comment",
     "name": "[4] BUNDLES & ROUTE",
     "info": "STAGE 4 - one bundle per asset: the dim_asset item, the target item and the three id items (product collection, calendar, reason tree). The join waits for all assets. 4.4 sends one message per table: output 1 dim_asset, 2 ref_target_seed, 3 product collection ids, 4 calendar ids, 5 reason tree ids.",
-    "x": 120,
+    "x": 140,
     "y": 700,
     "wires": []
   },
@@ -508,7 +508,7 @@
       "d37bc.74c864",
       "d9489.7993af"
     ],
-    "x": 120,
+    "x": 60,
     "y": 780,
     "wires": [
       [
@@ -525,7 +525,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 380,
+    "x": 220,
     "y": 780,
     "wires": [
       [
@@ -542,7 +542,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 640,
+    "x": 460,
     "y": 780,
     "wires": [
       [
@@ -559,7 +559,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 900,
+    "x": 680,
     "y": 780,
     "wires": [
       [
@@ -582,7 +582,7 @@
     "accumulate": false,
     "timeout": "",
     "count": "",
-    "x": 1160,
+    "x": 900,
     "y": 780,
     "wires": [
       [
@@ -599,7 +599,7 @@
     "links": [
       "e6d12.84c35e"
     ],
-    "x": 1680,
+    "x": 1260,
     "y": 700,
     "wires": []
   },
@@ -612,7 +612,7 @@
     "links": [
       "eaaf0.87f590"
     ],
-    "x": 1680,
+    "x": 1260,
     "y": 740,
     "wires": []
   },
@@ -625,7 +625,7 @@
     "links": [
       "ee8ce.8b27c2"
     ],
-    "x": 1680,
+    "x": 1260,
     "y": 780,
     "wires": []
   },
@@ -638,7 +638,7 @@
     "links": [
       "f26ac.8e59f4"
     ],
-    "x": 1680,
+    "x": 1260,
     "y": 820,
     "wires": []
   },
@@ -651,7 +651,7 @@
     "links": [
       "f648a.918c26"
     ],
-    "x": 1680,
+    "x": 1260,
     "y": 860,
     "wires": []
   },
@@ -664,7 +664,7 @@
     "outputs": 5,
     "language": "javascript",
     "noerr": 0,
-    "x": 1420,
+    "x": 1120,
     "y": 780,
     "wires": [
       [
@@ -702,7 +702,7 @@
     "links": [
       "e8c01.865c77"
     ],
-    "x": 120,
+    "x": 60,
     "y": 1000,
     "wires": [
       [
@@ -719,7 +719,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 380,
+    "x": 220,
     "y": 1000,
     "wires": [
       [
@@ -736,7 +736,7 @@
     "links": [
       "b86aa.5e6906"
     ],
-    "x": 760,
+    "x": 600,
     "y": 1060,
     "wires": []
   },
@@ -749,7 +749,7 @@
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
-    "x": 640,
+    "x": 460,
     "y": 1000,
     "wires": [
       [
@@ -821,7 +821,7 @@
     "outputPty": "payload",
     "outputPtyType": "msg",
     "engine": "parquetjs",
-    "x": 900,
+    "x": 700,
     "y": 1000,
     "wires": [
       [
@@ -838,7 +838,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 1160,
+    "x": 940,
     "y": 1000,
     "wires": [
       [
@@ -853,7 +853,7 @@
     "name": "dim_asset to data lake",
     "path": "",
     "mode": "object",
-    "x": 1420,
+    "x": 1180,
     "y": 1000,
     "wires": []
   },
@@ -863,7 +863,7 @@
     "type": "comment",
     "name": "[6] ref_target_seed",
     "info": "STAGE 6 - collect the target items (KPI warning and error values), decide, write. The assets that were skipped are listed in the log.",
-    "x": 120,
+    "x": 140,
     "y": 1140,
     "wires": []
   },
@@ -875,7 +875,7 @@
     "links": [
       "ec9df.898ea9"
     ],
-    "x": 120,
+    "x": 60,
     "y": 1220,
     "wires": [
       [
@@ -892,7 +892,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 380,
+    "x": 240,
     "y": 1220,
     "wires": [
       [
@@ -909,7 +909,7 @@
     "links": [
       "b86aa.5e6906"
     ],
-    "x": 760,
+    "x": 680,
     "y": 1280,
     "wires": []
   },
@@ -922,7 +922,7 @@
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
-    "x": 640,
+    "x": 520,
     "y": 1220,
     "wires": [
       [
@@ -974,7 +974,7 @@
     "outputPty": "payload",
     "outputPtyType": "msg",
     "engine": "parquetjs",
-    "x": 900,
+    "x": 800,
     "y": 1220,
     "wires": [
       [
@@ -991,7 +991,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 1160,
+    "x": 1080,
     "y": 1220,
     "wires": [
       [
@@ -1006,7 +1006,7 @@
     "name": "ref_target_seed to data lake",
     "path": "",
     "mode": "object",
-    "x": 1420,
+    "x": 1360,
     "y": 1220,
     "wires": []
   },
@@ -1016,7 +1016,7 @@
     "type": "comment",
     "name": "[7] dim_reason ids",
     "info": "STAGE 7 - keep the distinct reason tree ids of the assets, read the master list for the names, then one message per id.",
-    "x": 120,
+    "x": 140,
     "y": 1360,
     "wires": []
   },
@@ -1028,7 +1028,7 @@
     "links": [
       "f8379.93253f"
     ],
-    "x": 120,
+    "x": 60,
     "y": 1440,
     "wires": [
       [
@@ -1045,7 +1045,7 @@
     "links": [
       "b86aa.5e6906"
     ],
-    "x": 500,
+    "x": 300,
     "y": 1500,
     "wires": []
   },
@@ -1058,7 +1058,7 @@
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
-    "x": 380,
+    "x": 180,
     "y": 1440,
     "wires": [
       [
@@ -1078,7 +1078,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 640,
+    "x": 420,
     "y": 1440,
     "wires": [
       [
@@ -1098,7 +1098,7 @@
     "mindspherePath": "",
     "useMindsphereAuth": false,
     "isAdmin": false,
-    "x": 900,
+    "x": 660,
     "y": 1440,
     "wires": [
       [
@@ -1115,7 +1115,7 @@
     "links": [
       "b86aa.5e6906"
     ],
-    "x": 1280,
+    "x": 980,
     "y": 1500,
     "wires": []
   },
@@ -1128,7 +1128,7 @@
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
-    "x": 1160,
+    "x": 860,
     "y": 1440,
     "wires": [
       [
@@ -1150,7 +1150,7 @@
     "arraySpltType": "len",
     "stream": false,
     "addname": "index",
-    "x": 1420,
+    "x": 1040,
     "y": 1440,
     "wires": [
       [
@@ -1167,7 +1167,7 @@
     "links": [
       "269e1.b97f97"
     ],
-    "x": 1940,
+    "x": 1380,
     "y": 1440,
     "wires": []
   },
@@ -1187,7 +1187,7 @@
     "randomUnits": "seconds",
     "drop": false,
     "powerMode": false,
-    "x": 1680,
+    "x": 1240,
     "y": 1440,
     "wires": [
       [
@@ -1213,7 +1213,7 @@
     "links": [
       "288d0.bb18b0"
     ],
-    "x": 120,
+    "x": 60,
     "y": 1660,
     "wires": [
       [
@@ -1230,7 +1230,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 380,
+    "x": 240,
     "y": 1660,
     "wires": [
       [
@@ -1250,7 +1250,7 @@
     "mindspherePath": "",
     "useMindsphereAuth": false,
     "isAdmin": false,
-    "x": 640,
+    "x": 460,
     "y": 1660,
     "wires": [
       [
@@ -1267,7 +1267,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 900,
+    "x": 680,
     "y": 1660,
     "wires": [
       [
@@ -1290,7 +1290,7 @@
     "accumulate": false,
     "timeout": "",
     "count": "",
-    "x": 1160,
+    "x": 920,
     "y": 1660,
     "wires": [
       [
@@ -1307,7 +1307,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 1420,
+    "x": 1140,
     "y": 1660,
     "wires": [
       [
@@ -1324,7 +1324,7 @@
     "links": [
       "b86aa.5e6906"
     ],
-    "x": 1800,
+    "x": 1540,
     "y": 1720,
     "wires": []
   },
@@ -1337,7 +1337,7 @@
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
-    "x": 1680,
+    "x": 1380,
     "y": 1660,
     "wires": [
       [
@@ -1401,7 +1401,7 @@
     "outputPty": "payload",
     "outputPtyType": "msg",
     "engine": "parquetjs",
-    "x": 1940,
+    "x": 1640,
     "y": 1660,
     "wires": [
       [
@@ -1418,7 +1418,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 2200,
+    "x": 1900,
     "y": 1660,
     "wires": [
       [
@@ -1433,7 +1433,7 @@
     "name": "dim_reason to data lake",
     "path": "",
     "mode": "object",
-    "x": 2460,
+    "x": 2140,
     "y": 1660,
     "wires": []
   },
@@ -1443,7 +1443,7 @@
     "type": "comment",
     "name": "[9] dim_product ids",
     "info": "STAGE 9 - keep the distinct product collection ids of the assets, read the master list for the names, then one message per id.",
-    "x": 120,
+    "x": 140,
     "y": 1800,
     "wires": []
   },
@@ -1455,7 +1455,7 @@
     "links": [
       "f07bd.8cc0db"
     ],
-    "x": 120,
+    "x": 60,
     "y": 1880,
     "wires": [
       [
@@ -1472,7 +1472,7 @@
     "links": [
       "b86aa.5e6906"
     ],
-    "x": 500,
+    "x": 300,
     "y": 1940,
     "wires": []
   },
@@ -1485,7 +1485,7 @@
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
-    "x": 380,
+    "x": 180,
     "y": 1880,
     "wires": [
       [
@@ -1505,7 +1505,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 640,
+    "x": 420,
     "y": 1880,
     "wires": [
       [
@@ -1525,7 +1525,7 @@
     "mindspherePath": "",
     "useMindsphereAuth": false,
     "isAdmin": false,
-    "x": 900,
+    "x": 660,
     "y": 1880,
     "wires": [
       [
@@ -1542,7 +1542,7 @@
     "links": [
       "b86aa.5e6906"
     ],
-    "x": 1280,
+    "x": 980,
     "y": 1940,
     "wires": []
   },
@@ -1555,7 +1555,7 @@
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
-    "x": 1160,
+    "x": 860,
     "y": 1880,
     "wires": [
       [
@@ -1577,7 +1577,7 @@
     "arraySpltType": "len",
     "stream": false,
     "addname": "index",
-    "x": 1420,
+    "x": 1040,
     "y": 1880,
     "wires": [
       [
@@ -1594,7 +1594,7 @@
     "links": [
       "5126b.dca7bd"
     ],
-    "x": 1940,
+    "x": 1380,
     "y": 1880,
     "wires": []
   },
@@ -1614,7 +1614,7 @@
     "randomUnits": "seconds",
     "drop": false,
     "powerMode": false,
-    "x": 1680,
+    "x": 1240,
     "y": 1880,
     "wires": [
       [
@@ -1628,7 +1628,7 @@
     "type": "comment",
     "name": "[10] dim_product",
     "info": "STAGE 10 - one message per product collection: GET the details and build the rows, wait for all, collect, decide, write.",
-    "x": 120,
+    "x": 140,
     "y": 2020,
     "wires": []
   },
@@ -1640,7 +1640,7 @@
     "links": [
       "5315a.de40d6"
     ],
-    "x": 120,
+    "x": 60,
     "y": 2100,
     "wires": [
       [
@@ -1657,7 +1657,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 380,
+    "x": 260,
     "y": 2100,
     "wires": [
       [
@@ -1677,7 +1677,7 @@
     "mindspherePath": "",
     "useMindsphereAuth": false,
     "isAdmin": false,
-    "x": 640,
+    "x": 520,
     "y": 2100,
     "wires": [
       [
@@ -1694,7 +1694,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 900,
+    "x": 740,
     "y": 2100,
     "wires": [
       [
@@ -1717,7 +1717,7 @@
     "accumulate": false,
     "timeout": "",
     "count": "",
-    "x": 1160,
+    "x": 980,
     "y": 2100,
     "wires": [
       [
@@ -1734,7 +1734,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 1420,
+    "x": 1220,
     "y": 2100,
     "wires": [
       [
@@ -1751,7 +1751,7 @@
     "links": [
       "b86aa.5e6906"
     ],
-    "x": 1800,
+    "x": 1640,
     "y": 2160,
     "wires": []
   },
@@ -1764,7 +1764,7 @@
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
-    "x": 1680,
+    "x": 1480,
     "y": 2100,
     "wires": [
       [
@@ -1836,7 +1836,7 @@
     "outputPty": "payload",
     "outputPtyType": "msg",
     "engine": "parquetjs",
-    "x": 1940,
+    "x": 1740,
     "y": 2100,
     "wires": [
       [
@@ -1853,7 +1853,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 2200,
+    "x": 2000,
     "y": 2100,
     "wires": [
       [
@@ -1868,7 +1868,7 @@
     "name": "dim_product to data lake",
     "path": "",
     "mode": "object",
-    "x": 2460,
+    "x": 2260,
     "y": 2100,
     "wires": []
   },
@@ -1878,7 +1878,7 @@
     "type": "comment",
     "name": "[11] dim_shift ids",
     "info": "STAGE 11 - keep the distinct calendar ids of the assets, read the master list for the names, then one message per id.",
-    "x": 120,
+    "x": 140,
     "y": 2240,
     "wires": []
   },
@@ -1890,7 +1890,7 @@
     "links": [
       "f459b.8ff30d"
     ],
-    "x": 120,
+    "x": 60,
     "y": 2320,
     "wires": [
       [
@@ -1907,7 +1907,7 @@
     "links": [
       "b86aa.5e6906"
     ],
-    "x": 500,
+    "x": 300,
     "y": 2380,
     "wires": []
   },
@@ -1920,7 +1920,7 @@
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
-    "x": 380,
+    "x": 180,
     "y": 2320,
     "wires": [
       [
@@ -1940,7 +1940,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 640,
+    "x": 420,
     "y": 2320,
     "wires": [
       [
@@ -1960,7 +1960,7 @@
     "mindspherePath": "",
     "useMindsphereAuth": false,
     "isAdmin": false,
-    "x": 900,
+    "x": 680,
     "y": 2320,
     "wires": [
       [
@@ -1977,7 +1977,7 @@
     "links": [
       "b86aa.5e6906"
     ],
-    "x": 1280,
+    "x": 1020,
     "y": 2380,
     "wires": []
   },
@@ -1990,7 +1990,7 @@
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
-    "x": 1160,
+    "x": 880,
     "y": 2320,
     "wires": [
       [
@@ -2012,7 +2012,7 @@
     "arraySpltType": "len",
     "stream": false,
     "addname": "index",
-    "x": 1420,
+    "x": 1080,
     "y": 2320,
     "wires": [
       [
@@ -2029,7 +2029,7 @@
     "links": [
       "7baf5.ffcfe3"
     ],
-    "x": 1940,
+    "x": 1420,
     "y": 2320,
     "wires": []
   },
@@ -2049,7 +2049,7 @@
     "randomUnits": "seconds",
     "drop": false,
     "powerMode": false,
-    "x": 1680,
+    "x": 1280,
     "y": 2320,
     "wires": [
       [
@@ -2075,7 +2075,7 @@
     "links": [
       "7d9e4.0168fc"
     ],
-    "x": 120,
+    "x": 60,
     "y": 2540,
     "wires": [
       [
@@ -2092,7 +2092,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 380,
+    "x": 240,
     "y": 2540,
     "wires": [
       [
@@ -2112,7 +2112,7 @@
     "mindspherePath": "",
     "useMindsphereAuth": false,
     "isAdmin": false,
-    "x": 640,
+    "x": 460,
     "y": 2540,
     "wires": [
       [
@@ -2129,7 +2129,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 900,
+    "x": 680,
     "y": 2540,
     "wires": [
       [
@@ -2152,7 +2152,7 @@
     "accumulate": false,
     "timeout": "",
     "count": "",
-    "x": 1160,
+    "x": 920,
     "y": 2540,
     "wires": [
       [
@@ -2169,7 +2169,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 1420,
+    "x": 1140,
     "y": 2540,
     "wires": [
       [
@@ -2186,7 +2186,7 @@
     "links": [
       "b86aa.5e6906"
     ],
-    "x": 1800,
+    "x": 1540,
     "y": 2600,
     "wires": []
   },
@@ -2199,7 +2199,7 @@
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
-    "x": 1680,
+    "x": 1380,
     "y": 2540,
     "wires": [
       [
@@ -2275,7 +2275,7 @@
     "outputPty": "payload",
     "outputPtyType": "msg",
     "engine": "parquetjs",
-    "x": 1940,
+    "x": 1620,
     "y": 2540,
     "wires": [
       [
@@ -2292,7 +2292,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 2200,
+    "x": 1860,
     "y": 2540,
     "wires": [
       [
@@ -2307,7 +2307,7 @@
     "name": "dim_shift to data lake",
     "path": "",
     "mode": "object",
-    "x": 2460,
+    "x": 2100,
     "y": 2540,
     "wires": []
   },
@@ -2345,7 +2345,7 @@
     "links": [
       "b86aa.5e6906"
     ],
-    "x": 640,
+    "x": 460,
     "y": 2760,
     "wires": []
   },
@@ -2358,7 +2358,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 380,
+    "x": 320,
     "y": 2760,
     "wires": [
       [
@@ -2372,7 +2372,7 @@
     "type": "comment",
     "name": "[14] LOG",
     "info": "STAGE 14 - every log line arrives here through the link \"to LOG\". 1 turns a line into a row (time, flow, site, production day, level) and shows it in the debug sidebar. The join collects the rows for 30 s, the delay lets one batch pass every 10 s so two writes do not overlap, 3 sets the file of the month and the read node loads the old file. A read of a file that does not exist answers nothing (only a warning), so the same batch also goes through a 10 s wait to the append step. The log is written whatever the dry-run switch says.",
-    "x": 120,
+    "x": 100,
     "y": 2900,
     "wires": []
   },
@@ -2397,7 +2397,7 @@
       "8f04b.0fcadd",
       "9a9e5.196173"
     ],
-    "x": 120,
+    "x": 60,
     "y": 2980,
     "wires": [
       [
@@ -2414,7 +2414,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 380,
+    "x": 200,
     "y": 2980,
     "wires": [
       [
@@ -2444,7 +2444,7 @@
     "reduceInit": "",
     "reduceInitType": "",
     "reduceFixup": "",
-    "x": 640,
+    "x": 420,
     "y": 2980,
     "wires": [
       [
@@ -2463,7 +2463,7 @@
     "tostatus": false,
     "complete": "line",
     "targetType": "msg",
-    "x": 640,
+    "x": 380,
     "y": 3060,
     "wires": []
   },
@@ -2483,7 +2483,7 @@
     "randomUnits": "seconds",
     "drop": false,
     "powerMode": false,
-    "x": 900,
+    "x": 640,
     "y": 2980,
     "wires": [
       [
@@ -2500,7 +2500,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 1160,
+    "x": 880,
     "y": 2980,
     "wires": [
       [
@@ -2518,7 +2518,7 @@
     "links": [
       "ac04c.27c354"
     ],
-    "x": 1680,
+    "x": 1200,
     "y": 2980,
     "wires": []
   },
@@ -2529,7 +2529,7 @@
     "name": "Read log file",
     "path": "",
     "mode": "object",
-    "x": 1420,
+    "x": 1080,
     "y": 2980,
     "wires": [
       [
@@ -2546,7 +2546,7 @@
     "links": [
       "ac04c.27c354"
     ],
-    "x": 1680,
+    "x": 1240,
     "y": 3060,
     "wires": []
   },
@@ -2566,7 +2566,7 @@
     "randomUnits": "seconds",
     "drop": false,
     "powerMode": false,
-    "x": 1420,
+    "x": 1100,
     "y": 3060,
     "wires": [
       [
@@ -2593,7 +2593,7 @@
       "adf3b.295c6d",
       "afe2a.2af586"
     ],
-    "x": 120,
+    "x": 60,
     "y": 3200,
     "wires": [
       [
@@ -2610,7 +2610,7 @@
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 380,
+    "x": 200,
     "y": 3200,
     "wires": [
       [
@@ -2625,7 +2625,7 @@
     "name": "Log to data lake",
     "path": "",
     "mode": "object",
-    "x": 640,
+    "x": 420,
     "y": 3200,
     "wires": []
   }

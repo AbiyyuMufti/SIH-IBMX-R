@@ -312,15 +312,24 @@ export function nodeWidth(node) {
 // Two nodes are in the same row when their centres are less than this apart.
 const SAME_ROW_PX = 40;
 
+// The layout rule of the generated flows (see CLAUDE.md):
+// - LAYOUT_GAP px between two nodes of a row;
+// - the first node of a lane (comment, inject, link in, catch: nothing is
+//   wired to it) starts with its left edge LAYOUT_START_LEFT px from the left
+//   border, which is 2 tiles of 20 px.
+export const LAYOUT_GAP = 20;
+export const LAYOUT_START_LEFT = 40;
+
 // Moves the nodes of a flow left (never right of a column that is already
 // tight). Rules, nodes taken from left to right:
-// - a node with no feeder (inject, link in, comment) keeps its x;
+// - a node with no feeder (inject, link in, comment) starts `startLeft` px
+//   from the left border (its left edge, the centre is on the 20 px grid);
 // - a node at the same x as its feeder (a link out below its node) takes the
 //   new x of the feeder;
 // - a node to the right of its feeders goes `gap` px after the widest
 //   feeder end;
 // - no node touches an earlier node of its row (less than `gap` px).
-export function compactLanes(nodes, gap = 30) {
+export function compactLanes(nodes, gap = LAYOUT_GAP, startLeft = LAYOUT_START_LEFT) {
   const placed = nodes.filter((n) => typeof n.x === 'number');
   const feeders = new Map(placed.map((n) => [n.id, []]));
   placed.forEach((a) => {
@@ -333,7 +342,7 @@ export function compactLanes(nodes, gap = 30) {
   const order = placed.slice().sort((a, b) => a.x - b.x || a.y - b.y);
   const newX = new Map();
   order.forEach((node) => {
-    let x = node.x;
+    let x = startLeft + nodeWidth(node) / 2;
     const before = feeders.get(node.id).filter((f) => newX.has(f.id) && f.x <= node.x);
     if (before.length) {
       x = 0;
