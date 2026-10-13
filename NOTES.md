@@ -81,6 +81,7 @@ Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `sc
 - You: import `flows/vfc-site-hull.json` (needs the Config tab), run with DRY_RUN true, then write. Check the files land in `fact_kpi/Hull/` and `fact_loss/Hull/`.
 - Waiting for you: the pasted Siemens page on secret rotation, then adapt the config and secret design.
 - Group 2: decide later. Group 3 waits for Reckitt.
+- Data completeness (from `docs/powerbi-model-findings.md`): own product table (design to approve), shift naming check, machine key and product type values (user), reason tree columns, files from Reckitt.
 
 ## VFC flow (fact_kpi, fact_loss) - in progress (2026-10-02)
 - Paul-Flow.json is available. Pattern: function builds msg.method/url/headers -> http request (method "use", ret "obj") -> function; parquet node (engine parquetjs, option write, multi, columns [{column,type}]) -> function sets msg.path -> write object (mode object).
@@ -202,3 +203,10 @@ Tried: Power BI flow with `Keep dim_asset` expecting an array. Error: "the file 
 - New rule: `compactLanes` in `scripts/lib-flow-builder.js` (GAP 20 px, lane start with the left edge 40 px from the left border = 2 tiles, as in the hand-made BI reference). `nodeWidth`: 7 px per character + 57, rounded up to 20, minimum 100, link nodes 30. Checked on the hand layout of BI reference: 0 overlaps, gaps 0 to 40 px, median 30.
 - Applied to all generated flows (Config, Reference tables, Hull daily report, Hull Power BI daily, Power BI tables, BI reference without its saved layout). Rebuilt flows differ from the previous commit only in x (ids, y, wires, code unchanged). Not applied: the Lake API flows (their VFC tab differs from the repo file) and the BI reference tab (saved hand layout wins).
 - `validate-flow.js` now fails on overlapping nodes of a row by the estimate. The user's exports of the disabled tabs are in `flows/disabled/` (not committed).
+
+## Power BI model findings (2026-10-13)
+- Read the existing EU report (`.pbit` and `.pbix`, kept outside the repo). Findings in `docs/powerbi-model-findings.md`, re-read with `scripts/helper-pbit-outline.js` (read-only, no network).
+- Keys: every fact joins on the machine key, the product key and the shift name, plus the date. The machine key is a hidden relationship key (not in any visual or measure). The product key in the copy is machine + product name, so we build our own product table.
+- Decisions (user): own product table with native SIH columns, `product_key` = code (check uniqueness first); two sources side by side (the copy and SIH native), same structure; product type through a per-asset value in Config.
+- Open: machine key (asset ID or the copy's machine-site form), product type values, cutover per site, files from Reckitt for targets and corrections.
+- Failed attempt: the `.pbix` data model is compressed (not readable here); the `.pbit` has `DataModelSchema` as UTF-16 JSON without BOM, which is what the helper reads.
