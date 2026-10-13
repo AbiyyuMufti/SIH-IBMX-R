@@ -251,6 +251,9 @@ const COLOR = {
   empty: ['#f8cecc', '#b85450'],
   file: ['#e1d5e7', '#9673a6'],
   sih: ['#d5efee', '#3c9a96'],
+  sihSrc: ['#26C6B8', '#00897B'],
+  sihNone: ['#90A4AE', '#546E7A'],
+  sihFlow: ['#7986CB', '#3949AB'],
   none: ['#eeeeee', '#999999'],
   neutral: ['#ffffff', '#666666'],
   pbi: ['#dae8fc', '#6c8ebf'],
@@ -612,7 +615,7 @@ for (const t of TABLES) {
   );
   page.text(40, 172, 270, 20, bold('Power BI column') + ' (blue) and example (below it)', 'fontSize=11;');
   page.text(380, 172, 270, 20, bold('Insights Hub column') + ' and example (below it)', 'fontSize=11;');
-  page.text(700, 172, 600, 20, bold('SIH integration') + ' (status and difference; the SIH source is in the teal box)', 'fontSize=11;');
+  page.text(700, 172, 600, 20, bold('SIH integration') + ' (status and difference). Dashed box = SIH source: teal API endpoint, indigo built in the flow, grey none', 'fontSize=10.5;');
   let y = 200;
   for (const r of rows) {
     const pbiHtml = `${bold(r.col.name)}<br>${small(`${r.col.type}${r.col.calculated ? ', calculated' : ''}${r.pages ? `, used on ${r.pages} page${r.pages > 1 ? 's' : ''}` : ''}`)}`;
@@ -630,13 +633,14 @@ for (const t of TABLES) {
     }
     page.edge(a, b, COLOR[r.color][1], !r.our);
     const src = sihSource(t.pbi, r.col.name, r.color);
-    const noSrc = /^(No |Not )/.test(src);
+    const noSrc = /^(No Insights Hub|Not )/.test(src);
+    const flowOnly = /^No endpoint/.test(src);
     const linesOf = (text, perLine) => Math.max(1, Math.ceil(text.length / perLine));
     const intH = 12 + 15 * (1 + linesOf(r.text, 90));
     const srcH = 10 + 14 * linesOf('SIH source: ' + src, 84);
     const rowH = Math.max(82, intH + srcH + 14);
     page.box(700, y, 600, rowH, `${bold(r.label)}<br>${esc(r.text)}`, r.color, 'verticalAlign=top;spacingTop=4;fontSize=10.5;');
-    page.box(710, y + rowH - srcH - 6, 580, srcH, `${bold('SIH source: ')}${esc(src)}`, noSrc ? 'none' : 'sih', 'verticalAlign=middle;fontSize=10;strokeWidth=2;');
+    page.box(710, y + rowH - srcH - 6, 580, srcH, `${bold('SIH source: ')}${esc(src)}`, noSrc ? 'sihNone' : flowOnly ? 'sihFlow' : 'sihSrc', 'verticalAlign=middle;fontSize=10;dashed=1;dashPattern=8 4;strokeWidth=3;fillOpacity=30;' + (noSrc ? 'fontColor=#37474F;' : flowOnly ? 'fontColor=#1A237E;' : 'fontColor=#00574B;'));
     y += rowH + 8;
   }
   if (extras.length) {
