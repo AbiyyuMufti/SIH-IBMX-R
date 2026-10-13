@@ -229,3 +229,6 @@ Tried: Power BI flow with `Keep dim_asset` expecting an array. Error: "the file 
 - All generated flows change layout (site, reference tables, config, Pbi daily). `vfc-pbi-reference` keeps its saved layout (flows/layouts). The old chain flow `vfc-powerbi-tables` keeps the old layout (fork switched off in its builder).
 - `test-platform-switch.js` now masks product_type of pbi_machine_names (intended change of the same day), all tests pass: validate-flow, test-vfc-flow, test-vfc-pbi-direct, test-vfc-log, test-vfc-lake-api, test-platform-switch.
 - To do (user): import the rebuilt flows and look at them; tell me where the rule is wrong, then I adjust `fanForks` (not the JSON by hand). A layout saved from the VFC (scripts/save-layout.js) still wins.
+
+## Product type checked in the lake (2026-10-13)
+- Reference flow run in the VFC, new `pbi_machine_name.parquet` downloaded: 2 rows, `product_type` = `area` (Bottles for B2 Line, Blisters for GT4), no empty column. Diagram refreshed (profile and Machine Names page).

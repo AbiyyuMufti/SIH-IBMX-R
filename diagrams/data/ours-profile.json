@@ -466,10 +466,13 @@
       {
         "name": "product_type",
         "type": "String",
-        "filled": 0,
-        "filled_share": 0.0,
-        "distinct": 0,
-        "examples": []
+        "filled": 2,
+        "filled_share": 1.0,
+        "distinct": 2,
+        "examples": [
+          "Bottles",
+          "Blisters"
+        ]
       },
       {
         "name": "unique_machine_name",
@@ -489,7 +492,7 @@
         "filled_share": 1.0,
         "distinct": 1,
         "examples": [
-          "2026-10-13 04:26:30.223000"
+          "2026-10-13 08:06:44.453000"
         ]
       }
     ]

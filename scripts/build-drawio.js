@@ -41,7 +41,7 @@ const OUR_NAME = {
 // Notes written by hand where the mapping workbook is out of date or we know
 // more now. Key: "Power BI table|column". level: ok, assumed, empty, none.
 const NOTE = {
-  'Machine Names EU|Product Type': ['assumed', 'Not in Insights Hub: the area is used (Bottles, Blisters), the same value as Area and Dept. Redundant until Reckitt gives the real mapping. Power BI local copy: Bottles / Blisters for Hull.', 'pending'],
+  'Machine Names EU|Product Type': ['assumed', 'Not in Insights Hub: the area is used (Bottles, Blisters), the same value as Area and Dept. Redundant until Reckitt gives the real mapping. Power BI local copy: Bottles / Blisters for Hull. Checked in the lake file of 2026-10-13: filled.'],
   'Machine Names EU|Unique Machine Name': ['assumed', 'Insights Hub = asset ID. Power BI local copy = machine-site text (Line 5-Weinheim). It is the hidden join key of every fact table. Decision open.'],
   'Machine Names EU|Dept': ['assumed', 'Insights Hub has no department: the area is used (same value as Area and Product Type). Power BI local copy: Liquids Pack / Dries Pack for Hull.'],
   'Machine Names EU|Area': ['assumed', 'Insights Hub area names (Bottles, Blisters), also used for Dept and Product Type. Power BI local copy: Liquids / Dries for Hull. Accepted for now.'],
