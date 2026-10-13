@@ -154,7 +154,7 @@ async function newToken() {
   ).toString('base64');
   const res = await call(
     'POST',
-    `https://${tenantId}.eu1.sws.siemens.com/oauth`,
+    `https://${tenantId}.eu1.sws.siemens.com/oauth/token`,
     {
       Authorization: `Basic ${basic}`,
       Accept: 'application/json',
