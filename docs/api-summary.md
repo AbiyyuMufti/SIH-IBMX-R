@@ -3,6 +3,7 @@
 | At a glance | |
 |---|---|
 | **Use it to** | See every API found in the source files, grouped by what you want to do, with its test status. For the tested details go to [endpoints.md](endpoints.md) |
+| **Platform** | The hosts and paths on this page are the `legacy` ones (host `gateway.eu1.mindsphere.io`, path `/api/<service>/v3`). The VFC moves to `xcelerator` (decision 2026-10-13): host `api.eu1.siemens.app`, path `/api/<service>-1000001700/v3`. See [platform-switch.md](platform-switch.md) |
 | **Tenant** | `reckitt`. Gateway `https://gateway.eu1.mindsphere.io`, login `https://reckitt.piam.eu1.mindsphere.io` |
 | **Sources** | 2 Postman collections, 3 Node-RED flow files, 1 Python script (per-call lists: [inventory.md](inventory.md)) |
 | **Done** | All read-style OEE calls, Asset Management reads (types denied), Time Series reads, 3 calculation POSTs |

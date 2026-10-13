@@ -1,5 +1,7 @@
 # Inventory index
 
+> Platform note: this page records tests on the `legacy` platform (hosts and paths as tested). The target is `xcelerator` (decision 2026-10-13), see [platform-switch.md](platform-switch.md).
+
 > This is an audit of what the **source files** call (before any testing). For what the APIs do and how to call them, start at [README.md](README.md). Per-call details of tested endpoints are in [endpoints.md](endpoints.md).
 
 One inventory per source file. Each row in a per-file inventory is one outbound call (name/location, method, URL, how auth is built). No secret values appear in any of them.

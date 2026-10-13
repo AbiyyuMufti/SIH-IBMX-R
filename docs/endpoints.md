@@ -4,7 +4,7 @@
 |---|---|
 | **Use it to** | Look up one call fast: method, path, parameters, what comes back, and which file explains it |
 | **Scope** | Only calls that were **tested** on the `reckitt` tenant on 2026-10-02 with the API technical user. Write calls are not listed here (see [api-summary.md](api-summary.md)) |
-| **Hosts** | Login `https://reckitt.piam.eu1.mindsphere.io`; API gateway `https://gateway.eu1.mindsphere.io` (paths below are relative to the gateway). These are the `legacy` platform. On `xcelerator` the host is `https://api.eu1.siemens.app` and the service name in the path gets `-1000001700` (`/api/oee-1000001700/v3/...`), see [platform-switch.md](platform-switch.md) |
+| **Hosts** | Login `https://reckitt.piam.eu1.mindsphere.io`; API gateway `https://gateway.eu1.mindsphere.io` (paths below are relative to the gateway). The paths below are the `legacy` ones. **Target platform: `xcelerator`** (decision 2026-10-13): host `https://api.eu1.siemens.app` and the service name in the path gets `-1000001700` (`/api/oee-1000001700/v3/...`), see [platform-switch.md](platform-switch.md) |
 | **Auth** | `Authorization: Bearer <token>` on every call, see [auth.md](auth.md). How to wire it in Node-RED: [quickstart.md](quickstart.md) |
 
 ## Conventions that apply to every call

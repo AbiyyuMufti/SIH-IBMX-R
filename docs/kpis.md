@@ -3,6 +3,7 @@
 | At a glance | |
 |---|---|
 | **Use it to** | Read calculated results: OEE, availability, performance, quality and 26 more KPIs, plus downtime, reject and production reports |
+| **Platform** | The hosts and paths on this page are the `legacy` ones (host `gateway.eu1.mindsphere.io`, path `/api/<service>/v3`). The VFC moves to `xcelerator` (decision 2026-10-13): host `api.eu1.siemens.app`, path `/api/<service>-1000001700/v3`. See [platform-switch.md](platform-switch.md) |
 | **Service** | OEE app v3, base `https://gateway.eu1.mindsphere.io/api/oee/v3` |
 | **Auth** | Bearer token, see [auth.md](auth.md). Headers: `Accept: application/json`, and `Content-Type: application/json` on POST |
 | **Status** | **Tested** 2026-10-02 on `B2 Line` (automatic) and `GT4` (manual). Read only, plus three read-style POSTs approved by the user |

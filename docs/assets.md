@@ -3,6 +3,7 @@
 | At a glance | |
 |---|---|
 | **Use it to** | Get the `assetId` every other call needs, and rebuild the hierarchy (enterprise > region > site > area > line > machine) |
+| **Platform** | The hosts and paths on this page are the `legacy` ones (host `gateway.eu1.mindsphere.io`, path `/api/<service>/v3`). The VFC moves to `xcelerator` (decision 2026-10-13): host `api.eu1.siemens.app`, path `/api/<service>-1000001700/v3`. See [platform-switch.md](platform-switch.md) |
 | **Services** | OEE app v3 (`/api/oee/v3`) and Asset Management v3 (`/api/assetmanagement/v3`, **needs `Accept: application/hal+json`**) |
 | **Auth** | Bearer token, see [auth.md](auth.md) |
 | **Status** | **Tested** 2026-10-02 on `reckitt`; asset **types** are denied (HTTP 403) for the API technical user |

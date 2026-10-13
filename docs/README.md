@@ -20,7 +20,7 @@
 | File | What you do with it | Status |
 |---|---|---|
 | [auth.md](auth.md) | Get and use a token | Tested |
-| [platform-switch.md](platform-switch.md) | The `legacy` / `xcelerator` switch: addresses, token request, what was tested | Tested 2026-10-13, rebuilt flows not yet run in the VFC |
+| [platform-switch.md](platform-switch.md) | The `legacy` / `xcelerator` switch: addresses, token request, what was tested | Tested 2026-10-13, rebuilt flows not yet run in the VFC. Target platform: xcelerator (decision 2026-10-13) |
 | [service-status.md](service-status.md) | Check the OEE service is up (`/health`, `/version`) | Tested |
 | [assets.md](assets.md) | Find asset IDs and rebuild the hierarchy (OEE and Asset Management) | Tested (types: 403) |
 | [timeseries.md](timeseries.md) | Read raw machine data | Tested on B2 Line |

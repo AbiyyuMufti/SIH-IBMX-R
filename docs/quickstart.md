@@ -3,6 +3,7 @@
 | At a glance | |
 |---|---|
 | **Use it to** | Copy a working Node-RED setup: login, one reusable "call API" function, and four example calls (assets, hierarchy, raw data, KPIs) |
+| **Platform** | The hosts and paths on this page are the `legacy` ones (host `gateway.eu1.mindsphere.io`, path `/api/<service>/v3`). The VFC moves to `xcelerator` (decision 2026-10-13): host `api.eu1.siemens.app`, path `/api/<service>-1000001700/v3`. See [platform-switch.md](platform-switch.md) |
 | **Status** | The calls behind every example are **Tested** (see the linked files). The Node-RED function code on this page was **not run inside Node-RED**; it follows the tested requests exactly and mirrors the source flows |
 | **Needs** | Two environment variables on the Node-RED runtime: `RECKITT_API_TECHUSER_CLIENT_ID`, `RECKITT_API_TECHUSER_CLIENT_SECRET` (never type them into a node) |
 | **Hosts** | Login `https://reckitt.piam.eu1.mindsphere.io`, API `https://gateway.eu1.mindsphere.io` |

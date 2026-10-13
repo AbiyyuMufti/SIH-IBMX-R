@@ -3,6 +3,7 @@
 | At a glance | |
 |---|---|
 | **Use it to** | Read raw values (counters, states, speeds, sensors) of one aspect of one asset over a time range |
+| **Platform** | The hosts and paths on this page are the `legacy` ones (host `gateway.eu1.mindsphere.io`, path `/api/<service>/v3`). The VFC moves to `xcelerator` (decision 2026-10-13): host `api.eu1.siemens.app`, path `/api/<service>-1000001700/v3`. See [platform-switch.md](platform-switch.md) |
 | **Service** | IoT Time Series v3, base `https://gateway.eu1.mindsphere.io/api/iottimeseries/v3` |
 | **Auth** | Bearer token, see [auth.md](auth.md) |
 | **Status** | **Tested** 2026-10-02 on B2 Line `02 Filler` (automatic). Read only; the write and delete calls from the source flows were not tested |

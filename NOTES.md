@@ -268,3 +268,7 @@ Tried: Power BI flow with `Keep dim_asset` expecting an array. Error: "the file 
 ## Diagram as final documentation (2026-10-13)
 - Column "Difference" renamed "SIH integration" (status and difference), new column "SIH source" with the API endpoint and field of every Power BI column, endpoint lists on the overview cards and on the "not created" cards. Source of the endpoint text: the flow code (scripts/vfc/d*.js, m*.js) and docs/endpoints.md. Not checked against live calls today.
 - Layout (corrected on the user request): no extra column. The SIH source is a teal box inside the SIH integration box, below its last text, on top of it. The validator ignores boxes that are inside another box on purpose.
+
+## Xcelerator is the target platform (2026-10-13)
+- Decision (user): the VFC will use xcelerator from now on, imminent. Docs updated: a platform note on 11 docs that showed legacy hosts only (9 usage docs with a table row, 2 history docs with a note), a cutover checklist in docs/platform-switch.md, endpoints.md, README, CLAUDE.md, and the diagram note (paths shown without the suffix, xcelerator named as target).
+- Open at the cutover: lake read/write nodes and the http in address on xcelerator (not tested); the host used by parquet/request_data.py; which platform the earlier VFC runs of 2026-10-13 used (not recorded).

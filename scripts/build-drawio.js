@@ -104,8 +104,8 @@ const TABLE_NOTE = {
 };
 
 // ---- Insights Hub (SIH) source of every column ------------------------------------------------
-// Paths are for the legacy platform (gateway.eu1.mindsphere.io). On xcelerator the host is
-// api.eu1.siemens.app and the service name gets the suffix -1000001700 (docs/platform-switch.md).
+// Paths are shown without the service suffix. Target platform: xcelerator (host api.eu1.siemens.app,
+// service name with the suffix -1000001700). Legacy: gateway.eu1.mindsphere.io (docs/platform-switch.md).
 const EP = {
   assets: 'GET /api/oee/v3/assets',
   am: 'GET /api/assetmanagement/v3/assets/{assetId}',
@@ -537,13 +537,13 @@ overview.box(
   40,
   keysY + 34,
   1500,
-  150,
+  175,
   [
     bold('Machine key') + esc(': every fact table joins to Machine Names EU on Unique Machine Name (hidden key, never shown). Power BI local copy = machine-site text; Insights Hub = asset ID. Decision open.'),
     bold('Product key') + esc(': Plan OPT, Daily Losses and Run Rates join to the product master (Format List EU). Power BI local copy key = machine + part name; Insights Hub = product code. Own product table decided 2026-10-13.'),
     bold('Shift') + esc(': every fact table joins to Shift Naming EU on the shift name. All Insights Hub shift names must exist there.'),
     bold('Date') + esc(': every fact table joins to Calendar on the date (Daily Losses: on the shift start date).'),
-    bold('Endpoints') + esc(': paths are for the legacy platform (gateway.eu1.mindsphere.io). On xcelerator the host is api.eu1.siemens.app and the service name gets the suffix -1000001700 (docs/platform-switch.md).'),
+    bold('Endpoints') + esc(': the paths are shown without the Xcelerator service suffix. Target platform (xcelerator, from 2026-10-13): host api.eu1.siemens.app and the service name gets the suffix -1000001700, for example /api/oee-1000001700/v3/... Legacy: host gateway.eu1.mindsphere.io, no suffix (docs/platform-switch.md).'),
   ].join('<br><br>'),
   'neutral',
   'verticalAlign=top;spacingTop=8;',
@@ -562,7 +562,7 @@ const NOT_CREATED = [
   { pbi: 'Volume Loss Correction N', shown: 'Volume Loss Correction (N, H, W)', status: 'empty', hidden: true, state: 'Waits for Reckitt files', what: 'Corrects loss units by machine, loss group and time (rule not known)' },
   { pbi: 'Targets Volume N', shown: 'Targets Volume (N, H, W, M)', status: 'empty', hidden: true, state: 'Waits for Reckitt files', what: 'Monthly good-parts volume per machine (weight for the targets)' },
 ];
-const ncY = keysY + 220;
+const ncY = keysY + 245;
 const shownN = NOT_CREATED.filter((t) => !t.hidden).length;
 const hiddenN = NOT_CREATED.length - shownN;
 const modelHidden = model.tables.filter((t) => t.hidden).length;

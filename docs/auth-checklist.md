@@ -3,6 +3,7 @@
 | At a glance | |
 |---|---|
 | **Use it to** | Find where each credential appears in the source files (file and location only, never values) and what to ask your colleague |
+| **Platform** | The hosts and paths on this page are the `legacy` ones (host `gateway.eu1.mindsphere.io`, path `/api/<service>/v3`). The VFC moves to `xcelerator` (decision 2026-10-13): host `api.eu1.siemens.app`, path `/api/<service>-1000001700/v3`. See [platform-switch.md](platform-switch.md) |
 | **Used for the tests** | Mechanism 1, client credentials on the `reckitt` tenant, with the **API technical user** (`.env`: `RECKITT_API_TECHUSER_CLIENT_ID`, `RECKITT_API_TECHUSER_CLIENT_SECRET`). It works for all read calls except Asset Management types (403). The other credentials below were **not used** |
 | **Exposure** | Several secrets are typed directly into the source files (list at the end). Treat them as exposed and rotate them |
 | **How to call the API** | [auth.md](auth.md) and [quickstart.md](quickstart.md) |

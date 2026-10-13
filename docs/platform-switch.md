@@ -7,6 +7,14 @@
 | **Status** | Tested 2026-10-13: token and API calls on both platforms from a laptop and from the VFC; mock proof that the rebuilt flows give the same requests, logs and rows on both. The rebuilt flows are not yet imported and run in the VFC |
 | **Not covered** | The data lake API path suffix (`datalake`) is not tested. The Python lake client and Power BI were not looked at |
 
+## Decision and cutover checklist (2026-10-13)
+The VFC will use `xcelerator` from now on, and the move is imminent (decision of the user). `legacy` stays supported in the code until the old setup is switched off. What to do at the cutover:
+1. Config tab, node `1.1 CONFIG`: set `platform` = `xcelerator` and `xcTenantId` (the 10-digit tenant ID). The technical user (client ID and secret) is the same on both platforms.
+2. Import the rebuilt flows of every tab. Run the Config tab first, then each flow with `dryRun` true. In the debug sidebar check that the requests go to `https://api.eu1.siemens.app/api/<service>-1000001700/v3/...`.
+3. Check the data lake in the VFC: the `read object` and `write object` nodes, and the address of the `http in` endpoint of `docs/lake-api.md`. **Not tested on xcelerator.** The Python script (`parquet/request_data.py`) calls a host of `eu1.mindsphere.io`: it is not known whether this host changes.
+4. Scripts on the laptop: `IH_PLATFORM=xcelerator` and `XC_TENANT_ID` in `.env`.
+5. Do not run the same flow twice (legacy and xcelerator tab copies) against the same data.
+
 ## What differs
 | | `legacy` | `xcelerator` |
 |---|---|---|

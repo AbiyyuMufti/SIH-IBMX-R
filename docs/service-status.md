@@ -3,6 +3,7 @@
 | At a glance | |
 |---|---|
 | **Use it to** | Check the OEE service is up, that your token is accepted, and read its version |
+| **Platform** | The hosts and paths on this page are the `legacy` ones (host `gateway.eu1.mindsphere.io`, path `/api/<service>/v3`). The VFC moves to `xcelerator` (decision 2026-10-13): host `api.eu1.siemens.app`, path `/api/<service>-1000001700/v3`. See [platform-switch.md](platform-switch.md) |
 | **Service** | OEE app v3, base `https://gateway.eu1.mindsphere.io/api/oee/v3` |
 | **Auth** | Bearer token, see [auth.md](auth.md) |
 | **Status** | **Tested** 2026-10-02 |

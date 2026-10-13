@@ -1,5 +1,7 @@
 # Test log
 
+> Platform note: this page records tests on the `legacy` platform (hosts and paths as tested). The target is `xcelerator` (decision 2026-10-13), see [platform-switch.md](platform-switch.md).
+
 History of what was called, in order, with the script and sample for each step. Read this only if you want to know how a finding was obtained. The findings themselves are in the behaviour files listed in [README.md](README.md).
 
 All tests: tenant `reckitt`, user = API technical user, 2026-10-02. All calls are GET except the token POST and the three calculation POSTs (tests 7 and 8). Scripts are in `scripts/`, redacted samples in `samples/` (gitignored, not part of the repo).
