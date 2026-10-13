@@ -42,10 +42,10 @@ const OUR_NAME = {
 // more now. Key: "Power BI table|column". level: ok, assumed, empty, none.
 const NOTE = {
   'Machine Names EU|Product Type': ['empty', 'Not in Insights Hub. Needs a Reckitt master file or a per-asset value in Config. Values for Hull still to get.'],
-  'Machine Names EU|Unique Machine Name': ['assumed', 'Ours = Insights Hub asset ID. Power BI local copy = machine-site text (Line 5-Weinheim). It is the hidden join key of every fact table. Decision open.'],
+  'Machine Names EU|Unique Machine Name': ['assumed', 'Insights Hub = asset ID. Power BI local copy = machine-site text (Line 5-Weinheim). It is the hidden join key of every fact table. Decision open.'],
   'Machine Names EU|Dept': ['assumed', 'Insights Hub has no department: the area is used (same value as Area).'],
   'Machine Names EU|Area': ['assumed', 'Insights Hub area names (Bottles, Blisters). The Power BI local copy has its own area names. Accepted.'],
-  'Plan OPT EU|Unique Machine Name': ['assumed', 'Ours = Insights Hub asset ID (see Machine Names EU). Power BI local copy: machine-site text. Decision open.'],
+  'Plan OPT EU|Unique Machine Name': ['assumed', 'Insights Hub = asset ID (see Machine Names EU). Power BI local copy: machine-site text. Decision open.'],
   'Plan OPT EU|AreaName': ['assumed', 'Insights Hub area names. The Power BI local copy has its own. Accepted.'],
   'Plan OPT EU|Date': ['assumed', 'Production day 06:00 to 06:00 UTC. Power BI local copy: calendar date. Not crucial: a window setting plus a backfill.'],
   'Plan OPT EU|ShiftName': ['assumed', 'Names come from the Insights Hub calendar (Blue, Red, Yellow, Gold, Green, Shift 1, Shift 2). Power BI local copy: crew colours and Day/Afternoon/Night. Accepted; each name must exist in Shift Naming.'],
@@ -60,13 +60,13 @@ const NOTE = {
   'Plan OPT EU|OEE Target': ['empty', 'Glidepaths files from Reckitt (monthly target per machine). Not available yet.'],
   'Plan OPT EU|PDT Target': ['empty', 'Glidepaths files from Reckitt (monthly target per machine). Not available yet.'],
   'Plan OPT EU|UPDT Target': ['empty', 'Glidepaths files from Reckitt (monthly target per machine). Not available yet.'],
-  'Time Utilisation EU|Unique Machine Name': ['assumed', 'Ours = Insights Hub asset ID (see Machine Names EU). Decision open.'],
+  'Time Utilisation EU|Unique Machine Name': ['assumed', 'Insights Hub = asset ID (see Machine Names EU). Decision open.'],
   'Time Utilisation EU|Date': ['assumed', 'Follows the Plan OPT date (production day).'],
   'Time Utilisation EU|Total Time Total': ['assumed', 'Sum of Plan OPT Total Time per machine and day. Follows its assumption.'],
   'Time Utilisation EU|Planned OPT Total': ['assumed', 'Sum of Plan OPT Planned OpT per machine and day. Follows its assumption.'],
   'Time Utilisation EU|OEE Time Total': ['assumed', 'Sum of Plan OPT OEE Time per machine and day. Empty where there is no product speed.'],
   'Time Utilisation EU|All Time': ['ok', '1440 minutes per machine and day.'],
-  'Daily Losses EU|Unique Machine Name': ['assumed', 'Ours = Insights Hub asset ID (see Machine Names EU). Decision open.'],
+  'Daily Losses EU|Unique Machine Name': ['assumed', 'Insights Hub = asset ID (see Machine Names EU). Decision open.'],
   'Daily Losses EU|Date': ['assumed', 'Site local time (Europe/London only). Other sites and daylight saving still open.'],
   'Daily Losses EU|Time': ['assumed', 'Site local time (Europe/London only). Other sites and daylight saving still open.'],
   'Daily Losses EU|ShiftName': ['assumed', 'Names come from the Insights Hub calendar. Power BI local copy uses crew colours and Day/Afternoon/Night. Accepted.'],
@@ -79,13 +79,13 @@ const NOTE = {
   'Daily Losses EU|Equipment': ['assumed', 'B2: second reason level (Capper, Infeed ...). Power BI gets it from Equipment Coding files.'],
   'Daily Losses EU|Breakdown Types': ['assumed', 'Reason subgroup under Breakdown (Mechanical, Electrical). Needs the real reason tree.'],
   'Daily Losses EU|Batch ID': ['assumed', 'Order from the OEE order filter (decision 2026-10-12). Empty where no order was found.'],
-  'Daily Losses EU|Comment': ['assumed', 'Power BI local copy: comment text. Ours: comment count only (always 0 so far). Text not read.'],
+  'Daily Losses EU|Comment': ['assumed', 'Power BI local copy: comment text. Insights Hub: comment count only (always 0 so far). Text not read.'],
   'Daily Losses EU|PartName': ['assumed', 'Product running at the stop (description, else name). Empty where no product was found.'],
   'Daily Losses EU|Product Key': ['assumed', 'Product code. Power BI local copy: machine + part name. Decision: own product table, key open.'],
-  'Daily Losses EU|Loss Target Key': ['assumed', 'Ours: machine|subgroup|month. Only useful once the Glidepaths targets exist.'],
+  'Daily Losses EU|Loss Target Key': ['assumed', 'Insights Hub: machine|subgroup|month. Only useful once the Glidepaths targets exist.'],
   'Daily Losses EU|Value': ['empty', 'Monthly target per machine and loss subgroup (Glidepaths from Reckitt). Not available yet.'],
   'Daily Losses EU|Target': ['empty', 'Value / 100. Empty while Value is empty.'],
-  'Daily Losses EU|Volume Key': ['assumed', 'Ours: machine|month. Joins to the volume targets, which we do not have.'],
+  'Daily Losses EU|Volume Key': ['assumed', 'Insights Hub: machine|month. Joins to the volume targets, which are not available yet.'],
   'Daily Losses EU|Volume Total': ['empty', 'Good parts per machine and month on every loss row. Needs several days; not built.'],
   'Daily Losses EU|Merged': ['none', 'Power BI helper key for the Equipment Coding join. Not rebuilt.'],
   'Daily Losses EU|Volume Key.1': ['none', 'Duplicate of Volume Key. Not rebuilt.'],
@@ -96,9 +96,9 @@ const NOTE = {
 // Table notes shown at the top of each table page.
 const TABLE_NOTE = {
   'Machine Names EU': 'Only the machines of the Config tab (Hull: 2). The Power BI local copy lists 76 machines of all sites.',
-  'Plan OPT EU': 'One row per production day, machine, shift and product. Dates are text yyyy-mm-dd in our files (parquet has no date type).',
-  'Time Utilisation EU': 'Our own sums of Plan OPT per machine and day. The Power BI local copy loads it from files.',
-  'Daily Losses EU': 'One row per stop. Dates and times are text in our files.',
+  'Plan OPT EU': 'One row per production day, machine, shift and product. Dates are text yyyy-mm-dd in the Insights Hub files (parquet has no date type).',
+  'Time Utilisation EU': 'Sums of Plan OPT per machine and day. The Power BI local copy loads it from files.',
+  'Daily Losses EU': 'One row per stop. Dates and times are text in the Insights Hub files.',
   'Shift Naming EU': 'Every shift name used in the fact tables must exist here (relationship).',
   Calendar: 'Dates from the calendarStart and calendarEnd settings of the flow. Monday week start.',
 };
@@ -125,7 +125,7 @@ function excelDate(serial) {
 }
 
 // Parquet types: Datetime(time_unit='ms', ...) becomes Datetime.
-const typeName = (t) => t.replace(/(.*)/, '');
+const typeName = (t) => t.replace(/\(.*\)/, '');
 
 // Long hex strings (asset ids) are shortened in the examples.
 const shorten = (v) => (/^[0-9a-f]{32}$/.test(v) ? `${v.slice(0, 8)}...` : v);
@@ -281,7 +281,7 @@ function compare(table) {
       text = [map[6], map[7], map[8]].filter(Boolean).join('. ');
     }
     if (table.pbi === 'Calendar' && !note) {
-      text = col.name === 'Date' ? 'Dates from the calendarStart and calendarEnd settings of the flow.' : 'Generated by our flow from the date (Monday week start).';
+      text = col.name === 'Date' ? 'Dates from the calendarStart and calendarEnd settings of the flow.' : 'Generated by the Insights Hub flow from the date (Monday week start).';
     }
     const share = our ? our.filled_share : null;
     let label = LABEL[level];
@@ -336,13 +336,13 @@ for (const t of TABLES) {
 }
 
 const overview = new Page('1 Overview');
-overview.text(40, 20, 1500, 30, bold('Power BI data overview: what the report reads and what we create'), 'fontSize=18;');
+overview.text(40, 20, 1500, 30, bold('Power BI data overview: what the report reads and what is created from Insights Hub'), 'fontSize=18;');
 overview.text(
   40,
   58,
   1500,
   60,
-  'Source: the existing EU Power BI report (model template and report file, read 2026-10-12/13) and our Hull tables in the data lake (profile of 2026-10-13). ' +
+  'Source: the existing EU Power BI report (model template and report file, read 2026-10-12/13) and the Insights Hub Hull tables in the data lake (profile of 2026-10-13). ' +
     'The report also reads regional tables (N, H, W, M) directly on some pages; they are not in scope. One page per table follows.',
   'fontSize=11;',
 );
@@ -368,7 +368,7 @@ legend.forEach(([level, label], i) => {
   overview.box(40 + i * 300, 120, 280, 28, esc(label), level, 'fontSize=11;');
 });
 
-overview.text(40, 170, 1500, 24, bold('Tables we create today (6): each has its own page'), 'fontSize=14;');
+overview.text(40, 170, 1500, 24, bold('Tables created from Insights Hub today (6): each has its own page'), 'fontSize=14;');
 const CARD_W = 480;
 const CARD_H = 330;
 TABLES.forEach((t, i) => {
@@ -383,7 +383,7 @@ TABLES.forEach((t, i) => {
     bold(t.pbi) + `  ->  ${bold(t.shown)}`,
     esc(`Holds: ${s ? s[1] : ''}`),
     esc(`One row is: ${s ? s[2] : ''}`),
-    esc(`Our table: ${prof.rows} rows, ${prof.columns.length} columns (Hull, downloaded 2026-10-13)`),
+    esc(`Insights Hub table: ${prof.rows} rows, ${prof.columns.length} columns (Hull, downloaded 2026-10-13)`),
     esc(`Used on pages: ${used.ordered.length ? used.ordered.join(', ') : 'no visual reads it directly'}${used.viaMeasure ? ' (some through measures)' : ''}`),
     esc(`Columns in Power BI: ${total}`),
   ];
@@ -411,9 +411,9 @@ overview.box(
   1500,
   120,
   [
-    bold('Machine key') + esc(': every fact table joins to Machine Names EU on Unique Machine Name (hidden key, never shown). Power BI local copy = machine-site text; ours = Insights Hub asset ID. Decision open.'),
-    bold('Product key') + esc(': Plan OPT, Daily Losses and Run Rates join to the product master (Format List EU). Power BI local copy key = machine + part name; ours = product code. Own product table decided 2026-10-13.'),
-    bold('Shift') + esc(': every fact table joins to Shift Naming EU on the shift name. All our shift names must exist there.'),
+    bold('Machine key') + esc(': every fact table joins to Machine Names EU on Unique Machine Name (hidden key, never shown). Power BI local copy = machine-site text; Insights Hub = asset ID. Decision open.'),
+    bold('Product key') + esc(': Plan OPT, Daily Losses and Run Rates join to the product master (Format List EU). Power BI local copy key = machine + part name; Insights Hub = product code. Own product table decided 2026-10-13.'),
+    bold('Shift') + esc(': every fact table joins to Shift Naming EU on the shift name. All Insights Hub shift names must exist there.'),
     bold('Date') + esc(': every fact table joins to Calendar on the date (Daily Losses: on the shift start date).'),
   ].join('<br><br>'),
   'neutral',
@@ -434,7 +434,7 @@ const NOT_CREATED = [
   { pbi: 'Targets Volume N', shown: 'Targets Volume (N, H, W, M)', status: 'empty', state: 'Waits for Reckitt files', what: 'Monthly good-parts volume per machine (weight for the targets)' },
 ];
 const ncY = keysY + 190;
-overview.text(40, ncY, 1500, 24, bold('Power BI tables we have not created yet (10): columns on the last page'), 'fontSize=14;');
+overview.text(40, ncY, 1500, 24, bold('Power BI tables not created from Insights Hub yet (10): columns on the last page'), 'fontSize=14;');
 NOT_CREATED.forEach((t, i) => {
   const x = 40 + (i % 4) * 375;
   const y = ncY + 34 + Math.floor(i / 4) * 190;
@@ -465,14 +465,14 @@ for (const t of TABLES) {
     96,
     [
       esc(`Holds: ${s ? s[1] : ''}. One row is: ${s ? s[2] : ''}.`),
-      esc(`Our table: ${prof.rows} rows, ${prof.columns.length} columns. ${TABLE_NOTE[t.pbi] ?? ''}`),
+      esc(`Insights Hub table: ${prof.rows} rows, ${prof.columns.length} columns. ${TABLE_NOTE[t.pbi] ?? ''}`),
       esc(`Used on pages: ${used.ordered.length ? used.ordered.join(', ') : 'no visual reads it directly'}${used.viaMeasure ? ' (some through measures)' : ''}`),
     ].join('<br>'),
     'neutral',
     'verticalAlign=top;spacingTop=6;fontSize=11;',
   );
   page.text(40, 172, 270, 20, bold('Power BI column') + ' (blue) and example (below it)', 'fontSize=11;');
-  page.text(380, 172, 270, 20, bold('Our column') + ' and our example (below it)', 'fontSize=11;');
+  page.text(380, 172, 270, 20, bold('Insights Hub column') + ' and example (below it)', 'fontSize=11;');
   page.text(700, 172, 600, 20, bold('Difference'), 'fontSize=11;');
   let y = 200;
   for (const r of rows) {
@@ -487,14 +487,14 @@ for (const t of TABLES) {
       const ex = r.our.examples.length ? `e.g. ${r.our.examples.slice(0, 2).map((e) => tidy(shorten(e))).join(' | ')}` : 'no value yet';
       page.box(380, y + 42, 280, 40, small(ex), 'neutral', 'dashed=1;fontStyle=2;');
     } else {
-      b = page.box(380, y, 280, 38, `${bold('(no column)')}<br>${small('we do not create it')}`, 'empty', 'dashed=1;');
+      b = page.box(380, y, 280, 38, `${bold('(no column)')}<br>${small('not created from Insights Hub')}`, 'empty', 'dashed=1;');
     }
     page.edge(a, b, COLOR[r.color][1], !r.our);
     page.box(700, y, 600, 82, `${bold(r.label)}<br>${esc(r.text)}`, r.color, 'verticalAlign=top;spacingTop=4;fontSize=10.5;');
     y += ROW;
   }
   if (extras.length) {
-    page.text(40, y + 6, 1260, 20, bold('Columns we add that the report does not have'), 'fontSize=11;');
+    page.text(40, y + 6, 1260, 20, bold('Columns added from Insights Hub that the report does not have'), 'fontSize=11;');
     page.box(
       40,
       y + 32,
@@ -510,7 +510,7 @@ for (const t of TABLES) {
 
 // ---- Page for the tables not created -----------------------------------------------------------
 const nc = new Page(`${pages.length + 1} Not created yet`);
-nc.text(40, 20, 1500, 30, bold('Power BI tables we have not created yet'), 'fontSize=18;');
+nc.text(40, 20, 1500, 30, bold('Power BI tables not created from Insights Hub yet'), 'fontSize=18;');
 nc.text(
   40,
   58,
