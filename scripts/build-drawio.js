@@ -41,10 +41,10 @@ const OUR_NAME = {
 // Notes written by hand where the mapping workbook is out of date or we know
 // more now. Key: "Power BI table|column". level: ok, assumed, empty, none.
 const NOTE = {
-  'Machine Names EU|Product Type': ['assumed', 'Not in Insights Hub: the area is used (Bottles, Blisters), the same value as Area and Dept. Redundant until Reckitt gives the real mapping. Power BI local copy: Bottles / Blisters for Hull. Checked in the lake file of 2026-10-13: filled.'],
+  'Machine Names EU|Product Type': ['file', 'Stand-in now: the Insights Hub area (Bottles, Blisters), the same value as Area and Dept. Real source: the Machine Names file of the site (Power BI local copy: Bottles / Blisters for Hull). Needs the file integration.'],
   'Machine Names EU|Unique Machine Name': ['assumed', 'Insights Hub = asset ID. Power BI local copy = machine-site text (Line 5-Weinheim). It is the hidden join key of every fact table. Decision open.'],
-  'Machine Names EU|Dept': ['assumed', 'Insights Hub has no department: the area is used (same value as Area and Product Type). Power BI local copy: Liquids Pack / Dries Pack for Hull.'],
-  'Machine Names EU|Area': ['assumed', 'Insights Hub area names (Bottles, Blisters), also used for Dept and Product Type. Power BI local copy: Liquids / Dries for Hull. Accepted for now.'],
+  'Machine Names EU|Dept': ['file', 'Stand-in now: the Insights Hub area. Real source: the Machine Names file (Power BI local copy: Liquids Pack / Dries Pack for Hull). Needs the file integration.'],
+  'Machine Names EU|Area': ['file', 'Stand-in now: the Insights Hub area (Bottles, Blisters). Real source: the Machine Names file (Power BI local copy: Liquids / Dries for Hull). Needs the file integration.'],
   'Plan OPT EU|Unique Machine Name': ['assumed', 'Insights Hub = asset ID (see Machine Names EU). Power BI local copy: machine-site text. Decision open.'],
   'Plan OPT EU|AreaName': ['assumed', 'Insights Hub area names. The Power BI local copy has its own. Accepted.'],
   'Plan OPT EU|Date': ['assumed', 'Production day 06:00 to 06:00 UTC. Power BI local copy: calendar date. Not crucial: a window setting plus a backfill.'],
@@ -57,9 +57,9 @@ const NOTE = {
   'Plan OPT EU|Total Time': ['assumed', 'Assumption: time with a shift planned (total time minus shift-plan stop). Power BI local copy: 720 or 480 per shift.'],
   'Plan OPT EU|Planned OpT': ['assumed', 'Assumption: operational time (total time minus planned stops).'],
   'Plan OPT EU|OEE Time': ['assumed', 'KPI used operational time. Power BI local copy: about good parts / design speed. Empty when Insights Hub has no product speed.'],
-  'Plan OPT EU|OEE Target': ['empty', 'Glidepaths files from Reckitt (monthly target per machine). Not available yet.'],
-  'Plan OPT EU|PDT Target': ['empty', 'Glidepaths files from Reckitt (monthly target per machine). Not available yet.'],
-  'Plan OPT EU|UPDT Target': ['empty', 'Glidepaths files from Reckitt (monthly target per machine). Not available yet.'],
+  'Plan OPT EU|OEE Target': ['file', 'Source: Glidepaths files (monthly target per machine). Needs the file integration.'],
+  'Plan OPT EU|PDT Target': ['file', 'Source: Glidepaths files (monthly target per machine). Needs the file integration.'],
+  'Plan OPT EU|UPDT Target': ['file', 'Source: Glidepaths files (monthly target per machine). Needs the file integration.'],
   'Time Utilisation EU|Unique Machine Name': ['assumed', 'Insights Hub = asset ID (see Machine Names EU). Decision open.'],
   'Time Utilisation EU|Date': ['assumed', 'Follows the Plan OPT date (production day).'],
   'Time Utilisation EU|Total Time Total': ['assumed', 'Sum of Plan OPT Total Time per machine and day. Follows its assumption.'],
@@ -71,26 +71,26 @@ const NOTE = {
   'Daily Losses EU|Time': ['assumed', 'Site local time (Europe/London only). Other sites and daylight saving still open.'],
   'Daily Losses EU|ShiftName': ['assumed', 'Names come from the Insights Hub calendar. Power BI local copy uses crew colours and Day/Afternoon/Night. Accepted.'],
   'Daily Losses EU|Duration': ['assumed', 'Decimal minutes. Power BI local copy: whole minutes. 14 long B2 stops had a duration shorter than their span (open point).'],
-  'Daily Losses EU|Loss Units': ['assumed', 'Assumption: design speed per minute x stop minutes, no Volume Loss Correction. Empty where no product.'],
+  'Daily Losses EU|Loss Units': ['file', 'Assumption now: design speed x stop minutes, no correction. The report also applies the Volume Loss Correction files. Needs the file integration.'],
   'Daily Losses EU|OEELossLvl3Group': ['assumed', 'Rule: planned roots from Config = Planned Loss, default reason = Not Logged, rest = Unplanned Loss. Planned stops not verified in the API data.'],
   'Daily Losses EU|OEELossLvl3SubGroup': ['assumed', 'Stand-in from the reason tree level. Mapping of the B2 alarm stops needed from Reckitt.'],
   'Daily Losses EU|OEELossLvl3Desc': ['ok', 'Leaf reason text. To confirm it is what the report expects.'],
   'Daily Losses EU|Loss Final Level': ['ok', 'Leaf reason text. To confirm it is what the report expects.'],
-  'Daily Losses EU|Equipment': ['assumed', 'B2: second reason level (Capper, Infeed ...). Power BI gets it from Equipment Coding files.'],
+  'Daily Losses EU|Equipment': ['file', 'Stand-in now: second reason level (B2: Capper, Infeed ...). Real source: the Equipment Coding files. Needs the file integration.'],
   'Daily Losses EU|Breakdown Types': ['assumed', 'Reason subgroup under Breakdown (Mechanical, Electrical). Needs the real reason tree.'],
   'Daily Losses EU|Batch ID': ['assumed', 'Order from the OEE order filter (decision 2026-10-12). Empty where no order was found.'],
   'Daily Losses EU|Comment': ['assumed', 'Power BI local copy: comment text. Insights Hub: comment count only (always 0 so far). Text not read.'],
   'Daily Losses EU|PartName': ['assumed', 'Product running at the stop (description, else name). Empty where no product was found.'],
   'Daily Losses EU|Product Key': ['assumed', 'Product code. Power BI local copy: machine + part name. Decision: own product table, key open.'],
   'Daily Losses EU|Loss Target Key': ['assumed', 'Insights Hub: machine|subgroup|month. Only useful once the Glidepaths targets exist.'],
-  'Daily Losses EU|Value': ['empty', 'Monthly target per machine and loss subgroup (Glidepaths from Reckitt). Not available yet.'],
-  'Daily Losses EU|Target': ['empty', 'Value / 100. Empty while Value is empty.'],
+  'Daily Losses EU|Value': ['file', 'Source: Glidepaths files (Targets Losses: monthly target per machine and loss subgroup). Needs the file integration.'],
+  'Daily Losses EU|Target': ['file', 'Value / 100. Follows Value.'],
   'Daily Losses EU|Volume Key': ['assumed', 'Insights Hub: machine|month. Joins to the volume targets, which are not available yet.'],
-  'Daily Losses EU|Volume Total': ['empty', 'Good parts per machine and month on every loss row. Needs several days; not built.'],
+  'Daily Losses EU|Volume Total': ['file', 'Source: Targets Volume files (good parts per machine and month). Needs the file integration, or a calculation over several days.'],
   'Daily Losses EU|Merged': ['none', 'Power BI helper key for the Equipment Coding join. Not rebuilt.'],
   'Daily Losses EU|Volume Key.1': ['none', 'Duplicate of Volume Key. Not rebuilt.'],
   'Daily Losses EU|ShiftName - Copy': ['none', 'Copy of ShiftName made in Power Query. Not rebuilt.'],
-  'Shift Naming EU|Shift': ['assumed', 'Names come from the Insights Hub calendars. Every shift name used in the facts must be in this table.'],
+  'Shift Naming EU|Shift': ['file', 'Names now come from the Insights Hub calendars. The report maps its raw shift names with the Shift Naming file. Needs the file integration, or the names must match.'],
 };
 
 // Table notes shown at the top of each table page.
@@ -145,6 +145,7 @@ const COLOR = {
   partial: ['#fff2cc', '#d6b656'],
   assumed: ['#ffe6cc', '#d79b00'],
   empty: ['#f8cecc', '#b85450'],
+  file: ['#e1d5e7', '#9673a6'],
   none: ['#eeeeee', '#999999'],
   neutral: ['#ffffff', '#666666'],
   pbi: ['#dae8fc', '#6c8ebf'],
@@ -154,6 +155,7 @@ const LABEL = {
   ok: 'OK',
   assumed: 'ASSUMPTION',
   empty: 'EMPTY NOW',
+  file: 'NEEDS SOURCE FILE',
   none: 'NOT NEEDED',
 };
 
@@ -288,7 +290,17 @@ function compare(table) {
     const share = our ? our.filled_share : null;
     let label = LABEL[level];
     let color = level;
-    if (level === 'none') {
+    if (level === 'file') {
+      color = 'file';
+      label = LABEL.file;
+      if (!our) {
+        label += ' | NO COLUMN';
+      } else if (share === 0) {
+        label += ' | EMPTY NOW';
+      } else if (share < FULL) {
+        label += ` | PARTLY FILLED ${Math.round(share * 100)}%`;
+      }
+    } else if (level === 'none') {
       label = LABEL.none;
     } else if (!our) {
       color = 'empty';
@@ -304,7 +316,7 @@ function compare(table) {
       label = level === 'assumed' ? `ASSUMPTION + ${pct}` : pct;
       color = level === 'assumed' ? 'assumed' : 'partial';
     }
-    if (level === 'empty' && share !== 0 && our) {
+    if (level === 'empty' && share !== 0 && our && color !== 'file') {
       label = 'EMPTY NOW';
     }
     let sampleValue = null;
@@ -330,7 +342,7 @@ const compared = new Map();
 for (const t of TABLES) {
   const result = compare(t);
   compared.set(t.pbi, result);
-  const c = { ok: 0, partial: 0, assumed: 0, empty: 0, none: 0, gaps: 0 };
+  const c = { ok: 0, partial: 0, assumed: 0, empty: 0, file: 0, none: 0, gaps: 0 };
   for (const r of result.rows) {
     c[r.color] += 1;
     if (r.our && r.our.filled_share > 0 && r.our.filled_share < FULL) {
@@ -366,11 +378,12 @@ const legend = [
   ['ok', 'OK: filled and built by a known rule'],
   ['partial', 'Partly filled: has gaps'],
   ['assumed', 'Assumption or difference: check it'],
+  ['file', 'Needs source file: assumption now, real source is a file'],
   ['empty', 'Empty now or no column: needs input'],
   ['none', 'Not needed'],
 ];
 legend.forEach(([level, label], i) => {
-  overview.box(40 + i * 300, 120, 280, 28, esc(label), level, 'fontSize=11;');
+  overview.box(40 + i * 250, 120, 240, 40, esc(label), level, 'fontSize=10.5;');
 });
 
 overview.text(40, 170, 1500, 24, bold('Tables created from Insights Hub today (6): each has its own page'), 'fontSize=14;');
@@ -383,7 +396,7 @@ TABLES.forEach((t, i) => {
   const used = pagesOf(t.pbi);
   const c = counts[t.pbi];
   const prof = profile[t.ours];
-  const total = c.ok + c.partial + c.assumed + c.empty + c.none;
+  const total = c.ok + c.partial + c.assumed + c.empty + c.file + c.none;
   const lines = [
     bold(t.pbi) + `  ->  ${bold(t.shown)}`,
     esc(`Holds: ${s ? s[1] : ''}`),
@@ -393,17 +406,18 @@ TABLES.forEach((t, i) => {
     esc(`Columns in Power BI: ${total}`),
   ];
   // Border colour follows the worst column.
-  const worst = c.empty > 0 ? 'empty' : c.assumed > 0 ? 'assumed' : c.partial > 0 ? 'partial' : 'ok';
+  const worst = c.empty > 0 ? 'empty' : c.file > 0 ? 'file' : c.assumed > 0 ? 'assumed' : c.partial > 0 ? 'partial' : 'ok';
   overview.box(x, y, CARD_W, CARD_H - 60, lines.join('<br><br>'), worst, 'verticalAlign=top;spacingTop=8;fillColor=#ffffff;strokeWidth=3;');
   const chips = [
     ['ok', `${c.ok} OK`],
     ['partial', `${c.gaps} with gaps`],
     ['assumed', `${c.assumed} assumption`],
+    ['file', `${c.file} needs file`],
     ['empty', `${c.empty} empty / missing`],
     ['none', `${c.none} not needed`],
   ];
   chips.forEach(([level, label], j) => {
-    overview.box(x + j * 95, y + CARD_H - 50, 90, 36, label, level, 'fontSize=10;align=center;spacingLeft=2;spacingRight=2;');
+    overview.box(x + j * 78, y + CARD_H - 50, 74, 36, label, level, 'fontSize=10;align=center;spacingLeft=2;spacingRight=2;');
   });
 });
 
@@ -430,13 +444,13 @@ const NOT_CREATED = [
   { pbi: 'Run Rates EU', status: 'none', state: 'Decide later (group 2)', what: 'Good parts and capacity per machine, shift and product' },
   { pbi: 'Volume CoV EU', status: 'none', state: 'Decide later (group 2)', what: 'Per shift and machine: good parts sum and capacity max (volume variation)' },
   { pbi: 'Format List EU', status: 'assumed', state: 'Own product table decided (2026-10-13)', what: 'Product master: brand, unit size, unit count per machine and product', note: 'Native columns from Insights Hub; brand, size and count are not native' },
-  { pbi: 'Targets Losses EU', status: 'empty', state: 'Waits for Reckitt (Glidepaths)', what: 'Monthly loss target per machine and loss subgroup' },
-  { pbi: 'OEE Targets EU', status: 'empty', state: 'Waits for Reckitt (Glidepaths)', what: 'Monthly OEE target per line' },
-  { pbi: 'PDT Targets EU', status: 'empty', state: 'Waits for Reckitt (Glidepaths)', what: 'Monthly planned downtime target per line' },
-  { pbi: 'UPDT Targets EU', status: 'empty', state: 'Waits for Reckitt (Glidepaths)', what: 'Monthly unplanned downtime target per line' },
-  { pbi: 'Equipment Coding N', shown: 'Equipment Coding (N, H, W)', status: 'empty', hidden: true, state: 'Waits for Reckitt files', what: 'Maps a loss key to an equipment name' },
-  { pbi: 'Volume Loss Correction N', shown: 'Volume Loss Correction (N, H, W)', status: 'empty', hidden: true, state: 'Waits for Reckitt files', what: 'Corrects loss units by machine, loss group and time (rule not known)' },
-  { pbi: 'Targets Volume N', shown: 'Targets Volume (N, H, W, M)', status: 'empty', hidden: true, state: 'Waits for Reckitt files', what: 'Monthly good-parts volume per machine (weight for the targets)' },
+  { pbi: 'Targets Losses EU', status: 'file', state: 'Needs file integration (Glidepaths)', what: 'Monthly loss target per machine and loss subgroup' },
+  { pbi: 'OEE Targets EU', status: 'file', state: 'Needs file integration (Glidepaths)', what: 'Monthly OEE target per line' },
+  { pbi: 'PDT Targets EU', status: 'file', state: 'Needs file integration (Glidepaths)', what: 'Monthly planned downtime target per line' },
+  { pbi: 'UPDT Targets EU', status: 'file', state: 'Needs file integration (Glidepaths)', what: 'Monthly unplanned downtime target per line' },
+  { pbi: 'Equipment Coding N', shown: 'Equipment Coding (N, H, W)', status: 'file', hidden: true, state: 'Needs file integration', what: 'Maps a loss key to an equipment name' },
+  { pbi: 'Volume Loss Correction N', shown: 'Volume Loss Correction (N, H, W)', status: 'file', hidden: true, state: 'Needs file integration', what: 'Corrects loss units by machine, loss group and time (rule not known)' },
+  { pbi: 'Targets Volume N', shown: 'Targets Volume (N, H, W, M)', status: 'file', hidden: true, state: 'Needs file integration', what: 'Monthly good-parts volume per machine (weight for the targets)' },
 ];
 const ncY = keysY + 190;
 const shownN = NOT_CREATED.filter((t) => !t.hidden).length;
@@ -533,7 +547,7 @@ nc.text(
   58,
   1500,
   44,
-  'Columns are those of the Power BI model. The status says what the table needs. Group 2 = shift KPIs, run rate (decide later); group 3 = Glidepaths targets and correction files (waits for Reckitt). Not analysed in the model: Handover, Shift Colours, Master Mode Comment and Full Site Shift Performance are read by visuals but are not tables of the template.',
+  'Columns are those of the Power BI model. The status says what the table needs. Group 2 = shift KPIs, run rate (decide later); group 3 = Glidepaths targets and correction files (needs file integration). Not analysed in the model: Handover, Shift Colours, Master Mode Comment and Full Site Shift Performance are read by visuals but are not tables of the template.',
   'fontSize=11;',
 );
 const colY = [130, 130, 130];
