@@ -112,6 +112,7 @@ export function readPbitModel(path) {
     .filter((t) => !t.name.startsWith('LocalDateTable') && !t.name.startsWith('DateTableTemplate'))
     .map((t) => ({
       name: t.name,
+      hidden: !!t.isHidden,
       columns: (t.columns ?? []).map((c) => ({
         name: c.name,
         type: c.dataType,

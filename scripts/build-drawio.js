@@ -429,15 +429,26 @@ const NOT_CREATED = [
   { pbi: 'OEE Targets EU', status: 'empty', state: 'Waits for Reckitt (Glidepaths)', what: 'Monthly OEE target per line' },
   { pbi: 'PDT Targets EU', status: 'empty', state: 'Waits for Reckitt (Glidepaths)', what: 'Monthly planned downtime target per line' },
   { pbi: 'UPDT Targets EU', status: 'empty', state: 'Waits for Reckitt (Glidepaths)', what: 'Monthly unplanned downtime target per line' },
-  { pbi: 'Equipment Coding N', shown: 'Equipment Coding (N, H, W)', status: 'empty', state: 'Waits for Reckitt files', what: 'Maps a loss key to an equipment name' },
-  { pbi: 'Volume Loss Correction N', shown: 'Volume Loss Correction (N, H, W)', status: 'empty', state: 'Waits for Reckitt files', what: 'Corrects loss units by machine, loss group and time (rule not known)' },
-  { pbi: 'Targets Volume N', shown: 'Targets Volume (N, H, W, M)', status: 'empty', state: 'Waits for Reckitt files', what: 'Monthly good-parts volume per machine (weight for the targets)' },
+  { pbi: 'Equipment Coding N', shown: 'Equipment Coding (N, H, W)', status: 'empty', hidden: true, state: 'Waits for Reckitt files', what: 'Maps a loss key to an equipment name' },
+  { pbi: 'Volume Loss Correction N', shown: 'Volume Loss Correction (N, H, W)', status: 'empty', hidden: true, state: 'Waits for Reckitt files', what: 'Corrects loss units by machine, loss group and time (rule not known)' },
+  { pbi: 'Targets Volume N', shown: 'Targets Volume (N, H, W, M)', status: 'empty', hidden: true, state: 'Waits for Reckitt files', what: 'Monthly good-parts volume per machine (weight for the targets)' },
 ];
 const ncY = keysY + 190;
-overview.text(40, ncY, 1500, 24, bold('Power BI tables not created from Insights Hub yet (10): columns on the last page'), 'fontSize=14;');
+const shownN = NOT_CREATED.filter((t) => !t.hidden).length;
+const hiddenN = NOT_CREATED.length - shownN;
+const modelHidden = model.tables.filter((t) => t.hidden).length;
+overview.text(40, ncY, 1500, 24, bold(`Power BI tables not created from Insights Hub yet: ${shownN} shown in the Data pane + ${hiddenN} hidden supporting tables (columns on the last page)`), 'fontSize=14;');
+overview.text(
+  40,
+  ncY + 28,
+  1500,
+  36,
+  `The Data pane of the Power BI local copy shows ${TABLES.length + shownN + 1} tables: the ${TABLES.length} above, the ${shownN} below and Measures Table (calculations only, no data). The model also has ${modelHidden} hidden staging tables (regional copies N, H, W, M, Provideam) that feed the EU tables. ${hiddenN} of them are listed here because they feed Daily Losses.`,
+  'fontSize=11;',
+);
 NOT_CREATED.forEach((t, i) => {
   const x = 40 + (i % 4) * 375;
-  const y = ncY + 34 + Math.floor(i / 4) * 190;
+  const y = ncY + 84 + Math.floor(i / 4) * 190;
   const used = pagesOf(t.pbi);
   const mt = modelTable(t.pbi);
   const lines = [
@@ -445,7 +456,8 @@ NOT_CREATED.forEach((t, i) => {
     esc(t.what),
     esc(`${mt.columns.length} columns. Used on: ${used.ordered.length ? used.ordered.join(', ') : 'no visual reads it directly'}`),
     bold(t.state),
-  ];
+    t.hidden ? esc('Hidden table: not shown in the Data pane') : '',
+  ].filter(Boolean);
   overview.box(x, y, 355, 170, lines.join('<br><br>'), t.status, 'verticalAlign=top;spacingTop=8;fontSize=10.5;');
 });
 pages.push(overview);
@@ -530,6 +542,7 @@ NOT_CREATED.forEach((t, i) => {
     esc(`Used on: ${used.ordered.length ? used.ordered.join(', ') : 'no visual reads it directly'}`),
     bold(t.state),
     esc(t.note ?? ''),
+    t.hidden ? esc('Hidden table: not shown in the Data pane') : '',
   ].filter(Boolean);
   const x = 40 + col * 510;
   const hHead = 150 + (t.note ? 20 : 0);
