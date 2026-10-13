@@ -42,21 +42,21 @@ const OUR_NAME = {
 // more now. Key: "Power BI table|column". level: ok, assumed, empty, none.
 const NOTE = {
   'Machine Names EU|Product Type': ['empty', 'Not in Insights Hub. Needs a Reckitt master file or a per-asset value in Config. Values for Hull still to get.'],
-  'Machine Names EU|Unique Machine Name': ['assumed', 'Ours = Insights Hub asset ID. Copy = machine-site text (Line 5-Weinheim). It is the hidden join key of every fact table. Decision open.'],
+  'Machine Names EU|Unique Machine Name': ['assumed', 'Ours = Insights Hub asset ID. Power BI local copy = machine-site text (Line 5-Weinheim). It is the hidden join key of every fact table. Decision open.'],
   'Machine Names EU|Dept': ['assumed', 'Insights Hub has no department: the area is used (same value as Area).'],
-  'Machine Names EU|Area': ['assumed', 'Insights Hub area names (Bottles, Blisters). The copy has its own area names. Accepted.'],
-  'Plan OPT EU|Unique Machine Name': ['assumed', 'Ours = Insights Hub asset ID (see Machine Names EU). Copy: machine-site text. Decision open.'],
-  'Plan OPT EU|AreaName': ['assumed', 'Insights Hub area names. The copy has its own. Accepted.'],
-  'Plan OPT EU|Date': ['assumed', 'Production day 06:00 to 06:00 UTC. Copy: calendar date. Not crucial: a window setting plus a backfill.'],
-  'Plan OPT EU|ShiftName': ['assumed', 'Names come from the Insights Hub calendar (Blue, Red, Yellow, Gold, Green, Shift 1, Shift 2). Copy: crew colours and Day/Afternoon/Night. Accepted; each name must exist in Shift Naming.'],
+  'Machine Names EU|Area': ['assumed', 'Insights Hub area names (Bottles, Blisters). The Power BI local copy has its own area names. Accepted.'],
+  'Plan OPT EU|Unique Machine Name': ['assumed', 'Ours = Insights Hub asset ID (see Machine Names EU). Power BI local copy: machine-site text. Decision open.'],
+  'Plan OPT EU|AreaName': ['assumed', 'Insights Hub area names. The Power BI local copy has its own. Accepted.'],
+  'Plan OPT EU|Date': ['assumed', 'Production day 06:00 to 06:00 UTC. Power BI local copy: calendar date. Not crucial: a window setting plus a backfill.'],
+  'Plan OPT EU|ShiftName': ['assumed', 'Names come from the Insights Hub calendar (Blue, Red, Yellow, Gold, Green, Shift 1, Shift 2). Power BI local copy: crew colours and Day/Afternoon/Night. Accepted; each name must exist in Shift Naming.'],
   'Plan OPT EU|PartName': ['assumed', 'Product description, else name. Empty where no product was found for the day (B2 Line 1-3 and 8-14 Sep; GT4 29 Sep, 3 and 6-8 Oct).'],
-  'Plan OPT EU|Product Key': ['assumed', 'Product code. Copy: machine + part name (join key to the product table). Decision: own product table, key still open.'],
-  'Plan OPT EU|Good Parts': ['ok', 'Decimal (manual GT4 entries are spread over hours). Copy: whole numbers.'],
-  'Plan OPT EU|Capacity': ['assumed', 'Assumption: design speed per minute x planned minutes. In the copy the speed is constant for only 56% of machine/part pairs. Must be clarified.'],
+  'Plan OPT EU|Product Key': ['assumed', 'Product code. Power BI local copy: machine + part name (join key to the product table). Decision: own product table, key still open.'],
+  'Plan OPT EU|Good Parts': ['ok', 'Decimal (manual GT4 entries are spread over hours). Power BI local copy: whole numbers.'],
+  'Plan OPT EU|Capacity': ['assumed', 'Assumption: design speed per minute x planned minutes. In the Power BI local copy the speed is constant for only 56% of machine/part pairs. Must be clarified.'],
   'Plan OPT EU|Downtime Units': ['assumed', 'Assumption: design speed per minute x downtime minutes.'],
-  'Plan OPT EU|Total Time': ['assumed', 'Assumption: time with a shift planned (total time minus shift-plan stop). Copy: 720 or 480 per shift.'],
+  'Plan OPT EU|Total Time': ['assumed', 'Assumption: time with a shift planned (total time minus shift-plan stop). Power BI local copy: 720 or 480 per shift.'],
   'Plan OPT EU|Planned OpT': ['assumed', 'Assumption: operational time (total time minus planned stops).'],
-  'Plan OPT EU|OEE Time': ['assumed', 'KPI used operational time. Copy: about good parts / design speed. Empty when Insights Hub has no product speed.'],
+  'Plan OPT EU|OEE Time': ['assumed', 'KPI used operational time. Power BI local copy: about good parts / design speed. Empty when Insights Hub has no product speed.'],
   'Plan OPT EU|OEE Target': ['empty', 'Glidepaths files from Reckitt (monthly target per machine). Not available yet.'],
   'Plan OPT EU|PDT Target': ['empty', 'Glidepaths files from Reckitt (monthly target per machine). Not available yet.'],
   'Plan OPT EU|UPDT Target': ['empty', 'Glidepaths files from Reckitt (monthly target per machine). Not available yet.'],
@@ -69,8 +69,8 @@ const NOTE = {
   'Daily Losses EU|Unique Machine Name': ['assumed', 'Ours = Insights Hub asset ID (see Machine Names EU). Decision open.'],
   'Daily Losses EU|Date': ['assumed', 'Site local time (Europe/London only). Other sites and daylight saving still open.'],
   'Daily Losses EU|Time': ['assumed', 'Site local time (Europe/London only). Other sites and daylight saving still open.'],
-  'Daily Losses EU|ShiftName': ['assumed', 'Names come from the Insights Hub calendar. Copy uses crew colours and Day/Afternoon/Night. Accepted.'],
-  'Daily Losses EU|Duration': ['assumed', 'Decimal minutes. Copy: whole minutes. 14 long B2 stops had a duration shorter than their span (open point).'],
+  'Daily Losses EU|ShiftName': ['assumed', 'Names come from the Insights Hub calendar. Power BI local copy uses crew colours and Day/Afternoon/Night. Accepted.'],
+  'Daily Losses EU|Duration': ['assumed', 'Decimal minutes. Power BI local copy: whole minutes. 14 long B2 stops had a duration shorter than their span (open point).'],
   'Daily Losses EU|Loss Units': ['assumed', 'Assumption: design speed per minute x stop minutes, no Volume Loss Correction. Empty where no product.'],
   'Daily Losses EU|OEELossLvl3Group': ['assumed', 'Rule: planned roots from Config = Planned Loss, default reason = Not Logged, rest = Unplanned Loss. Planned stops not verified in the API data.'],
   'Daily Losses EU|OEELossLvl3SubGroup': ['assumed', 'Stand-in from the reason tree level. Mapping of the B2 alarm stops needed from Reckitt.'],
@@ -79,9 +79,9 @@ const NOTE = {
   'Daily Losses EU|Equipment': ['assumed', 'B2: second reason level (Capper, Infeed ...). Power BI gets it from Equipment Coding files.'],
   'Daily Losses EU|Breakdown Types': ['assumed', 'Reason subgroup under Breakdown (Mechanical, Electrical). Needs the real reason tree.'],
   'Daily Losses EU|Batch ID': ['assumed', 'Order from the OEE order filter (decision 2026-10-12). Empty where no order was found.'],
-  'Daily Losses EU|Comment': ['assumed', 'Copy: comment text. Ours: comment count only (always 0 so far). Text not read.'],
+  'Daily Losses EU|Comment': ['assumed', 'Power BI local copy: comment text. Ours: comment count only (always 0 so far). Text not read.'],
   'Daily Losses EU|PartName': ['assumed', 'Product running at the stop (description, else name). Empty where no product was found.'],
-  'Daily Losses EU|Product Key': ['assumed', 'Product code. Copy: machine + part name. Decision: own product table, key open.'],
+  'Daily Losses EU|Product Key': ['assumed', 'Product code. Power BI local copy: machine + part name. Decision: own product table, key open.'],
   'Daily Losses EU|Loss Target Key': ['assumed', 'Ours: machine|subgroup|month. Only useful once the Glidepaths targets exist.'],
   'Daily Losses EU|Value': ['empty', 'Monthly target per machine and loss subgroup (Glidepaths from Reckitt). Not available yet.'],
   'Daily Losses EU|Target': ['empty', 'Value / 100. Empty while Value is empty.'],
@@ -95,9 +95,9 @@ const NOTE = {
 
 // Table notes shown at the top of each table page.
 const TABLE_NOTE = {
-  'Machine Names EU': 'Only the machines of the Config tab (Hull: 2). The copy lists 76 machines of all sites.',
+  'Machine Names EU': 'Only the machines of the Config tab (Hull: 2). The Power BI local copy lists 76 machines of all sites.',
   'Plan OPT EU': 'One row per production day, machine, shift and product. Dates are text yyyy-mm-dd in our files (parquet has no date type).',
-  'Time Utilisation EU': 'Our own sums of Plan OPT per machine and day. The copy loads it from files.',
+  'Time Utilisation EU': 'Our own sums of Plan OPT per machine and day. The Power BI local copy loads it from files.',
   'Daily Losses EU': 'One row per stop. Dates and times are text in our files.',
   'Shift Naming EU': 'Every shift name used in the fact tables must exist here (relationship).',
   Calendar: 'Dates from the calendarStart and calendarEnd settings of the flow. Monday week start.',
@@ -243,7 +243,7 @@ function pagesOf(tableName) {
   return { ordered, direct: usage.tablePages.get(tableName)?.size ?? 0, viaMeasure: viaMeasure.size };
 }
 
-// Sample rows of the copy (Plan OPT EU, Machine Names EU).
+// Sample rows of the Power BI local copy (Plan OPT EU, Machine Names EU).
 function sampleOf(table) {
   if (!table.sample) {
     return null;
@@ -346,6 +346,16 @@ overview.text(
     'The report also reads regional tables (N, H, W, M) directly on some pages; they are not in scope. One page per table follows.',
   'fontSize=11;',
 );
+// Term used in all notes
+overview.box(
+  40,
+  86,
+  1500,
+  26,
+  bold('Power BI local copy') + esc(' = the existing EU report as a local Power BI file (model and sample tables). It is the reference for structure and examples; its values may be test data.'),
+  'pbi',
+  'fontSize=11;',
+);
 // Legend
 const legend = [
   ['ok', 'OK: filled and built by a known rule'],
@@ -401,8 +411,8 @@ overview.box(
   1500,
   120,
   [
-    bold('Machine key') + esc(': every fact table joins to Machine Names EU on Unique Machine Name (hidden key, never shown). Copy = machine-site text; ours = Insights Hub asset ID. Decision open.'),
-    bold('Product key') + esc(': Plan OPT, Daily Losses and Run Rates join to the product master (Format List EU). Copy key = machine + part name; ours = product code. Own product table decided 2026-10-13.'),
+    bold('Machine key') + esc(': every fact table joins to Machine Names EU on Unique Machine Name (hidden key, never shown). Power BI local copy = machine-site text; ours = Insights Hub asset ID. Decision open.'),
+    bold('Product key') + esc(': Plan OPT, Daily Losses and Run Rates join to the product master (Format List EU). Power BI local copy key = machine + part name; ours = product code. Own product table decided 2026-10-13.'),
     bold('Shift') + esc(': every fact table joins to Shift Naming EU on the shift name. All our shift names must exist there.'),
     bold('Date') + esc(': every fact table joins to Calendar on the date (Daily Losses: on the shift start date).'),
   ].join('<br><br>'),

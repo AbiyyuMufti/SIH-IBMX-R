@@ -6,7 +6,7 @@
 | **File** | `diagrams/powerbi-data-map.drawio` (plain XML, tracked in git). Open it with draw.io (desktop, web or the VS Code extension) |
 | **Pages** | 1 Overview (tables, where used, joins, tables not created), then one page per table (Machine Names, Plan OPT, Time Utilisation, Daily Losses, Shift Naming, Calendar), then "Not created yet" with the columns of each missing table |
 | **Colours** | Green = OK. Yellow = partly filled. Orange = assumption or difference to check. Red = empty now or no column. Grey = not needed |
-| **Made from** | The Power BI template and report file (outside the repo), the mapping workbook, the sample files of the report copy, and a profile of our parquet files (`diagrams/data/ours-profile.json`) |
+| **Made from** | The Power BI template and report file (outside the repo), the mapping workbook, the sample files of the Power BI local copy, and a profile of our parquet files (`diagrams/data/ours-profile.json`) |
 | **Status** | Built 2026-10-13 on the Hull data of 2026-09-01 to 2026-10-12 (38 days). Not reviewed by Reckitt |
 
 ## How to refresh it
