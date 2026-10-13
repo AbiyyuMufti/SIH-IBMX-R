@@ -15,7 +15,7 @@ import {
 import { validateFlow } from './validate-flow.js';
 import {
   code, makeBuilder, fn, http, linkInStep, end, split, delay, join,
-  addLogLanes, applyLayout
+  addLogLanes, applyLayout, compactLanes, measureSpacing
 } from './lib-flow-builder.js';
 import {
   planSchema, utilSchema, lossSchema, machineSchema, shiftSchema,
@@ -346,6 +346,10 @@ function buildReferenceFlow() {
 }
 
 // ---------- validation and output ----------
+// Flows whose nodes are packed to the width of their names (see
+// compactLanes in lib-flow-builder.js). GAP = px between two nodes of a row.
+const COMPACT_FILES = ['vfc-pbi-daily-hull.json'];
+const GAP = 20;
 mkdirSync(new URL('../flows/', import.meta.url), { recursive: true });
 const OUTPUTS = [
   ...SITES.map((site, index) => [
@@ -356,6 +360,9 @@ const OUTPUTS = [
 ];
 for (const [file, build] of OUTPUTS) {
   const nodes = build();
+  if (COMPACT_FILES.includes(file)) {
+    compactLanes(nodes, GAP);
+  }
   // Positions saved from the VFC editor (scripts/save-layout.js)
   const layoutUrl = new URL(`../flows/layouts/${file}`, import.meta.url);
   if (existsSync(layoutUrl)) {
@@ -372,4 +379,6 @@ for (const [file, build] of OUTPUTS) {
       `${stats.linkOut} link out, longest line ${stats.longestLine}`
   );
   warnings.forEach((w) => console.log(`warn: ${w}`));
+  const spacing = measureSpacing(nodes, GAP);
+  console.log(`  spacing: ${spacing.overlaps} node pairs closer than ${GAP} px by the estimate`);
 }

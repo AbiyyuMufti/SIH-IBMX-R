@@ -289,3 +289,106 @@ export function applyLayout(nodes, layout) {
   });
   return moved;
 }
+
+
+// ---------- compact lanes ----------
+// The generated flows put nodes on a fixed 260 px column grid. That leaves
+// wide gaps next to short names and touching nodes next to long ones.
+// compactLanes() keeps every row (y) and the order of the nodes, and moves
+// each node to the right of the node that feeds it, `gap` px apart.
+
+// Width of a node in the editor, estimated from its name: about 7 px per
+// character plus the icon, rounded up to the 20 px grid, at least 100 px.
+// Link nodes are 30 px wide (their label sits outside). Good to about 20 px:
+// checked on a layout made by hand in the editor (0 overlaps, gaps 20 to 30).
+export function nodeWidth(node) {
+  if (node.type === 'link in' || node.type === 'link out') {
+    return 30;
+  }
+  const label = node.name || node.type || '';
+  return Math.max(100, 20 * Math.ceil((label.length * 7 + 57) / 20));
+}
+
+// Two nodes are in the same row when their centres are less than this apart.
+const SAME_ROW_PX = 40;
+
+// Moves the nodes of a flow left (never right of a column that is already
+// tight). Rules, nodes taken from left to right:
+// - a node with no feeder (inject, link in, comment) keeps its x;
+// - a node at the same x as its feeder (a link out below its node) takes the
+//   new x of the feeder;
+// - a node to the right of its feeders goes `gap` px after the widest
+//   feeder end;
+// - no node touches an earlier node of its row (less than `gap` px).
+export function compactLanes(nodes, gap = 30) {
+  const placed = nodes.filter((n) => typeof n.x === 'number');
+  const feeders = new Map(placed.map((n) => [n.id, []]));
+  placed.forEach((a) => {
+    (a.wires || []).flat().forEach((id) => {
+      if (feeders.has(id)) {
+        feeders.get(id).push(a);
+      }
+    });
+  });
+  const order = placed.slice().sort((a, b) => a.x - b.x || a.y - b.y);
+  const newX = new Map();
+  order.forEach((node) => {
+    let x = node.x;
+    const before = feeders.get(node.id).filter((f) => newX.has(f.id) && f.x <= node.x);
+    if (before.length) {
+      x = 0;
+      before.forEach((f) => {
+        const same = f.x === node.x;
+        const next = same ? newX.get(f.id)
+          : newX.get(f.id) + (nodeWidth(f) + nodeWidth(node)) / 2 + gap;
+        x = Math.max(x, next);
+      });
+    }
+    // Do not touch a node of the same row that comes earlier in the row.
+    order.forEach((other) => {
+      const done = newX.has(other.id) && other.x <= node.x;
+      if (done && other !== node && Math.abs(other.y - node.y) < SAME_ROW_PX) {
+        const same = other.x === node.x;
+        if (!same) {
+          x = Math.max(x, newX.get(other.id) + (nodeWidth(other) + nodeWidth(node)) / 2 + gap);
+        }
+      }
+    });
+    newX.set(node.id, 20 * Math.ceil(x / 20));
+  });
+  placed.forEach((n) => {
+    n.x = newX.get(n.id);
+  });
+}
+
+// Counts pairs of nodes in one row whose estimated boxes are less than `gap`
+// px apart. Returns { overlaps, gaps }: gaps is the sorted list of gaps
+// between wired neighbours in the same row.
+export function measureSpacing(nodes, gap = 0) {
+  const placed = nodes.filter((n) => typeof n.x === 'number');
+  let overlaps = 0;
+  for (let i = 0; i < placed.length; i++) {
+    for (let j = i + 1; j < placed.length; j++) {
+      const a = placed[i];
+      const b = placed[j];
+      if (Math.abs(a.y - b.y) >= SAME_ROW_PX) {
+        continue;
+      }
+      const between = Math.abs(a.x - b.x) - (nodeWidth(a) + nodeWidth(b)) / 2;
+      if (between < gap) {
+        overlaps++;
+      }
+    }
+  }
+  const byId = new Map(placed.map((n) => [n.id, n]));
+  const gaps = [];
+  placed.forEach((a) => {
+    (a.wires || []).flat().forEach((id) => {
+      const b = byId.get(id);
+      if (b && b.x > a.x && Math.abs(a.y - b.y) < SAME_ROW_PX) {
+        gaps.push(b.x - nodeWidth(b) / 2 - (a.x + nodeWidth(a) / 2));
+      }
+    });
+  });
+  return { overlaps, gaps: gaps.sort((p, q) => p - q) };
+}
