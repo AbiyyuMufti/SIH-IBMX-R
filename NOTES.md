@@ -1,6 +1,7 @@
 # NOTES
 
 ## Status
+- Platform switch (2026-10-13): the tenant moved to Xcelerator IAM / siemens.app on 2026-10-12. Config node `platform` (legacy | xcelerator, no default) drives all flows and `IH_PLATFORM` the scripts, see `docs/platform-switch.md`. Mock proof passes (449 checks, old flows vs new flows on both platforms); rebuilt flows NOT yet imported and run in the VFC.
 - API exploration done (Phase A and B). VFC flow `fact_kpi` / `fact_loss` built, refactored to the readability rules, tested on the mock.
 - Reference tables (`dim_asset`, `dim_reason`, `dim_product`, `dim_shift`, `ref_target_seed`): one tab `flows/vfc-reference-tables.json` plus the Config tab `flows/vfc-config.json` (global context). Tested on the mock (2026-10-04). The first version (five flows) ran in the VFC and wrote files.
 
@@ -75,6 +76,7 @@ Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `sc
 - Many Node-RED calls are copies across tabs; distinct endpoints are far fewer than the call counts.
 
 ## Next
+- Platform switch: you re-import Config (`flows/vfc-config.local.json`, platform legacy first), BI reference (`flows/vfc-pbi-reference.local.json`) and Hull Power BI daily (`flows/vfc-pbi-daily-hull.json`), run with dryRun on legacy, then set `xcelerator`, Apply, run again and compare log lines and row counts. Add `IH_PLATFORM` (and keep `XC_TENANT_ID`) to `.env` for the scripts. Then confirm with Reckitt: assettypes now 200, OEE assets 55, when the old gateway stops. Layout proposal (variable column pitch instead of 260 px) waits for the user.
 - Logger (CSV in the data lake, `docs/logging.md`): re-import the Hull and Reference tabs (the first version could not create the file), run once, wait about 1 minute, check `logs/hull/log_2026-10.csv`; then the open points in the doc. Then re-run September to see the 413 and paging errors in the log.
 - You: import `flows/vfc-site-hull.json` (needs the Config tab), run with DRY_RUN true, then write. Check the files land in `fact_kpi/Hull/` and `fact_loss/Hull/`.
 - Waiting for you: the pasted Siemens page on secret rotation, then adapt the config and secret design.
@@ -184,3 +186,13 @@ Tried: Power BI flow with `Keep dim_asset` expecting an array. Error: "the file 
 - Not tested on the real tenant: the whole new lane, filterValues values equal product NAMES, GT4 filtered hourly KPIs.
 - Next: the user imports the daily tab, runs the dry run for one day and sends the log line and the first rows; then Reckitt inputs (Glidepaths, product type, volume rules), the Power BI Desktop check (`part_name`, `capacity`, relationship on `unique_machine_name`), the 413 window split.
 - Real run 2026-09-15 (user wrote the day, read the parquet): see `docs/powerbi-direct.md` section "Checked on the real tenant". Shifts, part name, product key, capacity and loss units work on B2 Line and GT4. Open: B2 Line `batch_id` empty (check orders of that day), `oee_time` about 9 % above good parts / design speed on B2 Line.
+## Platform switch (2026-10-13)
+- Why: tenant migrated to Xcelerator IAM and the siemens.app domain on 2026-10-12. A general customer notice from the Siemens reseller says applications must adopt Xcelerator IAM and the new domain and the tenant is migrated once applications are compatible.
+- Smoke check (`scripts/smoke-check.js`, `prompt-response/smoke-check-2026-10-13.md`): old host + old token and new host + new token both work (26 of 27 GETs as docs, `evaluateKPIs` 30 results on both); mixed pairs fail (new token on old host 403, old token on new host 401).
+- Failed attempts: POST `https://<tenant ID>.eu1.sws.siemens.com/oauth` gave 302 to `http://.../oauth/`, which gave 307 back to `https://.../oauth/`; no token. Fix: `/oauth/token` (200, form body `grant_type=client_credentials`). The credentials went once over plain http to the redirect target, on the user's approval.
+- VFC probes by Claude in Chrome (read-only scratch tab, deleted after): old platform and new platform each: token 200, OEE health/assets, Asset Management assets, `evaluateKPIs` 30 results. Dry run of the real flows on legacy worked on 2026-10-12 (user's report, not seen by me). The Chrome baseline of the Reference tab was skipped (tab disabled).
+- Decisions (user): `platform` has no default and must be set; the suffix `1000001700` may be in the public repo; the tenant ID is a placeholder in committed files; BI reference keeps the hand-made layout (layout file); Hull Power BI daily is re-imported fresh.
+- Built: Config node derives tokenUrl, tokenForm, oeeBase, amBase; token node and 13 request nodes use them; `cfg.gateway` removed (old disabled tabs must be re-imported before enabling). Mock serves both platforms and refuses a token from the other. `scripts/test-platform-switch.js` is the proof (old flows from git commit da968fc).
+- Found: assettypes 200 (docs 403), OEE assets 55 (docs 44), Asset Management `tenantId` is the tenant ID on xcelerator. Docs updated with the dates.
+- Local files (git-ignored): `flows/vfc-config.local.json` (real values from .env, platform legacy, root reports) and `flows/vfc-pbi-reference.local.json` (same as the build, placement kept).
+- Layout question (user): the 260 px column pitch leaves gaps of 0 to 165 px (median 60 px) in the generated Hull daily flow; the user's hand layout of BI reference has a median gap of 20 px and a pitch of 200 px. Cause: fixed pitch, node width depends on the name. Proposal not built.

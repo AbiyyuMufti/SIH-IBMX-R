@@ -9,7 +9,7 @@
 | **Trigger** | Weekly (Monday 07:00 UTC) and a `Run now` button. The data changes rarely |
 
 ## Settings: one place
-- **Shared settings** live in node `1.1 CONFIG` on the Config tab: root folder, credentials, `sites` (name, `dayStartHour`, `assetIds`), exclusions, `calendarWindowDays`. The node stores them in **global** context (`glob.get('cfg')`: the VFC calls the global context `glob`, not `global`). It runs on deploy and when you click `Apply`.
+- **Shared settings** live in node `1.1 CONFIG` on the Config tab: `platform` (`legacy` or `xcelerator`, no default, see [platform-switch.md](platform-switch.md)), root folder, credentials (`xcTenantId` for xcelerator), `sites` (name, `dayStartHour`, `assetIds`), exclusions, `calendarWindowDays`. The node stores them in **global** context (`glob.get('cfg')`: the VFC calls the global context `glob`, not `global`). It runs on deploy and when you click `Apply`.
 - **Per flow** settings live in node `1.1 TASK SETTINGS` of the Reference tab: the dry-run switch per table. It copies the shared settings into flow context on every run, so a change in Config is used by the next run.
 - **Secrets** are typed once, in the CONFIG node, after import. Committed files only have placeholders.
 - Run the Config tab first (it also runs on deploy). Without it, TASK SETTINGS stops with `CONFIG not run`.

@@ -9,7 +9,7 @@
 | **Trigger** | Daily 07:00 UTC for Hull (one hour after the production day ends) and a backfill inject with a day range |
 
 ## Settings
-- **Config tab** (`1.1 CONFIG`, global context): `root`, credentials, `sites` (`name`, `dayStartHour`, `assetIds`), `excludeNames`, `excludeAncestorNames`, `plannedRoots`.
+- **Config tab** (`1.1 CONFIG`, global context): `platform` (`legacy` or `xcelerator`, no default, see [platform-switch.md](platform-switch.md)), `root`, credentials (`xcTenantId` for xcelerator), `sites` (`name`, `dayStartHour`, `assetIds`), `excludeNames`, `excludeAncestorNames`, `plannedRoots`.
 - **Site tab** (`1.1 SITE SETTINGS`): `SITE_NAME`, `DRY_RUN`, `REBUILD_DAYS`. It finds the site in the Config list and copies the shared settings into flow context. It stops with a red status if the Config tab was not run, the site is not listed, or the site has no `assetIds`.
 - The production day D runs from D `dayStartHour` UTC to D+1 `dayStartHour` UTC (Hull 6). The schedule time is the cron of the inject node: day end plus one hour.
 

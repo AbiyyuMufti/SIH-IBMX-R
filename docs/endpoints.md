@@ -4,7 +4,7 @@
 |---|---|
 | **Use it to** | Look up one call fast: method, path, parameters, what comes back, and which file explains it |
 | **Scope** | Only calls that were **tested** on the `reckitt` tenant on 2026-10-02 with the API technical user. Write calls are not listed here (see [api-summary.md](api-summary.md)) |
-| **Hosts** | Login `https://reckitt.piam.eu1.mindsphere.io`; API gateway `https://gateway.eu1.mindsphere.io` (paths below are relative to the gateway) |
+| **Hosts** | Login `https://reckitt.piam.eu1.mindsphere.io`; API gateway `https://gateway.eu1.mindsphere.io` (paths below are relative to the gateway). These are the `legacy` platform. On `xcelerator` the host is `https://api.eu1.siemens.app` and the service name in the path gets `-1000001700` (`/api/oee-1000001700/v3/...`), see [platform-switch.md](platform-switch.md) |
 | **Auth** | `Authorization: Bearer <token>` on every call, see [auth.md](auth.md). How to wire it in Node-RED: [quickstart.md](quickstart.md) |
 
 ## Conventions that apply to every call
@@ -19,7 +19,7 @@
 | Paging | **OEE lists are not paged** (`size`/`page` ignored; `/measureCollections` always returns exactly 100). **Asset Management** pages with `size` and `page` (0-based; 246 assets = 2 pages of 200). **Time Series** has no paging: `limit` max 2000, range max 90 days, read in windows |
 | Errors | OEE: `{ "errors": [ { "code", "logref", "message" } ] }`. Time Series: `{ "timestamp", "status", "error", "message", "path" }` with codes in the message (`[6009]` limit or range, `[6410]` unknown aspect). Asset Management: `{ "errors": [ { "code", "message" } ] }` |
 | Status codes seen | 200 OK, 400 bad parameters or unsupported asset, 403 no permission (or missing token), 404 unknown asset or resource, 500 wrong `Accept` header on Asset Management |
-| Permissions | The API technical user can read everything below **except** Asset Management types (`/assettypes`, `/aspecttypes`: HTTP 403) |
+| Permissions | The API technical user can read everything below. Asset Management types (`/assettypes`, `/aspecttypes`) returned HTTP 403 on 2026-10-02 and HTTP 200 on 2026-10-13 (not confirmed why) |
 
 ## 1. Login and service status
 | Method | Path | Purpose | Params / body | Returns | Doc |
@@ -31,14 +31,14 @@
 ## 2. Assets and hierarchy
 | Method | Path | Purpose | Params / body | Returns | Doc |
 |---|---|---|---|---|---|
-| GET | `/api/oee/v3/assets` | The OEE assets (44) | none effective | Array of `{ assetId, name, description, isManual, isConfigured, reasonTreeId }` | [assets.md](assets.md) |
+| GET | `/api/oee/v3/assets` | The OEE assets (44 on 2026-10-02, 55 on 2026-10-13) | none effective | Array of `{ assetId, name, description, isManual, isConfigured, reasonTreeId }` | [assets.md](assets.md) |
 | GET | `/api/oee/v3/assets/{assetId}` | OEE alert thresholds | none | `{ assetId, thresholds: { warnings[], errors[] } }`. 404 for non-OEE assets (for example a site) | [assets.md](assets.md) |
 | GET | `/api/assetmanagement/v3/assets` | All assets with parent and type (246) | `size`, `page` (0-based), `filter` | `{ _embedded.assets[], _links, page }`. Needs `hal+json` | [assets.md](assets.md) |
 | GET | `/api/assetmanagement/v3/assets?filter={"parentId":"<id>"}` | Children of one asset | JSON filter, URL-encoded | Same shape | [assets.md](assets.md) |
 | GET | `/api/assetmanagement/v3/assets/root` | The top asset | none | One asset with `hierarchyPath` | [assets.md](assets.md) |
 | GET | `/api/assetmanagement/v3/assets/{assetId}` | One asset with ancestors | none | Asset with `hierarchyPath`, `_links` | [assets.md](assets.md) |
 | GET | `/api/assetmanagement/v3/assets/{assetId}/aspects` | Aspect names of an asset | none | `{ _embedded.aspects[], page }` | [assets.md](assets.md) |
-| GET | `/api/assetmanagement/v3/assettypes`, `/assettypes/{id}`, `/aspecttypes` | Type definitions | | **HTTP 403** for this user | [assets.md](assets.md) |
+| GET | `/api/assetmanagement/v3/assettypes`, `/assettypes/{id}`, `/aspecttypes` | Type definitions | | HTTP 403 on 2026-10-02, HTTP 200 on 2026-10-13 | [assets.md](assets.md) |
 
 ## 3. Raw machine data
 | Method | Path | Purpose | Params / body | Returns | Doc |

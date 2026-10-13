@@ -3,7 +3,7 @@
 | At a glance | |
 |---|---|
 | **What this is** | Documentation of the Siemens Insights Hub APIs used by the Reckitt OEE project, written from the Postman collections, Node-RED flows and a Python script, and **verified by calling them** |
-| **Tenant and hosts** | `reckitt`. API gateway `https://gateway.eu1.mindsphere.io`, login `https://reckitt.piam.eu1.mindsphere.io` |
+| **Tenant and hosts** | `reckitt`. Two platforms work (since the move of 2026-10-12): `legacy` (API `https://gateway.eu1.mindsphere.io`, login `https://reckitt.piam.eu1.mindsphere.io`) and `xcelerator` (API `https://api.eu1.siemens.app`, login `https://<tenant ID>.eu1.sws.siemens.com`). One switch chooses, see [platform-switch.md](platform-switch.md). The host names in the files below are the legacy ones |
 | **Status** | All read-style OEE calls tested (2026-10-02, API technical user), 3 calculation POSTs tested, write calls deliberately not tested |
 | **Auth** | One token request (POST), then `Authorization: Bearer <token>` on everything, see [auth.md](auth.md) |
 | **Built for** | Reuse in Node-RED / Insights Hub function nodes. Every endpoint has a pasteable example |
@@ -20,6 +20,7 @@
 | File | What you do with it | Status |
 |---|---|---|
 | [auth.md](auth.md) | Get and use a token | Tested |
+| [platform-switch.md](platform-switch.md) | The `legacy` / `xcelerator` switch: addresses, token request, what was tested | Tested 2026-10-13, rebuilt flows not yet run in the VFC |
 | [service-status.md](service-status.md) | Check the OEE service is up (`/health`, `/version`) | Tested |
 | [assets.md](assets.md) | Find asset IDs and rebuild the hierarchy (OEE and Asset Management) | Tested (types: 403) |
 | [timeseries.md](timeseries.md) | Read raw machine data | Tested on B2 Line |
@@ -51,7 +52,7 @@
 6. **Not everything is an OEE asset.** Sites such as `Hull` are not: OEE answers 404, or an empty `/config` with HTTP 200.
 7. **Automatic vs manual assets.** B2 Line is connected (MindConnect), GT4 is manual (operator form). `timeModelCategoryDistribution` refuses manual assets; operator-input reads only show data for manual ones.
 8. **KPI calls only calculate.** `evaluateKPIs` and the other two POSTs store nothing, but the numbers depend on configuration: B2 Line showed Performance above 100 %, so check before trusting them.
-9. **Permissions.** The API technical user can read nearly everything but not Asset Management types (`/assettypes`, `/aspecttypes`: 403).
+9. **Permissions.** The API technical user can read nearly everything. Asset Management types (`/assettypes`, `/aspecttypes`) gave 403 on 2026-10-02 but HTTP 200 on 2026-10-13 (both platforms): see [platform-switch.md](platform-switch.md).
 10. **Personal data.** `OEE_Hourly_Entry` holds `ActorEmail`; manual inputs hold user IDs. Mask them before sharing data.
 
 Postman marks `/version` as "no auth" and expects `/application/settings` to exist. Both are wrong for this tenant.

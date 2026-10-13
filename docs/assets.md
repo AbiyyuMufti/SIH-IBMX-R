@@ -78,7 +78,7 @@ Counted by walking each OEE asset up to its nearest `basicsite` and `basicarea` 
 | URL | `https://gateway.eu1.mindsphere.io/api/oee/v3/assets` |
 | Params | None have an effect. `size` and `page` were tried (`size=5`, `page=0/1/2`) and ignored: always all 44 assets. Not tried: `filter`, `sort` (used in the source flows) |
 | Headers | `Authorization: Bearer <token>`, `Accept: application/json` |
-| Result | HTTP 200 in about 0.35 s, 44 assets |
+| Result | HTTP 200 in about 0.35 s, 44 assets (2026-10-02). On 2026-10-13 the same call returned 55 assets |
 
 **Example request (Node-RED function node, then an `http request` node set to "use `msg.method`", return "a parsed JSON object")**
 ```js
@@ -207,7 +207,8 @@ HTTP 200, HAL list (`_embedded.aspects`, `page`). For `B2 Line` it lists 5 aspec
 
 ---
 
-### GET /api/assetmanagement/v3/assettypes and /aspecttypes (Tested: **403 Access Denied**)
+### GET /api/assetmanagement/v3/assettypes and /aspecttypes (Tested: **403 Access Denied** on 2026-10-02; **HTTP 200** on 2026-10-13)
+> Update 2026-10-13: `/assettypes` returned HTTP 200 on both platforms with the same technical user (not read further, not confirmed why). The text below is the 2026-10-02 result.
 Tested with the API technical user: `/assettypes`, `/assettypes/{typeId}` and `/aspecttypes` all return **HTTP 403** `{"errors":[{"code":"mindsphere.generic.exception","message":"Access Denied"}]}`. The same user can read assets and aspects (above) but not the type definitions. The Python script and the Testing Postman collection use these calls, so another user or role has the permission. To read types, ask your colleague for a user with the Asset Management type-read role (exact role name not checked). Not retried with other credentials.
 
 What you can still learn about types without that permission: each asset has a `typeId` (for example `reckitt.B2_Line_Filler_Asset_OEE_Automatic`), and `/assets/{assetId}/aspects` lists the aspect names and their types.
