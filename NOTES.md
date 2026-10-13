@@ -255,3 +255,7 @@ Tried: Power BI flow with `Keep dim_asset` expecting an array. Error: "the file 
 - The Hull board gets its production and loss data from Provideam daily reports (email, Power Automate, SharePoint), plus five manual Excel config files. Doc: docs/provideam-source.md.
 - Consequences: Capacity, Planned OpT, OEE Time and Downtime Units are Provideam calculations (OEE % = Good Parts / Capacity); Provideam loss names (Group, SubGroup, Desc) differ from ours; the Mode Log has comment text; GT4 has a second machine "GT4 - Auto" that the report query removes; Volume Loss Correction is a Provideam report, not a manual file; Targets Volume reads the Plan OPT folder.
 - Open: do the diagram and the file question list need changes (owners are now known, two file types are Provideam reports, not manual files)? Why monthly Plan OPT files if the guide says daily files?
+
+## Provideam sheet in the diagram (2026-10-13)
+- New unnumbered sheet "Explanation Provideam vs Insights Hub": the two data paths, a 13 row overlap table (both / only Provideam / only Insights Hub / independent Excel files) and what it means for replacing Provideam. Provideam = OEE software from DTL Systems (vendor listings; its own documentation was not read). Fixed the Volume Total note on the Targets sheet (Hull Targets Volume reads the Plan OPT folder).
+- Open question for Reckitt (not yet in the question list): which system is the official OEE source per site, today and after a move.

@@ -626,7 +626,7 @@ for (const t of TABLES) {
     530,
     730,
     54,
-    esc('Not from Glidepaths: Volume Total in Daily Losses comes from the Targets Volume files (a separate file). Visual 5 weights its target with it.'),
+    esc('Not from Glidepaths: Volume Total in Daily Losses comes from the Targets Volume table. For Hull that query reads the Plan OPT folder, so it can probably be added up from good parts. Visual 5 weights its target with it.'),
     'none',
     'fontSize=10.5;',
   );
@@ -699,6 +699,103 @@ for (const t of TABLES) {
     'verticalAlign=top;spacingTop=6;fontSize=10.5;',
   );
   pages.push(tp);
+}
+
+// ---- Page: Provideam and Insights Hub, overlap and replacement ---------------------------
+{
+  const pp = new Page('Explanation Provideam vs Insights Hub');
+  pp.text(40, 20, 1500, 30, bold('Provideam and Insights Hub: what overlaps and what can replace what'), 'fontSize=18;');
+  pp.box(
+    40,
+    62,
+    1520,
+    62,
+    esc('Provideam = OEE monitoring software from the vendor DTL Systems (browser based: availability, performance, quality). The Hull site uses it as its production system. Source: the Hull maintenance guide (January 2026), its screenshots and vendor listings. Status 2026-10-13, Hull only. Provideam documentation was not read.'),
+    'neutral',
+    'verticalAlign=top;spacingTop=6;fontSize=11;',
+  );
+
+  // Two data paths.
+  const chain = (y, label, steps, level) => {
+    pp.text(40, y - 24, 700, 20, bold(label), 'fontSize=12;');
+    const ids = steps.map(([text, lv], i) => pp.box(40 + i * 258, y, 235, 56, esc(text), lv || level, 'verticalAlign=middle;fontSize=10.5;'));
+    for (let i = 0; i < ids.length - 1; i += 1) {
+      pp.edge(ids[i], ids[i + 1], '#666666');
+    }
+  };
+  chain(170, 'Provideam path (Hull today)', [
+    ['Machines. Operators enter and edit data'],
+    ['Provideam reports: daily, then hourly until 17:00'],
+    ['CSV by email. Outlook rules sort the mails'],
+    ['Power Automate saves one file per day'],
+    ['SharePoint folder (Hull site)'],
+    ['Power BI board: queries and 5 Excel files', 'pbi'],
+  ], 'neutral');
+  chain(280, 'Insights Hub path (VFC flows)', [
+    ['Machines. OEE app and manual entries'],
+    ['Insights Hub OEE API'],
+    ['Insights Hub flows (VFC), run daily'],
+    ['Data lake: parquet files'],
+    ['6 Power BI tables (pbi_*) from Insights Hub'],
+    ['Power BI board (target)', 'pbi'],
+  ], 'ours');
+
+  // Legend of this sheet.
+  const legend2 = [
+    ['assumed', 'Both systems have it: choose one official source'],
+    ['empty', 'Only Provideam has it: Insights Hub cannot replace it yet'],
+    ['ok', 'Only Insights Hub has it (the report does not use it)'],
+    ['partial', 'Independent of both: Excel files kept by the site'],
+  ];
+  legend2.forEach(([level, text], i) => pp.box(40 + i * 385, 340, 370, 36, esc(text), level, 'fontSize=10.5;'));
+
+  // Overlap table.
+  const header = (x, w, text) => pp.text(x, 392, w, 20, bold(text), 'fontSize=12;');
+  header(40, 330, 'Item');
+  header(390, 400, 'Provideam');
+  header(810, 400, 'Insights Hub');
+  header(1230, 330, 'Result');
+  const rows = [
+    ['Good parts and rejects by machine, shift, product', 'Plan OPT report: Good Parts, Defect Parts', 'fact_kpi: good_parts, rejected_parts', 'assumed', 'Both: choose one source'],
+    ['OEE, availability, performance, quality', 'Plan OPT: OEE = Good Parts / Capacity. Performance Availability report', 'fact_kpi: oee, availability, performance, quality (same formula if speed and planned time are equal)', 'assumed', 'Both: choose one source'],
+    ['Capacity', 'Plan OPT: Capacity (rated speed x planned time)', 'Assumption in the flow: design speed x planned time. Not confirmed', 'assumed', 'Both: rule differs'],
+    ['Planned time and planned stops', 'Planned OpT. Loss groups Planned Loss, Production not scheduled', 'Shift calendar and planned stop times', 'assumed', 'Both: planned time differs'],
+    ['Stops with reason tree and duration', 'Mode Log: Group, SubGroup, Desc, Duration', 'fact_loss: reason path, duration', 'assumed', 'Both: reason names differ'],
+    ['Product and speed', 'PartName and rated speed in the reports', 'Product (collection) and design speed', 'assumed', 'Both: names and speed differ'],
+    ['Shift names', 'ShiftName, for example FriDay - Blue', 'Calendar event names', 'assumed', 'Both: names differ'],
+    ['Machine list and area', 'Machine IDs, AreaName', 'Asset hierarchy (site, area, line)', 'assumed', 'Both: names differ'],
+    ['Loss Units (loss in product units)', 'OEE Loss report: Loss Units', 'Not available. Assumption: speed x duration', 'empty', 'Only Provideam'],
+    ['Comment text of a stop', 'Mode Log: Comment', 'Comment count only', 'empty', 'Only Provideam'],
+    ['Run segments (time while running)', 'Mode Log: rows with group Run', 'Not in fact_loss (stops only)', 'empty', 'Only Provideam'],
+    ['MTTR, MTBF, TEEP, micro and macro stops', 'Not seen in the reports', 'fact_kpi columns', 'ok', 'Only Insights Hub'],
+    ['Targets (Glidepaths), Machine Names, Equipment Coding, Shift Pattern Naming, Format Mapping', 'Excel files kept by the site. Not made by Provideam', 'Not available', 'partial', 'Independent of both'],
+  ];
+  rows.forEach(([item, prov, sih, level, result], i) => {
+    const y = 420 + i * 46;
+    pp.box(40, y, 330, 40, esc(item), level, 'fontSize=10.5;');
+    pp.box(390, y, 400, 40, esc(prov), level, 'fontSize=10.5;');
+    pp.box(810, y, 400, 40, esc(sih), level, 'fontSize=10.5;');
+    pp.box(1230, y, 330, 40, bold(result), level, 'fontSize=10.5;');
+  });
+
+  // What it means.
+  const endY = 420 + rows.length * 46 + 20;
+  pp.text(40, endY, 1500, 24, bold('What this means for replacing Provideam'), 'fontSize=14;');
+  pp.box(
+    40,
+    endY + 34,
+    1520,
+    150,
+    [
+      esc('1. Overlap rows: Insights Hub can supply the data, but the numbers differ. On the overlap days the Insights Hub good parts are 96.6% (B2) and 43.6% (GT4) of the Provideam good parts. Reckitt must name the official source per site.'),
+      esc('2. Only Provideam: we need the Provideam files or the Provideam rules. Or Reckitt accepts that the column is empty (for example comment text).'),
+      esc('3. Excel files: they do not depend on the OEE source. We need them in every case.'),
+      esc('4. At a switch, the history in the report changes: Provideam numbers before the date, Insights Hub numbers after it.'),
+    ].join('<br><br>'),
+    'neutral',
+    'verticalAlign=top;spacingTop=8;fontSize=11;',
+  );
+  pages.push(pp);
 }
 
 // ---- Page for the tables not created -----------------------------------------------------------
