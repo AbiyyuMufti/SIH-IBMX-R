@@ -4,8 +4,8 @@
 |---|---|
 | **What** | One draw.io file that shows, for every Power BI table of the EU report: which columns it has, an example, the column we create for it, and what is different (empty now, assumption, partly filled) |
 | **File** | `diagrams/powerbi-data-map.drawio` (plain XML, tracked in git). Open it with draw.io (desktop, web or the VS Code extension) |
-| **Pages** | 1 Overview (tables, where used, joins, tables not created), then one page per table (Machine Names, Plan OPT, Time Utilisation, Daily Losses, Shift Naming, Calendar), then "Targets (Glidepaths)" (how the targets reach the visuals, and how a stop finds its target), then "Not created yet" with the columns of each missing table |
-| **Colours** | Green = OK. Yellow = partly filled. Orange = assumption or difference to check. Purple = needs source file (assumption or empty now, the real source is a file that is not connected yet). Red = empty now or no column. Grey = not needed |
+| **Sheets** | Overview (no number), then sheets 1 to 6, one per table (1 Machine Names, 2 Plan OPT, 3 Time Utilisation, 4 Daily Losses, 5 Shift Naming, 6 Calendar; the number is also on the overview card). Then two sheets without a number that only explain: "Explanation Targets (Glidepaths)" and "Not created yet" (columns of each missing table) |
+| **Colours** | Green = OK. Yellow = partly filled. Orange = assumption or difference to check. Purple = needs source file: the report takes the value from a file, and the values would be the same if the file is extracted (key names must match). Red = empty now or no column. Grey = not needed |
 | **Made from** | The Power BI template and report file (outside the repo), the mapping workbook, the sample files of the Power BI local copy, and a profile of our parquet files (`diagrams/data/ours-profile.json`) |
 | **Status** | Built 2026-10-13 on the Hull data of 2026-09-01 to 2026-10-12 (38 days). Not reviewed by Reckitt |
 
@@ -27,7 +27,6 @@
 - Power BI tables not created yet: 10 (listed on the last page).
 
 ## Purple level: needs source file (2026-10-13)
-A column or table is purple when its real source in the Power BI report is a SharePoint file (Glidepaths targets, Machine Names, Shift Naming, Equipment Coding, Volume Loss Correction, Targets Volume) and Insights Hub has no data for it. The label also says "EMPTY NOW" or the filled share, so the stand-in value is still visible. The list of files and questions for Reckitt: [prompt-response/file-integration-questions.md](../prompt-response/file-integration-questions.md). Set the level in the NOTE table of the builder with `'file'`.
-
-## Targets page (2026-10-13)
+Purple only where the report takes the value from the Glidepaths files: the three targets in Plan OPT, Value and Target in Daily Losses, and the four target tables on the "Not created yet" sheet. It means: if the file is extracted, the values are the same as in the report, if the key names match. Items that depend on other files (Machine Names, Shift Naming, Equipment Coding, Volume Loss Correction, Targets Volume) keep their own colour (orange assumption or red empty) until we have looked at those files. The label also says "EMPTY NOW" or the filled share. List of files and questions: [prompt-response/file-integration-questions.md](../prompt-response/file-integration-questions.md).
+ (2026-10-13)
 Shows the path: Glidepaths files, 4 target tables, 5 filled columns (3 in Plan OPT, 2 in Daily Losses), and the visuals that use them (from the data lineage document): OEE Target for visuals 1 and 4, PDT Target for 3 and 7, UPDT Target for 2 and 8, Daily Losses Value and Target for visual 5. Volume Total (visual 5) is not from Glidepaths. The lower part shows the key match and three reasons why a target can stay empty (machine name, loss category name, month text).
