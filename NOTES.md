@@ -210,3 +210,10 @@ Tried: Power BI flow with `Keep dim_asset` expecting an array. Error: "the file 
 - Decisions (user): own product table with native SIH columns, `product_key` = code (check uniqueness first); two sources side by side (the copy and SIH native), same structure; product type through a per-asset value in Config.
 - Open: machine key (asset ID or the copy's machine-site form), product type values, cutover per site, files from Reckitt for targets and corrections.
 - Failed attempt: the `.pbix` data model is compressed (not readable here); the `.pbit` has `DataModelSchema` as UTF-16 JSON without BOM, which is what the helper reads.
+
+## Power BI data map diagram (2026-10-13)
+- Built `diagrams/powerbi-data-map.drawio` (8 pages) with `scripts/build-drawio.js`, from the template, the report file, the mapping workbook, the report copy samples and a profile of the downloaded lake files (`scripts/helper-profile-parquet.py`). Doc: `docs/powerbi-diagrams.md`. Checked: `node scripts/validate-drawio.js` and an export of two pages with draw.io desktop.
+- Decision (user): examples with real data values are allowed in the repo; the diagram is tracked in git. Python is allowed for data checks (CLAUDE.md and the local settings changed).
+- Found in the lake data (38 days of Hull): product columns empty on days with no product (B2 Line 1-3 and 8-14 Sep, GT4 29 Sep, 3 and 6-8 Oct); `equipment` 16 %, `loss_lvl3_sub_group` 35 %, `breakdown_types` 0.2 % filled; `value`, `target`, `volume_total` and the three targets empty; `product_type` empty.
+- Failed attempt: `python -I` could not import polars (isolated mode ignores the user site); matplotlib fails to start on this PC. A PNG preview comes from draw.io desktop: `draw.io.exe --export --format png --page-index N`.
+- Next: ask whether to add a per-column plan to the "not created" page; keep the diagram in step when a column changes.

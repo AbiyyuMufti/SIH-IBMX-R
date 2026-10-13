@@ -1,0 +1,847 @@
+{
+  "pbi_calendar": {
+    "rows": 122,
+    "columns": [
+      {
+        "name": "date",
+        "type": "String",
+        "filled": 122,
+        "filled_share": 1.0,
+        "distinct": 122,
+        "examples": [
+          "2026-09-01",
+          "2026-09-02",
+          "2026-09-03"
+        ]
+      },
+      {
+        "name": "year",
+        "type": "Int64",
+        "filled": 122,
+        "filled_share": 1.0,
+        "distinct": 1,
+        "examples": [
+          "2026"
+        ]
+      },
+      {
+        "name": "month_number",
+        "type": "Int64",
+        "filled": 122,
+        "filled_share": 1.0,
+        "distinct": 4,
+        "examples": [
+          "10",
+          "12",
+          "9"
+        ]
+      },
+      {
+        "name": "month",
+        "type": "String",
+        "filled": 122,
+        "filled_share": 1.0,
+        "distinct": 4,
+        "examples": [
+          "October",
+          "December",
+          "September"
+        ]
+      },
+      {
+        "name": "month_short_name",
+        "type": "String",
+        "filled": 122,
+        "filled_share": 1.0,
+        "distinct": 4,
+        "examples": [
+          "Oct",
+          "Dec",
+          "Sep"
+        ]
+      },
+      {
+        "name": "month_year",
+        "type": "String",
+        "filled": 122,
+        "filled_share": 1.0,
+        "distinct": 4,
+        "examples": [
+          "Oct 2026",
+          "Dec 2026",
+          "Sep 2026"
+        ]
+      },
+      {
+        "name": "month_year_number",
+        "type": "String",
+        "filled": 122,
+        "filled_share": 1.0,
+        "distinct": 4,
+        "examples": [
+          "10 26",
+          "12 26",
+          "09 26"
+        ]
+      },
+      {
+        "name": "quarter",
+        "type": "String",
+        "filled": 122,
+        "filled_share": 1.0,
+        "distinct": 2,
+        "examples": [
+          "QTR4",
+          "QTR3"
+        ]
+      },
+      {
+        "name": "quarter_number",
+        "type": "Int64",
+        "filled": 122,
+        "filled_share": 1.0,
+        "distinct": 2,
+        "examples": [
+          "4",
+          "3"
+        ]
+      },
+      {
+        "name": "week_number",
+        "type": "Int64",
+        "filled": 122,
+        "filled_share": 1.0,
+        "distinct": 18,
+        "examples": [
+          "37",
+          "38",
+          "39"
+        ]
+      },
+      {
+        "name": "week_start",
+        "type": "String",
+        "filled": 122,
+        "filled_share": 1.0,
+        "distinct": 18,
+        "examples": [
+          "2026-09-07",
+          "2026-09-14",
+          "2026-09-21"
+        ]
+      }
+    ]
+  },
+  "pbi_daily_losses": {
+    "rows": 10100,
+    "columns": [
+      {
+        "name": "site_name",
+        "type": "String",
+        "filled": 10100,
+        "filled_share": 1.0,
+        "distinct": 1,
+        "examples": [
+          "Hull"
+        ]
+      },
+      {
+        "name": "machine_name",
+        "type": "String",
+        "filled": 10100,
+        "filled_share": 1.0,
+        "distinct": 2,
+        "examples": [
+          "B2 Line",
+          "GT4"
+        ]
+      },
+      {
+        "name": "unique_machine_name",
+        "type": "String",
+        "filled": 10100,
+        "filled_share": 1.0,
+        "distinct": 2,
+        "examples": [
+          "cf4565d7...",
+          "bc08dae1..."
+        ]
+      },
+      {
+        "name": "date",
+        "type": "String",
+        "filled": 10100,
+        "filled_share": 1.0,
+        "distinct": 40,
+        "examples": [
+          "2026-09-26",
+          "2026-09-13",
+          "2026-10-09"
+        ]
+      },
+      {
+        "name": "time",
+        "type": "String",
+        "filled": 10100,
+        "filled_share": 1.0,
+        "distinct": 9395,
+        "examples": [
+          "06:00:00",
+          "18:00:00",
+          "19:57:52"
+        ]
+      },
+      {
+        "name": "shift_start_date",
+        "type": "String",
+        "filled": 10100,
+        "filled_share": 1.0,
+        "distinct": 38,
+        "examples": [
+          "2026-09-13",
+          "2026-09-26",
+          "2026-09-25"
+        ]
+      },
+      {
+        "name": "shift_name",
+        "type": "String",
+        "filled": 10100,
+        "filled_share": 1.0,
+        "distinct": 7,
+        "examples": [
+          "Yellow",
+          "Red",
+          "Blue"
+        ]
+      },
+      {
+        "name": "duration",
+        "type": "Float64",
+        "filled": 10100,
+        "filled_share": 1.0,
+        "distinct": 4697,
+        "examples": [
+          "0.08333333333333333",
+          "0.08336666666666667",
+          "0.08331666666666666"
+        ]
+      },
+      {
+        "name": "loss_units",
+        "type": "Float64",
+        "filled": 7329,
+        "filled_share": 0.7256435643564356,
+        "distinct": 5281,
+        "examples": [
+          "6.006",
+          "15.833333333333332",
+          "5.997"
+        ]
+      },
+      {
+        "name": "loss_lvl3_group",
+        "type": "String",
+        "filled": 10100,
+        "filled_share": 1.0,
+        "distinct": 2,
+        "examples": [
+          "Not Logged",
+          "Unplanned Loss"
+        ]
+      },
+      {
+        "name": "loss_lvl3_sub_group",
+        "type": "String",
+        "filled": 3502,
+        "filled_share": 0.3467326732673267,
+        "distinct": 7,
+        "examples": [
+          "Unplanned Downtime",
+          "Process Failure",
+          "Measurement and adjustment"
+        ]
+      },
+      {
+        "name": "loss_lvl3_desc",
+        "type": "String",
+        "filled": 10100,
+        "filled_share": 1.0,
+        "distinct": 98,
+        "examples": [
+          "Unplanned Downtime",
+          "001 PRESSED EMERGENCY IN MAIN P.B.PANEL AREA",
+          "100 FAULTY DRIVER ON SCREW CAP DISTRIBUTOR"
+        ]
+      },
+      {
+        "name": "loss_final_level",
+        "type": "String",
+        "filled": 10100,
+        "filled_share": 1.0,
+        "distinct": 98,
+        "examples": [
+          "Unplanned Downtime",
+          "001 PRESSED EMERGENCY IN MAIN P.B.PANEL AREA",
+          "100 FAULTY DRIVER ON SCREW CAP DISTRIBUTOR"
+        ]
+      },
+      {
+        "name": "equipment",
+        "type": "String",
+        "filled": 1662,
+        "filled_share": 0.16455445544554456,
+        "distinct": 20,
+        "examples": [
+          "Capper",
+          "Infeed",
+          "Calibration"
+        ]
+      },
+      {
+        "name": "breakdown_types",
+        "type": "String",
+        "filled": 18,
+        "filled_share": 0.0017821782178217822,
+        "distinct": 2,
+        "examples": [
+          "Breakdown - Electrical",
+          "Breakdown - Mechanical"
+        ]
+      },
+      {
+        "name": "batch_id",
+        "type": "String",
+        "filled": 7136,
+        "filled_share": 0.7065346534653465,
+        "distinct": 53,
+        "examples": [
+          "AJR885",
+          "AJT584",
+          "AJR379"
+        ]
+      },
+      {
+        "name": "comment_count",
+        "type": "Int64",
+        "filled": 10100,
+        "filled_share": 1.0,
+        "distinct": 1,
+        "examples": [
+          "0"
+        ]
+      },
+      {
+        "name": "part_name",
+        "type": "String",
+        "filled": 7329,
+        "filled_share": 0.7256435643564356,
+        "distinct": 40,
+        "examples": [
+          "NURFN,GB,CHILD,STRAW,SYN,6X100",
+          "NURFN,BG,CHILD,STR,4%,12X100ML",
+          "NURFN,GB,STRB,6X100ML"
+        ]
+      },
+      {
+        "name": "product_key",
+        "type": "String",
+        "filled": 7329,
+        "filled_share": 0.7256435643564356,
+        "distinct": 41,
+        "examples": [
+          "0127201",
+          "3021235",
+          "8087858"
+        ]
+      },
+      {
+        "name": "loss_target_key",
+        "type": "String",
+        "filled": 10100,
+        "filled_share": 1.0,
+        "distinct": 14,
+        "examples": [
+          "B2 Line|null|2026-09",
+          "B2 Line|Unplanned Downtime|2026-09",
+          "B2 Line|null|2026-10"
+        ]
+      },
+      {
+        "name": "value",
+        "type": "Float64",
+        "filled": 0,
+        "filled_share": 0.0,
+        "distinct": 0,
+        "examples": []
+      },
+      {
+        "name": "target",
+        "type": "Float64",
+        "filled": 0,
+        "filled_share": 0.0,
+        "distinct": 0,
+        "examples": []
+      },
+      {
+        "name": "volume_key",
+        "type": "String",
+        "filled": 10100,
+        "filled_share": 1.0,
+        "distinct": 4,
+        "examples": [
+          "B2 Line|2026-09",
+          "B2 Line|2026-10",
+          "GT4|2026-09"
+        ]
+      },
+      {
+        "name": "volume_total",
+        "type": "Float64",
+        "filled": 0,
+        "filled_share": 0.0,
+        "distinct": 0,
+        "examples": []
+      },
+      {
+        "name": "loaded_at",
+        "type": "Datetime(time_unit='ms', time_zone=None)",
+        "filled": 10100,
+        "filled_share": 1.0,
+        "distinct": 38,
+        "examples": [
+          "2026-10-13 04:50:25.071000",
+          "2026-10-13 04:52:30.102000",
+          "2026-10-13 04:52:50.077000"
+        ]
+      }
+    ]
+  },
+  "pbi_machine_name": {
+    "rows": 2,
+    "columns": [
+      {
+        "name": "site_name",
+        "type": "String",
+        "filled": 2,
+        "filled_share": 1.0,
+        "distinct": 1,
+        "examples": [
+          "Hull"
+        ]
+      },
+      {
+        "name": "area",
+        "type": "String",
+        "filled": 2,
+        "filled_share": 1.0,
+        "distinct": 2,
+        "examples": [
+          "Bottles",
+          "Blisters"
+        ]
+      },
+      {
+        "name": "dept",
+        "type": "String",
+        "filled": 2,
+        "filled_share": 1.0,
+        "distinct": 2,
+        "examples": [
+          "Bottles",
+          "Blisters"
+        ]
+      },
+      {
+        "name": "machine_name",
+        "type": "String",
+        "filled": 2,
+        "filled_share": 1.0,
+        "distinct": 2,
+        "examples": [
+          "B2 Line",
+          "GT4"
+        ]
+      },
+      {
+        "name": "product_type",
+        "type": "String",
+        "filled": 0,
+        "filled_share": 0.0,
+        "distinct": 0,
+        "examples": []
+      },
+      {
+        "name": "unique_machine_name",
+        "type": "String",
+        "filled": 2,
+        "filled_share": 1.0,
+        "distinct": 2,
+        "examples": [
+          "cf4565d7...",
+          "bc08dae1..."
+        ]
+      },
+      {
+        "name": "loaded_at",
+        "type": "Datetime(time_unit='ms', time_zone=None)",
+        "filled": 2,
+        "filled_share": 1.0,
+        "distinct": 1,
+        "examples": [
+          "2026-10-13 04:26:30.223000"
+        ]
+      }
+    ]
+  },
+  "pbi_plan_opt": {
+    "rows": 178,
+    "columns": [
+      {
+        "name": "site_name",
+        "type": "String",
+        "filled": 178,
+        "filled_share": 1.0,
+        "distinct": 1,
+        "examples": [
+          "Hull"
+        ]
+      },
+      {
+        "name": "area_name",
+        "type": "String",
+        "filled": 178,
+        "filled_share": 1.0,
+        "distinct": 2,
+        "examples": [
+          "Bottles",
+          "Blisters"
+        ]
+      },
+      {
+        "name": "machine_name",
+        "type": "String",
+        "filled": 178,
+        "filled_share": 1.0,
+        "distinct": 2,
+        "examples": [
+          "B2 Line",
+          "GT4"
+        ]
+      },
+      {
+        "name": "unique_machine_name",
+        "type": "String",
+        "filled": 178,
+        "filled_share": 1.0,
+        "distinct": 2,
+        "examples": [
+          "cf4565d7...",
+          "bc08dae1..."
+        ]
+      },
+      {
+        "name": "date",
+        "type": "String",
+        "filled": 178,
+        "filled_share": 1.0,
+        "distinct": 38,
+        "examples": [
+          "2026-10-01",
+          "2026-10-02",
+          "2026-09-09"
+        ]
+      },
+      {
+        "name": "shift_name",
+        "type": "String",
+        "filled": 178,
+        "filled_share": 1.0,
+        "distinct": 7,
+        "examples": [
+          "Shift 2",
+          "Shift 1",
+          "Yellow"
+        ]
+      },
+      {
+        "name": "part_name",
+        "type": "String",
+        "filled": 148,
+        "filled_share": 0.8314606741573034,
+        "distinct": 40,
+        "examples": [
+          "250 mg tablets - Pep 8's",
+          "Dada/Straw 24's",
+          "NURFN,GB,CHILD,STRAW,SYN,6X100"
+        ]
+      },
+      {
+        "name": "product_key",
+        "type": "String",
+        "filled": 148,
+        "filled_share": 0.8314606741573034,
+        "distinct": 41,
+        "examples": [
+          "GT4-250-MG-TABLETS-PEP-8",
+          "GT4-DADA-STRAW-24",
+          "0127201"
+        ]
+      },
+      {
+        "name": "good_parts",
+        "type": "Float64",
+        "filled": 178,
+        "filled_share": 1.0,
+        "distinct": 146,
+        "examples": [
+          "0.0",
+          "70667.0",
+          "88788.0"
+        ]
+      },
+      {
+        "name": "capacity",
+        "type": "Float64",
+        "filled": 148,
+        "filled_share": 0.8314606741573034,
+        "distinct": 86,
+        "examples": [
+          "136800.0",
+          "151200.0",
+          "86400.0"
+        ]
+      },
+      {
+        "name": "downtime_units",
+        "type": "Float64",
+        "filled": 148,
+        "filled_share": 0.8314606741573034,
+        "distinct": 133,
+        "examples": [
+          "0.0",
+          "7200.0",
+          "79200.0"
+        ]
+      },
+      {
+        "name": "total_time",
+        "type": "Float64",
+        "filled": 178,
+        "filled_share": 1.0,
+        "distinct": 21,
+        "examples": [
+          "720.0",
+          "660.0",
+          "60.0"
+        ]
+      },
+      {
+        "name": "planned_opt",
+        "type": "Float64",
+        "filled": 178,
+        "filled_share": 1.0,
+        "distinct": 74,
+        "examples": [
+          "720.0",
+          "660.0",
+          "60.0"
+        ]
+      },
+      {
+        "name": "oee_time",
+        "type": "Float64",
+        "filled": 130,
+        "filled_share": 0.7303370786516854,
+        "distinct": 125,
+        "examples": [
+          "0.0",
+          "5.573611108333333",
+          "61.30972219166665"
+        ]
+      },
+      {
+        "name": "oee_target",
+        "type": "Float64",
+        "filled": 0,
+        "filled_share": 0.0,
+        "distinct": 0,
+        "examples": []
+      },
+      {
+        "name": "pdt_target",
+        "type": "Float64",
+        "filled": 0,
+        "filled_share": 0.0,
+        "distinct": 0,
+        "examples": []
+      },
+      {
+        "name": "updt_target",
+        "type": "Float64",
+        "filled": 0,
+        "filled_share": 0.0,
+        "distinct": 0,
+        "examples": []
+      },
+      {
+        "name": "source_hours",
+        "type": "Int64",
+        "filled": 178,
+        "filled_share": 1.0,
+        "distinct": 12,
+        "examples": [
+          "12",
+          "11",
+          "1"
+        ]
+      },
+      {
+        "name": "loaded_at",
+        "type": "Datetime(time_unit='ms', time_zone=None)",
+        "filled": 178,
+        "filled_share": 1.0,
+        "distinct": 38,
+        "examples": [
+          "2026-10-13 04:52:15.070000",
+          "2026-10-13 04:52:00.087000",
+          "2026-10-13 04:50:05.101000"
+        ]
+      }
+    ]
+  },
+  "pbi_shift_naming": {
+    "rows": 7,
+    "columns": [
+      {
+        "name": "shift",
+        "type": "String",
+        "filled": 7,
+        "filled_share": 1.0,
+        "distinct": 7,
+        "examples": [
+          "Red",
+          "Gold",
+          "Blue"
+        ]
+      },
+      {
+        "name": "loaded_at",
+        "type": "Datetime(time_unit='ms', time_zone=None)",
+        "filled": 7,
+        "filled_share": 1.0,
+        "distinct": 1,
+        "examples": [
+          "2026-10-13 04:26:30.223000"
+        ]
+      }
+    ]
+  },
+  "pbi_time_utilisation": {
+    "rows": 66,
+    "columns": [
+      {
+        "name": "site_name",
+        "type": "String",
+        "filled": 66,
+        "filled_share": 1.0,
+        "distinct": 1,
+        "examples": [
+          "Hull"
+        ]
+      },
+      {
+        "name": "machine_name",
+        "type": "String",
+        "filled": 66,
+        "filled_share": 1.0,
+        "distinct": 2,
+        "examples": [
+          "B2 Line",
+          "GT4"
+        ]
+      },
+      {
+        "name": "unique_machine_name",
+        "type": "String",
+        "filled": 66,
+        "filled_share": 1.0,
+        "distinct": 2,
+        "examples": [
+          "cf4565d7...",
+          "bc08dae1..."
+        ]
+      },
+      {
+        "name": "date",
+        "type": "String",
+        "filled": 66,
+        "filled_share": 1.0,
+        "distinct": 38,
+        "examples": [
+          "2026-09-08",
+          "2026-09-09",
+          "2026-09-10"
+        ]
+      },
+      {
+        "name": "total_time_total",
+        "type": "Float64",
+        "filled": 66,
+        "filled_share": 1.0,
+        "distinct": 8,
+        "examples": [
+          "1440.0",
+          "1306.0",
+          "1254.0"
+        ]
+      },
+      {
+        "name": "planned_opt_total",
+        "type": "Float64",
+        "filled": 66,
+        "filled_share": 1.0,
+        "distinct": 37,
+        "examples": [
+          "1440.0",
+          "1148.6362333333332",
+          "1257.8078166666667"
+        ]
+      },
+      {
+        "name": "oee_time_total",
+        "type": "Float64",
+        "filled": 51,
+        "filled_share": 0.7727272727272727,
+        "distinct": 51,
+        "examples": [
+          "0.0",
+          "84.43958329999998",
+          "245.5644791883334"
+        ]
+      },
+      {
+        "name": "all_time",
+        "type": "Int64",
+        "filled": 66,
+        "filled_share": 1.0,
+        "distinct": 1,
+        "examples": [
+          "1440"
+        ]
+      },
+      {
+        "name": "loaded_at",
+        "type": "Datetime(time_unit='ms', time_zone=None)",
+        "filled": 66,
+        "filled_share": 1.0,
+        "distinct": 38,
+        "examples": [
+          "2026-10-13 04:49:55.066000",
+          "2026-10-13 04:50:05.101000",
+          "2026-10-13 04:50:30.109000"
+        ]
+      }
+    ]
+  }
+}

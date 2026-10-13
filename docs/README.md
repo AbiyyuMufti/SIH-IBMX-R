@@ -31,6 +31,7 @@
 | [powerbi-tables.md](powerbi-tables.md) | The flow that rebuilds the Power BI tables from our own tables, and which node makes which table | Mock only |
 | [powerbi-direct.md](powerbi-direct.md) | Two flows that write the Power BI tables straight from the API (daily per site, reference for all sites). Replaces the two-step chain | Mock only |
 | [powerbi-model-findings.md](powerbi-model-findings.md) | What the existing EU Power BI report expects: keys, relationships, measures, decisions, open points; how to re-read its files with `scripts/helper-pbit-outline.js` | Findings (2026-10-13) |
+| [powerbi-diagrams.md](powerbi-diagrams.md) | The draw.io map of every Power BI table: columns, examples, our column and the difference (empty, assumption, partly filled); how to refresh it | Built 2026-10-13 |
 | [lake-api.md](lake-api.md) | Python downloads parquet files or folder lists from the data lake through an `http in` endpoint of the VFC (spike checked in the VFC, final flow built) | Spike in the VFC |
 | [logging.md](logging.md) | The CSV run log in the data lake (one file per month and flow) and the error catch | Mock only |
 | [fact-flows.md](fact-flows.md) | The per-site flows that write `fact_kpi` and `fact_loss`, and how to add a site | Hull, dry run in the VFC |

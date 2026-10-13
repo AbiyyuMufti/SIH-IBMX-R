@@ -9,6 +9,7 @@ Build and maintain Node-RED flows for Siemens Insights Hub (Reckitt OEE), based 
 - Done (spike checked by the user in the VFC): Python reads parquet files of the data lake through an `http in` endpoint, `flows/vfc-lake-api.json`, see `docs/lake-api.md`. Final flow built, to re-check in the VFC
 - Done offline (mock proof passes, rebuilt flows to import and check in the VFC): platform switch. Config node `platform` (`legacy` or `xcelerator`, no default) and `IH_PLATFORM` in `.env` for scripts, see `docs/platform-switch.md`. Test: `node scripts/test-platform-switch.js`; the test scripts take `platform=legacy|xcelerator`
 - Current work: Power BI tables straight from the API, `flows/vfc-pbi-daily-hull.json` and `flows/vfc-pbi-reference.json`, see `docs/powerbi-direct.md` (mock tests pass, not run in the VFC yet; the daily flow now also fills product, part name, batch id from the order, capacity and units). They replace the two-step chain (facts, then conversion); the old flows stay in the repo, the user disables them
+- Done: draw.io map of every Power BI table (columns, examples, our column, differences), `diagrams/powerbi-data-map.drawio`, see `docs/powerbi-diagrams.md`. Refresh: `python scripts/helper-profile-parquet.py`, then `node scripts/build-drawio.js` and `node scripts/validate-drawio.js`
 - Earlier work: first dashboard draft on the group 1 tables (Config, reference tables, Hull facts). Group 2 (shift KPIs, manual entries, run rate, derived loss columns) is DECIDE LATER, not planned. Group 3 waits for Reckitt
 - `dryRun` is set in the VFC by the user, not in dev work: do not change the default
 - Read `docs/README.md` first, then only the doc for the area you are working on. Do not re-parse `source/` unless I ask
@@ -68,7 +69,8 @@ Checks (in `scripts/validate-flow.js`, must pass before every commit):
 - Never print or write secrets (tokens, passwords, keys) in docs, logs, commits or chat
 - Secrets live in `.env` (read via process.env), git-ignored. If you find one in a file, tell me file and location only
 - GET only by default. Ask before any POST/PUT/PATCH/DELETE, except read-style POSTs I already approved (token, `evaluateKPIs`, `evaluate`, `timeModelCategoryDistribution`)
-- Never modify `source/`. Never execute Python files
+- Never modify `source/`. Never run the Python files in `source/`
+- Python is allowed for reading and checking data (for example the parquet files from the data lake in `parquet/`) and for small helper scripts I ask for. I approve each run in the permission prompt
 - Do not guess API behaviour. If `docs/` does not cover it, test it (GET) or ask me
 - No personal data in docs (emails, user names)
 - This repo is public: before every commit check the diff for secrets, asset IDs or customer business detail I have not approved
