@@ -16,7 +16,7 @@
 4. `node scripts/validate-drawio.js` checks ids, arrows, overlaps and whether the text fits the boxes.
 
 ## Columns on a table sheet (left to right)
-Power BI column and example, Insights Hub column and example, **SIH source** (the API endpoint and field the column is built from; teal box, grey when there is no Insights Hub source) and **SIH integration** (status and difference; the colour levels below). The endpoint texts are in the `SIH_SRC` map of `scripts/build-drawio.js` (key: `Power BI table|column`). Paths are for the legacy platform; on xcelerator see [platform-switch.md](platform-switch.md). The overview cards list the endpoints of each table, and the last sheet shows the possible source of each missing table.
+Power BI column and example, Insights Hub column and example, and **SIH integration** (status and difference, with the colour levels below). Inside the SIH integration box, below its last text, a teal box **SIH source** gives the API endpoint and the field the column is built from (a grey box when there is no Insights Hub source). The endpoint texts are in the `SIH_SRC` map of `scripts/build-drawio.js` (key: `Power BI table|column`). Paths are for the legacy platform; on xcelerator see [platform-switch.md](platform-switch.md). The overview cards list the endpoints of each table, and the last sheet shows the possible source of each missing table.
 
 ## Where the text of the "SIH integration" box comes from
 - The notes written by hand are in the `NOTE` table of `scripts/build-drawio.js` (key: `Power BI table|column`). They hold what we decided and what we know now, for example the capacity assumption. Change a note there, not in the diagram.

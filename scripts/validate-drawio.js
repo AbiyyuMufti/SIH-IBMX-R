@@ -75,6 +75,11 @@ for (const d of xml.matchAll(/<diagram name="([^"]*)"[\s\S]*?<\/diagram>/g)) {
       if (a.isText || b.isText) {
         continue;
       }
+      // A box drawn inside another box on purpose (SIH source inside SIH integration).
+      const inside = (p, q) => p.x >= q.x && p.y >= q.y && p.x + p.w <= q.x + q.w && p.y + p.h <= q.y + q.h;
+      if (inside(a, b) || inside(b, a)) {
+        continue;
+      }
       if (a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h) {
         overlaps += 1;
         if (overlaps <= 3) {

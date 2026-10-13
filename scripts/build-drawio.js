@@ -600,7 +600,7 @@ for (const t of TABLES) {
   page.box(
     40,
     62,
-    1560,
+    1260,
     96,
     [
       esc(`Holds: ${s ? s[1] : ''}. One row is: ${s ? s[2] : ''}.`),
@@ -612,8 +612,7 @@ for (const t of TABLES) {
   );
   page.text(40, 172, 270, 20, bold('Power BI column') + ' (blue) and example (below it)', 'fontSize=11;');
   page.text(380, 172, 270, 20, bold('Insights Hub column') + ' and example (below it)', 'fontSize=11;');
-  page.text(700, 172, 340, 20, bold('SIH source') + ' (API endpoint and field)', 'fontSize=11;');
-  page.text(1060, 172, 500, 20, bold('SIH integration') + ' (status and difference)', 'fontSize=11;');
+  page.text(700, 172, 600, 20, bold('SIH integration') + ' (status and difference; the SIH source is in the teal box)', 'fontSize=11;');
   let y = 200;
   for (const r of rows) {
     const pbiHtml = `${bold(r.col.name)}<br>${small(`${r.col.type}${r.col.calculated ? ', calculated' : ''}${r.pages ? `, used on ${r.pages} page${r.pages > 1 ? 's' : ''}` : ''}`)}`;
@@ -632,16 +631,20 @@ for (const t of TABLES) {
     page.edge(a, b, COLOR[r.color][1], !r.our);
     const src = sihSource(t.pbi, r.col.name, r.color);
     const noSrc = /^(No |Not )/.test(src);
-    page.box(700, y, 340, 82, `${bold('SIH source')}<br>${esc(src)}`, noSrc ? 'none' : 'sih', 'verticalAlign=top;spacingTop=4;fontSize=10;');
-    page.box(1060, y, 500, 82, `${bold(r.label)}<br>${esc(r.text)}`, r.color, 'verticalAlign=top;spacingTop=4;fontSize=10.5;');
-    y += ROW;
+    const linesOf = (text, perLine) => Math.max(1, Math.ceil(text.length / perLine));
+    const intH = 12 + 15 * (1 + linesOf(r.text, 90));
+    const srcH = 10 + 14 * linesOf('SIH source: ' + src, 84);
+    const rowH = Math.max(82, intH + srcH + 14);
+    page.box(700, y, 600, rowH, `${bold(r.label)}<br>${esc(r.text)}`, r.color, 'verticalAlign=top;spacingTop=4;fontSize=10.5;');
+    page.box(710, y + rowH - srcH - 6, 580, srcH, `${bold('SIH source: ')}${esc(src)}`, noSrc ? 'none' : 'sih', 'verticalAlign=middle;fontSize=10;strokeWidth=2;');
+    y += rowH + 8;
   }
   if (extras.length) {
-    page.text(40, y + 6, 1560, 20, bold('Columns added from Insights Hub that the report does not have'), 'fontSize=11;');
+    page.text(40, y + 6, 1260, 20, bold('Columns added from Insights Hub that the report does not have'), 'fontSize=11;');
     page.box(
       40,
       y + 32,
-      1560,
+      1260,
       44,
       esc(extras.map((c) => `${c.name} (${typeName(c.type)}, ${Math.round(c.filled_share * 100)}% filled)`).join('   |   ')),
       'none',

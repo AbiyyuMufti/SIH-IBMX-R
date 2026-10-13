@@ -267,4 +267,4 @@ Tried: Power BI flow with `Keep dim_asset` expecting an array. Error: "the file 
 
 ## Diagram as final documentation (2026-10-13)
 - Column "Difference" renamed "SIH integration" (status and difference), new column "SIH source" with the API endpoint and field of every Power BI column, endpoint lists on the overview cards and on the "not created" cards. Source of the endpoint text: the flow code (scripts/vfc/d*.js, m*.js) and docs/endpoints.md. Not checked against live calls today.
-- Layout choice: the new box is its own column next to the status box, not layered over it. Easy to change in build-drawio.js if the user wants it differently.
+- Layout (corrected on the user request): no extra column. The SIH source is a teal box inside the SIH integration box, below its last text, on top of it. The validator ignores boxes that are inside another box on purpose.
