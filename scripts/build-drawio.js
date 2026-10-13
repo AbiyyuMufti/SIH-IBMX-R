@@ -539,6 +539,168 @@ for (const t of TABLES) {
   pages.push(page);
 }
 
+// ---- Page: how the Glidepaths targets reach the report ------------------------------------
+{
+  const tp = new Page(`${pages.length + 1} Targets (Glidepaths)`);
+  const sub = profile.pbi_daily_losses.columns.find((c) => c.name === 'loss_lvl3_sub_group');
+  tp.text(40, 20, 1500, 30, bold('Targets: from the Glidepaths files to the report visuals'), 'fontSize=18;');
+  tp.box(
+    40,
+    62,
+    1520,
+    62,
+    esc('Purple = needs the Glidepaths files (not connected yet). Blue = Power BI visual. The Glidepaths files fill 5 columns in 2 tables. Which visual uses which column comes from the data lineage document. No Glidepaths file has been seen yet: the file layout below comes from the load queries of the Power BI model.'),
+    'neutral',
+    'verticalAlign=top;spacingTop=6;fontSize=11;',
+  );
+  const head = (x, text) => tp.text(x, 140, 330, 20, bold(text), 'fontSize=12;');
+  head(40, '1 Source files');
+  head(430, '2 Target tables in the report');
+  head(830, '3 Columns they fill');
+  head(1230, '4 Visuals that use them');
+
+  const src = tp.box(
+    40,
+    170,
+    330,
+    330,
+    [
+      bold('Glidepaths files'),
+      esc('SharePoint, Nottingham site, one folder for all sites. One row per site, line and loss category (OEE Bucket). One column per month.'),
+      bold('Columns (from the model query)'),
+      esc('Site Name | Line | OEE Bucket | one column per month (value in percent)'),
+      bold('Example row (layout only, not real values)'),
+      esc('Hull | <line> | % OEE | 01/10/2026 = <percent>'),
+      esc('The report turns the month columns into rows, then builds a key: <Line>-<Site> + category + month.'),
+    ].join('<br><br>'),
+    'file',
+    'verticalAlign=top;spacingTop=6;fontSize=10.5;',
+  );
+
+  const tTables = [
+    ['OEE Targets EU', 'Line, OEE Bucket, Attribute, OEE Target, Volume Key, Site Name', 'only the rows with bucket "% OEE"'],
+    ['PDT Targets EU', 'Line, OEE Bucket, Attribute, PDT Target, Volume Key, Site Name', 'planned downtime target'],
+    ['UPDT Targets EU', 'Line, OEE Bucket, Attribute, UPDT Target, Volume Key, % Target, Site Name', 'unplanned downtime target'],
+    ['Targets Losses EU', 'Value, Loss Key, Volume Key', 'one target per machine, loss category and month'],
+  ];
+  const tableBoxes = tTables.map(([name, cols, note], i) => tp.box(
+    430,
+    170 + i * 84,
+    330,
+    74,
+    bold(name) + '<br>' + esc(cols) + '<br>' + esc(note),
+    'file',
+    'verticalAlign=top;spacingTop=4;fontSize=10;',
+  ));
+  tableBoxes.forEach((id) => tp.edge(src, id, '#9673a6'));
+
+  const col = (y, table, name, note) => tp.box(830, y, 330, 54, bold(table + ' [' + name + ']') + (note ? '<br>' + esc(note) : ''), 'file', 'verticalAlign=top;spacingTop=4;fontSize=10;');
+  const cOee = col(170, 'Plan OPT EU', 'OEE Target', 'join: machine + month');
+  const cPdt = col(236, 'Plan OPT EU', 'PDT Target', 'join: machine + month');
+  const cUpdt = col(302, 'Plan OPT EU', 'UPDT Target', 'join: machine + month');
+  const cVal = col(396, 'Daily Losses EU', 'Value', 'join: machine + loss sub group + month');
+  const cTar = col(462, 'Daily Losses EU', 'Target', 'Value / 100');
+  tp.edge(tableBoxes[0], cOee, '#9673a6');
+  tp.edge(tableBoxes[1], cPdt, '#9673a6');
+  tp.edge(tableBoxes[2], cUpdt, '#9673a6');
+  tp.edge(tableBoxes[3], cVal, '#9673a6');
+  tp.edge(cVal, cTar, '#9673a6');
+
+  const vis = (y, text) => tp.box(1230, y, 330, 34, esc(text), 'pbi', 'fontSize=10.5;');
+  const v1 = vis(170, '1 OEE % (Europe): gauge with target');
+  const v4 = vis(210, '4 OEE % by Site');
+  const v3 = vis(250, '3 Planned Loss %');
+  const v7 = vis(290, '7 Planned Loss vs Target (%) and by Site');
+  const v2 = vis(330, '2 Unplanned Loss %');
+  const v8 = vis(370, '8 Unplanned Loss vs Target (%) and by Site');
+  const v5 = vis(470, '5 Top 5 Loss Categories (also needs Volume Total)');
+  tp.edge(cOee, v1, '#6c8ebf');
+  tp.edge(cOee, v4, '#6c8ebf');
+  tp.edge(cUpdt, v2, '#6c8ebf');
+  tp.edge(cUpdt, v8, '#6c8ebf');
+  tp.edge(cPdt, v3, '#6c8ebf');
+  tp.edge(cPdt, v7, '#6c8ebf');
+  tp.edge(cTar, v5, '#6c8ebf');
+  tp.box(
+    830,
+    530,
+    730,
+    54,
+    esc('Not from Glidepaths: Volume Total in Daily Losses comes from the Targets Volume files (a separate file). Visual 5 weights its target with it.'),
+    'none',
+    'fontSize=10.5;',
+  );
+
+  // How a stop finds its target.
+  tp.text(40, 620, 1500, 24, bold('How one stop finds its target (Daily Losses): the texts must be equal'), 'fontSize=14;');
+  const examples = sub.examples.join(' | ');
+  const stop = tp.box(
+    40,
+    660,
+    330,
+    168,
+    [
+      bold('1 A stop in our Insights Hub data'),
+      esc('Machine: B2 Line'),
+      esc('Loss sub group: ' + sub.examples[1] + ' (our values: ' + examples + ')'),
+      esc('Date: 2026-10-05'),
+      esc(`Sub group is filled for ${Math.round(sub.filled_share * 100)}% of the stops only.`),
+    ].join('<br>'),
+    'ours',
+    'verticalAlign=top;spacingTop=6;fontSize=10.5;',
+  );
+  const key1 = tp.box(
+    430,
+    660,
+    330,
+    168,
+    [
+      bold('2 The report builds a key'),
+      esc('Loss Target Key = machine + loss sub group + month'),
+      esc('B2 Line ' + sub.examples[1] + ' 01/10/2026'),
+    ].join('<br><br>'),
+    'pbi',
+    'verticalAlign=top;spacingTop=6;fontSize=10.5;',
+  );
+  const key2 = tp.box(
+    830,
+    660,
+    330,
+    168,
+    [
+      bold('3 It looks for the same text in the file'),
+      esc('Loss Key = <Line>-<Site> + OEE Bucket + month'),
+      esc('Example (layout only): <line>-Hull <OEE Bucket> 01/10/2026'),
+      esc('The category name comes from the file. We do not know it yet.'),
+    ].join('<br><br>'),
+    'file',
+    'verticalAlign=top;spacingTop=6;fontSize=10.5;',
+  );
+  const good = tp.box(1230, 660, 330, 66, bold('Texts are equal') + '<br>' + esc('The stop gets Value and Target.'), 'ok', 'verticalAlign=top;spacingTop=6;fontSize=10.5;');
+  const bad = tp.box(1230, 744, 330, 66, bold('Texts differ') + '<br>' + esc('Value and Target stay empty for this stop.'), 'empty', 'verticalAlign=top;spacingTop=6;fontSize=10.5;');
+  tp.edge(stop, key1, '#666666');
+  tp.edge(key1, key2, '#666666');
+  tp.edge(key2, good, '#82b366');
+  tp.edge(key2, bad, '#b85450', true);
+
+  tp.box(
+    40,
+    850,
+    1520,
+    130,
+    [
+      bold('What can make the texts differ'),
+      esc('1. Machine name: the file may write "B2 Auto" where Insights Hub says "B2 Line". Fix: a mapping of names.'),
+      esc('2. Loss category name: our sub group is a stand-in (the top level of the reason tree). The file has its own category names. Fix: a mapping from our reason names to their categories.'),
+      esc('3. Month text: the report writes the month as text (for example 01/10/2026). Both sides must use the same format.'),
+      esc('Insights Hub numbers stay correct in all three cases. Only the target values stay empty.'),
+    ].join('<br>'),
+    'assumed',
+    'verticalAlign=top;spacingTop=6;fontSize=10.5;',
+  );
+  pages.push(tp);
+}
+
 // ---- Page for the tables not created -----------------------------------------------------------
 const nc = new Page(`${pages.length + 1} Not created yet`);
 nc.text(40, 20, 1500, 30, bold('Power BI tables not created from Insights Hub yet'), 'fontSize=18;');

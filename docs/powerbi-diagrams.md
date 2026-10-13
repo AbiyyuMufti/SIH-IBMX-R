@@ -4,7 +4,7 @@
 |---|---|
 | **What** | One draw.io file that shows, for every Power BI table of the EU report: which columns it has, an example, the column we create for it, and what is different (empty now, assumption, partly filled) |
 | **File** | `diagrams/powerbi-data-map.drawio` (plain XML, tracked in git). Open it with draw.io (desktop, web or the VS Code extension) |
-| **Pages** | 1 Overview (tables, where used, joins, tables not created), then one page per table (Machine Names, Plan OPT, Time Utilisation, Daily Losses, Shift Naming, Calendar), then "Not created yet" with the columns of each missing table |
+| **Pages** | 1 Overview (tables, where used, joins, tables not created), then one page per table (Machine Names, Plan OPT, Time Utilisation, Daily Losses, Shift Naming, Calendar), then "Targets (Glidepaths)" (how the targets reach the visuals, and how a stop finds its target), then "Not created yet" with the columns of each missing table |
 | **Colours** | Green = OK. Yellow = partly filled. Orange = assumption or difference to check. Purple = needs source file (assumption or empty now, the real source is a file that is not connected yet). Red = empty now or no column. Grey = not needed |
 | **Made from** | The Power BI template and report file (outside the repo), the mapping workbook, the sample files of the Power BI local copy, and a profile of our parquet files (`diagrams/data/ours-profile.json`) |
 | **Status** | Built 2026-10-13 on the Hull data of 2026-09-01 to 2026-10-12 (38 days). Not reviewed by Reckitt |
@@ -28,3 +28,6 @@
 
 ## Purple level: needs source file (2026-10-13)
 A column or table is purple when its real source in the Power BI report is a SharePoint file (Glidepaths targets, Machine Names, Shift Naming, Equipment Coding, Volume Loss Correction, Targets Volume) and Insights Hub has no data for it. The label also says "EMPTY NOW" or the filled share, so the stand-in value is still visible. The list of files and questions for Reckitt: [prompt-response/file-integration-questions.md](../prompt-response/file-integration-questions.md). Set the level in the NOTE table of the builder with `'file'`.
+
+## Targets page (2026-10-13)
+Shows the path: Glidepaths files, 4 target tables, 5 filled columns (3 in Plan OPT, 2 in Daily Losses), and the visuals that use them (from the data lineage document): OEE Target for visuals 1 and 4, PDT Target for 3 and 7, UPDT Target for 2 and 8, Daily Losses Value and Target for visual 5. Volume Total (visual 5) is not from Glidepaths. The lower part shows the key match and three reasons why a target can stay empty (machine name, loss category name, month text).

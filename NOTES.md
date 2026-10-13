@@ -242,3 +242,7 @@ Tried: Power BI flow with `Keep dim_asset` expecting an array. Error: "the file 
 ## Diagram: new purple level and file question list (2026-10-13)
 - Decision (user): the gaps whose real source is a SharePoint file get their own colour, "needs source file" (purple): Machine Names (Product Type, Dept, Area), the three Plan OPT targets, Daily Losses (Value, Target, Volume Total, Equipment, Loss Units), Shift Naming, and the not-created target and correction tables. Built in `scripts/build-drawio.js`.
 - Interim (user): copy the Hull and Nottingham files to the data lake by hand until an integration exists. Question list for Reckitt: `prompt-response/file-integration-questions.md` (access for the other sites is still to request; who grants it is not known).
+
+## Targets page and a correction (2026-10-13)
+- New diagram page "Targets (Glidepaths)". Correction of an earlier answer: Daily Losses Value, Target and Volume Total are used by visual 5 (Top 5 Loss Categories), not by 7 and 8. Visuals 7 and 8 use the Plan OPT PDT and UPDT targets. Source: the data lineage document.
+- Loss Target Key (Daily Losses) = machine + loss sub group + month (text, en-GB); Loss Key in the file = Line-Site + OEE Bucket + month. Open risk, to check when the Glidepaths file is downloaded: do the category names equal our sub group names (our stand-in is the top reason level, filled for 35% of the stops)?
