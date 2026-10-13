@@ -12,3 +12,4 @@ downloads/
 # Function code extracted from flows (may come from *.local.json)
 flow-function/
 local-flow
+__pycache__/
