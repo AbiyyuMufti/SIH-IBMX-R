@@ -9,7 +9,7 @@
 ## Where the data comes from
 - Every regional table is a SharePoint folder read by Power Query (`SharePoint.Contents`, then folder names). Hull: site `X-seedHull`, `Shared Documents / General / Power BI / OEE Board A Sz /` with sub folders `Plan OPT`, `Line Losses`, `Machine Names`, `Equipment Coding`, `Volume Loss Correction`. The same query of the model gives these paths, so the lineage document and the model agree.
 - Nottingham and Weinheim share one site (`NottinghamCI`), Mira is on a third site. Targets (Glidepaths) and shift coding are in Nottingham folders ("EU OEE Regional ASZ").
-- The files are Excel-like exports, one per month (`<Mon><Year>-monthly_opt_volume.csv`) plus `Current_Month_OPT.csv`, refreshed by a person or job (the current file changed 28 minutes before it was downloaded).
+- The files are exports of Provideam reports (see [provideam-source.md](provideam-source.md)): one per month (`<Mon><Year>-monthly_opt_volume.csv`) plus `Current_Month_OPT.csv`, which changed 28 minutes before it was downloaded. The guide describes daily files; the monthly files are not explained yet.
 
 ## File format (Plan OPT)
 - UTF-16 with byte order mark, tab separated, lines end with a bare carriage return, a trailing empty column, and a `Total:` row at the end of the file. Importers must handle all four.

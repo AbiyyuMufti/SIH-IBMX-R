@@ -33,6 +33,7 @@
 | [powerbi-model-findings.md](powerbi-model-findings.md) | What the existing EU Power BI report expects: keys, relationships, measures, decisions, open points; how to re-read its files with `scripts/helper-pbit-outline.js` | Findings (2026-10-13) |
 | [powerbi-diagrams.md](powerbi-diagrams.md) | The draw.io map of every Power BI table: columns, examples, our column and the difference (empty, assumption, partly filled); how to refresh it | Built 2026-10-13 |
 | [powerbi-source-files.md](powerbi-source-files.md) | Where the Power BI report reads its data (SharePoint folders), the format of the real Hull Plan OPT files and a comparison with our pbi_plan_opt | Explored 2026-10-13 |
+| [provideam-source.md](provideam-source.md) | Provideam is the real source of the Hull board: reports, email, Power Automate, SharePoint; what differs from our assumptions | Read 2026-10-13 |
 | [lake-api.md](lake-api.md) | Python downloads parquet files or folder lists from the data lake through an `http in` endpoint of the VFC (spike checked in the VFC, final flow built) | Spike in the VFC |
 | [logging.md](logging.md) | The CSV run log in the data lake (one file per month and flow) and the error catch | Mock only |
 | [fact-flows.md](fact-flows.md) | The per-site flows that write `fact_kpi` and `fact_loss`, and how to add a site | Hull, dry run in the VFC |

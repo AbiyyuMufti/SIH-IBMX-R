@@ -250,3 +250,8 @@ Tried: Power BI flow with `Keep dim_asset` expecting an array. Error: "the file 
 ## Purple level corrected (2026-10-13)
 - Mistake: I made 10 more items purple than agreed. User rule: purple = the report takes the value from a file that we looked at (Glidepaths) and the values would be the same if the file is extracted. Reverted Product Type, Dept, Area, Volume Total, Equipment, Loss Units, Shift Naming and the three hidden file tables to their earlier colours (red again for Volume Total and the three hidden tables).
 - Sheets: tables are numbered 1 to 6 (also on the overview cards). The Targets sheet and the Not created sheet are explanations and have no number, so they are not mixed up with tables.
+
+## Hull maintenance guide: Provideam is the source (2026-10-13)
+- The Hull board gets its production and loss data from Provideam daily reports (email, Power Automate, SharePoint), plus five manual Excel config files. Doc: docs/provideam-source.md.
+- Consequences: Capacity, Planned OpT, OEE Time and Downtime Units are Provideam calculations (OEE % = Good Parts / Capacity); Provideam loss names (Group, SubGroup, Desc) differ from ours; the Mode Log has comment text; GT4 has a second machine "GT4 - Auto" that the report query removes; Volume Loss Correction is a Provideam report, not a manual file; Targets Volume reads the Plan OPT folder.
+- Open: do the diagram and the file question list need changes (owners are now known, two file types are Provideam reports, not manual files)? Why monthly Plan OPT files if the guide says daily files?
