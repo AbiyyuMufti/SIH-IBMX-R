@@ -41,10 +41,10 @@ const OUR_NAME = {
 // Notes written by hand where the mapping workbook is out of date or we know
 // more now. Key: "Power BI table|column". level: ok, assumed, empty, none.
 const NOTE = {
-  'Machine Names EU|Product Type': ['empty', 'Not in Insights Hub. Needs a Reckitt master file or a per-asset value in Config. Values for Hull still to get.'],
+  'Machine Names EU|Product Type': ['assumed', 'Not in Insights Hub: the area is used (Bottles, Blisters), the same value as Area and Dept. Redundant until Reckitt gives the real mapping. Power BI local copy: Bottles / Blisters for Hull.', 'pending'],
   'Machine Names EU|Unique Machine Name': ['assumed', 'Insights Hub = asset ID. Power BI local copy = machine-site text (Line 5-Weinheim). It is the hidden join key of every fact table. Decision open.'],
-  'Machine Names EU|Dept': ['assumed', 'Insights Hub has no department: the area is used (same value as Area).'],
-  'Machine Names EU|Area': ['assumed', 'Insights Hub area names (Bottles, Blisters). The Power BI local copy has its own area names. Accepted.'],
+  'Machine Names EU|Dept': ['assumed', 'Insights Hub has no department: the area is used (same value as Area and Product Type). Power BI local copy: Liquids Pack / Dries Pack for Hull.'],
+  'Machine Names EU|Area': ['assumed', 'Insights Hub area names (Bottles, Blisters), also used for Dept and Product Type. Power BI local copy: Liquids / Dries for Hull. Accepted for now.'],
   'Plan OPT EU|Unique Machine Name': ['assumed', 'Insights Hub = asset ID (see Machine Names EU). Power BI local copy: machine-site text. Decision open.'],
   'Plan OPT EU|AreaName': ['assumed', 'Insights Hub area names. The Power BI local copy has its own. Accepted.'],
   'Plan OPT EU|Date': ['assumed', 'Production day 06:00 to 06:00 UTC. Power BI local copy: calendar date. Not crucial: a window setting plus a backfill.'],
@@ -274,8 +274,10 @@ function compare(table) {
     const note = NOTE[key];
     let level = 'ok';
     let text = '';
+    let pending = false;
     if (note) {
       [level, text] = note;
+      pending = note[2] === 'pending';
     } else if (map) {
       level = map[4] === 'Assumed' ? 'assumed' : map[4] === 'Missing' ? 'empty' : map[4] === 'Not needed' ? 'none' : 'ok';
       text = [map[6], map[7], map[8]].filter(Boolean).join('. ');
@@ -291,6 +293,9 @@ function compare(table) {
     } else if (!our) {
       color = 'empty';
       label = 'NO COLUMN IN OURS';
+    } else if (share === 0 && pending) {
+      color = 'assumed';
+      label = 'FLOW CHANGED: EMPTY IN THE LAKE UNTIL THE FLOW RUNS AGAIN';
     } else if (share === 0) {
       color = 'empty';
       label = 'EMPTY NOW';

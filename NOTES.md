@@ -217,3 +217,8 @@ Tried: Power BI flow with `Keep dim_asset` expecting an array. Error: "the file 
 - Found in the lake data (38 days of Hull): product columns empty on days with no product (B2 Line 1-3 and 8-14 Sep, GT4 29 Sep, 3 and 6-8 Oct); `equipment` 16 %, `loss_lvl3_sub_group` 35 %, `breakdown_types` 0.2 % filled; `value`, `target`, `volume_total` and the three targets empty; `product_type` empty.
 - Failed attempt: `python -I` could not import polars (isolated mode ignores the user site); matplotlib fails to start on this PC. A PNG preview comes from draw.io desktop: `draw.io.exe --export --format png --page-index N`.
 - Next: ask whether to add a per-column plan to the "not created" page; keep the diagram in step when a column changes.
+
+## Product type = area (2026-10-13, decision of the user)
+- `pbi_machine_names.product_type` now takes the Insights Hub area (like `area` and `dept`), see `scripts/vfc/m4-asset-items.js`. The three columns are redundant until Reckitt gives the real mapping, which Insights Hub does not have. Take note when the report is checked against the Power BI local copy: for Hull the copy has Dept Liquids Pack / Dries Pack, Area Liquids / Dries, Product Type Bottles / Blisters.
+- Changed in the generator and in both flow files `flows/vfc-pbi-reference.json` and `flows/vfc-pbi-reference.local.json` (only node 4.1 Build asset items; the local file keeps its layout). The daily flow is unchanged. Test `test-vfc-pbi-direct` now expects product_type = area (legacy and xcelerator pass).
+- To do: run the reference flow again with dryRun false, then download the lake files and refresh the diagram (`python scripts/helper-profile-parquet.py`, `node scripts/build-drawio.js`).

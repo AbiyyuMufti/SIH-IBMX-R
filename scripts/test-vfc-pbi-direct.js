@@ -68,9 +68,12 @@ for (const t of ['pbi_plan_opt', 'pbi_time_utilisation', 'pbi_daily_losses']) {
   check(same(a, bSame), `${t}: rows equal to the old chain` +
     (nullDurations ? ` (${nullDurations} stop(s) without duration: null, old 0)` : ''));
 }
-const oldMachines = rowsOf(oldStats, W('pbi_machine_names'));
+// Since 2026-10-13 the new flow sets product_type = area (decision of the
+// user); the old chain still has null. Everything else must be equal.
+const oldMachines = rowsOf(oldStats, W('pbi_machine_names')).map((r) => ({ ...r, product_type: r.area }));
 const newMachines = rowsOf(refStats, W('pbi_machine_names')).filter((r) => r.site_name === 'Site1');
-check(oldMachines.length > 0 && same(oldMachines, newMachines), `pbi_machine_names: Site1 rows equal (${newMachines.length})`);
+check(oldMachines.length > 0 && same(oldMachines, newMachines), `pbi_machine_names: Site1 rows equal, product_type = area (${newMachines.length})`);
+check(newMachines.every((r) => r.product_type === r.area && r.product_type !== null), 'pbi_machine_names: product_type is the area');
 const oldShifts = rowsOf(oldStats, W('pbi_shift_naming')).map((r) => r.shift).sort();
 const newShifts = rowsOf(refStats, W('pbi_shift_naming')).map((r) => r.shift).sort();
 check(JSON.stringify(oldShifts) === JSON.stringify(newShifts), `pbi_shift_naming: ${newShifts.join(', ')}`);

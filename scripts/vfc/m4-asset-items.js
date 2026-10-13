@@ -24,12 +24,14 @@ if (msg.amFail) {
   machine.skipped = asset.name + ' excluded';
   calendar.skipped = asset.name + ' excluded';
 } else {
+  // Insights Hub has no department or product type: all three columns take
+  // the area until Reckitt gives the real mapping (decision 2026-10-13).
   machine.rows.push({
     site_name: msg.h.site,
     area: msg.h.area,
     dept: msg.h.area,
     machine_name: msg.h.asset_name,
-    product_type: null,
+    product_type: msg.h.area,
     unique_machine_name: asset.id,
     loaded_at: msg.loadedAt
   });
