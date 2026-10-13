@@ -159,7 +159,8 @@ SITES.forEach((site, index) => {
   const file = 'vfc-powerbi-tables.json';
   const nodes = buildFlow(site, index);
   // Layout rule of lib-flow-builder.js
-  compactLanes(nodes);
+  // The old two-step chain keeps its earlier layout (no fork rule).
+  compactLanes(nodes, undefined, undefined, false);
   const { errors, warnings, stats } = validateFlow(nodes);
   if (errors.length) {
     throw new Error(`flow check failed for ${file}:\n  ${errors.join('\n  ')}`);

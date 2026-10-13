@@ -65,7 +65,7 @@ export function makeBuilder(flowIndex) {
 
   // Places the steps of one lane. A function node is named
   // "<stage>.<number> <name>". Outputs: 'next' = the next node, any other
-  // word = a link out "to <WORD>" below the node (fan: stacked to the right).
+  // word = a link out "to <WORD>" (placed by the fork rule, see fanForks).
   function lane(r, title, info, steps) {
     stageNo++;
     comment(`[${stageNo}] ${title}`, `STAGE ${stageNo} - ${info}`, r);
@@ -320,6 +320,94 @@ const SAME_ROW_PX = 40;
 export const LAYOUT_GAP = 20;
 export const LAYOUT_START_LEFT = 40;
 
+// Fork rule (the layout the user made by hand in the VFC editor, checked on
+// the Hull Power BI daily flow: 114 of 120 rows equal). A wire that splits
+// is drawn as a fork:
+// - a node with several wires out (several outputs, or one output with
+//   several targets) puts its targets FORK_SPACING px apart, centred on the
+//   node: 2 targets at -20 and +20, 3 at -40, 0, +40, 4 at -60, -20, +20, +60.
+//   An output without a wire keeps its slot;
+// - a node with one wire out puts its target back on the row of the lane
+//   (a link out takes the row of its feeder);
+// - nodes with no feeder (inject, backfill) that feed the same node stack
+//   FORK_SPACING px apart, centred on that node.
+// Rows are set from left to right, so a target is placed after its source.
+export const FORK_SPACING = 40;
+
+export function fanForks(nodes) {
+  const placed = nodes.filter((n) => typeof n.x === 'number' && n.type !== 'tab');
+  const byId = new Map(placed.map((n) => [n.id, n]));
+  const feeders = new Map(placed.map((n) => [n.id, []]));
+  placed.forEach((a) => {
+    (a.wires || []).forEach((out) => {
+      out.forEach((id) => {
+        if (feeders.has(id)) {
+          feeders.get(id).push(a);
+        }
+      });
+    });
+  });
+  // Row of the lane: the y the builder gave. A link out takes the row of its feeder.
+  const rowOf = new Map();
+  const laneRow = (n) => {
+    if (!rowOf.has(n.id)) {
+      const from = feeders.get(n.id)[0];
+      rowOf.set(n.id, n.type === 'link out' && from ? laneRow(from) : n.y);
+    }
+    return rowOf.get(n.id);
+  };
+  placed.forEach(laneRow);
+  // Slot of each target of a node that has more than one wire out.
+  const slotOf = new Map();
+  placed.forEach((a) => {
+    let slot = 0;
+    const entries = [];
+    (a.wires || []).forEach((out) => {
+      if (out.length === 0) {
+        slot += 1;
+        return;
+      }
+      out.forEach((id) => {
+        entries.push({ id, slot });
+        slot += 1;
+      });
+    });
+    if (slot > 1) {
+      entries.forEach((e) => slotOf.set(`${e.id}|${a.id}`, { slot: e.slot, slots: slot }));
+    }
+  });
+  const newY = new Map();
+  placed.slice().sort((a, b) => a.x - b.x || a.y - b.y).forEach((n) => {
+    let y = rowOf.get(n.id);
+    const from = feeders.get(n.id);
+    const fork = from.length === 1 ? slotOf.get(`${n.id}|${from[0].id}`) : null;
+    if (fork) {
+      y = newY.get(from[0].id) + (fork.slot - (fork.slots - 1) / 2) * FORK_SPACING;
+    }
+    newY.set(n.id, y);
+  });
+  // Starters (no feeder) that feed the same node stack around that node.
+  const starters = new Map();
+  placed.forEach((n) => {
+    const targets = (n.wires || []).flat();
+    const start = feeders.get(n.id).length === 0 && !['link in', 'comment', 'catch'].includes(n.type);
+    if (start && targets.length === 1 && byId.has(targets[0])) {
+      starters.set(targets[0], [...(starters.get(targets[0]) || []), n]);
+    }
+  });
+  starters.forEach((group, target) => {
+    if (group.length >= 2) {
+      group.sort((a, b) => a.y - b.y);
+      group.forEach((n, j) => {
+        newY.set(n.id, newY.get(target) + (j - (group.length - 1) / 2) * FORK_SPACING);
+      });
+    }
+  });
+  placed.forEach((n) => {
+    n.y = newY.get(n.id);
+  });
+}
+
 // Moves the nodes of a flow left (never right of a column that is already
 // tight). Rules, nodes taken from left to right:
 // - a node with no feeder (inject, link in, comment) starts `startLeft` px
@@ -329,7 +417,11 @@ export const LAYOUT_START_LEFT = 40;
 // - a node to the right of its feeders goes `gap` px after the widest
 //   feeder end;
 // - no node touches an earlier node of its row (less than `gap` px).
-export function compactLanes(nodes, gap = LAYOUT_GAP, startLeft = LAYOUT_START_LEFT) {
+export function compactLanes(nodes, gap = LAYOUT_GAP, startLeft = LAYOUT_START_LEFT, fork = true) {
+  // Rows first (fork rule, switched off for the old chain flow), then the columns.
+  if (fork) {
+    fanForks(nodes);
+  }
   const placed = nodes.filter((n) => typeof n.x === 'number');
   const feeders = new Map(placed.map((n) => [n.id, []]));
   placed.forEach((a) => {

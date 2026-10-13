@@ -81,9 +81,13 @@ function requestLines(stats, platform) {
 // The clock of the run is the only thing that differs between two runs:
 // loaded_at in the rows and the time in the first column of the log lines.
 // Both are masked, everything else is compared exactly.
+// One more mask: product_type of pbi_machine_names. The old flows were taken
+// before 2026-10-13 (null), the new one carries the area on purpose (decision
+// of the user), which has nothing to do with the platform switch.
 function noClock(text) {
   let out = String(text);
   out = out.replace(/"loaded_at":[0-9]+/g, '"loaded_at":0');
+  out = out.replace(/"product_type":(null|"[^"]*")/g, '"product_type":0');
   out = out.replace(/^"[0-9T:.-]+Z"/gm, '"time"');
   return out;
 }
