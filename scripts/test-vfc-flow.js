@@ -8,7 +8,7 @@
 //   file=<path>  run another flow file (default: the Hull site flow)
 //                the Config tab flows/vfc-config.json runs first (global context)
 import { readFileSync } from 'node:fs';
-import { runFlow } from './lib-vfc-runner.js';
+import { runFlow, testPlatform } from './lib-vfc-runner.js';
 import { makeMockFetch } from './lib-mock-ih.js';
 
 const args = process.argv.slice(2);
@@ -20,7 +20,7 @@ const fileArg = args.find((a) => a.startsWith('file='));
 const flowFile = fileArg ? fileArg.slice(5) : 'flows/vfc-site-hull.json';
 const nodes = JSON.parse(readFileSync(new URL('../' + flowFile, import.meta.url), 'utf8'));
 
-const options = { startDay: start, endDay: end, write, allAssets: args.includes('all') };
+const options = { startDay: start, endDay: end, write, allAssets: args.includes('all'), platform: testPlatform() };
 // The Config tab (shared settings in global context) runs first when it exists.
 try {
   options.configNodes = JSON.parse(readFileSync(new URL('../flows/vfc-config.json', import.meta.url), 'utf8'));
@@ -37,6 +37,7 @@ if (mockArg) {
   options.fetchImpl = fetch;
   options.clientId = process.env.RECKITT_API_TECHUSER_CLIENT_ID;
   options.clientSecret = process.env.RECKITT_API_TECHUSER_CLIENT_SECRET;
+  options.xcTenantId = process.env.XC_TENANT_ID;
 }
 
 const stats = await runFlow(nodes, options);

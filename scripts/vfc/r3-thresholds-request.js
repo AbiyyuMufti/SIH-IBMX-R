@@ -9,7 +9,7 @@ msg.configInfo = {
   productCollectionId: config.productCollectionId || null
 };
 msg.method = 'GET';
-msg.url = cfg.gateway + '/api/oee/v3/assets/' +
+msg.url = cfg.oeeBase + '/assets/' +
   encodeURIComponent(msg.asset.id);
 msg.headers = {
   'Authorization': 'Bearer ' + msg.token,

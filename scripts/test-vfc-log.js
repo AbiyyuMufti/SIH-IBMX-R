@@ -4,7 +4,7 @@
 // an unclear read error never replaces the old file.
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
-import { runFlow } from './lib-vfc-runner.js';
+import { runFlow, testPlatform } from './lib-vfc-runner.js';
 import { makeMockFetch } from './lib-mock-ih.js';
 
 const read = (f) => JSON.parse(readFileSync(new URL('../flows/' + f, import.meta.url), 'utf8'));
@@ -54,6 +54,7 @@ const check = (ok, text) => {
 const run = (nodes, scenario, lake) =>
   runFlow(nodes, {
     startDay: '2026-09-30', write: false, configNodes: config, lake,
+    platform: testPlatform(),
     fetchImpl: makeMockFetch(scenario), clientId: 'x', clientSecret: 'y',
     allAssets: true
   });

@@ -11,7 +11,7 @@ function filterFor(key) {
 }
 
 msg.method = 'POST';
-msg.url = cfg.gateway + '/api/oee/v3/expressions/evaluateKPIs';
+msg.url = cfg.oeeBase + '/expressions/evaluateKPIs';
 msg.headers = {
   'Authorization': 'Bearer ' + msg.token,
   'Content-Type': 'application/json',

@@ -4,7 +4,7 @@
 var LIST_PATH = '__LIST_PATH__';
 var cfg = flow.get('cfg');
 msg.method = 'GET';
-msg.url = cfg.gateway + '/api/oee/v3/' + LIST_PATH;
+msg.url = cfg.oeeBase + '/' + LIST_PATH;
 msg.headers = {
   'Authorization': 'Bearer ' + msg.token,
   'Accept': 'application/json'

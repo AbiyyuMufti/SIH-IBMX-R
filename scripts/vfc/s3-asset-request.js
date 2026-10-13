@@ -4,7 +4,7 @@
 var cfg = flow.get('cfg');
 msg.asset = msg.payload;
 msg.method = 'GET';
-msg.url = cfg.gateway + '/api/assetmanagement/v3/assets/' +
+msg.url = cfg.amBase + '/assets/' +
   encodeURIComponent(msg.asset.id);
 msg.headers = {
   'Authorization': 'Bearer ' + msg.token,

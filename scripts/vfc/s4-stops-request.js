@@ -16,7 +16,7 @@ var query = '?from=' + encodeURIComponent(fromIso) +
   '&to=' + encodeURIComponent(toIso) +
   '&size=' + PAGE_SIZE + '&page=0';
 msg.method = 'GET';
-msg.url = cfg.gateway + '/api/oee/v3/assets/' +
+msg.url = cfg.oeeBase + '/assets/' +
   encodeURIComponent(msg.asset.id) + '/downtimeReasons' + query;
 msg.headers = {
   'Authorization': 'Bearer ' + msg.token,

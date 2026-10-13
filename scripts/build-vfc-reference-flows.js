@@ -202,7 +202,7 @@ function buildConfigFlow() {
   const b = makeBuilder(20);
   b.comment(
     '[1] CONFIG',
-    'STAGE 1 - CONFIG. The shared settings of ALL flows live in node 1.1 CONFIG, the only node to edit: root folder, credentials, sites with their asset ids and production-day start, exclusions. It stores them in global context (glob.get("cfg")). It runs on deploy and when you click Apply. After a change, click Apply, then run the flow you want to test.',
+    'STAGE 1 - CONFIG. The shared settings of ALL flows live in node 1.1 CONFIG, the only node to edit: the platform (legacy or xcelerator, no default: set one), root folder, credentials, sites with their asset ids and production-day start, exclusions. From the platform it builds the token address and the API addresses that every request node uses. It stores them in global context (glob.get("cfg")). It runs on deploy and when you click Apply. After a change, click Apply, then run the flow you want to test.',
     1
   );
   const cfgId = b.id('cfg');

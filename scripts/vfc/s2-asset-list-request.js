@@ -17,7 +17,7 @@ if (msg.statusCode !== 200 || !token) {
 }
 msg.token = token;
 msg.method = 'GET';
-msg.url = cfg.gateway + '/api/oee/v3/assets';
+msg.url = cfg.oeeBase + '/assets';
 msg.headers = {
   'Authorization': 'Bearer ' + msg.token,
   'Accept': 'application/json'

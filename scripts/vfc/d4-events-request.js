@@ -35,7 +35,7 @@ var from = Date.parse(msg.day + 'T00:00:00.000Z') + cfg.dayStartHour * HOUR_MS;
 msg.calendarId = config.calendarId;
 msg.productCollectionId = config.productCollectionId || null;
 msg.method = 'GET';
-msg.url = cfg.gateway + '/api/oee/v3/calendars/' +
+msg.url = cfg.oeeBase + '/calendars/' +
   encodeURIComponent(config.calendarId) + '/calendarEvents' +
   '?from=' + new Date(from).toISOString() +
   '&to=' + new Date(from + DAY_MS).toISOString();

@@ -62,7 +62,7 @@ if (!msg.productCollectionId) {
 }
 
 msg.productsCalled = true;
-var url = cfg.gateway + '/api/oee/v3/productCollections/';
+var url = cfg.oeeBase + '/productCollections/';
 url += encodeURIComponent(msg.productCollectionId) + '/products';
 msg.method = 'GET';
 msg.url = url;

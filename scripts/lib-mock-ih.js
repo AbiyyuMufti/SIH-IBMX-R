@@ -207,11 +207,44 @@ export function makeMockFetch(scenario = 'ok') {
   });
   return async (url, init = {}) => {
     const u = new URL(url);
-    const path = decodeURIComponent(u.pathname);
-    if (path === '/oauth/token') {
-      return scenario === 'token-fail' ? reply(401, { error: 'unauthorized' }) : reply(200, { access_token: 'mock-token', token_type: 'bearer', expires_in: 1799 });
+    let path = decodeURIComponent(u.pathname);
+    // Two mock platforms. legacy: piam token host + gateway host, plain
+    // paths. xcelerator: <10 digits>.eu1.sws.siemens.com token host (form
+    // body) + api.eu1.siemens.app, service name + suffix in the path.
+    // A token only works on its own platform (legacy host + xcelerator
+    // token = 403, xcelerator host + legacy token = 401), as in the tests.
+    const legacyToken = /^[a-z0-9-]+\.piam\.eu1\.mindsphere\.io$/.test(u.host);
+    const xcToken = /^[0-9]{10}\.eu1\.sws\.siemens\.com$/.test(u.host);
+    const legacyApi = u.host === 'gateway.eu1.mindsphere.io';
+    const xcApi = u.host === 'api.eu1.siemens.app';
+    if (path === '/oauth/token' && (legacyToken || xcToken)) {
+      if (scenario === 'token-fail') return reply(401, { error: 'unauthorized' });
+      if (legacyToken && u.searchParams.get('grant_type') !== 'client_credentials') {
+        return reply(400, { error: 'invalid_request' });
+      }
+      if (xcToken) {
+        const type = (init.headers || {})['Content-Type'];
+        const form = init.body === 'grant_type=client_credentials';
+        if (type !== 'application/x-www-form-urlencoded' || !form) {
+          return reply(400, { error: 'invalid_request' });
+        }
+      }
+      const token = xcToken ? 'mock-token-xc' : 'mock-token';
+      return reply(200, { access_token: token, token_type: 'bearer', expires_in: 1799 });
     }
-    if (init.headers.Authorization !== 'Bearer mock-token') return reply(403, { error: 'forbidden' });
+    if (!legacyApi && !xcApi) return reply(404, { error: 'unknown host' });
+    const wanted = legacyApi ? 'Bearer mock-token' : 'Bearer mock-token-xc';
+    if (init.headers.Authorization !== wanted) {
+      return legacyApi ? reply(403, { error: 'forbidden' }) : reply(401, { error: 'unauthorized' });
+    }
+    if (xcApi) {
+      // /api/<service>-1000001700/v3/... becomes /api/<service>/v3/...
+      const stripped = path.replace(/^(\/api\/[a-z]+)-1000001700(\/v3\/)/, '$1$2');
+      if (stripped === path) return reply(404, { error: 'path without suffix' });
+      path = stripped;
+    } else if (/^\/api\/[a-z]+-[0-9]+\//.test(path)) {
+      return reply(404, { error: 'suffix on the legacy host' });
+    }
     if (path === '/api/oee/v3/assets') {
       if (scenario === 'list-fail') return reply(500, { error: 'boom' });
       return reply(200, assetsFor(scenario).map((a) => ({ assetId: a.id, name: a.name, isManual: a.manual, isConfigured: !a.unconfigured, reasonTreeId: a.tree })));

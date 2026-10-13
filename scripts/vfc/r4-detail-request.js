@@ -7,7 +7,7 @@ var WITH_WINDOW = __WINDOW__;
 var DAY_MS = 86400000;
 var cfg = flow.get('cfg');
 msg.target = msg.payload;
-var url = cfg.gateway + '/api/oee/v3/' + PATH_BEFORE +
+var url = cfg.oeeBase + '/' + PATH_BEFORE +
   encodeURIComponent(msg.target.id) + PATH_AFTER;
 
 // Calendar events are read for a window that starts on the run day.

@@ -52,7 +52,7 @@ if (excluded || parentExcluded) {
 // A production day D runs from D start hour to D+1 start hour (UTC).
 var from = Date.parse(msg.day + 'T00:00:00.000Z') + cfg.dayStartHour * HOUR_MS;
 msg.method = 'POST';
-msg.url = cfg.gateway + '/api/oee/v3/expressions/evaluateKPIs';
+msg.url = cfg.oeeBase + '/expressions/evaluateKPIs';
 msg.headers = {
   'Authorization': 'Bearer ' + msg.token,
   'Content-Type': 'application/json',

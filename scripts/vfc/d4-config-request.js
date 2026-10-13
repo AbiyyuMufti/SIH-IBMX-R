@@ -3,7 +3,7 @@
 // Out: msg.method, msg.url and msg.headers for the http request node.
 var cfg = flow.get('cfg');
 msg.method = 'GET';
-msg.url = cfg.gateway + '/api/oee/v3/assets/' +
+msg.url = cfg.oeeBase + '/assets/' +
   encodeURIComponent(msg.asset.id) + '/config';
 msg.headers = {
   'Authorization': 'Bearer ' + msg.token,

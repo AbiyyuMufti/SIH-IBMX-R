@@ -18,7 +18,20 @@ const typeOk = (type, v) => {
   return false;
 };
 
+// The platform of a test run: argument platform=legacy|xcelerator or the
+// environment variable TEST_PLATFORM. No default, as in the Config node.
+export function testPlatform() {
+  const arg = process.argv.find((a) => a.startsWith('platform='));
+  const value = arg ? arg.slice(9) : process.env.TEST_PLATFORM;
+  if (value !== 'legacy' && value !== 'xcelerator') {
+    console.error('Give platform=legacy or platform=xcelerator (or TEST_PLATFORM)');
+    process.exit(2);
+  }
+  return value;
+}
+
 // options: {startDay, endDay, write, allAssets, fetchImpl, clientId, clientSecret,
+//           platform, xcTenantId,
 //           configNodes}. configNodes = the Config tab: its CONFIG function is
 //           run once first and stores the shared settings in global context.
 export async function runFlow(nodes, options) {
@@ -188,7 +201,17 @@ export async function runFlow(nodes, options) {
   if (options.configNodes) {
     const shared = options.configNodes.find((n) => n.type === 'function');
     const node = { status: () => {}, error: (e) => stats.errors.push(`CONFIG: ${e}`), send: () => {}, warn: () => {} };
-    const fn = vm.runInNewContext('(function(flow,node,msg,Buffer,Promise,glob){' + shared.func + '\n})', {});
+    // The committed Config has no platform (no default). The test sets it
+    // here; a Config from before the platform switch is run as it is.
+    let configCode = shared.func;
+    if (/platform: '/.test(configCode)) {
+      if (!options.platform) {
+        throw new Error('runFlow: options.platform (legacy or xcelerator) is required');
+      }
+      configCode = configCode.replace(/platform: '[^']*'/, `platform: '${options.platform}'`);
+      configCode = configCode.replace(/xcTenantId: '[^']*'/, `xcTenantId: '${options.xcTenantId || '1234567890'}'`);
+    }
+    const fn = vm.runInNewContext('(function(flow,node,msg,Buffer,Promise,glob){' + configCode + '\n})', {});
     fn(flowContext, node, {}, Buffer, Promise, globalContext);
   }
   const config = nodes.find((n) => n.type === 'function' && /CONFIG|SETTINGS/.test(n.name));

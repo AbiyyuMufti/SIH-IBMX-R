@@ -7,7 +7,7 @@
 // 2. Failure and dry-run behaviour of the new daily flow.
 // Usage: node scripts/test-vfc-pbi-direct.js
 import { readFileSync } from 'node:fs';
-import { runFlow } from './lib-vfc-runner.js';
+import { runFlow, testPlatform } from './lib-vfc-runner.js';
 import { makeMockFetch } from './lib-mock-ih.js';
 
 const read = (f) => JSON.parse(readFileSync(new URL('../flows/' + f, import.meta.url), 'utf8'));
@@ -15,6 +15,7 @@ const config = read('vfc-config.json');
 const day = '2026-09-30';
 const base = (extra) => ({
   startDay: day, write: true, configNodes: config, lake: new Map(),
+  platform: testPlatform(),
   fetchImpl: makeMockFetch('ok'), clientId: 'x', clientSecret: 'y',
   allAssets: true, ...extra
 });

@@ -2,7 +2,7 @@
 // Hull fact flow on the mock into one in-memory lake, then the Power BI flow
 // on the files they wrote. Usage: node scripts/test-vfc-powerbi.js
 import { readFileSync } from 'node:fs';
-import { runFlow } from './lib-vfc-runner.js';
+import { runFlow, testPlatform } from './lib-vfc-runner.js';
 import { makeMockFetch } from './lib-mock-ih.js';
 
 const read = (f) => JSON.parse(readFileSync(new URL('../flows/' + f, import.meta.url), 'utf8'));
@@ -11,6 +11,7 @@ const lake = new Map();
 const day = '2026-09-30';
 const base = {
   startDay: day, write: true, configNodes: config, lake,
+  platform: testPlatform(),
   fetchImpl: makeMockFetch('ok'), clientId: 'x', clientSecret: 'y',
   allAssets: true
 };

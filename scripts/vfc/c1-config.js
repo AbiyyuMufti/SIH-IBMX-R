@@ -4,11 +4,15 @@
 var cfg = {
   // Root folder in the data lake. Every table gets its own subfolder.
   root: 'mufti_test',
+  // Platform: 'legacy' = old Insights Hub (gateway.eu1.mindsphere.io),
+  // 'xcelerator' = new platform (api.eu1.siemens.app). No default: set one.
+  platform: 'SET_legacy_OR_xcelerator',
   // Technical user. Fill in after import. Do not share the flow filled in.
+  // tenantName is used by legacy only, xcTenantId (10 digits) by xcelerator.
   tenantName: 'reckitt',
+  xcTenantId: 'PUT_TENANT_ID_HERE',
   clientId: 'PUT_CLIENT_ID_HERE',
   clientSecret: 'PUT_CLIENT_SECRET_HERE',
-  gateway: 'https://gateway.eu1.mindsphere.io',
   // One entry per site: the assets to read and the first hour (UTC) of its
   // production day. A site flow needs a non-empty assetIds list.
   sites: [
@@ -32,10 +36,47 @@ var cfg = {
   // Reference flow: calendar events are read for this many days.
   calendarWindowDays: 31
 };
+
+// Addresses of the platform. Every request node uses tokenUrl, oeeBase and
+// amBase from here, so one switch moves all flows. Do not edit below.
+var XC_SUFFIX = '1000001700';
+var problem = '';
+if (cfg.platform === 'legacy') {
+  var legacyHost = 'https://gateway.eu1.mindsphere.io/api/';
+  cfg.tokenUrl = 'https://' + cfg.tenantName + '.piam.eu1.mindsphere.io';
+  cfg.tokenUrl += '/oauth/token?grant_type=client_credentials';
+  cfg.tokenForm = false;
+  cfg.oeeBase = legacyHost + 'oee/v3';
+  cfg.amBase = legacyHost + 'assetmanagement/v3';
+} else if (cfg.platform === 'xcelerator') {
+  var xcHost = 'https://api.eu1.siemens.app/api/';
+  cfg.tokenUrl = 'https://' + cfg.xcTenantId;
+  cfg.tokenUrl += '.eu1.sws.siemens.com/oauth/token';
+  cfg.tokenForm = true;
+  cfg.oeeBase = xcHost + 'oee-' + XC_SUFFIX + '/v3';
+  cfg.amBase = xcHost + 'assetmanagement-' + XC_SUFFIX + '/v3';
+  if (!/^[0-9]{10}$/.test(cfg.xcTenantId)) {
+    problem = 'xcTenantId must be the 10-digit tenant ID';
+  }
+} else {
+  problem = 'platform must be legacy or xcelerator';
+}
+
+if (problem) {
+  // Clear old settings so no flow runs on a setting from an earlier deploy.
+  glob.set('cfg', undefined);
+  node.status({
+    fill: 'red',
+    shape: 'ring',
+    text: problem
+  });
+  node.error('CONFIG not stored: ' + problem);
+  return null;
+}
 glob.set('cfg', cfg);
 node.status({
   fill: 'green',
   shape: 'dot',
-  text: cfg.sites.length + ' site(s) stored'
+  text: cfg.platform + ', ' + cfg.sites.length + ' site(s) stored'
 });
 return null;
