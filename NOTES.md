@@ -296,3 +296,7 @@ Tried: Power BI flow with `Keep dim_asset` expecting an array. Error: "the file 
 
 ## Priority covers all tables (2026-10-14, correction)
 - I had ranked only the 6 created tables. The user meant all tables, including the missing ones. The overview panel now ranks all 16: Machine Names 13 visuals, Plan OPT 9, Daily Losses 6, Volume Loss Correction 6 (feeds Loss Units), OEE / PDT / UPDT Targets 2 each, Calendar 2, Targets Losses 1, Targets Volume 1, Shift Naming 1, Time Utilisation 1, then 0 visuals on this page: Equipment Coding, Format List, Run Rates, Volume CoV. Second key: report pages. Swapped into the hand-edited file with scripts/helper-replace-drawio-panel.py.
+
+## Flow charts of the three options (2026-10-14)
+- New sheet "Explanation Three options flow charts": one swim-lane chart per option (1 Power Automate, 2 direct access, 3 manual copy). Purple = Reckitt must do, teal = our step, red diamond = test with a fail arrow to a fallback box, blue = lake result, green = tested. Tests shown: option 1 (premium licence, size up to 6.5 MB, UTF-16 decode), option 2 (VFC reaches Microsoft hosts, permission covers every folder), option 3 (folder access, file complete). Only option 3 is tested.
+- Builder: Page.edge now takes a label. Merged into the hand-edited file with scripts/helper-merge-drawio-new.py (now generic: new page name and anchor page as arguments). The saved file has a page Page-18 of the user (34 cells): untouched.

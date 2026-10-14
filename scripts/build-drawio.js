@@ -301,11 +301,11 @@ class Page {
     return id;
   }
 
-  edge(source, target, color = '#555555', dashed = false) {
+  edge(source, target, color = '#555555', dashed = false, label = '') {
     const id = this.id();
-    const style = `edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeWidth=1.5;strokeColor=${color};${dashed ? 'dashed=1;' : ''}`;
+    const style = `edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeWidth=1.5;strokeColor=${color};${dashed ? 'dashed=1;' : ''}${label ? 'fontSize=10;labelBackgroundColor=#ffffff;' : ''}`;
     this.cells.push(
-      `<mxCell id="${id}" style="${style}" edge="1" parent="1" source="${source}" target="${target}"><mxGeometry relative="1" as="geometry"/></mxCell>`,
+      `<mxCell id="${id}" value="${esc(label)}" style="${style}" edge="1" parent="1" source="${source}" target="${target}"><mxGeometry relative="1" as="geometry"/></mxCell>`,
     );
   }
 
@@ -1462,6 +1462,131 @@ function consumeSheet(cfg) {
     [a, b, c, d].forEach((t, j) => pl.box(cols[j], y, widths[j], 42, esc(t), level, 'verticalAlign=middle;fontSize=10.5;'));
   });
   pages.push(pl);
+}
+
+// ---- Page: the three options as flow charts -----------------------------------------------------
+{
+  const fp = new Page('Explanation Three options flow charts');
+  fp.text(40, 20, 1500, 30, bold('The three options as flow charts: how it works, what Reckitt must do, and the tests'), 'fontSize=18;');
+  fp.box(40, 62, 1520, 56, esc('Read each chart from left to right. Each row is one actor. A purple step is done by Reckitt. A diamond is a test: if it fails, the chart ends in a fallback. Status 2026-10-14: only option 3 is tested.'), 'neutral', 'verticalAlign=top;spacingTop=6;fontSize=11;');
+  // Legend
+  const leg = [['file', 'Reckitt must do'], ['sih', 'Our step (VFC, script)'], ['empty', 'Test (diamond): can fail'], ['pbi', 'Data lake result'], ['ok', 'Already tested'], ['neutral', 'Event or note']];
+  leg.forEach(([lv, tx], i) => fp.box(40 + i * 255, 132, 240, 34, esc(tx), lv, 'verticalAlign=middle;fontSize=10.5;'));
+  const LANE_H = 130;
+  const STEP_X = 176;
+  const KIND = {
+    reckitt: ['file', ''],
+    ours: ['sih', ''],
+    test: ['empty', 'shape=rhombus;perimeter=rhombusPerimeter;rounded=0;align=center;spacingLeft=18;spacingRight=18;'],
+    lake: ['pbi', ''],
+    done: ['ok', ''],
+    event: ['neutral', ''],
+    fallback: ['none', 'dashed=1;'],
+  };
+  function flow(top, title, lanes, nodes, edges) {
+    fp.text(40, top, 1500, 24, bold(title), 'fontSize=14;');
+    const y0 = top + 36;
+    lanes.forEach((name, i) => {
+      fp.box(160, y0 + i * LANE_H, 1400, LANE_H - 6, '', 'neutral', 'fillColor=#fafafa;strokeColor=#cccccc;dashed=1;');
+      fp.box(40, y0 + i * LANE_H, 112, LANE_H - 6, bold(name), 'neutral', 'verticalAlign=middle;fontSize=10.5;fillColor=#eeeeee;');
+    });
+    const ids = {};
+    nodes.forEach((n) => {
+      const [level, extra] = KIND[n.kind];
+      const w = 136;
+      const h = n.kind === 'test' ? 100 : 84;
+      const x = 172 + n.col * STEP_X;
+      const y = y0 + n.lane * LANE_H + (LANE_H - 6 - h) / 2;
+      ids[n.k] = fp.box(x, y, w, h, esc(n.text), level, `verticalAlign=middle;fontSize=10;${n.kind === 'test' ? '' : 'align=left;'}${extra}`);
+    });
+    edges.forEach(([a, b, label, fail]) => fp.edge(ids[a], ids[b], fail ? '#b85450' : '#555555', !!fail, label || ''));
+    return y0 + lanes.length * LANE_H;
+  }
+
+  // Option 1: Power Automate
+  let y = flow(190, 'Option 1: Power Automate sends the files to our VFC', ['Reckitt (SharePoint, Power Automate)', 'Our VFC', 'Data lake'], [
+    { k: 'a1', lane: 0, col: 0, kind: 'reckitt', text: 'Reckitt builds one flow per file type. Trigger: file created or changed in the folder' },
+    { k: 't1', lane: 0, col: 1, kind: 'test', text: 'TEST A: premium licence needed for HTTP?' },
+    { k: 'a2', lane: 0, col: 2, kind: 'reckitt', text: 'Reckitt adds an HTTP POST to our endpoint (address and key come from us)' },
+    { k: 'a3', lane: 0, col: 3, kind: 'event', text: 'A file is saved or changed in SharePoint' },
+    { k: 'v1', lane: 1, col: 3, kind: 'ours', text: 'VFC http in node receives the file and checks the key' },
+    { k: 't2', lane: 1, col: 4, kind: 'test', text: 'TEST B: size up to 6.5 MB accepted?' },
+    { k: 't3', lane: 1, col: 5, kind: 'test', text: 'TEST C: UTF-16 decoded in a function node?' },
+    { k: 'v2', lane: 1, col: 6, kind: 'ours', text: 'VFC cleans the file: tab, quotes, Total row, column names' },
+    { k: 'l1', lane: 2, col: 6, kind: 'lake', text: 'Parquet file in the data lake, date in the name' },
+    { k: 'v3', lane: 1, col: 7, kind: 'ours', text: 'Log line. A heartbeat raises an alert if no file came for N days' },
+    { k: 'f0', lane: 1, col: 1, kind: 'fallback', text: 'Licence needed: ask Reckitt for it, or choose option 2 or 3' },
+    { k: 'f1', lane: 2, col: 4, kind: 'fallback', text: 'Fallback: option 2 or 3. Or ask for smaller files' },
+    { k: 'f1b', lane: 2, col: 5, kind: 'fallback', text: 'Fallback: ask for a UTF-8 export, or convert in the flow' },
+  ], [
+    ['a1', 't1'],
+    ['t1', 'a2', 'ok'],
+    ['t1', 'f0', 'fail', true],
+    ['a2', 'a3'],
+    ['a3', 'v1'],
+    ['v1', 't2'],
+    ['t2', 't3', 'pass'],
+    ['t2', 'f1', 'fail', true],
+    ['t3', 'v2', 'pass'],
+    ['t3', 'f1b', 'fail', true],
+    ['v2', 'l1'],
+    ['v2', 'v3'],
+  ]);
+
+  // Option 2: direct access
+  y = flow(y + 40, 'Option 2: the VFC reads SharePoint directly (Microsoft Graph)', ['Reckitt IT', 'Our VFC', 'Data lake'], [
+    { k: 'a1', lane: 0, col: 0, kind: 'reckitt', text: 'IT creates an app registration or a service account with read access to the folders of all sites' },
+    { k: 'a2', lane: 0, col: 1, kind: 'reckitt', text: 'IT gives us client ID, secret and tenant ID in a safe way (never in documents)' },
+    { k: 'a3', lane: 0, col: 2, kind: 'event', text: 'Approval time is not known: the slowest step' },
+    { k: 't1', lane: 1, col: 2, kind: 'test', text: 'TEST A: VFC reaches Microsoft login and Graph?' },
+    { k: 'v1', lane: 1, col: 3, kind: 'ours', text: 'VFC gets a token (http request node)' },
+    { k: 't2', lane: 1, col: 4, kind: 'test', text: 'TEST B: permission covers every folder?' },
+    { k: 'v2', lane: 1, col: 5, kind: 'ours', text: 'VFC lists the folders and finds new or changed files (modified date)' },
+    { k: 'v3', lane: 1, col: 6, kind: 'ours', text: 'VFC downloads the file and cleans it' },
+    { k: 'l1', lane: 2, col: 6, kind: 'lake', text: 'Parquet file in the data lake, date in the name' },
+    { k: 'v4', lane: 1, col: 7, kind: 'ours', text: 'Log line. Runs on a schedule (daily or hourly)' },
+    { k: 'f1', lane: 2, col: 2, kind: 'fallback', text: 'Fallback: ask IT to open the host, or use option 1 or 3' },
+    { k: 'f2', lane: 2, col: 4, kind: 'fallback', text: 'Fallback: ask IT to widen the permission scope' },
+  ], [
+    ['a1', 'a2'],
+    ['a2', 'a3'],
+    ['a3', 't1'],
+    ['t1', 'v1', 'pass'],
+    ['t1', 'f1', 'fail', true],
+    ['v1', 't2'],
+    ['t2', 'v2', 'pass'],
+    ['t2', 'f2', 'fail', true],
+    ['v2', 'v3'],
+    ['v3', 'l1'],
+    ['v3', 'v4'],
+  ]);
+
+  // Option 3: manual copy
+  flow(y + 40, 'Option 3: manual copy (interim, works today)', ['User', 'Reckitt', 'Data lake and project folder'], [
+    { k: 'u1', lane: 0, col: 0, kind: 'ours', text: 'User opens the folder in the browser' },
+    { k: 't1', lane: 0, col: 1, kind: 'test', text: 'TEST: access to the folder?' },
+    { k: 'r1', lane: 1, col: 1, kind: 'reckitt', text: 'Reckitt grants access to the folder (someone must approve)' },
+    { k: 'u2', lane: 0, col: 3, kind: 'ours', text: 'User downloads file by file with a real click' },
+    { k: 't2', lane: 0, col: 4, kind: 'test', text: 'TEST: file complete? (size, last row)' },
+    { k: 'u3', lane: 0, col: 5, kind: 'ours', text: 'Converter script cleans the file (not built yet)' },
+    { k: 'u4', lane: 0, col: 6, kind: 'ours', text: 'User puts the parquet file in the data lake' },
+    { k: 'l1', lane: 2, col: 6, kind: 'lake', text: 'Parquet file in the lake, date in the name, MANIFEST updated' },
+    { k: 'n1', lane: 0, col: 7, kind: 'event', text: 'Repeat when the files change. Class B (hourly) goes stale' },
+    { k: 'd1', lane: 2, col: 3, kind: 'done', text: 'TESTED 2026-10-14: 36 files downloaded, all complete (sizes and last rows checked)' },
+    { k: 'f1', lane: 2, col: 4, kind: 'fallback', text: 'Fallback: download again, or ask for the file by mail' },
+  ], [
+    ['u1', 't1'],
+    ['t1', 'u2', 'yes'],
+    ['t1', 'r1', 'no access', true],
+    ['r1', 'u2', 'when granted'],
+    ['u2', 't2'],
+    ['t2', 'u3', 'pass'],
+    ['t2', 'f1', 'fail', true],
+    ['u3', 'u4'],
+    ['u4', 'l1'],
+    ['u4', 'n1'],
+  ]);
+  pages.push(fp);
 }
 
 // ---- Page for the tables not created -----------------------------------------------------------
