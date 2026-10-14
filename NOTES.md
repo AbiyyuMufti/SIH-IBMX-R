@@ -284,3 +284,7 @@ Tried: Power BI flow with `Keep dim_asset` expecting an array. Error: "the file 
 - Corrections: Volume Total = sum of Plan OPT Capacity per machine and day (not good parts per month; the mapping Excel outside the repo still says per month). Plan OPT EU[ShiftName] holds the mapped Shift value, not the raw name.
 - Failed attempts: first read of the Line Losses files failed (unescaped quotes in the comment text): read tab files without a quote character. Python -I and matplotlib problems as before.
 - Open: Hull files (Machine Names, Equipment Coding, Line Losses, Run Rates, Volume Loss Correction) and the Mira site need access; mapping tables do not exist yet; official OEE source per site; Power Automate to VFC not tested.
+
+## Diagram is now edited by hand (2026-10-14)
+- The user edits `diagrams/powerbi-data-map.drawio` by hand (re-saved by draw.io). `node scripts/build-drawio.js` would OVERWRITE the whole file: do not run it without telling the user. Changes go into the saved file directly (a yellow box = a comment of the user).
+- Added the user comment on sheet "1 Machine Names EU": Insights Hub is overall complete for this table; it covers Machine Name, Area, Site Name and Machine ID; Dept, Area and Product Type can be compiled from a confirmed master mapping on top of it; static reference data, flow stays as it is, compile later. Not committed (the file is in progress).
