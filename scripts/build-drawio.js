@@ -41,25 +41,25 @@ const OUR_NAME = {
 // Notes written by hand where the mapping workbook is out of date or we know
 // more now. Key: "Power BI table|column". level: ok, assumed, empty, none.
 const NOTE = {
-  'Machine Names EU|Product Type': ['assumed', 'Not in Insights Hub: the area is used (Bottles, Blisters), the same value as Area and Dept. Redundant until Reckitt gives the real mapping. Power BI local copy: Bottles / Blisters for Hull. Checked in the lake file of 2026-10-13: filled.'],
+  'Machine Names EU|Product Type': ['assumed', 'Stand-in: the Insights Hub area. Real source: the Machine Names file of the site (columns MachineName, Dept, Area, Product Type). The Hull file is not downloaded (no access); Nottingham (66 rows) and Weinheim (6 rows) were checked. Local copy sample: Bottles / Blisters for Hull. See the sheet Explanation Machine Names.'],
   'Machine Names EU|Unique Machine Name': ['assumed', 'Insights Hub = asset ID. Power BI local copy = machine-site text (Line 5-Weinheim). It is the hidden join key of every fact table. Decision open.'],
-  'Machine Names EU|Dept': ['assumed', 'Insights Hub has no department: the area is used (same value as Area and Product Type). Power BI local copy: Liquids Pack / Dries Pack for Hull.'],
-  'Machine Names EU|Area': ['assumed', 'Insights Hub area names (Bottles, Blisters), also used for Dept and Product Type. Power BI local copy: Liquids / Dries for Hull. Accepted for now.'],
+  'Machine Names EU|Dept': ['assumed', 'Stand-in: the Insights Hub area. Real source: the Machine Names file (local copy sample: Liquids Pack / Dries Pack for Hull). Hull file not downloaded. See the sheet Explanation Machine Names.'],
+  'Machine Names EU|Area': ['assumed', 'Stand-in: the Insights Hub area (Bottles, Blisters). Real source: the Machine Names file (local copy sample: Liquids / Dries for Hull). Hull file not downloaded. See the sheet Explanation Machine Names.'],
   'Plan OPT EU|Unique Machine Name': ['assumed', 'Insights Hub = asset ID (see Machine Names EU). Power BI local copy: machine-site text. Decision open.'],
   'Plan OPT EU|AreaName': ['assumed', 'Insights Hub area names. The Power BI local copy has its own. Accepted.'],
   'Plan OPT EU|Date': ['assumed', 'Production day 06:00 to 06:00 UTC. Power BI local copy: calendar date. Not crucial: a window setting plus a backfill.'],
-  'Plan OPT EU|ShiftName': ['assumed', 'Names come from the Insights Hub calendar (Blue, Red, Yellow, Gold, Green, Shift 1, Shift 2). Power BI local copy: crew colours and Day/Afternoon/Night. Accepted; each name must exist in Shift Naming.'],
-  'Plan OPT EU|PartName': ['assumed', 'Product description, else name. Empty where no product was found for the day (B2 Line 1-3 and 8-14 Sep; GT4 29 Sep, 3 and 6-8 Oct).'],
-  'Plan OPT EU|Product Key': ['assumed', 'Product code. Power BI local copy: machine + part name (join key to the product table). Decision: own product table, key still open.'],
+  'Plan OPT EU|ShiftName': ['assumed', 'The report keeps the mapped Shift value (Afternoon, Blue, Day, Gold, Green, Night, Red), not the raw Provideam name. Insights Hub calendar names Blue, Gold, Green, Red match; Yellow, Shift 1 and Shift 2 do not (mapping needed). See the sheet Explanation Shift names.'],
+  'Plan OPT EU|PartName': ['assumed', 'Product description, else name. Empty where no product was found for the day. Format List (Hull) check: GT4 13 of 13 names match, B2 Line 0 of 27 (SAP-style descriptions against short Provideam names). See the sheet Explanation Format List.'],
+  'Plan OPT EU|Product Key': ['assumed', 'Insights Hub: product code. The report: machine name + site + part name, the key to the Format List. Same texts needed: GT4 matches, B2 does not (names differ). Decision: own product table, key still open. See the sheet Explanation Format List.'],
   'Plan OPT EU|Good Parts': ['ok', 'Decimal (manual GT4 entries are spread over hours). Power BI local copy: whole numbers.'],
   'Plan OPT EU|Capacity': ['assumed', 'Assumption: design speed per minute x planned minutes. In the Power BI local copy the speed is constant for only 56% of machine/part pairs. Must be clarified.'],
   'Plan OPT EU|Downtime Units': ['assumed', 'Assumption: design speed per minute x downtime minutes.'],
   'Plan OPT EU|Total Time': ['assumed', 'Assumption: time with a shift planned (total time minus shift-plan stop). Power BI local copy: 720 or 480 per shift.'],
   'Plan OPT EU|Planned OpT': ['assumed', 'Assumption: operational time (total time minus planned stops).'],
   'Plan OPT EU|OEE Time': ['assumed', 'KPI used operational time. Power BI local copy: about good parts / design speed. Empty when Insights Hub has no product speed.'],
-  'Plan OPT EU|OEE Target': ['file', 'Source: Glidepaths files (monthly target per machine). Needs the file integration. Same values as the report if the file is extracted and the key names match.'],
-  'Plan OPT EU|PDT Target': ['file', 'Source: Glidepaths files (monthly target per machine). Needs the file integration. Same values as the report if the file is extracted and the key names match.'],
-  'Plan OPT EU|UPDT Target': ['file', 'Source: Glidepaths files (monthly target per machine). Needs the file integration. Same values as the report if the file is extracted and the key names match.'],
+  'Plan OPT EU|OEE Target': ['file', 'Source: Glidepaths file. Hull file checked 2026-10-14. 30 lines, 17 buckets, 2026 is 91% filled, 2027 and 2028 are empty. Same values as the report if the file is extracted and the line names match (B2 Auto = B2 Line needs a mapping). See the sheet Explanation Targets.'],
+  'Plan OPT EU|PDT Target': ['file', 'Source: Glidepaths file. Hull file checked 2026-10-14. 30 lines, 17 buckets, 2026 is 91% filled, 2027 and 2028 are empty. Same values as the report if the file is extracted and the line names match (B2 Auto = B2 Line needs a mapping). See the sheet Explanation Targets.'],
+  'Plan OPT EU|UPDT Target': ['file', 'Source: Glidepaths file. Hull file checked 2026-10-14. 30 lines, 17 buckets, 2026 is 91% filled, 2027 and 2028 are empty. Same values as the report if the file is extracted and the line names match (B2 Auto = B2 Line needs a mapping). See the sheet Explanation Targets.'],
   'Time Utilisation EU|Unique Machine Name': ['assumed', 'Insights Hub = asset ID (see Machine Names EU). Decision open.'],
   'Time Utilisation EU|Date': ['assumed', 'Follows the Plan OPT date (production day).'],
   'Time Utilisation EU|Total Time Total': ['assumed', 'Sum of Plan OPT Total Time per machine and day. Follows its assumption.'],
@@ -69,28 +69,28 @@ const NOTE = {
   'Daily Losses EU|Unique Machine Name': ['assumed', 'Insights Hub = asset ID (see Machine Names EU). Decision open.'],
   'Daily Losses EU|Date': ['assumed', 'Site local time (Europe/London only). Other sites and daylight saving still open.'],
   'Daily Losses EU|Time': ['assumed', 'Site local time (Europe/London only). Other sites and daylight saving still open.'],
-  'Daily Losses EU|ShiftName': ['assumed', 'Names come from the Insights Hub calendar. Power BI local copy uses crew colours and Day/Afternoon/Night. Accepted.'],
+  'Daily Losses EU|ShiftName': ['assumed', 'Same as Plan OPT: the report keeps the mapped Shift value. Insights Hub names Yellow, Shift 1 and Shift 2 are not in the list. See the sheet Explanation Shift names.'],
   'Daily Losses EU|Duration': ['assumed', 'Decimal minutes. Power BI local copy: whole minutes. 14 long B2 stops had a duration shorter than their span (open point).'],
-  'Daily Losses EU|Loss Units': ['assumed', 'Assumption: design speed per minute x stop minutes, no Volume Loss Correction. Empty where no product.'],
+  'Daily Losses EU|Loss Units': ['assumed', 'Assumption: design speed x duration. The rule is the same as in the Provideam files: loss units per minute = capacity per planned minute (Nottingham: 2,341 of 2,349 machine-days within 3%). The report reads the units from the Volume Loss Correction file. See the sheet Explanation Loss Units.'],
   'Daily Losses EU|OEELossLvl3Group': ['assumed', 'Rule: planned roots from Config = Planned Loss, default reason = Not Logged, rest = Unplanned Loss. Planned stops not verified in the API data.'],
-  'Daily Losses EU|OEELossLvl3SubGroup': ['assumed', 'Stand-in from the reason tree level. Mapping of the B2 alarm stops needed from Reckitt.'],
+  'Daily Losses EU|OEELossLvl3SubGroup': ['assumed', 'Stand-in: the top reason level. The report makes Provideam names equal to the glidepath buckets with 17 text rules (Hull query). Only 22 of 10,100 Insights Hub stops have a name that equals a bucket. See the sheet Explanation Targets.'],
   'Daily Losses EU|OEELossLvl3Desc': ['ok', 'Leaf reason text. To confirm it is what the report expects.'],
   'Daily Losses EU|Loss Final Level': ['ok', 'Leaf reason text. To confirm it is what the report expects.'],
-  'Daily Losses EU|Equipment': ['assumed', 'B2: second reason level (Capper, Infeed ...). Power BI gets it from Equipment Coding files.'],
+  'Daily Losses EU|Equipment': ['assumed', 'Stand-in: second reason level (B2: Capper, Infeed ...). Real source: the Equipment Coding file (key = machine + loss description). Hull file not downloaded. Checked on Nottingham (98% of the unplanned stops have an entry) and Weinheim (70%). See the sheet Explanation Equipment Coding.'],
   'Daily Losses EU|Breakdown Types': ['assumed', 'Reason subgroup under Breakdown (Mechanical, Electrical). Needs the real reason tree.'],
   'Daily Losses EU|Batch ID': ['assumed', 'Order from the OEE order filter (decision 2026-10-12). Empty where no order was found.'],
-  'Daily Losses EU|Comment': ['assumed', 'Power BI local copy: comment text. Insights Hub: comment count only (always 0 so far). Text not read.'],
+  'Daily Losses EU|Comment': ['assumed', 'The Provideam Mode Log has the comment text: filled for 63% of the Nottingham stop rows and 4% of Weinheim. Insights Hub: comment count only (the text endpoint returned no records).'],
   'Daily Losses EU|PartName': ['assumed', 'Product running at the stop (description, else name). Empty where no product was found.'],
-  'Daily Losses EU|Product Key': ['assumed', 'Product code. Power BI local copy: machine + part name. Decision: own product table, key open.'],
+  'Daily Losses EU|Product Key': ['assumed', 'Insights Hub: product code. The report: machine name + site + part name (key to the Format List). B2 names differ from the file. See the sheet Explanation Format List.'],
   'Daily Losses EU|Loss Target Key': ['assumed', 'Insights Hub: machine|subgroup|month. Only useful once the Glidepaths targets exist.'],
-  'Daily Losses EU|Value': ['file', 'Source: Glidepaths files (Targets Losses: monthly target per machine and loss subgroup). Needs the file integration. Same values as the report if the file is extracted and the key names match.'],
+  'Daily Losses EU|Value': ['file', 'Source: Glidepaths file (one value per line, loss bucket and month; 17 buckets). Hull file checked 2026-10-14. Needs a mapping from the loss names to the buckets: only 22 of 10,100 Insights Hub stops have a sub group that equals a bucket. See the sheet Explanation Targets.'],
   'Daily Losses EU|Target': ['file', 'Value / 100. Follows Value.'],
   'Daily Losses EU|Volume Key': ['assumed', 'Insights Hub: machine|month. Joins to the volume targets, which are not available yet.'],
-  'Daily Losses EU|Volume Total': ['empty', 'Good parts per machine and month on every loss row. Needs several days; not built.'],
+  'Daily Losses EU|Volume Total': ['assumed', 'Corrected 2026-10-14: the Hull query sums Capacity per machine and DAY from the Plan OPT files (not good parts per month). Insights Hub can build it from its own Plan OPT Capacity. Not built yet. It follows the capacity assumption.'],
   'Daily Losses EU|Merged': ['none', 'Power BI helper key for the Equipment Coding join. Not rebuilt.'],
   'Daily Losses EU|Volume Key.1': ['none', 'Duplicate of Volume Key. Not rebuilt.'],
   'Daily Losses EU|ShiftName - Copy': ['none', 'Copy of ShiftName made in Power Query. Not rebuilt.'],
-  'Shift Naming EU|Shift': ['assumed', 'Names come from the Insights Hub calendars. Every shift name used in the facts must be in this table.'],
+  'Shift Naming EU|Shift': ['file', 'Source: Shift Pattern file, one for all sites (188 raw names to 7 values: Afternoon, Blue, Day, Gold, Green, Night, Red). Checked 2026-10-14: all 105 Hull raw names are covered. Same list if extracted. Insights Hub names Yellow, Shift 1 and Shift 2 are not in the list. See the sheet Explanation Shift names.'],
 };
 
 // Table notes shown at the top of each table page.
@@ -173,7 +173,7 @@ const SIH_SRC = {
   'Daily Losses EU|Value': NO_SRC,
   'Daily Losses EU|Target': NO_SRC,
   'Daily Losses EU|Volume Key': 'No endpoint: built in the flow from the line name and the month',
-  'Daily Losses EU|Volume Total': NO_SRC,
+  'Daily Losses EU|Volume Total': 'No endpoint: sum of the Plan OPT Capacity per machine and day, built in the flow (not built yet)',
   'Shift Naming EU|Shift': `${EP.cal} -> distinct event names. The calendarId comes from ${EP.config}`,
 };
 const sihSource = (table, column, color) => {
@@ -202,8 +202,8 @@ const NC_SIH = {
   'PDT Targets EU': 'none (Glidepaths file)',
   'UPDT Targets EU': 'none (Glidepaths file)',
   'Equipment Coding N': 'none. The reason names are in /reasontrees/{id}/reasons',
-  'Volume Loss Correction N': 'none (Insights Hub has no loss units)',
-  'Targets Volume N': 'probable: evaluateKPIs "Good parts", added up per month',
+  'Volume Loss Correction N': 'none (Insights Hub has no loss units). Rule: stop minutes x capacity per minute',
+  'Targets Volume N': 'built in the flow: sum of the Plan OPT Capacity per machine and day',
 };
 const COLOR_SIH = ['#d5efee', '#3c9a96'];
 
@@ -553,14 +553,14 @@ overview.box(
 const NOT_CREATED = [
   { pbi: 'Run Rates EU', status: 'none', state: 'Decide later (group 2)', what: 'Good parts and capacity per machine, shift and product' },
   { pbi: 'Volume CoV EU', status: 'none', state: 'Decide later (group 2)', what: 'Per shift and machine: good parts sum and capacity max (volume variation)' },
-  { pbi: 'Format List EU', status: 'assumed', state: 'Own product table decided (2026-10-13)', what: 'Product master: brand, unit size, unit count per machine and product', note: 'Native columns from Insights Hub; brand, size and count are not native' },
+  { pbi: 'Format List EU', status: 'file', state: 'Needs file integration (Format Mapping files)', what: 'Product master: brand, unit size, unit count per machine and product', note: 'Hull file checked: 286 rows. GT4 names match the Insights Hub names, B2 names differ' },
   { pbi: 'Targets Losses EU', status: 'file', state: 'Needs file integration (Glidepaths)', what: 'Monthly loss target per machine and loss subgroup' },
   { pbi: 'OEE Targets EU', status: 'file', state: 'Needs file integration (Glidepaths)', what: 'Monthly OEE target per line' },
   { pbi: 'PDT Targets EU', status: 'file', state: 'Needs file integration (Glidepaths)', what: 'Monthly planned downtime target per line' },
   { pbi: 'UPDT Targets EU', status: 'file', state: 'Needs file integration (Glidepaths)', what: 'Monthly unplanned downtime target per line' },
-  { pbi: 'Equipment Coding N', shown: 'Equipment Coding (N, H, W)', status: 'empty', hidden: true, state: 'Waits for Reckitt files', what: 'Maps a loss key to an equipment name' },
-  { pbi: 'Volume Loss Correction N', shown: 'Volume Loss Correction (N, H, W)', status: 'empty', hidden: true, state: 'Waits for Reckitt files', what: 'Corrects loss units by machine, loss group and time (rule not known)' },
-  { pbi: 'Targets Volume N', shown: 'Targets Volume (N, H, W, M)', status: 'empty', hidden: true, state: 'Waits for Reckitt files', what: 'Monthly good-parts volume per machine (weight for the targets)' },
+  { pbi: 'Equipment Coding N', shown: 'Equipment Coding (N, H, W)', status: 'file', hidden: true, state: 'Needs file integration (Hull file not downloaded)', what: 'Maps a machine and loss description to an equipment name' },
+  { pbi: 'Volume Loss Correction N', shown: 'Volume Loss Correction (N, H, W)', status: 'file', hidden: true, state: 'Needs file integration (Provideam report; Hull file not downloaded)', what: 'Loss units per day, machine and loss reason (Provideam OEE Loss report)' },
+  { pbi: 'Targets Volume N', shown: 'Targets Volume (N, H, W, M)', status: 'assumed', hidden: true, state: 'Built from the Plan OPT Capacity per machine and day (not a file)', what: 'Capacity per machine and day (weight for the loss targets)' },
 ];
 const ncY = keysY + 245;
 const shownN = NOT_CREATED.filter((t) => !t.hidden).length;
@@ -658,6 +658,8 @@ for (const t of TABLES) {
   pages.push(page);
 }
 
+const FJ = JSON.parse(readFileSync('diagrams/data/sharepoint-findings.json', 'utf8'));
+const fmt = (n) => Number(n).toLocaleString('en-US');
 // ---- Page: how the Glidepaths targets reach the report ------------------------------------
 {
   const tp = new Page('Explanation Targets (Glidepaths)');
@@ -745,7 +747,7 @@ for (const t of TABLES) {
     530,
     730,
     54,
-    esc('Not from Glidepaths: Volume Total in Daily Losses comes from the Targets Volume table. For Hull that query reads the Plan OPT folder, so it can probably be added up from good parts. Visual 5 weights its target with it.'),
+    esc('Not from Glidepaths: Volume Total in Daily Losses comes from the Targets Volume table. The Hull query sums the Capacity per machine and day of the Plan OPT files, so Insights Hub can build it. Visual 5 weights its target with it.'),
     'none',
     'fontSize=10.5;',
   );
@@ -817,7 +819,263 @@ for (const t of TABLES) {
     'assumed',
     'verticalAlign=top;spacingTop=6;fontSize=10.5;',
   );
+  // The text rules of the Hull query that make loss names equal to the glidepath buckets.
+  const hullQuery = model.tables.find((t) => t.name === 'Daily Line Losses H').query;
+  const nameRules = [...hullQuery.matchAll(/Table\.ReplaceValue\([^,]+,"([^"]+)","([^"]+)",Replacer\.ReplaceText,\{"OEELossLvl3SubGroup"\}\)/g)].map((m) => `${m[1]}  ->  ${m[2]}`);
+  tp.text(40, 1000, 1500, 24, bold(`How the report makes the loss names equal to the glidepath buckets: ${nameRules.length} text rules in the Hull query`), 'fontSize=14;');
+  const half = Math.ceil(nameRules.length / 2);
+  tp.box(40, 1040, 740, 30 + 17 * half, nameRules.slice(0, half).map((r) => esc(r)).join('<br>'), 'file', 'verticalAlign=top;spacingTop=8;fontSize=10.5;');
+  tp.box(800, 1040, 760, 30 + 17 * half, nameRules.slice(half).map((r) => esc(r)).join('<br>'), 'file', 'verticalAlign=top;spacingTop=8;fontSize=10.5;');
+  const sihNames = FJ.loss_names.sih_sub_groups.map(([k, n]) => `${k ?? '(empty)'}: ${fmt(n)}`).join('   |   ');
+  tp.box(40, 1040 + 30 + 17 * half + 20, 1520, 100, [bold('Insights Hub sub groups (10,100 stops of the Hull lake files)'), esc(sihNames), esc(`Only ${FJ.loss_names.sih_stops_subgroup_equals_hull_bucket} stops have a sub group that equals a bucket. The report rules above work on Provideam names, not on these. A mapping from the Insights Hub reason to the bucket is needed.`)].join('<br><br>'), 'assumed', 'verticalAlign=top;spacingTop=8;fontSize=10.5;');
   pages.push(tp);
+}
+
+// ---- Helper sheets: how each file is consumed by the report (like the Targets sheet) ----------
+const pagesOfColumns = (table, cols) => {
+  const set = new Set();
+  cols.forEach((c) => (usage.columnPages.get(`${table}|${c}`) ?? []).forEach((p) => set.add(p)));
+  return usage.pageOrder.filter((p) => set.has(p));
+};
+const pct = (a, b) => `${Math.round((100 * a) / b)}%`;
+
+function consumeSheet(cfg) {
+  const sp = new Page(cfg.name);
+  sp.text(40, 20, 1500, 30, bold(cfg.title), 'fontSize=18;');
+  sp.box(40, 62, 1520, 62, esc(cfg.intro), 'neutral', 'verticalAlign=top;spacingTop=6;fontSize=11;');
+  const head = (x, text) => sp.text(x, 140, 330, 20, bold(text), 'fontSize=12;');
+  head(40, '1 Source file');
+  head(430, '2 Table in the report');
+  head(830, '3 Columns it fills');
+  head(1230, '4 Where they are used');
+  const L = cfg.level || 'file';
+  const lines = (arr) => arr.map((x) => (x.startsWith('**') ? bold(x.slice(2)) : esc(x))).join('<br><br>');
+  const srcH = cfg.srcH || 330;
+  const src = sp.box(40, 170, 330, srcH, lines(cfg.src), L, 'verticalAlign=top;spacingTop=6;fontSize=10.5;');
+  const tbl = cfg.tables.map((t, i) =>
+    sp.box(430, 170 + i * 104, 330, 94, bold(t.name) + '<br>' + esc(t.cols) + '<br>' + esc(t.note), L, 'verticalAlign=top;spacingTop=4;fontSize=10;'),
+  );
+  tbl.forEach((id) => sp.edge(src, id, '#9673a6'));
+  const col = cfg.columns.map((c, i) =>
+    sp.box(830, 170 + i * 72, 330, 62, bold(c.label) + (c.note ? '<br>' + esc(c.note) : ''), L, 'verticalAlign=top;spacingTop=4;fontSize=10;'),
+  );
+  cfg.columns.forEach((c, i) => sp.edge(tbl[c.table ?? 0], col[i], '#9673a6'));
+  let vy = 170;
+  const vis = cfg.visuals.map((v) => {
+    const id = sp.box(1230, vy, 330, v.h || 38, esc(v.text), 'pbi', 'fontSize=10.5;');
+    vy += (v.h || 38) + 8;
+    return id;
+  });
+  cfg.visuals.forEach((v, i) => sp.edge(col[v.col ?? 0], vis[i], '#6c8ebf'));
+  const bottom = Math.max(170 + srcH, 170 + cfg.tables.length * 104, 170 + cfg.columns.length * 72, vy) + 30;
+  let y = bottom;
+  if (cfg.note) {
+    sp.box(430, y - 10, 1130, 46, esc(cfg.note), 'none', 'fontSize=10.5;');
+    y += 50;
+  }
+  sp.text(40, y, 1500, 24, bold(cfg.chainTitle), 'fontSize=14;');
+  const ch = cfg.chain;
+  const chainBox = (x, c) => sp.box(x, y + 40, 330, 168, [bold(c.title), ...c.lines.map((l) => esc(l))].join('<br><br>'), c.level, 'verticalAlign=top;spacingTop=6;fontSize=10.5;');
+  const a = chainBox(40, ch.a);
+  const b = chainBox(430, ch.b);
+  const c = chainBox(830, ch.c);
+  const good = sp.box(1230, y + 40, 330, 76, bold(ch.good[0]) + '<br>' + esc(ch.good[1]), 'ok', 'verticalAlign=top;spacingTop=6;fontSize=10.5;');
+  const bad = sp.box(1230, y + 132, 330, 76, bold(ch.bad[0]) + '<br>' + esc(ch.bad[1]), 'empty', 'verticalAlign=top;spacingTop=6;fontSize=10.5;');
+  sp.edge(a, b, '#666666');
+  sp.edge(b, c, '#666666');
+  sp.edge(c, good, '#82b366');
+  sp.edge(c, bad, '#b85450', true);
+  sp.box(40, y + 228, 1520, 40 + 20 * cfg.risks.length, [bold('What can make the texts differ or the file fail'), ...cfg.risks.map((r) => esc(r))].join('<br>'), 'assumed', 'verticalAlign=top;spacingTop=6;fontSize=10.5;');
+  pages.push(sp);
+}
+
+// Sheet: Format List
+{
+  const f = FJ.formats;
+  const pg = pagesOf('Format List EU').ordered;
+  consumeSheet({
+    name: 'Explanation Format List',
+    title: 'Format List: from the Format Mapping files to the By Format page',
+    intro: `Purple = needs the Format Mapping files (checked 2026-10-14 on the Hull file). Blue = Power BI page. Which page uses which column comes from the Power BI report file. Insights Hub has no brand, size or count: only the product name, code, description and design speed.`,
+    src: [
+      '**Format Mapping files',
+      'SharePoint, Nottingham site, regional folder. Kept by hand: one file per site (Hull, Mira, Weinheim).',
+      'Columns: Site Name | MachineName | Product Name | Brand | Unit Size | Unit Count/Format | Extra Info',
+      `Hull file: ${f.hull_rows} rows, ${f.hull_machines} machines, ${f.hull_products} products.`,
+      `Example (GT4): ${f.gt4_row['Product Name']} | ${f.gt4_row.Brand} | ${f.gt4_row['Unit Size']} | ${f.gt4_row['Unit Count/Format']} | ${f.gt4_row['Extra Info']}`,
+    ],
+    tables: [{ name: 'Format List EU', cols: 'Product Name, Brand, Unit Size, MachineName, Product Key, Unit Count/Format, Extra Info, Site Name', note: 'Product Key = machine name + site + product name (built by the report)' }],
+    columns: [{ label: 'Format List EU [Brand, Unit Size, Unit Count/Format, Extra Info]', note: 'looked up by Product Key', table: 0 }, { label: 'Used by the relationships', note: 'Plan OPT EU [Product Key] and Daily Losses EU [Product Key] join to Format List EU [Product Key]', table: 0 }],
+    visuals: [{ text: `Pages that use the format columns: ${pagesOfColumns('Format List EU', ['Brand', 'Unit Size', 'Unit Count/Format', 'Product Name']).join(', ') || pg.join(', ')}`, h: 70, col: 0 }, { text: 'Without a match the product has no brand, size or count (empty values)', h: 70, col: 1 }],
+    srcH: 300,
+    chainTitle: 'How one product finds its format: the product texts must be equal',
+    chain: {
+      a: { title: '1 A product in the Insights Hub data', level: 'ours', lines: ['Machine: GT4', `Part name: ${f.sih.GT4.sih_example[1]}`, 'Machine B2 Line, part name: ' + f.sih['B2 Line'].sih_example[0]] },
+      b: { title: '2 The report builds a key', level: 'pbi', lines: ['Product Key = machine name + site + product name', `GT4-Hull ${f.sih.GT4.sih_example[1]}`] },
+      c: { title: '3 It looks for the same text in the file', level: 'file', lines: [`GT4-Hull ${f.gt4_row['Product Name']}`, `-> Brand ${f.gt4_row.Brand}, size ${f.gt4_row['Unit Size']}, count ${f.gt4_row['Unit Count/Format']}`, 'B2 products in the file have short names, for example ' + f.b2_row['Product Name']] },
+      good: ['Texts are equal', `GT4: ${f.sih.GT4.in_format_list} of ${f.sih.GT4.sih_part_names} Insights Hub part names are in the file.`],
+      bad: ['Texts differ', `B2 Line: ${f.sih['B2 Line'].in_format_list} of ${f.sih['B2 Line'].sih_part_names}. Insights Hub has SAP-style descriptions, the file has short names.`],
+    },
+    risks: [
+      `1. B2 names: Insights Hub part names (for example ${f.sih['B2 Line'].sih_example[0]}) do not exist in the file. Provideam B2 names in the last 4 months: ${f.b2_provideam_names.join(', ')}. Fix: a mapping table from the Insights Hub product code to the Provideam product name.`,
+      `2. The file is not complete: ${f.provideam_pairs_found} of ${f.provideam_pairs} (machine, part) pairs of the Hull Plan OPT files are in the Hull list (${pct(f.provideam_pairs_found, f.provideam_pairs)}). New products need a new row by hand.`,
+      '3. The key uses the Provideam machine name (B2 Auto) and the site suffix. Insights Hub says B2 Line. Fix: a mapping of machine names.',
+    ],
+  });
+}
+
+// Sheet: Shift names
+{
+  const s = FJ.shift;
+  consumeSheet({
+    name: 'Explanation Shift names',
+    title: 'Shift names: from the Shift Pattern file to the shift selector',
+    intro: 'Purple = needs the Shift Pattern file (checked 2026-10-14). Blue = Power BI visual or page. The report shows the mapped Shift value (Day, Night, Afternoon or the crew colour), not the raw Provideam shift name.',
+    src: [
+      '**Shift Pattern file',
+      'SharePoint, Nottingham site, regional folder. Kept by hand: one file for all sites.',
+      'Columns: ShiftName (raw) | Shift',
+      `${s.rows} rows, ${s.values.length} Shift values: ${s.values.join(', ')}.`,
+      'Examples: ' + s.examples.slice(0, 5).map((e) => `${e[0]} -> ${e[1]}`).join('; '),
+    ],
+    tables: [
+      { name: 'Shift Naming Provideam (hidden)', cols: 'Shift, Shift Type (= raw ShiftName)', note: 'joined to every Plan OPT and loss row on the raw shift name' },
+      { name: 'Shift Naming EU', cols: 'Shift', note: 'the list of shift values; fact tables join to it' },
+    ],
+    columns: [
+      { label: 'Plan OPT EU [ShiftName]', note: 'the raw name is dropped, the mapped value is kept', table: 0 },
+      { label: 'Daily Losses EU [ShiftName]', note: 'same mapping', table: 0 },
+      { label: 'Shift Naming EU [Shift]', note: 'relationship target of both', table: 1 },
+    ],
+    visuals: [{ text: '16 Shift Name selector (EU-Level Overview)', col: 2 }, { text: `Pages: ${pagesOf('Shift Naming EU').ordered.join(', ')}`, h: 70, col: 2 }],
+    srcH: 300,
+    chainTitle: 'How one shift finds its value: the raw name must be in the file',
+    chain: {
+      a: { title: '1 A shift in the Insights Hub data', level: 'ours', lines: [`Calendar event names: ${s.sih_names.join(', ')}`, 'Hull and GT4 shifts are events of the Insights Hub calendar'] },
+      b: { title: '2 The report needs a Shift value', level: 'pbi', lines: ['Plan OPT EU [ShiftName] must be one of the Shift values', `${s.values.join(', ')}`] },
+      c: { title: '3 Provideam side (file)', level: 'file', lines: [`Raw names of the Hull Plan OPT files: ${s.hull_raw_names}. In the file: ${s.hull_raw_in_coding} (all).`, 'Example: SunDay - Blue -> Blue'] },
+      good: ['Names are equal', `${s.sih_in_values.join(', ')} exist as Shift values.`],
+      bad: ['Names differ', `${s.sih_not_in_values.join(', ')} are not in the list. Day, Night and Afternoon are not Insights Hub names.`],
+    },
+    risks: [
+      '1. Insights Hub shift names Yellow, Shift 1 and Shift 2 have no Shift value. Fix: a mapping from the Insights Hub shift to a Shift value, or new rows in the file.',
+      '2. The report uses Day, Night and Afternoon for 8 hour shifts and the crew colour for 12 hour crews. Insights Hub names the 12 hour crews. Fix: one rule for both systems.',
+      '3. A new raw Provideam name needs a new row in the file by hand. Without it the row has no shift (null).',
+    ],
+  });
+}
+
+// Sheet: Machine Names
+{
+  consumeSheet({
+    name: 'Explanation Machine Names',
+    title: 'Machine Names: from the Machine Names files to the selectors',
+    intro: 'Purple = needs the Machine Names files. Hull file: NOT downloaded (no access to the folder). Nottingham and Weinheim files were downloaded and checked (same 4 columns). The local copy sample has 29 Hull rows. Blue = Power BI visual or page.',
+    src: [
+      '**Machine Names files',
+      'SharePoint, one folder per site. Kept by hand. The guide says a new line needs a row here (required); a line is removed with a filter.',
+      'Columns: MachineName | Dept | Area | Product Type',
+      'Nottingham: 66 rows (Dept for example Strepsils, Solid Dose). Weinheim: 6 rows (Fixatives, Tablets).',
+      'Hull sample: B2 Auto | Liquids Pack | Liquids | Bottles',
+    ],
+    tables: [{ name: 'Machine Names EU', cols: 'MachineName, Dept, Area, Product Type, SiteName, Unique Machine Name', note: 'SiteName and Unique Machine Name (machine name + -Hull) are added by the report' }],
+    columns: [
+      { label: 'Machine Names EU [Dept, Area, Product Type]', note: 'stand-in today: the Insights Hub area', table: 0 },
+      { label: 'Machine Names EU [MachineName, SiteName]', note: 'from the Insights Hub asset hierarchy', table: 0 },
+      { label: 'Machine Names EU [Unique Machine Name]', note: 'hidden key of every fact table', table: 0 },
+    ],
+    visuals: [
+      { text: '11 Site, 12 Department, 14 Line, 15 Product Type selectors (EU-Level Overview)', h: 54, col: 0 },
+      { text: `Pages: ${pagesOf('Machine Names EU').ordered.join(', ')}`, h: 70, col: 0 },
+      { text: 'Relationships: every fact table joins on Unique Machine Name', h: 54, col: 2 },
+    ],
+    srcH: 300,
+    chainTitle: 'How a machine finds its filters: the key texts must be equal',
+    chain: {
+      a: { title: '1 A machine in the Insights Hub data', level: 'ours', lines: ['Asset B2 Line, hierarchy Hull / Bottles / B2 Line', 'Key today: the asset ID (32 characters)'] },
+      b: { title: '2 The report key', level: 'pbi', lines: ['Unique Machine Name = machine name + "-Hull"', 'B2 Auto-Hull (Plan OPT, Daily Losses, Glidepaths, Format List all use it)'] },
+      c: { title: '3 The file row', level: 'file', lines: ['B2 Auto | Liquids Pack | Liquids | Bottles', 'Dept, Area and Product Type come only from this file'] },
+      good: ['Keys are equal', 'The machine shows in the selectors with its Dept, Area and Product Type.'],
+      bad: ['Keys differ', 'B2 Line (Insights Hub) is not B2 Auto-Hull: the machine has no row or no filters.'],
+    },
+    risks: [
+      '1. Machine key: Insights Hub uses the asset ID, the report uses machine name + site. Decision open. Either the Insights Hub tables write the report key, or a mapping table links them.',
+      '2. Names differ: B2 Line (Insights Hub) and B2 Auto (Provideam, files). GT4 is the same in both.',
+      '3. Dept, Area and Product Type are three different columns in the file (for example Liquids Pack, Liquids, Bottles). Insights Hub has one area. Today all three columns take the area.',
+      '4. The Hull file was not downloaded. Access to the folder is needed.',
+    ],
+  });
+}
+
+// Sheet: Equipment Coding
+{
+  const e = FJ.equipment;
+  consumeSheet({
+    name: 'Explanation Equipment Coding',
+    title: 'Equipment Coding: from the Equipment Coding files to the Equipment column',
+    intro: 'Purple = needs the Equipment Coding files. Hull file: NOT downloaded (no access). Nottingham and Weinheim files were checked. Blue = Power BI page. The guide says the board works without this file (optional).',
+    src: [
+      '**Equipment Coding files',
+      'SharePoint, one folder per site. Kept by hand: for every machine and loss description, the equipment that caused the loss.',
+      'Columns: MachineName | OEELossLvl3Desc | Merged Unique Identifier | Equipment | Lvl 3 Loss Name (empty in all rows)',
+      `Nottingham: ${fmt(e.Nottingham.rows)} rows, ${e.Nottingham.machines} machines, ${e.Nottingham.equipment_values} equipment values. Weinheim: ${e.Weinheim.rows} rows, ${e.Weinheim.machines} machines.`,
+      `Example: ${e.Nottingham.example.MachineName} ${e.Nottingham.example.OEELossLvl3Desc} -> ${e.Nottingham.example.Equipment}`,
+    ],
+    tables: [{ name: 'Equipment Coding H / N / W (hidden)', cols: 'Merged Unique Identifier, Equipment, Lvl 3 Loss Name', note: 'key = machine name + loss description. An empty Equipment becomes "Unclassed"' }],
+    columns: [{ label: 'Daily Losses EU [Equipment]', note: 'looked up with the key machine + loss description', table: 0 }],
+    visuals: [{ text: `Pages that use Equipment: ${pagesOfColumns('Daily Losses EU', ['Equipment']).join(', ') || 'none found'}`, h: 70, col: 0 }],
+    srcH: 300,
+    chainTitle: 'How one stop finds its equipment: the machine and the description must be equal',
+    chain: {
+      a: { title: '1 A stop in the Insights Hub data', level: 'ours', lines: ['Machine: B2 Line', 'Reason (leaf): 001 PRESSED EMERGENCY IN MAIN P.B.PANEL AREA', 'Second reason level (stand-in): for example Capper'] },
+      b: { title: '2 The report builds a key', level: 'pbi', lines: ['Equipment Loss Key = machine name + loss description', 'B2 Auto 001 PRESSED EMERGENCY IN MAIN P.B.PANEL AREA'] },
+      c: { title: '3 It looks for the same text in the file', level: 'file', lines: [`Provideam descriptions look like: ${e.Nottingham.example.OEELossLvl3Desc}`, 'Hull descriptions seen in the guide: Cleaning Area, Labeller Head 1 Coding'] },
+      good: ['Texts are equal', `Nottingham: ${pct(e.Nottingham.stop_rows_covered, e.Nottingham.stop_rows)} of the unplanned stops have an entry. Weinheim: ${pct(e.Weinheim.stop_rows_covered, e.Weinheim.stop_rows)}.`],
+      bad: ['Texts differ', 'The stop gets "Unclassed" or no equipment. B2 reason texts of Insights Hub are alarm texts, not Provideam descriptions.'],
+    },
+    risks: [
+      '1. The reason text of Insights Hub (B2: alarm texts) is not the Provideam description. Fix: a mapping from the Insights Hub reason to the Provideam description, or an equipment column kept in Insights Hub.',
+      '2. Coverage depends on the people who keep the file: 98% (Nottingham) and 70% (Weinheim) of the unplanned stops. New loss types need a new row.',
+      '3. The Hull file was not downloaded. Access to the folder is needed.',
+    ],
+  });
+}
+
+// Sheet: Loss Units
+{
+  const u = FJ.loss_units;
+  consumeSheet({
+    name: 'Explanation Loss Units',
+    title: 'Loss Units: from the Volume Loss Correction files to the Loss Units column',
+    intro: 'Purple = needs the Volume Loss Correction files. They are a daily Provideam report (OEE Loss, group by object), not a manual file. Hull file: NOT downloaded (no access). Nottingham and Weinheim files were checked. Blue = Power BI visual.',
+    src: [
+      '**Volume Loss Correction files',
+      'SharePoint, one folder per site. Written by a Provideam report (OEE Loss, group by object), one file per month plus the current month.',
+      'Columns: ShiftStartDate | MachineName | OEELossLvl3Group | OEELossLvl3SubGroup | OEELossLvl3Desc | Time | Loss Units',
+      `Example: ${u.example.MachineName}, ${u.example.OEELossLvl3Group}, ${u.example.OEELossLvl3SubGroup}, ${u.example.Time}, ${u.example['Loss Units']} units`,
+    ],
+    tables: [{ name: 'Volume Loss Correction H / N / W (hidden)', cols: 'Loss Units, Volume Key, Time in Mins, Hour/Minute/Second Time', note: 'Volume Key = day + machine + group + sub group + description. The key must be unique (maintenance guide)' }],
+    columns: [{ label: 'Daily Losses EU [Loss Units]', note: 'joined on the Volume Key', table: 0 }],
+    visuals: [
+      { text: '2 Unplanned Loss %, 3 Planned Loss %', col: 0 },
+      { text: '5 Top 5 Loss Categories, 8 Unplanned Loss vs Target', col: 0 },
+      { text: '7 Planned Loss vs Target, 9 Top Losses', col: 0 },
+    ],
+    srcH: 300,
+    chainTitle: 'How Loss Units are made: the rule is the same in both systems',
+    chain: {
+      a: { title: '1 Insights Hub (our assumption)', level: 'ours', lines: ['Loss Units = design speed per minute x stop minutes', 'design speed from the product (productCollections/.../products)', 'duration from downtimeReasons'] },
+      b: { title: '2 Provideam (the file)', level: 'file', lines: ['Loss Units = loss time x capacity per planned minute of the product', `Checked on Nottingham: ${fmt(u.within_3_percent)} of ${fmt(u.machine_days)} machine-days within 3% (median ratio ${u.median_ratio})`] },
+      c: { title: '3 The report', level: 'pbi', lines: ['Daily Losses EU [Loss Units] is looked up by the Volume Key', 'Loss % = Loss Units / Capacity (Plan OPT)'] },
+      good: ['Same rule', 'If the speed per minute is the same, the Loss Units are the same.'],
+      bad: ['Different speed', 'Capacity per minute of Provideam differs from the design speed of Insights Hub: the numbers differ.'],
+    },
+    risks: [
+      '1. The rule is confirmed on Nottingham data, not on Hull (Hull file missing). The speed per minute decides the result: Provideam capacity against Insights Hub design speed (B2: one speed per product, GT4: not always the design speed).',
+      '2. The file is a daily total per machine, reason and day. Insights Hub has one row per stop. The report joins on day + machine + reason. Fix: build the same key, and check that the sum per key is equal.',
+      '3. Planned losses exist in the file (groups Planned Losses, Production Not Scheduled). Insights Hub has no planned stops in the Hull data.',
+    ],
+  });
 }
 
 // ---- Page: Provideam and Insights Hub, overlap and replacement ---------------------------
@@ -917,6 +1175,96 @@ for (const t of TABLES) {
   pages.push(pp);
 }
 
+// ---- Page: how the data is collected and where it conflicts with Insights Hub ------------------
+{
+  const cs = new Page('Explanation Data collection and conflicts');
+  const g = FJ.glidepath;
+  const f = FJ.formats;
+  const s = FJ.shift;
+  const ln = FJ.loss_names;
+  cs.text(40, 20, 1500, 30, bold('Data collection: how each data item reaches the lake and where it conflicts with Insights Hub'), 'fontSize=18;');
+  cs.box(
+    40,
+    62,
+    1520,
+    62,
+    esc('Status 2026-10-14, from the downloaded SharePoint files (Hull, Nottingham, Weinheim; Mira and most Hull folders not reachable). Collection today: the user copies files by hand to the data lake. Next step: Power Automate sends the file to a VFC endpoint, the VFC writes a parquet file. Not tested: file size limit, key handling and POST on the VFC http in node.'),
+    'neutral',
+    'verticalAlign=top;spacingTop=6;fontSize=11;',
+  );
+  const chain = (y, label, steps) => {
+    cs.text(40, y - 24, 700, 20, bold(label), 'fontSize=12;');
+    const ids = steps.map(([text, lv], i) => cs.box(40 + i * 258, y, 235, 62, esc(text), lv || 'neutral', 'verticalAlign=middle;fontSize=10.5;'));
+    for (let i = 0; i < ids.length - 1; i += 1) {
+      cs.edge(ids[i], ids[i + 1], '#666666');
+    }
+  };
+  chain(170, 'Files (Provideam reports and Excel files kept by hand)', [
+    ['SharePoint folder (Hull and Nottingham sites)'],
+    ['NOW: the user copies the file by hand', 'assumed'],
+    ['NEXT: Power Automate sends the file to a VFC endpoint (not tested)', 'file'],
+    ['VFC converts the file to parquet (encoding, tab, Total row, comment quotes)'],
+    ['Data lake: one parquet file per file type, with the download date'],
+    ['Mapping tables (machine, product, shift, reason names) and Power BI', 'pbi'],
+  ]);
+  chain(290, 'Insights Hub (OEE API)', [
+    ['Insights Hub OEE API'],
+    ['VFC flows, run daily'],
+    ['Data lake: pbi_* parquet files'],
+    ['Same mapping tables'],
+    ['Power BI board (target)', 'pbi'],
+  ]);
+  const lg = [
+    ['assumed', 'Conflict with Insights Hub: a mapping or decision is needed'],
+    ['ok', 'No conflict: same rule or only one source'],
+    ['empty', 'Open question: Reckitt must decide'],
+    ['none', 'Group 2, decide later'],
+  ];
+  lg.forEach(([level, text], i) => cs.box(40 + i * 385, 365, 370, 34, esc(text), level, 'fontSize=10.5;'));
+  const hx = [40, 360, 700, 1190];
+  const hw = [310, 330, 480, 370];
+  ['Data item', 'Source and how it is collected', 'Conflict with Insights Hub', 'Resolution'].forEach((t, i) => cs.text(hx[i], 412, hw[i], 20, bold(t), 'fontSize=12;'));
+  const rows = [
+    ['Targets (Glidepaths)', `Excel/CSV kept by hand, one file per site (Hull: ${g.hull_lines.length} lines, 2026 ${Math.round(g.filled_2026 * 100)}% filled, 2027 empty). Copy by hand, later Power Automate`, `Line names (B2 Auto against B2 Line). Loss names: ${ln.sih_stops_subgroup_equals_hull_bucket} of ${fmt(ln.sih_stops)} Insights Hub stops have a sub group that equals a bucket`, 'Mapping tables: line names, and reason to bucket (start from the 17 text rules of the Hull query)', 'assumed'],
+    ['Product format (brand, size, count)', `Format Mapping file kept by hand (Hull ${f.hull_rows} rows). Copy by hand`, `B2 Line: ${f.sih['B2 Line'].in_format_list} of ${f.sih['B2 Line'].sih_part_names} product names match (SAP-style against short names). GT4: ${f.sih.GT4.in_format_list} of ${f.sih.GT4.sih_part_names} match`, 'Mapping from the Insights Hub product code to the Provideam product name (B2)', 'assumed'],
+    ['Shift names', `Shift Pattern file, one for all sites (${s.rows} rows, ${s.values.length} values). Copy by hand`, `${s.sih_not_in_values.join(', ')} have no Shift value. Day, Night, Afternoon are not Insights Hub names`, 'Mapping from the Insights Hub shift to a Shift value, or new rows in the file', 'assumed'],
+    ['Machine names, Dept, Area, Product Type', 'Machine Names file per site (Hull: no access, local copy sample only). Copy by hand', 'B2 Line against B2 Auto. Three columns in the file, one area in Insights Hub. Asset ID against machine name + site as key', 'The file is the master for Dept, Area, Product Type. Mapping for names. Decision on the key is open', 'assumed'],
+    ['Equipment of a stop', 'Equipment Coding file per site (Hull: no access). Copy by hand', 'Insights Hub reason texts (B2: alarm texts) are not the Provideam descriptions the file uses', 'Mapping reason to description, or an equipment attribute kept in Insights Hub', 'assumed'],
+    ['Production actuals (good parts, capacity, times)', 'Provideam Plan OPT files: monthly and current month, rewritten by an hourly job. Not needed if Insights Hub is the source', 'Both systems have it. On the overlap days Insights Hub is 96.6% (B2) and 43.6% (GT4) of Provideam', 'Reckitt decides the official source per site. Keep the files for comparison', 'empty'],
+    ['Stops, comments, planned losses', `Provideam Line Losses files. Comment text is filled for ${pct(ln.provideam.Nottingham.has_comment, ln.provideam.Nottingham.stop_rows)} of the Nottingham rows`, 'Reason names differ. Insights Hub has the comment count only and no Planned Loss in the Hull data', 'Comment text: read the comment endpoint or accept the gap. Planned losses: from the shift calendar', 'assumed'],
+    ['Loss Units', 'Provideam Volume Loss Correction files (daily)', `Same rule (minutes x capacity per minute: ${fmt(FJ.loss_units.within_3_percent)} of ${fmt(FJ.loss_units.machine_days)} machine-days within 3%). Differs only if the speed differs`, 'Compute in the flow. Check the sums against the file', 'ok'],
+    ['Volume Total', 'Built from the Plan OPT Capacity per machine and day (Hull query)', 'None, it follows the capacity', 'Build it in the flow (not built yet)', 'ok'],
+    ['Run rates (hourly)', 'Provideam Packing Hourly Run Rates files (Nottingham, Weinheim seen)', 'Insights Hub has hourly KPIs. Not compared', 'Group 2: decide later', 'none'],
+    ['Calendar', 'Generated by the flow', 'None', 'None', 'ok'],
+  ];
+  let y = 440;
+  rows.forEach(([item, srcText, conflict, resolution, level]) => {
+    const h = Math.max(60, 14 * Math.ceil(Math.max(conflict.length / 64, srcText.length / 42, resolution.length / 50)) + 12);
+    cs.box(hx[0], y, hw[0], h, bold(item), level, 'verticalAlign=middle;fontSize=10.5;');
+    cs.box(hx[1], y, hw[1], h, esc(srcText), level, 'verticalAlign=middle;fontSize=10;');
+    cs.box(hx[2], y, hw[2], h, esc(conflict), level, 'verticalAlign=middle;fontSize=10;');
+    cs.box(hx[3], y, hw[3], h, esc(resolution), level, 'verticalAlign=middle;fontSize=10;');
+    y += h + 8;
+  });
+  cs.text(40, y + 6, 1500, 24, bold('Open decisions and blockers'), 'fontSize=14;');
+  cs.box(
+    40,
+    y + 40,
+    1520,
+    150,
+    [
+      esc('1. Official OEE source per site, today and after the move (Provideam or Insights Hub). Question for Mei Shin and Asif.'),
+      esc('2. Machine key: asset ID or machine name + site. All mapping tables depend on it.'),
+      esc('3. Who builds the Power Automate flow, and the VFC receiver: file size limit and key handling are not tested.'),
+      esc('4. Access: Hull folders Equipment Coding, Line Losses, Machine Names, Packing Run Rates, Volume Loss Correction; the whole Mira site.'),
+      esc('5. File format for the integration: Provideam files are UTF-16 with tab separation, CR line ends, a Total row and comments with unescaped quotes. Ask for a clean export.'),
+    ].join('<br><br>'),
+    'neutral',
+    'verticalAlign=top;spacingTop=8;fontSize=11;',
+  );
+  pages.push(cs);
+}
+
 // ---- Page for the tables not created -----------------------------------------------------------
 const nc = new Page('Not created yet');
 nc.text(40, 20, 1500, 30, bold('Power BI tables not created from Insights Hub yet'), 'fontSize=18;');
@@ -925,7 +1273,7 @@ nc.text(
   58,
   1500,
   44,
-  'Columns are those of the Power BI model. The status says what the table needs. Group 2 = shift KPIs, run rate (decide later); group 3 = Glidepaths targets (needs file integration) and correction files (waits for Reckitt). Not analysed in the model: Handover, Shift Colours, Master Mode Comment and Full Site Shift Performance are read by visuals but are not tables of the template.',
+  'Columns are those of the Power BI model. The status says what the table needs. Group 2 = shift KPIs, run rate (decide later); group 3 = files that need an integration (Glidepaths, Format Mapping, Equipment Coding, Volume Loss Correction). Not analysed in the model: Handover, Shift Colours, Master Mode Comment and Full Site Shift Performance are read by visuals but are not tables of the template.',
   'fontSize=11;',
 );
 const colY = [130, 130, 130];

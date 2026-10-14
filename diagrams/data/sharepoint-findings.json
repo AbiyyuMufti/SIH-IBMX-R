@@ -1,0 +1,447 @@
+{
+  "glidepath": {
+    "files": [
+      [
+        "Hull",
+        510
+      ],
+      [
+        "Mira",
+        255
+      ],
+      [
+        "Nottingham",
+        391
+      ],
+      [
+        "Weinheim",
+        102
+      ]
+    ],
+    "month_columns": 48,
+    "first_month": "01/01/2025",
+    "last_month": "01/12/2028",
+    "filled_2025": 0.34,
+    "filled_2026": 0.91,
+    "filled_2027": 0.0,
+    "hull_rows": 510,
+    "hull_lines": [
+      "B1",
+      "B2 Auto",
+      "B3",
+      "B4",
+      "B5",
+      "B6",
+      "Bosch Blister Line",
+      "C4",
+      "D1",
+      "D2",
+      "D3",
+      "Dettol 1",
+      "Enflex",
+      "Foiler 2",
+      "Fybogel 10s",
+      "Fybogel 30s",
+      "GT3",
+      "GT4",
+      "Infant Gaviscon",
+      "Rimini",
+      "S1",
+      "SP1",
+      "SP2",
+      "SP4",
+      "SP6",
+      "SP7",
+      "SP8",
+      "Saloon",
+      "T1",
+      "Uhlmann"
+    ],
+    "hull_buckets": [
+      "% OEE",
+      "Adjustments",
+      "Breakdown",
+      "Breaks / Meals",
+      "In process Quality",
+      "Lack Of Resources",
+      "Minor Stops",
+      "Operator Asset Care",
+      "Others",
+      "Planned Downtime (Total)",
+      "Planned Maintenance",
+      "Product Changeover",
+      "Quality Issues",
+      "Reduced Speed",
+      "Refilling Materials",
+      "Start up and Sanitisation",
+      "Unplanned Downtime (Total)"
+    ],
+    "hull_lines_not_in_plan_opt": [
+      "B3",
+      "Bosch Blister Line",
+      "D3",
+      "Dettol 1",
+      "GT3",
+      "SP2",
+      "Saloon"
+    ],
+    "hull_plan_opt_machines": 34,
+    "b2_auto_sep_2026": [
+      [
+        "% OEE",
+        "45.4"
+      ],
+      [
+        "Unplanned Downtime (Total)",
+        "18.6"
+      ],
+      [
+        "Lack Of Resources",
+        "1.8"
+      ],
+      [
+        "Quality Issues",
+        "2.5"
+      ],
+      [
+        "Adjustments",
+        "7.2"
+      ],
+      [
+        "Breakdown",
+        "5.2"
+      ],
+      [
+        "Minor Stops",
+        "1.8"
+      ],
+      [
+        "Reduced Speed",
+        "0.1"
+      ],
+      [
+        "Others",
+        "0.0"
+      ],
+      [
+        "Planned Downtime (Total)",
+        "20.3"
+      ],
+      [
+        "Product Changeover",
+        "8.5"
+      ],
+      [
+        "Breaks / Meals",
+        "0.3"
+      ],
+      [
+        "In process Quality",
+        "2.4"
+      ],
+      [
+        "Planned Maintenance",
+        "2.4"
+      ],
+      [
+        "Operator Asset Care",
+        "0.4"
+      ],
+      [
+        "Start up and Sanitisation",
+        "5.9"
+      ],
+      [
+        "Refilling Materials",
+        "0.4"
+      ]
+    ]
+  },
+  "formats": {
+    "rows_all_sites": 408,
+    "hull_rows": 286,
+    "hull_machines": 25,
+    "hull_products": 188,
+    "provideam_pairs": 178,
+    "provideam_pairs_found": 111,
+    "sih": {
+      "B2 Line": {
+        "sih_part_names": 27,
+        "in_format_list": 0,
+        "provideam_part_names": 5,
+        "sih_example": [
+          "NURFN,BG,CHILD,ORG,12X100ML",
+          "NURFN,BG,CHILD,STR,4%,12X100ML"
+        ],
+        "format_example": [
+          "CHESTY COUGH 100x6",
+          "DT COUGH 100x6"
+        ]
+      },
+      "GT4": {
+        "sih_part_names": 13,
+        "in_format_list": 13,
+        "provideam_part_names": 14,
+        "sih_example": [
+          "250 mg tablets - Pep 12's",
+          "250 mg tablets - Pep 24's"
+        ],
+        "format_example": [
+          "250 mg tablets - Pep 12's",
+          "250 mg tablets - Pep 16's"
+        ]
+      }
+    },
+    "columns": [
+      "Site Name",
+      "MachineName",
+      "Product Name",
+      "Brand",
+      "Unit Size",
+      "Unit Count/Format",
+      "Extra Info"
+    ],
+    "example": {
+      "Site Name": "Hull",
+      "MachineName": "B1",
+      "Product Name": "Gav 6 x 200 mL",
+      "Brand": "Gaviscon",
+      "Unit Size": "200ml",
+      "Unit Count/Format": "6",
+      "Extra Info": null
+    },
+    "gt4_row": {
+      "Site Name": "Hull",
+      "MachineName": "GT4",
+      "Product Name": "250 mg tablets - Pep 24's",
+      "Brand": "G. Standard - Dries",
+      "Unit Size": "250 mg",
+      "Unit Count/Format": "24's",
+      "Extra Info": "Peppermint"
+    },
+    "b2_row": {
+      "Site Name": "Hull",
+      "MachineName": "B2 Auto",
+      "Product Name": "DT COUGH 100x6",
+      "Brand": "Lemsip",
+      "Unit Size": "100ml",
+      "Unit Count/Format": "6",
+      "Extra Info": "DT Cough"
+    },
+    "b2_provideam_names": [
+      "NFC 12 X 100ML",
+      "NFC 12 X 100ML with 2D",
+      "NFC 12 X 100ML with Spoon or Integrated",
+      "NFC 12 X 200ML with 2D",
+      "NFC 6 X 100ML"
+    ]
+  },
+  "shift": {
+    "rows": 188,
+    "values": [
+      "Afternoon",
+      "Blue",
+      "Day",
+      "Gold",
+      "Green",
+      "Night",
+      "Red"
+    ],
+    "hull_raw_names": 105,
+    "hull_raw_in_coding": 105,
+    "sih_names": [
+      "Blue",
+      "Gold",
+      "Green",
+      "Red",
+      "Shift 1",
+      "Shift 2",
+      "Yellow"
+    ],
+    "sih_in_values": [
+      "Blue",
+      "Gold",
+      "Green",
+      "Red"
+    ],
+    "sih_not_in_values": [
+      "Shift 1",
+      "Shift 2",
+      "Yellow"
+    ],
+    "examples": [
+      [
+        "Fri Afternoon",
+        "Afternoon"
+      ],
+      [
+        "SunDay - Blue",
+        "Blue"
+      ],
+      [
+        "FriDay",
+        "Day"
+      ],
+      [
+        "SunNight - Gold",
+        "Gold"
+      ],
+      [
+        "FriDay - Green",
+        "Green"
+      ],
+      [
+        "FriNight",
+        "Night"
+      ],
+      [
+        "ThurNight - Red",
+        "Red"
+      ]
+    ]
+  },
+  "equipment": {
+    "Nottingham": {
+      "rows": 4331,
+      "machines": 62,
+      "equipment_values": 130,
+      "stop_rows": 22164,
+      "stop_rows_covered": 21743,
+      "example": {
+        "MachineName": "O5",
+        "OEELossLvl3Desc": "100% Inspection",
+        "Merged Unique Identifier": "O5 100% Inspection",
+        "Equipment": "100% Inspection",
+        "Lvl 3 Loss Name": null
+      }
+    },
+    "Weinheim": {
+      "rows": 267,
+      "machines": 6,
+      "equipment_values": 17,
+      "stop_rows": 1313,
+      "stop_rows_covered": 918,
+      "example": {
+        "MachineName": "Line 15",
+        "OEELossLvl3Desc": "Abfüller elektrisch",
+        "Equipment": "Abfüller",
+        "Lvl 3 Loss Name": null
+      }
+    }
+  },
+  "loss_names": {
+    "provideam": {
+      "Nottingham": {
+        "stop_rows": 47165,
+        "rows_subgroup_equals_bucket": 26878,
+        "groups": [
+          [
+            "Planned Losses",
+            22213
+          ],
+          [
+            "Unplanned Losses",
+            22164
+          ],
+          [
+            "Production Not Scheduled",
+            2217
+          ],
+          [
+            "NPD / CapEx & Trials",
+            361
+          ],
+          [
+            "Not Logged",
+            207
+          ],
+          [
+            null,
+            3
+          ]
+        ],
+        "has_comment": 29702
+      },
+      "Weinheim": {
+        "stop_rows": 2534,
+        "rows_subgroup_equals_bucket": 837,
+        "groups": [
+          [
+            "Unplanned losses",
+            1313
+          ],
+          [
+            "Planned Losses",
+            1213
+          ],
+          [
+            "Not Logged",
+            5
+          ],
+          [
+            null,
+            3
+          ]
+        ],
+        "has_comment": 100
+      }
+    },
+    "sih_sub_groups": [
+      [
+        null,
+        6598
+      ],
+      [
+        "Unplanned Downtime",
+        3352
+      ],
+      [
+        "Process Failure",
+        73
+      ],
+      [
+        "Measurement and adjustment",
+        52
+      ],
+      [
+        "Breakdown",
+        18
+      ],
+      [
+        "Quality Issues",
+        4
+      ],
+      [
+        "Lack of resources",
+        2
+      ],
+      [
+        "Other",
+        1
+      ]
+    ],
+    "sih_stops": 10100,
+    "sih_stops_subgroup_equals_hull_bucket": 22
+  },
+  "loss_units": {
+    "machine_days": 2349,
+    "within_3_percent": 2341,
+    "median_ratio": 1.0,
+    "example": {
+      "ShiftStartDate": "01/08/2026 00:00:00",
+      "MachineName": "Fette12",
+      "OEELossLvl3Group": "Not Logged",
+      "OEELossLvl3SubGroup": "Not Logged",
+      "OEELossLvl3Desc": "Not Logged",
+      "Time": "00:20:00",
+      "Loss Units": "11.87",
+      "": null,
+      "m": 20.0,
+      "u": 11.87,
+      "per_min": 0.5934999999999999
+    }
+  },
+  "volume_total": {
+    "rule": "sum of Capacity per machine and day in the Plan OPT files"
+  }
+}

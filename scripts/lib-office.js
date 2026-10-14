@@ -113,6 +113,10 @@ export function readPbitModel(path) {
     .map((t) => ({
       name: t.name,
       hidden: !!t.isHidden,
+      query: (() => {
+        const e = t.partitions?.[0]?.source?.expression;
+        return Array.isArray(e) ? e.join('\n') : e || '';
+      })(),
       columns: (t.columns ?? []).map((c) => ({
         name: c.name,
         type: c.dataType,

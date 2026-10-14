@@ -278,3 +278,9 @@ Tried: Power BI flow with `Keep dim_asset` expecting an array. Error: "the file 
 - Sorted into `downloads/sharepoint/<site>/<folder>/` (git-ignored, with MANIFEST.md): regional (formats, 4 glidepaths, shift coding), Nottingham and Weinheim (equipment coding, line losses, machine names, plan OPT, run rates, volume loss correction), Hull plan OPT (copy of the first 4 files, prefix Hull_).
 - Hull: only the Plan OPT folder opens for the user (access is per folder, not for the parents). The other 5 Hull folders (equipment coding, line losses, machine names, packing run rates, volume loss correction) are not downloaded: access request needed. Mira site: no access.
 - Next: analyze the content (glidepaths first), then the Provideam and Power Automate integration.
+
+## SharePoint files analysed, diagram updated (2026-10-14)
+- Analysis of the 36 files: docs/sharepoint-files.md. Helper: scripts/helper-analyze-sharepoint.py (writes diagrams/data/sharepoint-findings.json). Diagram now 16 sheets: new explanation sheets Format List, Shift names, Machine Names, Equipment Coding, Loss Units, Data collection and conflicts; Targets sheet extended with the 17 name rules of the Hull query.
+- Corrections: Volume Total = sum of Plan OPT Capacity per machine and day (not good parts per month; the mapping Excel outside the repo still says per month). Plan OPT EU[ShiftName] holds the mapped Shift value, not the raw name.
+- Failed attempts: first read of the Line Losses files failed (unescaped quotes in the comment text): read tab files without a quote character. Python -I and matplotlib problems as before.
+- Open: Hull files (Machine Names, Equipment Coding, Line Losses, Run Rates, Volume Loss Correction) and the Mira site need access; mapping tables do not exist yet; official OEE source per site; Power Automate to VFC not tested.

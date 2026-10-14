@@ -23,6 +23,6 @@
 ## Rules and limits
 - Dates are the production day (06:00 to 06:00 UTC for Hull), as in the mapping assumptions.
 - A day with no `fact_kpi` or `fact_loss` file stops after the read (the read node only warns). A day with zero stops has no fact_loss file, so that day is skipped too.
-- `volume_total` (good parts per machine and month on every loss row) needs several days at once and is not built yet.
+- `volume_total` is not built yet. Corrected 2026-10-14: the report sums the Capacity (not good parts) per machine and DAY of the Plan OPT files (see [sharepoint-files.md](sharepoint-files.md)).
 - Shift rule: DAILY and WEEKLY recurrences of the calendar events; an instant outside every event gets `shift_name` null.
 - The flow is per site (`SITE_NAME` in node 1.1). The folder prefix `site=` is the constant `FOLDER_PREFIX`.
