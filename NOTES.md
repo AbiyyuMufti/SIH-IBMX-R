@@ -300,3 +300,10 @@ Tried: Power BI flow with `Keep dim_asset` expecting an array. Error: "the file 
 ## Flow charts of the three options (2026-10-14)
 - New sheet "Explanation Three options flow charts": one swim-lane chart per option (1 Power Automate, 2 direct access, 3 manual copy). Purple = Reckitt must do, teal = our step, red diamond = test with a fail arrow to a fallback box, blue = lake result, green = tested. Tests shown: option 1 (premium licence, size up to 6.5 MB, UTF-16 decode), option 2 (VFC reaches Microsoft hosts, permission covers every folder), option 3 (folder access, file complete). Only option 3 is tested.
 - Builder: Page.edge now takes a label. Merged into the hand-edited file with scripts/helper-merge-drawio-new.py (now generic: new page name and anchor page as arguments). The saved file has a page Page-18 of the user (34 cells): untouched.
+
+## Farhan's emailed Provideam reports (2026-10-14)
+- `downloads/farhansProvReportCsv/` (git-ignored): 2 report types x 2 versions (Day, Shift), GT4, 13 Oct 2026. Same UTF-16, tab, CR format as the SharePoint files.
+- Production Trend: MachineName, YYYY-MM-DD HH, Good Parts (hourly, 06:00 to 17:00, 63,576 in total) plus a `Total:` row. OEELossLvl3SubGroup: MachineName, StartTime, ShiftName, BatchName, PartDesc, Duration, OEELossLvl3SubGroup, OEELossLvl3Desc, Comment: a continuous timeline (21 Run rows, 29 stop rows, 15 with a comment), a `SubTotal:GT4` row (12:00:00) and an empty last row.
+- Day and Shift versions hold the same rows (GT4 ran only the day shift TueDay - Blue, 06:00 to 18:00); in the loss report the columns ShiftName and StartTime are swapped: read by header name.
+- Not in these reports (against the SharePoint files): loss Group, ShiftStartDate, Capacity, Planned OpT, OEE Time, Loss Units. New: BatchName.
+- Checks: GT4 part names equal the Insights Hub names (Dada/Straw 16's, 24's ...); batch names (AJT455, AJT406) have the same pattern as the Insights Hub batch ids (AJN564, AJR387 ...). The lake has no GT4 data after 8 Oct, so no direct comparison yet.
