@@ -590,44 +590,76 @@ NOT_CREATED.forEach((t, i) => {
   ].filter(Boolean);
   overview.box(x, y, 355, 230, lines.join('<br><br>'), t.status, 'verticalAlign=top;spacingTop=8;fontSize=10.5;');
 });
-// Priority of the 6 tables (from Segun's data lineage), panel on the right of the overview.
+// Priority of all 16 tables (6 created, 10 not created yet), panel on the right of the overview.
 {
   const PX = 1600;
-  overview.text(PX, 170, 560, 24, bold('Priority of the 6 tables'), 'fontSize=14;');
+  const colPages = (table, cols) => {
+    const set = new Set();
+    cols.forEach((c) => (usage.columnPages.get(`${table}|${c}`) ?? []).forEach((p) => set.add(p)));
+    // pages that show a measure whose formula reads the column
+    model.tables.forEach((mt) => mt.measures.forEach((m) => {
+      if (cols.some((c) => m.expression.includes(`'${table}'[${c}]`))) {
+        (usage.columnPages.get(`${mt.name}|${m.name}`) ?? []).forEach((p) => set.add(p));
+      }
+    }));
+    return set.size;
+  };
+  // visuals = visuals of the EU-Level Overview page (Segun lineage) that depend on the table, directly or
+  // through the column it fills. pages = report pages that read it (Power BI file).
+  const all = [
+    { name: 'Machine Names EU', visuals: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15], pages: pagesOf('Machine Names EU').ordered.length, state: 'Created. Insights Hub data complete', level: 'ok' },
+    { name: 'Plan OPT EU', visuals: [1, 2, 3, 4, 5, 7, 8, 9, 10], pages: pagesOf('Plan OPT EU').ordered.length, state: 'Created. Targets missing', level: 'assumed' },
+    { name: 'Daily Losses EU', visuals: [2, 3, 5, 7, 8, 9], pages: pagesOf('Daily Losses EU').ordered.length, state: 'Created. Loss names to map', level: 'assumed' },
+    { name: 'Volume Loss Correction (feeds Loss Units)', visuals: [2, 3, 5, 7, 8, 9], pages: colPages('Daily Losses EU', ['Loss Units']), state: 'Not created. Needs file or rule', level: 'file' },
+    { name: 'OEE Targets EU (feeds OEE Target)', visuals: [1, 4], pages: colPages('Plan OPT EU', ['OEE Target']), state: 'Not created. Needs Glidepaths', level: 'file' },
+    { name: 'PDT Targets EU (feeds PDT Target)', visuals: [3, 7], pages: colPages('Plan OPT EU', ['PDT Target']), state: 'Not created. Needs Glidepaths', level: 'file' },
+    { name: 'UPDT Targets EU (feeds UPDT Target)', visuals: [2, 8], pages: colPages('Plan OPT EU', ['UPDT Target']), state: 'Not created. Needs Glidepaths', level: 'file' },
+    { name: 'Calendar', visuals: [5, 13], pages: pagesOf('Calendar').ordered.length, state: 'Created. Done', level: 'ok' },
+    { name: 'Targets Losses EU (feeds Value, Target)', visuals: [5], pages: colPages('Daily Losses EU', ['Value', 'Target']), state: 'Not created. Needs Glidepaths', level: 'file' },
+    { name: 'Targets Volume (feeds Volume Total)', visuals: [5], pages: colPages('Daily Losses EU', ['Volume Total']), state: 'Not created. Build from Plan OPT', level: 'assumed' },
+    { name: 'Shift Naming EU', visuals: [16], pages: pagesOf('Shift Naming EU').ordered.length, state: 'Created. Mapping needed', level: 'assumed' },
+    { name: 'Time Utilisation EU', visuals: [6], pages: pagesOf('Time Utilisation EU').ordered.length, state: 'Created. Follows Plan OPT', level: 'assumed' },
+    { name: 'Format List EU', visuals: [], pages: pagesOf('Format List EU').ordered.length, state: 'Not created. Needs file', level: 'file' },
+    { name: 'Equipment Coding (feeds Equipment)', visuals: [], pages: colPages('Daily Losses EU', ['Equipment']), state: 'Not created. Needs file', level: 'file' },
+    { name: 'Run Rates EU', visuals: [], pages: pagesOf('Run Rates EU').ordered.length, state: 'Not created. Decide later', level: 'none' },
+    { name: 'Volume CoV EU', visuals: [], pages: pagesOf('Volume CoV EU').ordered.length, state: 'Not created. Decide later', level: 'none' },
+  ];
+  all.sort((a, b) => b.visuals.length - a.visuals.length || b.pages - a.pages);
+  const rankOf = (t) => 1 + all.filter((o) => o.visuals.length > t.visuals.length).length;
+  overview.text(PX, 170, 700, 24, bold('Priority of all 16 tables (6 created, 10 not created yet)'), 'fontSize=14;');
   overview.box(
     PX,
     200,
-    560,
-    70,
-    esc("Ranked by the number of visuals that use the table, from Segun's data lineage: 16 visuals and selectors of the EU-Level Overview page, 6 tables. The lineage covers 1 of the 12 report pages."),
+    700,
+    92,
+    esc("Ranked by the number of visuals of the EU-Level Overview page that depend on the table (Segun's data lineage: 16 visuals and selectors). A table that only feeds a column counts the visuals that use that column. Second key: report pages that read it (Power BI file, 12 pages). The lineage covers 1 of the 12 pages, so a table with 0 visuals can still matter on another page."),
     'neutral',
     'verticalAlign=top;spacingTop=6;fontSize=10.5;',
   );
-  const rank = [
-    ['1', 'Machine Names EU', '13 of 16 (2 to 12, 14, 15)', 'Every filter of the page: site, department, line, product type', 'Insights Hub data complete. Dept, Area and Product Type from a master list later.', 'ok'],
-    ['2', 'Plan OPT EU', '9 of 16 (1 to 5, 7 to 10)', 'The core numbers: good parts, capacity, volume', 'Numbers exist. The targets need the Glidepath file (visuals 1, 2, 3, 4, 7, 8).', 'assumed'],
-    ['3', 'Daily Losses EU', '6 of 16 (2, 3, 5, 7, 8, 9)', 'All loss visuals', 'Loss names need a mapping. Volume Total and Loss Units to build and check.', 'assumed'],
-    ['4', 'Calendar', '2 of 16 (5, 13)', 'Date selector and trend', 'Done: generated by the flow.', 'ok'],
-    ['5', 'Shift Naming EU', '1 of 16 (16)', 'Shift selector', 'Needs the shift mapping.', 'assumed'],
-    ['6', 'Time Utilisation EU', '1 of 16 (6)', 'One visual', 'Sums of Plan OPT: follows Plan OPT.', 'assumed'],
-  ];
-  rank.forEach(([n, name, count, why, status, level], i) => {
-    overview.box(
-      PX,
-      282 + i * 128,
-      560,
-      118,
-      [bold(`${n}  ${name}`), esc(`Visuals: ${count}`), esc(`Used for: ${why}`), esc(`Status: ${status}`)].join('<br>'),
-      level,
-      'verticalAlign=top;spacingTop=6;fontSize=10.5;',
-    );
+  const cx = [PX, PX + 50, PX + 360, PX + 560, PX + 640];
+  const cw = [44, 304, 194, 74, 60];
+  ['#', 'Table', 'State', 'Visuals', 'Pages'].forEach((t, i) => overview.text(cx[i], 302, cw[i], 20, bold(t), 'fontSize=11;'));
+  all.forEach((t, i) => {
+    const y = 326 + i * 46;
+    const vis = t.visuals.length ? `${t.visuals.length}` : '0';
+    overview.box(cx[0], y, cw[0], 40, bold(String(rankOf(t))), t.level, 'verticalAlign=middle;align=center;fontSize=11;');
+    overview.box(cx[1], y, cw[1], 40, esc(t.name), t.level, 'verticalAlign=middle;fontSize=10.5;');
+    overview.box(cx[2], y, cw[2], 40, esc(t.state), t.level, 'verticalAlign=middle;fontSize=10;');
+    overview.box(cx[3], y, cw[3], 40, bold(vis), t.level, 'verticalAlign=middle;align=center;fontSize=11;');
+    overview.box(cx[4], y, cw[4], 40, esc(String(t.pages)), t.level, 'verticalAlign=middle;align=center;fontSize=11;');
   });
   overview.box(
     PX,
-    282 + 6 * 128,
-    560,
-    70,
-    esc('Order of work: 1 and 2 first (they feed everything), then 3. Table 4 is done. Tables 5 and 6 are small. Missing data by visuals affected: see the sheet "Plan to get the missing data".'),
+    326 + all.length * 46 + 10,
+    700,
+    150,
+    [
+      bold('How to read it'),
+      esc('The Glidepaths feed four tables that together decide 7 visuals (1, 2, 3, 4, 5, 7, 8).'),
+      esc('Loss Units (Volume Loss Correction) decide 6 visuals (2, 3, 5, 7, 8, 9).'),
+      esc('Machine Names (13 visuals) and Plan OPT (9) are the base of the page and are mostly complete.'),
+      esc('Format List and Equipment Coding matter on other report pages (By Format, Maintenance), not on this page.'),
+    ].join('<br>'),
     'neutral',
     'verticalAlign=top;spacingTop=6;fontSize=10.5;',
   );
