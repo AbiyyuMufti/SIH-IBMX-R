@@ -1,64 +1,94 @@
-// Tests scripts/datalake-download.js against a fake server on localhost (no network, no real credentials).
-// The fake server answers: token, generateDownloadObjectUrls and the signed file URLs.
-// Scenarios: files that exist, one that is missing (not returned), one hostile path ("../").
+// Tests the data lake scripts against a fake server on localhost (no network, no credentials).
+// The fake server copies what the real tenant did on 2026-10-14 (and the OpenAPI file):
+//   base path /datalake-<id>/v3, POST generate*ObjectUrls answers 201, download takes exactly 1 path,
+//   a missing object answers 404 ObjectNotFoundError, list keys carry the "data/ten=<tenant>/" prefix,
+//   the signed URL is used without a token (GET to download, PUT to upload).
 // Usage: node scripts/test-datalake-mock.js
 import http from 'node:http';
-import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { execFile } from 'node:child_process';
+import { existsSync, readFileSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const out = resolve(root, 'downloads');
-const PREFIX = 'mock_test/fact_kpi/Hull/fact_kpi_';
-const exists = new Set([PREFIX + '2026-09-01.parquet', PREFIX + '2026-09-02.parquet', PREFIX + '2026-09-04.parquet']);
-const seen = { generate: 0, batches: [], tokenAuth: null, hostile: false };
+const BASE = '/datalake-1000001700/v3';
+const PREFIX = 'mock_test/fact_loss/fact_loss_';
+const store = new Map([
+  [PREFIX + '2026-10-10.parquet', Buffer.from('PAR1-ten')],
+  [PREFIX + '2026-10-11.parquet', Buffer.from('PAR1-eleven')],
+  [PREFIX + '2026-10-12.parquet', Buffer.from('PAR1-twelve')]
+]);
+const seen = { generate: [], tokenAuth: null, signedAuth: [], batchSizes: [] };
 
 const server = http.createServer((req, res) => {
-  let body = '';
-  req.on('data', (c) => { body += c; });
+  let body = [];
+  req.on('data', (c) => body.push(c));
   req.on('end', () => {
-    if (req.url.startsWith('/oauth/token')) {
+    body = Buffer.concat(body);
+    const url = new URL(req.url, 'http://x');
+    const json = (status, obj) => {
+      res.statusCode = status;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify(obj));
+    };
+    if (url.pathname === '/oauth/token') {
       seen.tokenAuth = String(req.headers.authorization || '').split(' ')[0];
-      res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify({ access_token: 'fake', token_type: 'bearer', expires_in: 1799 }));
-    } else if (req.url === '/api/datalake/v3/generateDownloadObjectUrls') {
-      seen.generate++;
-      const paths = JSON.parse(body).paths.map((p) => p.path);
-      seen.batches.push(paths.length);
-      // the real answer for a missing file is unknown: this fake leaves it out
-      const urls = paths.filter((p) => exists.has(p)).map((p) => ({ path: p, signedUrl: `http://127.0.0.1:${server.address().port}/files/${p}` }));
-      if (seen.hostile) {
-        urls.push({ path: '../escaped.txt', signedUrl: `http://127.0.0.1:${server.address().port}/files/x` });
-      }
-      res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify({ objectUrls: urls }));
-    } else if (req.url.startsWith('/files/')) {
-      res.end('PAR1-' + req.url);
-    } else {
-      res.statusCode = 404;
-      res.end('{}');
+      return json(200, { access_token: 'fake', token_type: 'bearer', expires_in: 1799 });
     }
+    if (url.pathname.startsWith('/files/')) {
+      seen.signedAuth.push(req.headers.authorization || null);
+      const key = decodeURIComponent(url.pathname.slice(7));
+      if (req.method === 'PUT') {
+        store.set(key, body);
+        res.statusCode = 200;
+        return res.end();
+      }
+      res.statusCode = store.has(key) ? 200 : 404;
+      return res.end(store.get(key) || '');
+    }
+    if (!url.pathname.startsWith(BASE + '/')) {
+      return json(404, {});
+    }
+    const op = url.pathname.slice(BASE.length + 1);
+    if (op === 'listObjects') {
+      const p = url.searchParams.get('path');
+      const files = [...store.entries()]
+        .filter(([k]) => (p.endsWith('/') ? k.startsWith(p) && !k.slice(p.length).includes('/') : k === p))
+        .map(([k, v]) => ({ key: 'data/ten=mock/' + k, lastModified: '2026-10-14T07:00:00.000Z', contentSize: v.length }));
+      return json(200, { storagePath: 'data/ten=mock/' + p, isTruncated: false, objects: { files, folders: [] } });
+    }
+    if (op === 'generateDownloadObjectUrls' || op === 'generateUploadObjectUrls') {
+      const paths = JSON.parse(body.toString()).paths.map((x) => x.path);
+      seen.batchSizes.push(paths.length);
+      if (op === 'generateDownloadObjectUrls' && paths.length !== 1) {
+        return json(400, { errors: [{ code: 'mdsp.core.datalake.tooManyPaths', message: 'A maximum of 1 paths can be provided per request.' }] });
+      }
+      if (op === 'generateDownloadObjectUrls' && !store.has(paths[0])) {
+        return json(404, { errors: [{ code: 'mdsp.core.datalake.ObjectNotFoundError', message: 'Either the object not found or you do not have access to perform this operation.' }] });
+      }
+      const signed = `http://127.0.0.1:${server.address().port}/files/${encodeURIComponent(paths[0])}`;
+      return json(201, { objectUrls: [{ path: paths[0], signedUrl: signed }] });
+    }
+    return json(404, {});
   });
 });
 await new Promise((ok) => server.listen(0, '127.0.0.1', ok));
 const port = server.address().port;
 
-function run(args, extraEnv = {}) {
+function run(script, args) {
   const env = {
     ...process.env,
+    IH_PLATFORM: 'xcelerator',
+    XC_TENANT_ID: '1000001700',
     IH_GATEWAY_URL: `http://127.0.0.1:${port}`,
     RECKITT_IAM_TOKEN_URL: `http://127.0.0.1:${port}/oauth/token`,
-    IH_PLATFORM: 'legacy',
     RECKITT_API_TECHUSER_CLIENT_ID: 'x',
-    RECKITT_API_TECHUSER_CLIENT_SECRET: 'x',
-    ...extraEnv
+    RECKITT_API_TECHUSER_CLIENT_SECRET: 'x'
   };
   return new Promise((ok) => {
-    import('node:child_process').then(({ execFile }) => {
-      execFile('node', ['scripts/datalake-download.js', ...args], { cwd: root, env }, (err, stdout, stderr) => {
-        ok({ code: err ? err.code : 0, stdout, stderr });
-      });
+    execFile('node', [script, ...args], { cwd: root, env }, (err, stdout, stderr) => {
+      ok({ code: err ? err.code : 0, stdout, stderr });
     });
   });
 }
@@ -68,52 +98,66 @@ const check = (name, ok, info = '') => {
   checks.push(ok);
   console.log((ok ? 'PASS ' : 'FAIL ') + name + (info ? '  [' + info + ']' : ''));
 };
+const clean = () => {
+  rmSync(resolve(out, 'mock_test'), { recursive: true, force: true });
+  rmSync(resolve(root, 'escaped.txt'), { force: true });
+  for (const f of existsSync(out) ? ['x'] : []) {
+    void f;
+  }
+};
+clean();
+const DL = 'scripts/datalake-download.js';
+const UL = 'scripts/datalake-upload.js';
 
-rmSync(resolve(out, 'mock_test'), { recursive: true, force: true });
-rmSync(resolve(out, 'escaped.txt'), { force: true });
-rmSync(resolve(root, 'escaped.txt'), { force: true });
+let r = await run(DL, ['list', 'mock_test/fact_loss/']);
+check('list: shows 3 files with size', r.code === 0 && /3 file/.test(r.stdout) && /PAR1|\s8\s|\s11\s/.test(r.stdout), r.stdout.trim().split('\n').pop());
 
-// 1 probe on a file that exists
-let r = await run(['probe', PREFIX + '2026-09-01.parquet']);
-check('probe exists: exit 0, prints status and field names', r.code === 0 && /HTTP 200/.test(r.stdout) && /objectUrls/.test(r.stdout), r.stdout.trim().split('\n').join(' | '));
-check('probe never prints a signed URL or token', !/127\.0\.0\.1|fake/.test(r.stdout + r.stderr));
+r = await run(DL, ['get', PREFIX + '2026-10-12.parquet']);
+const f12 = resolve(out, PREFIX + '2026-10-12.parquet');
+check('get: file saved with the same bytes', r.code === 0 && existsSync(f12) && readFileSync(f12, 'utf8') === 'PAR1-twelve', r.stdout.trim());
+check('signed URL is called without a token', seen.signedAuth.every((a) => a === null));
 check('token request used Basic auth', seen.tokenAuth === 'Basic', String(seen.tokenAuth));
 
-// 2 probe on a missing file
-r = await run(['probe', PREFIX + '2026-09-03.parquet']);
-check('probe missing: handled, no crash', r.code === 0 || r.code === 1, 'exit ' + r.code + ' | ' + r.stdout.trim().split('\n').join(' | '));
+r = await run(DL, ['get', 'data/ten=mock/' + PREFIX + '2026-10-11.parquet']);
+check('get: the "data/ten=<tenant>/" prefix of the list is removed', r.code === 0 && existsSync(resolve(out, PREFIX + '2026-10-11.parquet')), r.stdout.trim());
 
-// 3 days: 01..05, files 01, 02, 04 exist
-r = await run(['days', PREFIX, '2026-09-01', '2026-09-05']);
-const files = ['01', '02', '04'].map((d) => resolve(out, PREFIX + `2026-09-${d}.parquet`));
-check('days: three existing files saved', files.every((f) => existsSync(f)));
-check('days: summary says 3 of 5', /downloaded 3 of 5 files/.test(r.stdout), r.stdout.split('\n')[0]);
-check('days: the 2 missing days are reported as FAILED', (r.stdout.match(/FAILED/g) || []).length === 2, r.stdout.split('\n').filter((l) => /FAILED/.test(l)).join(' | '));
-check('days: file content is the download, not the URL list', readFileSync(files[0], 'utf8').startsWith('PAR1-'));
-const zip = r.stdout.split('\n').find((l) => l.startsWith('zip:'));
-check('days: zip created', !!zip && existsSync(zip.slice(5).trim()) && statSync(zip.slice(5).trim()).size > 50, zip || r.stderr.slice(0, 200));
-if (zip && process.platform === 'win32') {
-  const list = execFileSync(resolve(process.env.SystemRoot, 'System32', 'tar.exe'), ['-tf', zip.slice(5).trim()]).toString();
-  check('zip lists the three files with their folders', ['01', '02', '04'].every((d) => list.includes(`fact_kpi_2026-09-${d}.parquet`)) && !list.includes('09-03'), list.trim().split('\n').join(' | '));
+r = await run(DL, ['get', PREFIX + '2026-10-13.parquet']);
+check('get missing: FAILED with 404, exit 1', r.code === 1 && /not found \(404\)/.test(r.stdout), r.stdout.trim());
+
+seen.batchSizes = [];
+r = await run(DL, ['days', PREFIX, '2026-10-10', '2026-10-14']);
+check('days: 3 of 5 downloaded, 2 reported as not found', /downloaded 3 of 5 files/.test(r.stdout) && (r.stdout.match(/FAILED/g) || []).length === 2, r.stdout.split('\n')[0]);
+check('days: one path per request (5 requests of size 1)', JSON.stringify(seen.batchSizes) === '[1,1,1,1,1]', JSON.stringify(seen.batchSizes));
+const zipLine = r.stdout.split('\n').find((l) => l.startsWith('zip:'));
+check('days: zip created', Boolean(zipLine) && existsSync(zipLine.slice(5).trim()), zipLine ? 'zip ok' : r.stderr.slice(0, 200));
+if (zipLine) {
+  rmSync(zipLine.slice(5).trim(), { force: true });
 }
 
-// 4 batching: 120 days must be split into batches of at most 50
-seen.batches = [];
-r = await run(['days', PREFIX, '2026-01-01', '2026-04-30']);
-check('batching: 120 days -> 3 requests of 50, 50, 20', JSON.stringify(seen.batches) === '[50,50,20]', JSON.stringify(seen.batches));
+// the fake server HAS this object, so only the folder guard of the script can stop the write
+store.set('../escaped.txt', Buffer.from('evil'));
+r = await run(DL, ['get', '../escaped.txt']);
+check('hostile path "../" is refused by the folder guard', !existsSync(resolve(root, 'escaped.txt')) && r.code === 1 && /leaves the downloads folder/.test(r.stdout), r.stdout.trim());
 
-// 5 hostile path from the server must not write outside downloads/
-seen.hostile = true;
-r = await run(['days', PREFIX, '2026-09-01', '2026-09-01']);
-seen.hostile = false;
-check('hostile path "../" is refused', !existsSync(resolve(root, 'escaped.txt')) && /leaves the downloads folder/.test(r.stdout), r.stdout.split('\n').filter((l) => /FAILED/.test(l)).join(' | '));
-
-// 6 wrong usage
-r = await run(['days']);
+r = await run(DL, ['days']);
 check('usage error: exit code 2', r.code === 2, 'exit ' + r.code);
 
+mkdirSync(out, { recursive: true });
+const local = resolve(out, '_mock_upload.txt');
+writeFileSync(local, 'hello lake');
+seen.batchSizes = [];
+r = await run(UL, [local, 'mock_test/fact_loss/_upload_test.txt']);
+check('upload: PUT done, listed and downloaded back identical', r.code === 0 && /identical to the local file: true/.test(r.stdout) && /HTTP 201/.test(r.stdout), r.stdout.trim().split('\n').pop());
+check('upload: stored bytes are the file', store.get('mock_test/fact_loss/_upload_test.txt').toString() === 'hello lake');
+
+r = await run(UL, [local, 'mock_test/fact_loss/_upload_test.txt']);
+check('upload: refuses to replace an existing path', r.code === 1 && /REFUSED/.test(r.stdout), r.stdout.trim());
+
+r = await run(UL, [local, 'data/ten=mock/x.txt']);
+check('upload: refuses a path with the data/ten= prefix', r.code === 2);
+
 server.close();
-rmSync(resolve(out, 'mock_test'), { recursive: true, force: true });
-rmSync(resolve(out, 'escaped.txt'), { force: true });
+clean();
+rmSync(local, { force: true });
 console.log(checks.every(Boolean) ? '\nALL PASSED' : '\nSOME FAILED');
 process.exit(checks.every(Boolean) ? 0 : 1);

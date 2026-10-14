@@ -40,6 +40,13 @@ export function servicePath(service) {
   return `/api/${service}${suffix}/v3`;
 }
 
+// Data lake base path. xcelerator: taken from the OpenAPI file of the data lake
+// (server https://api.eu1.siemens.app/datalake-<id>/v3, no /api part).
+// legacy: /api/datalake/v3.
+export function datalakePath() {
+  return platform() === 'xcelerator' ? `/datalake-${XC_SUFFIX}/v3` : '/api/datalake/v3';
+}
+
 // Turns a hardcoded '/api/<service>/v3/...' path into the path of the platform.
 // Other services (for example datalake) are not changed: their suffix is untested.
 export function apiPath(path) {

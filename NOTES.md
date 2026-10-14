@@ -314,3 +314,10 @@ Tried: Power BI flow with `Keep dim_asset` expecting an array. Error: "the file 
 ## Flow charts of the data sources per table (2026-10-14)
 - Sheets 1 to 6 of `diagrams/powerbi-data-map.drawio`: the text boxes "How Power BI creates this table" are replaced by flow charts (sources, steps, result). Source status colours: green (Insights Hub replaces it, original used for validation), purple (needed and missing), grey (built inside Power BI).
 - Helper `scripts/helper-merge-drawio-cells.py` now adds arrows and can remove cells of an earlier run (`--remove-prefix`).
+
+## Data lake download and upload (2026-10-14)
+- Read the data lake OpenAPI file (`downloads/integrated-data-lake-v3-14-0-eu1-xcelerator.yaml`, 3.14.0). Download takes exactly 1 path per request, upload up to 30, both answer 201 (not 200), a missing object answers 404, base path on xcelerator is `/datalake-<id>/v3` (no `/api`).
+- The 2026-10-05 script was wrong in three ways that the old mock test hid (batches of 50, success only on 200, old base path). Rewritten: `scripts/datalake-download.js` (list, get, days), `scripts/datalake-upload.js`, `scripts/lib-datalake.js`, `datalakePath()` in `scripts/lib-ih.js`. Mock test rewritten from the real behaviour (15 checks). Removed `scripts/test-datalake-403.js`.
+- Real tenant (user approved the two generate POSTs and one test upload): list 200, download of `mufti_test/fact_loss/fact_loss_2026-10-12.parquet` OK (49977 bytes, valid parquet), 404 for missing days, upload of a 58-byte text file OK (PUT 200, no extra header, read back identical). Path must be WITHOUT `data/ten=reckitt/` (with it: 404). Storage is AWS S3. Doc: `docs/datalake-files.md`.
+- Why the earlier 403: the token had no `dl.*` scope. Now it carries `dl.dsRead`, `dl.dsUser`, `dl.dsAdmin` (found with `scripts/test-token-scopes.js`). Minimum role not tested.
+- Open: replacing an existing object by uploading the same path, delete, legacy platform. Test object `mufti_test/fact_loss/_upload_test_2026-10-14.txt` left in the data lake (delete by hand).

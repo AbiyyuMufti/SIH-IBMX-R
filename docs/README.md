@@ -36,6 +36,7 @@
 | [provideam-source.md](provideam-source.md) | Provideam is the real source of the Hull board: reports, email, Power Automate, SharePoint; what differs from our assumptions | Read 2026-10-13 |
 | [sharepoint-files.md](sharepoint-files.md) | What the downloaded SharePoint files contain, how the report uses them and how they fit Insights Hub (names, rules, coverage); what is completed and what is missing | Analysed 2026-10-14 |
 | [lake-api.md](lake-api.md) | Python downloads parquet files or folder lists from the data lake through an `http in` endpoint of the VFC (spike checked in the VFC, final flow built) | Spike in the VFC |
+| [datalake-files.md](datalake-files.md) | List, download and upload data lake files from a script with signed URLs (`scripts/datalake-download.js`, `datalake-upload.js`) | Tested 2026-10-14 on xcelerator: list, download and upload work |
 | [logging.md](logging.md) | The CSV run log in the data lake (one file per month and flow) and the error catch | Mock only |
 | [fact-flows.md](fact-flows.md) | The per-site flows that write `fact_kpi` and `fact_loss`, and how to add a site | Hull, dry run in the VFC |
 

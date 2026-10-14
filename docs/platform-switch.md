@@ -5,7 +5,7 @@
 | **What this is** | The Reckitt tenant moved to the Siemens Xcelerator IAM and the `siemens.app` domain on 2026-10-12. The old setup still works, so both are supported. One setting chooses which one every flow and script uses |
 | **The switch** | VFC: `platform` in node `1.1 CONFIG` (Config tab). Scripts: `IH_PLATFORM` in `.env`. Values `legacy` or `xcelerator`. **No default**: if it is missing or misspelled the Config node stores nothing (red status, error message) and the scripts stop |
 | **Status** | Tested 2026-10-13: token and API calls on both platforms from a laptop and from the VFC; mock proof that the rebuilt flows give the same requests, logs and rows on both. The rebuilt flows are not yet imported and run in the VFC |
-| **Not covered** | The data lake API path suffix (`datalake`) is not tested. The Python lake client and Power BI were not looked at |
+| **Not covered** | The data lake base path on xcelerator is `/datalake-<tenant id>/v3` (no `/api`), tested on 2026-10-14, see [datalake-files.md](datalake-files.md). The Python lake client and Power BI were not looked at |
 
 ## Decision and cutover checklist (2026-10-13)
 The VFC will use `xcelerator` from now on, and the move is imminent (decision of the user). `legacy` stays supported in the code until the old setup is switched off. What to do at the cutover:
