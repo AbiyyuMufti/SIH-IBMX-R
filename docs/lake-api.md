@@ -5,6 +5,7 @@
 |---|---|
 | Goal | Python downloads a parquet file of the data lake through an `http in` endpoint of the VFC |
 | Why | The Insights Hub data lake API did not work directly from Python |
+| Direct alternative | Python can also call the data lake directly, without this flow: [datalake-files.md](datalake-files.md). The old Python function is `request_parquet_vfc` |
 | Status | Spike worked in the VFC (bytes open in polars, key = query parameter). Final flow `flows/vfc-lake-api.json` built, offline tested, not run in the VFC yet |
 | Direction | Read only. Write back is a later step |
 | Auth | Platform key of the `http in` node (access: key), sent as the query parameter `key`. Generated in the VFC, never in the repo |

@@ -321,3 +321,7 @@ Tried: Power BI flow with `Keep dim_asset` expecting an array. Error: "the file 
 - Real tenant (user approved the two generate POSTs and one test upload): list 200, download of `mufti_test/fact_loss/fact_loss_2026-10-12.parquet` OK (49977 bytes, valid parquet), 404 for missing days, upload of a 58-byte text file OK (PUT 200, no extra header, read back identical). Path must be WITHOUT `data/ten=reckitt/` (with it: 404). Storage is AWS S3. Doc: `docs/datalake-files.md`.
 - Why the earlier 403: the token had no `dl.*` scope. Now it carries `dl.dsRead`, `dl.dsUser`, `dl.dsAdmin` (found with `scripts/test-token-scopes.js`). Minimum role not tested.
 - Open: replacing an existing object by uploading the same path, delete, legacy platform. Test object `mufti_test/fact_loss/_upload_test_2026-10-14.txt` left in the data lake (delete by hand).
+
+## Python reads the data lake directly (2026-10-14)
+- `parquet/request_data.py`: `request_parquet(path, token)` now uses the data lake API (signed URLs), `get_token()` for the token. The old VFC call is `request_parquet_vfc`. The user tests it in `parquet/extractdata.ipynb` (calendar read worked). Docs: `docs/datalake-files.md`.
+- Hull SharePoint files downloaded by the user to `downloads/sharepoint/hull/` (Machine Names, Equipment Coding, Line Losses, Run Rates, Volume Loss Correction; git-ignored). Request table for Asif: `downloads/asif-request.html` (not in git).

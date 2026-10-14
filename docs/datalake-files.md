@@ -6,6 +6,7 @@
 | **How** | Two steps. 1: ask the data lake for a **signed URL** (POST, answer 201). 2: GET (download) or PUT (upload) that URL **without a token** |
 | **Base address** | xcelerator: `https://api.eu1.siemens.app/datalake-<tenant id>/v3` (no `/api` part). legacy: `https://gateway.eu1.mindsphere.io/api/datalake/v3` (untested since the role change) |
 | **Scopes** | List `dl.lst.r`, download `dl.ds.r`, upload `dl.ds.w`, delete `dl.ds.d`. The technical user got them through the data lake roles (`dl.dsRead`, `dl.dsUser`, `dl.dsAdmin` appear in its token) |
+| **Python** | `parquet/request_data.py`: see the section Python helper for notebooks |
 | **Status** | Tested on the xcelerator tenant on 2026-10-14: list, download and upload all work. Scripts: `scripts/datalake-download.js`, `scripts/datalake-upload.js`, helpers in `scripts/lib-datalake.js`. Offline test: `node scripts/test-datalake-mock.js` |
 | **Source** | The data lake OpenAPI file (version 3.14.0, `integrated-data-lake-v3-14-0-eu1-xcelerator.yaml`, from the Siemens developer page) plus the real calls below |
 
@@ -39,6 +40,13 @@
 ## What did not work before, and why
 - **403 `accessDenied` on every data lake call (2026-10-05)**: the token had no `dl.*` scope (only `mdl.mdladmin`). After the data lake roles were added the same calls worked.
 - **502 with the old path** `/api/datalake/v3` on the xcelerator host: the data lake has its own base path (see above).
+
+## Python helper for notebooks (`parquet/request_data.py`, 2026-10-14)
+- `get_token()` reads `XC_TENANT_ID`, `RECKITT_API_TECHUSER_CLIENT_ID` and `RECKITT_API_TECHUSER_CLIENT_SECRET` from the environment (the same names as the JS scripts). The token lasts about 30 minutes.
+- `request_parquet(path, token)` reads one parquet file, or all `.parquet` files directly inside a folder (path ends with `/`). It lists the folder (`listObjects`, with `nextToken`), asks a signed URL for each file and downloads it. Keys from the list lose the `data/ten=<tenant>/` prefix. Subfolders are not read. Uses the xcelerator base path only.
+- `request_parquet_vfc(path, api_key, url=...)` is the old function: it calls the `http in` endpoint of the VFC flow in [lake-api.md](lake-api.md).
+- `parquet/extractdata.ipynb` uses the direct version (`token = get_token()`, then `request_parquet("reports/pbi_calendar/", token)`). Status: calendar read worked in the notebook. The other tables follow the same call, not yet checked.
+- Not run by me: the file needs the secrets and the network. Syntax checked only.
 
 ## Not tested
 - Replacing an existing object by uploading the same path again (the upload script refuses unless `--overwrite`, so the flows' "same name replaces the day" is not confirmed through this route).
