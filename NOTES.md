@@ -288,3 +288,8 @@ Tried: Power BI flow with `Keep dim_asset` expecting an array. Error: "the file 
 ## Diagram is now edited by hand (2026-10-14)
 - The user edits `diagrams/powerbi-data-map.drawio` by hand (re-saved by draw.io). `node scripts/build-drawio.js` would OVERWRITE the whole file: do not run it without telling the user. Changes go into the saved file directly (a yellow box = a comment of the user).
 - Added the user comment on sheet "1 Machine Names EU": Insights Hub is overall complete for this table; it covers Machine Name, Area, Site Name and Machine ID; Dept, Area and Product Type can be compiled from a confirmed master mapping on top of it; static reference data, flow stays as it is, compile later. Not committed (the file is in progress).
+
+## Plan sheet and table priority (2026-10-14)
+- New sheet "Explanation Plan to get the missing data" (for Asif): Class A reference files and Class B Provideam files; three options (1 Power Automate, 2 direct access, 3 manual copy) with how, what Reckitt must do, tested or not, good, risks; fit per class; sequence; decisions; which missing data first. Untested: Power Automate to VFC (size, key, UTF-16, licence), VFC reaching the Microsoft hosts, IT approval time.
+- Overview: panel "Priority of the 6 tables" from Segun lineage: Machine Names 13 of 16 visuals, Plan OPT 9, Daily Losses 6, Calendar 2, Shift Naming 1, Time Utilisation 1. Missing data by visuals affected: Glidepaths 7, loss names and Loss Units 6, Machine Names master 2, Shift 1.
+- Method: built to a temporary file (DRAWIO_OUT) and merged only the new parts into the hand-edited file (scripts/helper-merge-drawio-new.py). The user agreed to commit the diagram.
