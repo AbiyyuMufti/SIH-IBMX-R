@@ -667,6 +667,75 @@ NOT_CREATED.forEach((t, i) => {
 pages.push(overview);
 
 // ---- One page per table ------------------------------------------------------------------
+// How Power BI creates each table (from the load queries of the model, read 2026-10-14).
+const CREATION = {
+  'Machine Names EU': [
+    ['Source', 'One Excel file per site, in the site folder "Machine Names".'],
+    ['Per site', 'Keep MachineName, Dept, Area, Product Type. Remove "GT4 - Auto". Add SiteName (for example Hull) and a suffix (-Hull). The Hull query keeps only the departments "Dries Pack" and "Liquids Pack".'],
+    ['Stack (append)', 'Nottingham + Hull + Weinheim, then Mira.'],
+    ['Built column', 'Unique Machine Name = machine name + suffix, for example B2 Auto-Hull.'],
+    ['Lookups (left join)', 'None.'],
+    ['Not in the query', 'The links to the fact tables (on Unique Machine Name) are relationships of the model.'],
+  ],
+  'Plan OPT EU': [
+    ['Source', 'Every file of the site folder "Plan OPT": the monthly files and the current-month file. One query per site.'],
+    ['Stack (append)', 'The files of a folder into one table. Then Nottingham + Hull + Weinheim, then Mira.'],
+    ['Lookups (left join)', '1. Raw shift name -> Shift Pattern file: adds the mapped Shift. 2. Targets Key (machine-site + month start) -> the three Glidepath tables: adds OEE, PDT and UPDT Target.'],
+    ['Built columns', 'SiteName. Unique Machine Name (machine + -Hull). Product Key (machine key + part name). Targets Key. Time columns HH:MM:SS -> minutes (hours x 60 + minutes, the seconds are dropped).'],
+    ['Clean-up', 'Remove rows without machine. Remove a fixed list of machines and "GT4 - Auto". The raw ShiftName is replaced by the mapped value. Drop Defect Parts, Target, Batch ID, ShiftStartTime, OEE and the helper keys.'],
+    ['Not in the query', 'Relationships to Calendar, Machine Names, Shift Naming and Format List. The OEE % measure (good parts / capacity).'],
+  ],
+  'Time Utilisation EU': [
+    ['Source', 'The same Plan OPT files as the Plan OPT table (one query per site).'],
+    ['Per site', 'Time columns -> minutes WITH decimals (hours x 60 + minutes + seconds / 60). Key = machine + date. Group by machine and day: sum of Total Time, Planned OpT and OEE Time.'],
+    ['Built columns', 'SiteName. Unique Machine Name. The date from the key.'],
+    ['Stack (append)', 'Nottingham + Hull + Weinheim, then Mira.'],
+    ['Lookups (left join)', 'None.'],
+    ['Difference to Plan OPT', 'Plan OPT keeps whole minutes per shift and product. This table keeps decimals, one row per machine and day.'],
+  ],
+  'Daily Losses EU': [
+    ['Source', 'Every file of the site folder "Line Losses" (the Provideam Mode Log). One query per site.'],
+    ['Stack and de-duplicate', 'Files stacked, then one row per machine + start time (the files overlap).'],
+    ['Clean-up', 'Remove rows with no loss group or the group "0.Review Data". Remove a fixed list of machines. About 17 text replacements on the sub group names (for example Minor Stop -> Minor Stops). Groups renamed (Planned Losses -> Planned Loss).'],
+    ['Lookups (left join)', '1. Shift -> Shift Pattern file. 2. Volume Key (day + machine + group + sub group + description) -> Volume Loss Correction: Loss Units. 3. Equipment key (machine + description) -> Equipment Coding: Equipment. 4. Loss Target Key (machine + sub group + month) -> Targets Losses: Value. 5. Machine + day -> Targets Volume: Volume Total.'],
+    ['Built columns', 'SiteName, Unique Machine Name, Product Key. Date and Time from StartTime. Duration -> whole minutes (seconds dropped). Target = Value / 100 (calculated column).'],
+    ['Stack (append)', 'Nottingham + Hull + Weinheim, then Mira.'],
+  ],
+  'Shift Naming EU': [
+    ['Source', 'The Shift Pattern file (all files of the regional folder, stacked) and the Mira shift file.'],
+    ['Per source', 'Two columns: the raw shift name (renamed Shift Type) and Shift.'],
+    ['Stack (append)', 'Provideam list + Mira list.'],
+    ['Distinct', 'Keep each Shift value once. The raw name is dropped.'],
+    ['Also used as a lookup', 'The hidden table "Shift Naming Provideam" is the lookup in the Plan OPT and Daily Losses queries.'],
+    ['Not in the query', 'The links from the fact tables (ShiftName = Shift) are relationships of the model.'],
+  ],
+  Calendar: [
+    ['Source', 'None. No file and no query.'],
+    ['Formula', 'A DAX table: CALENDAR from 1 Jan 2011 to 31 Dec 2050.'],
+    ['Added columns', 'Year, MonthNumber, Month, Quarter, QuarterNumber, MonthYearNumber, Month Year, Week Number, MonthShortName and Week Start (calculated columns).'],
+    ['Lookups (left join)', 'None.'],
+    ['Not in the query', 'The links from Plan OPT, Daily Losses and Time Utilisation (on the date) are relationships of the model.'],
+  ],
+};
+const creationBox = (page, t) => {
+  const parts = CREATION[t.pbi];
+  if (!parts) {
+    return;
+  }
+  const lines = parts.reduce((n, [h, x]) => n + Math.ceil((h.length + x.length + 2) / 80) + 1, 2);
+  const h = Math.max(200, 15 * lines + 20);
+  const y = TABLES.indexOf(t) === 0 ? 340 : 62;
+  page.box(
+    1340,
+    y,
+    600,
+    h,
+    [bold('How Power BI creates this table (from the load queries of the model)'), ...parts.map(([a, b]) => `${bold(a + ': ')}${esc(b)}`)].join('<br><br>'),
+    'pbi',
+    'verticalAlign=top;spacingTop=8;fontSize=10.5;strokeWidth=3;',
+  );
+};
+
 const ROW = 90;
 for (const t of TABLES) {
   const { rows, extras, prof } = compared.get(t.pbi);
@@ -729,6 +798,7 @@ for (const t of TABLES) {
       'fontSize=10.5;',
     );
   }
+  creationBox(page, t);
   pages.push(page);
 }
 
