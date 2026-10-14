@@ -667,73 +667,108 @@ NOT_CREATED.forEach((t, i) => {
 pages.push(overview);
 
 // ---- One page per table ------------------------------------------------------------------
-// How Power BI creates each table (from the load queries of the model, read 2026-10-14).
-const CREATION = {
-  'Machine Names EU': [
-    ['Source', 'One Excel file per site, in the site folder "Machine Names".'],
-    ['Per site', 'Keep MachineName, Dept, Area, Product Type. Remove "GT4 - Auto". Add SiteName (for example Hull) and a suffix (-Hull). The Hull query keeps only the departments "Dries Pack" and "Liquids Pack".'],
-    ['Stack (append)', 'Nottingham + Hull + Weinheim, then Mira.'],
-    ['Built column', 'Unique Machine Name = machine name + suffix, for example B2 Auto-Hull.'],
-    ['Lookups (left join)', 'None.'],
-    ['Not in the query', 'The links to the fact tables (on Unique Machine Name) are relationships of the model.'],
-  ],
-  'Plan OPT EU': [
-    ['Source', 'Every file of the site folder "Plan OPT": the monthly files and the current-month file. One query per site.'],
-    ['Stack (append)', 'The files of a folder into one table. Then Nottingham + Hull + Weinheim, then Mira.'],
-    ['Lookups (left join)', '1. Raw shift name -> Shift Pattern file: adds the mapped Shift. 2. Targets Key (machine-site + month start) -> the three Glidepath tables: adds OEE, PDT and UPDT Target.'],
-    ['Built columns', 'SiteName. Unique Machine Name (machine + -Hull). Product Key (machine key + part name). Targets Key. Time columns HH:MM:SS -> minutes (hours x 60 + minutes, the seconds are dropped).'],
-    ['Clean-up', 'Remove rows without machine. Remove a fixed list of machines and "GT4 - Auto". The raw ShiftName is replaced by the mapped value. Drop Defect Parts, Target, Batch ID, ShiftStartTime, OEE and the helper keys.'],
-    ['Not in the query', 'Relationships to Calendar, Machine Names, Shift Naming and Format List. The OEE % measure (good parts / capacity).'],
-  ],
-  'Time Utilisation EU': [
-    ['Source', 'The same Plan OPT files as the Plan OPT table (one query per site).'],
-    ['Per site', 'Time columns -> minutes WITH decimals (hours x 60 + minutes + seconds / 60). Key = machine + date. Group by machine and day: sum of Total Time, Planned OpT and OEE Time.'],
-    ['Built columns', 'SiteName. Unique Machine Name. The date from the key.'],
-    ['Stack (append)', 'Nottingham + Hull + Weinheim, then Mira.'],
-    ['Lookups (left join)', 'None.'],
-    ['Difference to Plan OPT', 'Plan OPT keeps whole minutes per shift and product. This table keeps decimals, one row per machine and day.'],
-  ],
-  'Daily Losses EU': [
-    ['Source', 'Every file of the site folder "Line Losses" (the Provideam Mode Log). One query per site.'],
-    ['Stack and de-duplicate', 'Files stacked, then one row per machine + start time (the files overlap).'],
-    ['Clean-up', 'Remove rows with no loss group or the group "0.Review Data". Remove a fixed list of machines. About 17 text replacements on the sub group names (for example Minor Stop -> Minor Stops). Groups renamed (Planned Losses -> Planned Loss).'],
-    ['Lookups (left join)', '1. Shift -> Shift Pattern file. 2. Volume Key (day + machine + group + sub group + description) -> Volume Loss Correction: Loss Units. 3. Equipment key (machine + description) -> Equipment Coding: Equipment. 4. Loss Target Key (machine + sub group + month) -> Targets Losses: Value. 5. Machine + day -> Targets Volume: Volume Total.'],
-    ['Built columns', 'SiteName, Unique Machine Name, Product Key. Date and Time from StartTime. Duration -> whole minutes (seconds dropped). Target = Value / 100 (calculated column).'],
-    ['Stack (append)', 'Nottingham + Hull + Weinheim, then Mira.'],
-  ],
-  'Shift Naming EU': [
-    ['Source', 'The Shift Pattern file (all files of the regional folder, stacked) and the Mira shift file.'],
-    ['Per source', 'Two columns: the raw shift name (renamed Shift Type) and Shift.'],
-    ['Stack (append)', 'Provideam list + Mira list.'],
-    ['Distinct', 'Keep each Shift value once. The raw name is dropped.'],
-    ['Also used as a lookup', 'The hidden table "Shift Naming Provideam" is the lookup in the Plan OPT and Daily Losses queries.'],
-    ['Not in the query', 'The links from the fact tables (ShiftName = Shift) are relationships of the model.'],
-  ],
-  Calendar: [
-    ['Source', 'None. No file and no query.'],
-    ['Formula', 'A DAX table: CALENDAR from 1 Jan 2011 to 31 Dec 2050.'],
-    ['Added columns', 'Year, MonthNumber, Month, Quarter, QuarterNumber, MonthYearNumber, Month Year, Week Number, MonthShortName and Week Start (calculated columns).'],
-    ['Lookups (left join)', 'None.'],
-    ['Not in the query', 'The links from Plan OPT, Daily Losses and Time Utilisation (on the date) are relationships of the model.'],
-  ],
+// How Power BI creates each table, as a flow chart (from the load queries of the model, read 2026-10-14).
+// Source status: ok = Insights Hub replaces it, the original is used for validation;
+// file = needed and missing, we must get the file; built = built inside Power BI, nothing to collect.
+const OK_TAG = 'INSIGHTS HUB REPLACES IT. The original is used for validation.';
+const FILE_TAG = 'WE NEED THIS FILE. It is not in Insights Hub.';
+const BUILT_TAG = 'BUILT INSIDE POWER BI. Nothing to collect.';
+const FLOWS = {
+  'Machine Names EU': {
+    sources: [
+      { title: 'Machine Names file (per site)', sub: 'Columns MachineName, Area, SiteName', status: 'ok', tag: OK_TAG + ' (asset name, area, site).', to: 0 },
+      { title: 'Machine Names file (per site)', sub: 'Columns Dept and Product Type', status: 'file', tag: FILE_TAG + ' Hull file: no access yet.', to: 0 },
+    ],
+    steps: ['Keep the columns. Remove "GT4 - Auto". The Hull query keeps only Dries Pack and Liquids Pack', 'Add SiteName and the suffix (for example -Hull)', 'Stack the sites: Nottingham + Hull + Weinheim, then Mira', 'Build Unique Machine Name = machine name + suffix'],
+    result: 'Machine Names EU',
+    ours: 'pbi_machine_names (reference flow, Asset Management hierarchy)',
+  },
+  'Plan OPT EU': {
+    sources: [
+      { title: 'Plan OPT files (Provideam)', sub: 'Monthly files + current month, per site', status: 'ok', tag: OK_TAG + ' Our table pbi_plan_opt.', to: 0 },
+      { title: 'Shift Pattern file', sub: 'Raw shift name -> Shift', status: 'file', tag: FILE_TAG, to: 2 },
+      { title: 'Glidepaths files', sub: 'OEE, PDT, UPDT targets per line and month', status: 'file', tag: FILE_TAG, to: 3 },
+    ],
+    steps: ['Stack the files of each site folder', 'Stack the sites: Nottingham + Hull + Weinheim, then Mira', 'Left join Shift: raw shift name -> mapped Shift', 'Left join targets (machine-site + month) three times: OEE, PDT, UPDT Target', 'Build keys. Times -> whole minutes (seconds dropped). Remove fixed machines. Drop helper columns'],
+    joins: [2, 3],
+    result: 'Plan OPT EU',
+    ours: 'pbi_plan_opt (daily flow: evaluateKPIs, filterValues, products, calendarEvents)',
+  },
+  'Time Utilisation EU': {
+    sources: [{ title: 'Plan OPT files (the same as table 2)', sub: 'Monthly files + current month, per site', status: 'ok', tag: OK_TAG + ' Our table sums the Plan OPT rows.', to: 0 }],
+    steps: ['Convert the times to minutes (with decimals)', 'Group by machine and day: sum of Total Time, Planned OpT and OEE Time', 'Add SiteName and Unique Machine Name', 'Stack the sites: Nottingham + Hull + Weinheim, then Mira'],
+    result: 'Time Utilisation EU',
+    ours: 'pbi_time_utilisation (sums of our Plan OPT rows)',
+  },
+  'Daily Losses EU': {
+    sources: [
+      { title: 'Line Losses files (Provideam Mode Log)', sub: 'Stops per machine and start time', status: 'ok', tag: OK_TAG + ' Gap: the comment text is only in the files.', to: 0 },
+      { title: 'Shift Pattern file', sub: 'Raw shift name -> Shift', status: 'file', tag: FILE_TAG, to: 3 },
+      { title: 'Volume Loss Correction files (Provideam)', sub: 'Loss Units per day, machine and reason', status: 'ok', tag: 'INSIGHTS HUB COMPUTES IT (same rule). The files are used for validation. Hull folder: no access.', to: 4 },
+      { title: 'Equipment Coding file', sub: 'Machine + loss description -> Equipment', status: 'file', tag: FILE_TAG + ' Hull file: no access.', to: 5 },
+      { title: 'Glidepaths files (Targets Losses)', sub: 'Target per machine, sub group and month', status: 'file', tag: FILE_TAG, to: 6 },
+      { title: 'Plan OPT Capacity per machine and day', sub: 'Becomes Volume Total (Targets Volume)', status: 'built', tag: BUILT_TAG + ' We build it from our Plan OPT.', to: 7 },
+    ],
+    steps: ['Stack the files of each site folder', 'Remove duplicates: one row per machine + start time (the files overlap)', 'Clean up: drop rows without loss group, fix about 17 sub group names, rename the groups', 'Left join Shift', 'Left join Loss Units (day + machine + group + sub group + description)', 'Left join Equipment (machine + description)', 'Left join target Value (machine + sub group + month)', 'Left join Volume Total (machine + day)', 'Build keys. Duration -> whole minutes. Target = Value / 100. Stack the sites'],
+    joins: [3, 4, 5, 6, 7],
+    result: 'Daily Losses EU',
+    ours: 'pbi_daily_losses (daily flow: downtimeReasons)',
+  },
+  'Shift Naming EU': {
+    sources: [
+      { title: 'Shift Pattern file', sub: 'Raw name -> Shift (188 rows, 7 values)', status: 'file', tag: FILE_TAG + ' It is the master list.', to: 0 },
+      { title: 'Mira shift file', sub: 'Mira site', status: 'file', tag: FILE_TAG + ' Mira: no access.', to: 2 },
+    ],
+    steps: ['Read and stack the files of the folder', 'Rename ShiftName to Shift Type. Keep Shift', 'Stack: the Provideam list + the Mira list', 'Keep each Shift value once'],
+    result: 'Shift Naming EU',
+    ours: 'pbi_shift_naming (calendar event names of Insights Hub: they differ)',
+  },
+  Calendar: {
+    sources: [{ title: 'No data source', sub: 'A formula inside Power BI', status: 'built', tag: BUILT_TAG, to: 0 }],
+    steps: ['DAX CALENDAR from 1 Jan 2011 to 31 Dec 2050', 'Add columns: Year, MonthNumber, Month, Quarter, Month Year, Week Number, MonthShortName, Week Start'],
+    result: 'Calendar',
+    ours: 'pbi_calendar (generated by the reference flow)',
+  },
+};
+const FLOW_STYLE = {
+  ok: ['ok', '#82b366'],
+  file: ['file', '#9673a6'],
+  built: ['neutral', '#666666'],
 };
 const creationBox = (page, t) => {
-  const parts = CREATION[t.pbi];
-  if (!parts) {
+  const f = FLOWS[t.pbi];
+  if (!f) {
     return;
   }
-  const lines = parts.reduce((n, [h, x]) => n + Math.ceil((h.length + x.length + 2) / 80) + 1, 2);
-  const h = Math.max(200, 15 * lines + 20);
-  const y = TABLES.indexOf(t) === 0 ? 340 : 62;
-  page.box(
-    1340,
-    y,
-    600,
-    h,
-    [bold('How Power BI creates this table (from the load queries of the model)'), ...parts.map(([a, b]) => `${bold(a + ': ')}${esc(b)}`)].join('<br><br>'),
-    'pbi',
-    'verticalAlign=top;spacingTop=8;fontSize=10.5;strokeWidth=3;',
-  );
+  const x0 = 1340;
+  const y0 = TABLES.indexOf(t) === 0 ? 340 : 62;
+  page.text(x0, y0, 1100, 24, bold('Data flow of this table in Power BI: what we must collect and what Insights Hub replaces'), 'fontSize=13;');
+  [['ok', 'Insights Hub replaces it. The original is used for validation'], ['file', 'Needed and missing: we must get this file'], ['neutral', 'Built inside Power BI: nothing to collect']].forEach(([lv, tx], i) => page.box(x0 + i * 370, y0 + 32, 360, 40, esc(tx), lv, 'verticalAlign=middle;fontSize=10;'));
+  const top = y0 + 96;
+  page.text(x0, top, 300, 20, bold('Data sources'), 'fontSize=11;');
+  page.text(x0 + 360, top, 300, 20, bold('Steps in Power BI'), 'fontSize=11;');
+  page.text(x0 + 720, top, 300, 20, bold('Result'), 'fontSize=11;');
+  const base = top + 26;
+  const stepIds = f.steps.map((text, i) => page.box(x0 + 360, base + i * 112, 300, 74, bold(`${i + 1}  `) + esc(text), (f.joins || []).includes(i) ? 'file' : 'pbi', 'verticalAlign=middle;fontSize=10;'));
+  for (let i = 0; i < stepIds.length - 1; i += 1) {
+    page.edge(stepIds[i], stepIds[i + 1], '#555555');
+  }
+  const usedRows = new Set();
+  f.sources.forEach((s) => {
+    const [level, color] = FLOW_STYLE[s.status];
+    let row = s.to;
+    while (usedRows.has(row)) {
+      row += 1;
+    }
+    usedRows.add(row);
+    const id = page.box(x0, base + row * 112 - 15, 300, 104, bold(s.title) + '<br>' + esc(s.sub) + '<br><br>' + bold(s.tag), level, 'verticalAlign=top;spacingTop=4;fontSize=9.5;');
+    page.edge(id, stepIds[s.to], color, (f.joins || []).includes(s.to));
+  });
+  const lastY = base + (stepIds.length - 1) * 112;
+  const res = page.box(x0 + 720, lastY + 7, 300, 60, bold('Power BI table: ') + esc(f.result), 'pbi', 'verticalAlign=middle;fontSize=11;strokeWidth=3;');
+  page.edge(stepIds[stepIds.length - 1], res, '#555555');
+  const mine = page.box(x0 + 720, lastY + 100, 300, 90, bold('Insights Hub table: ') + esc(f.ours), 'sih', 'verticalAlign=middle;fontSize=10;');
+  page.edge(mine, res, '#3c9a96', true, 'our version');
 };
 
 const ROW = 90;

@@ -310,3 +310,7 @@ Tried: Power BI flow with `Keep dim_asset` expecting an array. Error: "the file 
 
 ## How each table is created in Power BI (2026-10-14)
 - Added a blue box to each table sheet 1 to 6 (merged into the hand-edited file with scripts/helper-merge-drawio-cells.py). Findings from the queries: Plan OPT = files of the folder stacked, then sites stacked, left joins to the Shift Pattern file and the three Glidepath tables; time columns to whole minutes (seconds dropped). Time Utilisation = same files, minutes with decimals, grouped per machine and day. Daily Losses = Line Losses files stacked, de-duplicated on machine + start time (the files overlap), about 17 text replacements, left joins to Shift, Volume Loss Correction (Loss Units), Equipment Coding, Targets Losses (Value) and Targets Volume; Duration to whole minutes. Shift Naming = distinct Shift values of the Shift Pattern file plus the Mira file. Calendar = a DAX formula (2011 to 2050). Hull Machine Names keeps only the departments Dries Pack and Liquids Pack.
+
+## Flow charts of the data sources per table (2026-10-14)
+- Sheets 1 to 6 of `diagrams/powerbi-data-map.drawio`: the text boxes "How Power BI creates this table" are replaced by flow charts (sources, steps, result). Source status colours: green (Insights Hub replaces it, original used for validation), purple (needed and missing), grey (built inside Power BI).
+- Helper `scripts/helper-merge-drawio-cells.py` now adds arrows and can remove cells of an earlier run (`--remove-prefix`).
