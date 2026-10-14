@@ -272,3 +272,9 @@ Tried: Power BI flow with `Keep dim_asset` expecting an array. Error: "the file 
 ## Xcelerator is the target platform (2026-10-13)
 - Decision (user): the VFC will use xcelerator from now on, imminent. Docs updated: a platform note on 11 docs that showed legacy hosts only (9 usage docs with a table row, 2 history docs with a note), a cutover checklist in docs/platform-switch.md, endpoints.md, README, CLAUDE.md, and the diagram note (paths shown without the suffix, xcelerator named as target).
 - Open at the cutover: lake read/write nodes and the http in address on xcelerator (not tested); the host used by parquet/request_data.py; which platform the earlier VFC runs of 2026-10-13 used (not recorded).
+
+## SharePoint download run, result (2026-10-14)
+- Correction of the earlier note: the first run did work. The files were saved in the project folder `downloads/` (Chrome profile 5 has that as its download folder), not in the Windows Downloads folder and not in `downloads/sharepoint`, so the first search missed them. 36 files (the assistant reported 34), all complete: sizes match the report, encoding readable, last row complete, both .xlsx valid. No failed download.
+- Sorted into `downloads/sharepoint/<site>/<folder>/` (git-ignored, with MANIFEST.md): regional (formats, 4 glidepaths, shift coding), Nottingham and Weinheim (equipment coding, line losses, machine names, plan OPT, run rates, volume loss correction), Hull plan OPT (copy of the first 4 files, prefix Hull_).
+- Hull: only the Plan OPT folder opens for the user (access is per folder, not for the parents). The other 5 Hull folders (equipment coding, line losses, machine names, packing run rates, volume loss correction) are not downloaded: access request needed. Mira site: no access.
+- Next: analyze the content (glidepaths first), then the Provideam and Power Automate integration.
