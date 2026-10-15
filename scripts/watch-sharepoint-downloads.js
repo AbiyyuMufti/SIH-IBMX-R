@@ -7,7 +7,9 @@
 // bytes -> the old file goes to sharepoint/_replaced/<date>/ and the new one takes
 // its place (current month files are rewritten every hour on SharePoint).
 // Unknown names stay in the download folder and are logged.
-// Usage: node scripts/watch-sharepoint-downloads.js [download dir] [target root] [hours]
+// Usage: node scripts/watch-sharepoint-downloads.js [download dir] [target root] [hours] [ignore file]
+//   ignore file = names to leave alone (one per line); with it, every other file
+//   already in the folder is sorted too (catch-up after a rule change).
 import { readdirSync, statSync, readFileSync, mkdirSync, renameSync, unlinkSync, existsSync, appendFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 
@@ -21,7 +23,7 @@ const LOG = join(TARGET, 'download-log.csv');
 // for Provideam exports. Reference files must name their site.
 function siteOf(name) {
   const n = name.toLowerCase();
-  if (n.includes('notts') || n.includes('nottingham')) {
+  if (n.includes('notts') || n.includes('nots') || n.includes('nottingham')) {
     return 'Nottingham';
   }
   if (n.includes('wein')) {
@@ -40,10 +42,10 @@ function siteOf(name) {
 function typeOf(name) {
   const n = name.toLowerCase().replace(/[\s-]+/g, '_');
   const rules = [
-    [/line_losses/, 'source', 'line_losses'],
+    [/vol_?corr|volume_?corr|volume_loss_correction|vol_losses|_vc_/, 'source', 'volume_loss_correction'],
+    [/line_losses|daily_losses|_losses_|_ll_|modelog|event_log/, 'source', 'line_losses'],
     [/run_?rates/, 'source', 'run_rates'],
-    [/vol_corr|volume_correction|volume_loss_correction/, 'source', 'volume_loss_correction'],
-    [/opt_volume|current_month_opt|_opt\.csv$/, 'source', 'plan_opt'],
+    [/opt_volume|current_month_opt|_opt\.csv$|plan_?opt|_opt_/, 'source', 'plan_opt'],
     [/equipment/, 'reference', 'equipment_coding'],
     [/machine_?names/, 'reference', 'machine_names'],
     [/glidepath/, 'reference', 'glidepaths'],
@@ -75,7 +77,8 @@ function destOf(name) {
     site = 'All';
   }
   let file = cleanName(name);
-  if (!site && group === 'source') {
+  const hullPattern = /^([a-z]{3}\d{4}-monthly_|current_month_|\d{8}-daily_|(new )?plan opt \d|line_losses_v2|daily_losses|vol_losses|vol_correction|daily_volume_correction)/i;
+  if (!site && group === 'source' && hullPattern.test(name)) {
     // Hull exports have no site in the name; the local copies carry "Hull_"
     site = 'Hull';
     file = 'Hull_' + file;
@@ -112,7 +115,10 @@ if (!existsSync(LOG)) {
   mkdirSync(TARGET, { recursive: true });
   appendFileSync(LOG, 'time,action,file,to\n');
 }
-const known = new Set(readdirSync(WATCH));
+const IGNORE = process.argv[5];
+const known = IGNORE
+  ? new Set(readFileSync(IGNORE, 'utf8').split(/\r?\n/).filter(Boolean))
+  : new Set(readdirSync(WATCH));
 const sizes = new Map();
 const unknown = new Set();
 console.log(`watching ${WATCH} (${known.size} existing entries ignored), target ${TARGET}, stops after ${HOURS} h`);
