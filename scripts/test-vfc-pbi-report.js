@@ -121,6 +121,14 @@ stats = await run({ tables: ['pbi_shift_naming'] }, {
 check(JSON.stringify(rowsOf(stats, 'Write pbi_shift_naming parquet').map((s) => s.shift).sort()) ===
   JSON.stringify(['Blue', 'Day', 'Night']), 'two files: the newest one is read');
 
+// 5b. the list node gives the key with the tenant folder in front
+stats = await run({ tables: ['pbi_machine_names'] }, { listKeyPrefix: 'data/ten=reckitt/' });
+check(rowsOf(stats, 'Write pbi_machine_names parquet').length === 5,
+  'keys with data/ten=<tenant>/ in front are read (prefix removed)');
+stats = await run({ tables: ['pbi_machine_names'] }, { listKeyPrefix: '/' });
+check(rowsOf(stats, 'Write pbi_machine_names parquet').length === 5,
+  'keys with a leading slash are read');
+
 // 6. an unknown table is refused before anything runs
 stats = await run({ tables: ['pbi_nothing'] });
 check(tableWrites(stats).length === 0 && stats.errors.some((e) => /unknown/.test(e)), 'unknown table name: error, nothing written');

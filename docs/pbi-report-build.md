@@ -27,7 +27,8 @@ A rerun replaces the file. A site without a file, or a file without the expected
 
 ## The VFC nodes used, and what is untested
 - `list objects` (path = folder with a trailing slash, answer = array of `{key, lastModified, contentSize}`, as in the lake spike), `read object`, `csv` (settings of the node the user tested: header row, one message with the array of all rows; the first test with a 30,830 row file gave `msg.payload.length` 30830).
-- Untested in the VFC: that `msg.parts` survives `list objects`, `read object` and `csv` (the join over the sites needs it), and the `list objects` key form (plain path, no tenant prefix: the lake API flow reads it that way).
+- First VFC dry run (2026-10-15): `list objects` found the files, but `read object` answered `Error: Not Found` on the key it returned (3 Machine Names files and the shift file). Assumed cause, not seen in the VFC: the list returns the key with the tenant folder `data/ten=<tenant>/` in front and the read node wants the path without it. Fix in node `Pick the file`: the tenant folder and a leading slash are removed, and the node status shows the last 40 characters of the path it reads. The offline test lists keys with the prefix (the first version fails on it exactly like the VFC did). If the VFC still says Not Found, send the `list objects` debug output of one item (the key form).
+- Still untested in the VFC: that `msg.parts` survives `list objects`, `read object` and `csv` (the join over the sites needs it).
 - A folder that does not exist: what `list objects` does is not known. If it raises an error, the catch lane logs it and the table waits for the missing site item (nothing is written).
 
 ## Test runner

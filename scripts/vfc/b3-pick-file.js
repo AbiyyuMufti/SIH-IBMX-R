@@ -1,7 +1,7 @@
-// Picks the CSV file to read from the folder list.
-// In: msg.payload = objects of the folder (list objects), msg.path = folder.
-// Out 1: msg.path = the newest .csv file (for the read node). Out 2: a failed
-// item for the table, when the folder has no .csv file.
+// Picks the newest .csv of the folder list (list objects).
+// Out 1: msg.path for the read node, without data/ten=<tenant>/ or a leading
+// slash. Out 2: a failed item when the folder has no .csv.
+var TENANT_PREFIX = /^\/?(data\/ten=[^\/]+\/)?/;
 var items = Array.isArray(msg.payload) ? msg.payload : [];
 var files = items.filter(function (item) {
   return /\.csv$/i.test(item.key);
@@ -25,10 +25,10 @@ if (!files.length) {
 files.sort(function (a, b) {
   return String(b.lastModified).localeCompare(String(a.lastModified));
 });
-msg.path = files[0].key;
+msg.path = String(files[0].key).replace(TENANT_PREFIX, '');
 node.status({
   fill: 'green',
   shape: 'dot',
-  text: msg.site + ': ' + files.length + ' file(s)'
+  text: msg.path.slice(-40)
 });
 return [msg, null];

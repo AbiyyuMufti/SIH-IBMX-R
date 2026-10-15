@@ -82,7 +82,8 @@ export function testPlatform() {
 // options: {startDay, endDay, write, allAssets, fetchImpl, clientId, clientSecret,
 //           platform, xcTenantId, startPayload (payload of the first message,
 //           default {start, end}), lakeTimes ({path: lastModified}, for the
-//           list objects node),
+//           list objects node), listKeyPrefix (text put in front of every key
+//           the list objects node returns, like data/ten=<tenant>/),
 //           configNodes}. configNodes = the Config tab: its CONFIG function is
 //           run once first and stores the shared settings in global context.
 export async function runFlow(nodes, options) {
@@ -207,7 +208,7 @@ export async function runFlow(nodes, options) {
         const k = key.replace(/^\//, '');
         if (k.startsWith(folder) && !k.slice(folder.length).includes('/')) {
           items.push({
-            key: k,
+            key: (options.listKeyPrefix || '') + k,
             lastModified: (options.lakeTimes || {})[k] || '2026-01-01T00:00:00.000Z',
             contentSize: String(text).length
           });
