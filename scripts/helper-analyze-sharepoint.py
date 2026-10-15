@@ -11,7 +11,7 @@ import os
 
 import polars as pl
 
-ROOT = "downloads/sharepoint"
+ROOT = "sharepoint"
 OUT = "diagrams/data/sharepoint-findings.json"
 
 
@@ -56,10 +56,10 @@ def mins(c):
 F = {}
 ours_plan = pl.read_parquet("parquet/pbi_plan_opt.parquet")
 ours_loss = pl.read_parquet("parquet/pbi_daily_losses.parquet")
-hull_plan = concat("hull/plan_opt/*.csv").filter(pl.col("YYYY-MM-DD").str.contains(r"^\d{4}-"))
+hull_plan = concat("source/plan_opt/site=Hull/*.csv").filter(pl.col("YYYY-MM-DD").str.contains(r"^\d{4}-"))
 
 # ---- Glidepaths ----
-g = concat("regional/glidepaths/*.csv")
+g = concat("reference/glidepaths/*/*.csv")
 months = [c for c in g.columns if c not in ("Site Name", "Line", "OEE Bucket")]
 
 
@@ -88,7 +88,7 @@ F["glidepath"] = {
 }
 
 # ---- Format list ----
-f = concat("regional/formats_eu/*.csv")
+f = concat("reference/format_list/*/*.csv")
 fh = f.filter(pl.col("Site Name") == "Hull")
 pairs = hull_plan.select("MachineName", "PartName").unique()
 known = set(zip(fh["MachineName"].to_list(), fh["Product Name"].to_list()))
@@ -124,7 +124,7 @@ F["formats"]["b2_row"] = b2r.head(1).to_dicts()[0] if b2r.height else None
 F["formats"]["b2_provideam_names"] = sorted(set(hull_plan.filter(pl.col("MachineName") == "B2 Auto")["PartName"].to_list()))
 
 # ---- Shift coding ----
-s = load(f"{ROOT}/regional/shift_coding/Shift Patterns Provideam EU.csv")
+s = load(f"{ROOT}/reference/shift_naming/site=All/Shift Patterns Provideam EU.csv")
 raw_hull = set(hull_plan["ShiftName"].unique().to_list())
 values = sorted(s["Shift"].unique().to_list())
 sih_shifts = sorted(ours_plan["shift_name"].drop_nulls().unique().to_list())
@@ -146,8 +146,8 @@ F["shift"] = {
 # ---- Equipment coding ----
 eq = {}
 for site, ecp, llp in (
-    ("Nottingham", "nottingham/equipment_coding/*.csv", "nottingham/line_losses/*.csv"),
-    ("Weinheim", "weinheim/equipment_coding/*.csv", "weinheim/line_losses/*.csv"),
+    ("Nottingham", "reference/equipment_coding/site=Nottingham/*.csv", "source/line_losses/site=Nottingham/*.csv"),
+    ("Weinheim", "reference/equipment_coding/site=Weinheim/*.csv", "source/line_losses/site=Weinheim/*.csv"),
 ):
     ec = concat(ecp)
     ll = concat(llp)
@@ -166,7 +166,7 @@ F["equipment"] = eq
 
 # ---- Loss names ----
 names = {}
-for site, key, llp in (("Nottingham", "Nottingham", "nottingham/line_losses/*.csv"), ("Weinheim", "Weinheim", "weinheim/line_losses/*.csv")):
+for site, key, llp in (("Nottingham", "Nottingham", "source/line_losses/site=Nottingham/*.csv"), ("Weinheim", "Weinheim", "source/line_losses/site=Weinheim/*.csv")):
     ll = concat(llp)
     buckets = set(g.filter(pl.col("Site Name") == key)["OEE Bucket"].to_list())
     same = ll.filter(pl.col("OEELossLvl3SubGroup").is_in(list(buckets))).height
@@ -186,9 +186,9 @@ F["loss_names"] = {
 }
 
 # ---- Loss units rule ----
-vc = concat("nottingham/volume_loss_correction/*.csv").filter(pl.col("ShiftStartDate").str.contains(r"^\d{2}/\d{2}/\d{4}"))
+vc = concat("source/volume_loss_correction/site=Nottingham/*.csv").filter(pl.col("ShiftStartDate").str.contains(r"^\d{2}/\d{2}/\d{4}"))
 vc = vc.with_columns(m=mins("Time"), u=num("Loss Units")).with_columns(per_min=pl.col("u") / pl.col("m")).filter(pl.col("m") > 5)
-po = concat("nottingham/plan_opt/*.csv").filter(pl.col("YYYY-MM-DD").str.contains(r"^\d{4}-"))
+po = concat("source/plan_opt/site=Nottingham/*.csv").filter(pl.col("YYYY-MM-DD").str.contains(r"^\d{4}-"))
 po = po.with_columns(cap=num("Capacity"), opt=mins("Planned OpT")).filter(pl.col("opt") > 0)
 day = po.group_by("MachineName", "YYYY-MM-DD").agg(cap=pl.col("cap").sum(), opt=pl.col("opt").sum(), prods=pl.col("PartName").n_unique()).filter(pl.col("prods") == 1)
 day = day.with_columns(

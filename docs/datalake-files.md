@@ -40,10 +40,13 @@
 ## New folders (tested 2026-10-15)
 - No bucket or folder can be created by a call: one bucket per tenant, no "create folder" endpoint in the OpenAPI file. Folders are key prefixes.
 - Uploading `mufti_test/_mkdir_test/probe.txt` (12 bytes, folder did not exist) gave URL 201, PUT 200, listed, downloaded identical. So a new folder exists as soon as a file is uploaded into it. An empty folder cannot exist.
-- Test object `mufti_test/_mkdir_test/probe.txt` was left in the data lake. Delete it in the Data Explorer.
+- The whole `mufti_test/` folder was deleted afterwards (19 files, see Delete below).
 
-## SharePoint files in the lake (2026-10-15)
-- `node scripts/datalake-upload-tree.js` uploaded the 51 files of `downloads/sharepoint/` (MANIFEST.md left out) to `reports/static-reference/<type>/site=<site>/<original file name>`. Sites: `hull`, `nottingham`, `weinheim`, `regional` (the shared format, glidepath and shift files). Result: 51 uploaded, 0 skipped, 0 failed (every PUT 200). Existing objects are skipped, never replaced. Not re-listed afterwards.
+## Upload and delete of a folder tree (2026-10-15)
+- `node scripts/datalake-upload-tree.js [local dir] [lake root]` uploads every file under the local folder to the same relative path under the lake root. Defaults: `sharepoint/reference` to `eu_report/reference`. Existing objects are skipped, never replaced.
+- First run (old layout): 51 SharePoint files to `reports/static-reference/`, 51 uploaded, 0 failed. Then deleted again on the user's request with `node scripts/datalake-delete-tree.js reports/static-reference/` (51 deleted, 0 left), to redo it in the new layout.
+- `scripts/datalake-delete-tree.js <folder/>` walks the folder (list, subfolders, `nextToken`) and deletes each file with `DELETE /objects/<path>`, then lists again. Also used for `mufti_test/` (19 files, 0 left).
+- Planned layout (decided 2026-10-15, not uploaded yet): `eu_report/reference`, `eu_report/pbi_report`, `eu_report/ih_report`. The old `reports/` folder stays.
 
 ## What did not work before, and why
 - **403 `accessDenied` on every data lake call (2026-10-05)**: the token had no `dl.*` scope (only `mdl.mdladmin`). After the data lake roles were added the same calls worked.
@@ -58,8 +61,8 @@
 
 ## Not tested
 - Replacing an existing object by uploading the same path again (the upload script refuses unless `--overwrite`, so the flows' "same name replaces the day" is not confirmed through this route).
-- Delete tested 2026-10-15: `DELETE <base>/objects/<path>` (scope `dl.ds.d`, path without the `data/ten=` prefix) answered **204** and the object was gone from the list (`scripts/datalake-delete.js`, one file per call). Used on `mufti_test/_mkdir_test/probe.txt`. The older `_upload_test_2026-10-14.txt` is still there (my delete call was blocked, not tried).
+- Delete tested 2026-10-15: `DELETE <base>/objects/<path>` (scope `dl.ds.d`, path without the `data/ten=` prefix) answered **204** and the object was gone from the list (`scripts/datalake-delete.js`, one file per call). Used on `mufti_test/_mkdir_test/probe.txt`, then for whole folders (see above).
 - Not tested: `/deleteObjectsJobs` (bulk delete), more than one path per upload request, objects in COLD storage (the API refuses them with `objectNotAccessible`), subtenants, the `legacy` platform.
 - Which of the three roles is the minimum. All three were in the token.
 - Whether a header is needed for storage other than AWS (the sample pages name `x-ms-blob-type: BlockBlob` for Azure only; the script retries once with it if an Azure host refuses).
-- A test object `mufti_test/fact_loss/_upload_test_2026-10-14.txt` was left in the data lake. Delete it in the Data Explorer.
+- The test objects of 2026-10-14 and 2026-10-15 are gone: `mufti_test/` was deleted on 2026-10-15.

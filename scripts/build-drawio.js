@@ -301,9 +301,9 @@ class Page {
     return id;
   }
 
-  edge(source, target, color = '#555555', dashed = false, label = '') {
+  edge(source, target, color = '#555555', dashed = false, label = '', extra = '') {
     const id = this.id();
-    const style = `edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeWidth=1.5;strokeColor=${color};${dashed ? 'dashed=1;' : ''}${label ? 'fontSize=10;labelBackgroundColor=#ffffff;' : ''}`;
+    const style = `edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeWidth=1.5;strokeColor=${color};${dashed ? 'dashed=1;' : ''}${label ? 'fontSize=10;labelBackgroundColor=#ffffff;' : ''}${extra}`;
     this.cells.push(
       `<mxCell id="${id}" value="${esc(label)}" style="${style}" edge="1" parent="1" source="${source}" target="${target}"><mxGeometry relative="1" as="geometry"/></mxCell>`,
     );
@@ -760,6 +760,98 @@ NOT_CREATED.forEach((t, i) => {
     [
       bold('Rule'),
       esc('Staging tables live only in the VFC memory during a run. No staging table is needed to check a run: the log says which rows found no match. One can be stored later for a single step if a problem needs it.'),
+    ].join('<br>'),
+    'neutral',
+    'verticalAlign=top;spacingTop=6;fontSize=10.5;',
+  );
+}
+// How the pbi_report tables are combined (2026-10-15): files -> prepare -> join -> 6 tables.
+// Flow chart right of the table separation panel. Edges leave right and enter left (or top).
+{
+  const FX = 3400;
+  const colX = [FX, FX + 320, FX + 650, FX + 1000];
+  const colW = [260, 270, 290, 240];
+  const rowY = (r) => 260 + r * 70;
+  const H = 56;
+  overview.text(FX, 170, 1240, 24, bold('How pbi_report is combined: files, staging steps in the VFC, the 6 tables'), 'fontSize=14;');
+  ['sharepoint/source and reference', 'staging: prepare', 'staging: join', 'report (the 6 tables)'].forEach((t, i) => overview.text(colX[i], 216, colW[i], 20, bold(t), 'fontSize=11;'));
+  const node = (col, r, lines, level) => overview.box(colX[col], rowY(r), colW[col], H, lines.map((l, i) => (i ? esc(l) : bold(l))).join('<br>'), level, 'verticalAlign=middle;fontSize=10;');
+  const src = {
+    mn: node(0, 0, ['reference/machine_names', 'Hull, Nottingham, Weinheim'], 'file'),
+    gp: node(0, 1, ['reference/glidepaths', 'one column per month, 4 sites'], 'file'),
+    po: node(0, 2, ['source/plan_opt', 'monthly + current month'], 'assumed'),
+    sn: node(0, 3, ['reference/shift_naming', 'site=All, raw name to 7 shifts'], 'file'),
+    ll: node(0, 6, ['source/line_losses', 'one row per stop'], 'assumed'),
+    vc: node(0, 7, ['source/volume_loss_correction', 'loss units per day and loss'], 'assumed'),
+    ec: node(0, 8, ['reference/equipment_coding', 'machine + loss description'], 'file'),
+    fl: node(0, 9, ['reference/format_list', 'product master'], 'file'),
+    rr: node(0, 10, ['source/run_rates', 'not used (Run Rates EU skipped)'], 'none'),
+  };
+  const prep = {
+    mn: node(1, 0, ['Add Site Name, machine key', 'machine + "-" + site'], 'neutral'),
+    gp: node(1, 1, ['Unpivot Glidepaths', 'months to rows, split buckets'], 'neutral'),
+    po: node(1, 2, ['Stack Plan OPT', 'files and sites, drop Total row, Site Name, keys'], 'neutral'),
+    sn: node(1, 3, ['Map shift names', 'raw ShiftName to Shift'], 'neutral'),
+    ll: node(1, 6, ['Stack Line Losses', 'files and sites, Site Name, keys'], 'neutral'),
+    vc: node(1, 7, ['Stack Loss Units', 'per day, machine and loss'], 'neutral'),
+    ec: node(1, 8, ['Equipment lookup', 'machine + loss description'], 'neutral'),
+  };
+  const join = {
+    po: node(2, 2, ['Join targets and shift', 'OEE, PDT, UPDT target by machine + month'], 'neutral'),
+    tu: node(2, 4, ['Sum per machine and day', 'Plan OPT times'], 'neutral'),
+    tv: node(2, 5, ['Targets Volume', 'capacity per machine and day'], 'neutral'),
+    dl: node(2, 6, ['Join losses', 'Loss Units, Equipment, loss targets, shift, volume'], 'neutral'),
+    cal: node(2, 10, ['Generate dates', 'no file'], 'neutral'),
+  };
+  const out = {
+    mn: node(3, 0, ['Machine Names EU'], 'ok'),
+    po: node(3, 2, ['Plan OPT EU'], 'ok'),
+    sn: node(3, 3, ['Shift Naming EU'], 'ok'),
+    tu: node(3, 4, ['Time Utilisation EU'], 'ok'),
+    dl: node(3, 6, ['Daily Losses EU'], 'ok'),
+    fl: node(3, 9, ['Format List EU (optional)', 'only if By Format needs it'], 'none'),
+    cal: node(3, 10, ['Calendar'], 'ok'),
+  };
+  const ref = '#9673a6';
+  const prov = '#d79b00';
+  const step = '#555555';
+  const side = (y) => `exitX=1;exitY=0.5;entryX=0;entryY=${y};`;
+  const e = (a, b, color, y = 0.5, dashed = false) => overview.edge(a, b, color, dashed, '', side(y));
+  e(src.mn, prep.mn, ref);
+  e(src.gp, prep.gp, ref);
+  e(src.po, prep.po, prov);
+  e(src.sn, prep.sn, ref);
+  e(src.ll, prep.ll, prov);
+  e(src.vc, prep.vc, prov);
+  e(src.ec, prep.ec, ref);
+  e(src.fl, out.fl, ref, 0.5, true);
+  e(prep.mn, out.mn, step);
+  e(prep.gp, join.po, step, 0.25);
+  e(prep.po, join.po, step, 0.5);
+  e(prep.sn, join.po, step, 0.75);
+  e(prep.sn, out.sn, step);
+  e(prep.po, join.tu, step);
+  e(prep.po, join.tv, step);
+  e(prep.gp, join.dl, step, 0.15);
+  e(prep.sn, join.dl, step, 0.3);
+  e(prep.ll, join.dl, step, 0.5);
+  e(prep.vc, join.dl, step, 0.7);
+  e(prep.ec, join.dl, step, 0.85);
+  overview.edge(join.tv, join.dl, step, false, '', 'exitX=0.5;exitY=1;entryX=0.5;entryY=0;');
+  e(join.po, out.po, step);
+  e(join.tu, out.tu, step);
+  e(join.dl, out.dl, step);
+  e(join.cal, out.cal, step);
+  overview.box(
+    FX,
+    rowY(11) + 10,
+    1240,
+    90,
+    [
+      bold('Gaps'),
+      esc('Site: only Glidepaths and Format List have a Site Name column. The staging step adds Site Name from the folder site=<Site>, because BI Data does not turn the folder into a column.'),
+      esc('History: the report reads from 2024-12-01. Downloaded: Aug, Sep and the current month (Hull Plan OPT also Jul).'),
+      esc('Mira: no source files and no Machine Names, Equipment Coding or Shift Numbering (no access). Only its Glidepath and Format List are here.'),
     ].join('<br>'),
     'neutral',
     'verticalAlign=top;spacingTop=6;fontSize=10.5;',
