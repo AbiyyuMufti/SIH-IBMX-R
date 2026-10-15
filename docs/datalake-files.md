@@ -37,6 +37,14 @@
 | Download of 5 days where 2 do not exist | 3 saved, the 2 missing days answered 404 |
 | Upload of a 58-byte text file | URL 201, PUT 200 with **no extra header**, then listed with 58 bytes, then downloaded again: identical |
 
+## New folders (tested 2026-10-15)
+- No bucket or folder can be created by a call: one bucket per tenant, no "create folder" endpoint in the OpenAPI file. Folders are key prefixes.
+- Uploading `mufti_test/_mkdir_test/probe.txt` (12 bytes, folder did not exist) gave URL 201, PUT 200, listed, downloaded identical. So a new folder exists as soon as a file is uploaded into it. An empty folder cannot exist.
+- Test object `mufti_test/_mkdir_test/probe.txt` was left in the data lake. Delete it in the Data Explorer.
+
+## SharePoint files in the lake (2026-10-15)
+- `node scripts/datalake-upload-tree.js` uploaded the 51 files of `downloads/sharepoint/` (MANIFEST.md left out) to `reports/static-reference/<type>/site=<site>/<original file name>`. Sites: `hull`, `nottingham`, `weinheim`, `regional` (the shared format, glidepath and shift files). Result: 51 uploaded, 0 skipped, 0 failed (every PUT 200). Existing objects are skipped, never replaced. Not re-listed afterwards.
+
 ## What did not work before, and why
 - **403 `accessDenied` on every data lake call (2026-10-05)**: the token had no `dl.*` scope (only `mdl.mdladmin`). After the data lake roles were added the same calls worked.
 - **502 with the old path** `/api/datalake/v3` on the xcelerator host: the data lake has its own base path (see above).
@@ -50,7 +58,8 @@
 
 ## Not tested
 - Replacing an existing object by uploading the same path again (the upload script refuses unless `--overwrite`, so the flows' "same name replaces the day" is not confirmed through this route).
-- Deleting objects (`DELETE /objects`, `/deleteObjectsJobs`), more than one path per upload request, objects in COLD storage (the API refuses them with `objectNotAccessible`), subtenants, the `legacy` platform.
+- Delete tested 2026-10-15: `DELETE <base>/objects/<path>` (scope `dl.ds.d`, path without the `data/ten=` prefix) answered **204** and the object was gone from the list (`scripts/datalake-delete.js`, one file per call). Used on `mufti_test/_mkdir_test/probe.txt`. The older `_upload_test_2026-10-14.txt` is still there (my delete call was blocked, not tried).
+- Not tested: `/deleteObjectsJobs` (bulk delete), more than one path per upload request, objects in COLD storage (the API refuses them with `objectNotAccessible`), subtenants, the `legacy` platform.
 - Which of the three roles is the minimum. All three were in the token.
 - Whether a header is needed for storage other than AWS (the sample pages name `x-ms-blob-type: BlockBlob` for Azure only; the script retries once with it if an Azure host refuses).
 - A test object `mufti_test/fact_loss/_upload_test_2026-10-14.txt` was left in the data lake. Delete it in the Data Explorer.
