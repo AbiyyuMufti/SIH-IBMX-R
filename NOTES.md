@@ -353,3 +353,10 @@ Tried: Power BI flow with `Keep dim_asset` expecting an array. Error: "the file 
 
 ## Diagram sheet for ih_report and pbi_report (2026-10-15)
 - New sheet "Plan ih_report and pbi_report" in `diagrams/powerbi-data-map.drawio` (two flow charts, coverage boxes, source comparison per table). The download watcher is OFF (stopped 2026-10-15); start it again with `node scripts/watch-sharepoint-downloads.js downloads sharepoint 6 sharepoint/_ignore-downloads.txt` from the project folder. It only sorts files into `sharepoint/source_original` and `reference`; it does not normalize or upload.
+
+## PBI report build, step 1 (2026-10-15)
+- New flow `flows/vfc-pbi-report.json` (tab `PBI report build`, doc `docs/pbi-report-build.md`): `pbi_machine_names`, `pbi_shift_naming`, `pbi_calendar` from the CSV files in `eu_report/reference`. Decisions: parquet like the other pbi flows; same column names as the Insights Hub flows (`scripts/lib-pbi-schemas.js`); no stored staging tables, a check log instead; first run parameterized by a job payload (tables, sites); `DRY_RUN` true by default; output `eu_report/pbi_report/report/<table>/`.
+- Rules taken from the report queries (`helper-pbit-outline.js --table ...`): Machine Names H drops `GT4 - Auto` and keeps Dept Dries Pack / Liquids Pack, Machine Names N keeps Area SD Packing / Strepsils Packing, Unique Machine Name = name + "-" + site, Shift Naming EU = distinct Shift, Calendar 2011-01-01 to 2050-12-31. Real files give machine rows identical to the report (60 rows for Hull, Nottingham, Weinheim).
+- Failed attempt: my first csv test returned no rows because the runner serialises the read Buffer to {type: Buffer, data}; the csv simulation now handles it (the parquet one already did). Test runner: new `csv` and `list objects` nodes and `startPayload`.
+- Open: run in the VFC (msg.parts through list objects / read object / csv is untested), step 2 (plan opt, time utilisation), step 3 (daily losses), step 4 (subscribe listeners with a configurable wait window, month range parameters, reference-change rebuild with a months-back setting).
+

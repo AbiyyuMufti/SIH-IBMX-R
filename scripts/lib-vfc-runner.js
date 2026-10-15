@@ -18,6 +18,55 @@ const typeOk = (type, v) => {
   return false;
 };
 
+// Parses CSV text like the Node-RED csv node with "first row = names":
+// quoted fields, "" inside quotes, any line end. Values stay text.
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let field = '';
+  let quoted = false;
+  const flush = () => {
+    row.push(field);
+    field = '';
+  };
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (quoted) {
+      if (c === '"' && text[i + 1] === '"') {
+        field += '"';
+        i++;
+      } else if (c === '"') {
+        quoted = false;
+      } else {
+        field += c;
+      }
+    } else if (c === '"') {
+      quoted = true;
+    } else if (c === ',') {
+      flush();
+    } else if (c === '\n' || c === '\r') {
+      if (c === '\r' && text[i + 1] === '\n') {
+        i++;
+      }
+      flush();
+      rows.push(row);
+      row = [];
+    } else {
+      field += c;
+    }
+  }
+  if (field !== '' || row.length) {
+    flush();
+    rows.push(row);
+  }
+  const names = rows.shift() || [];
+  return rows
+    .filter((r) => !(r.length === 1 && r[0] === ''))
+    .map((r) => Object.fromEntries(
+      names.map((n, i) => [n, r[i] === undefined ? '' : r[i]])
+    ));
+}
+
 // The platform of a test run: argument platform=legacy|xcelerator or the
 // environment variable TEST_PLATFORM. No default, as in the Config node.
 export function testPlatform() {
@@ -31,7 +80,9 @@ export function testPlatform() {
 }
 
 // options: {startDay, endDay, write, allAssets, fetchImpl, clientId, clientSecret,
-//           platform, xcTenantId,
+//           platform, xcTenantId, startPayload (payload of the first message,
+//           default {start, end}), lakeTimes ({path: lastModified}, for the
+//           list objects node),
 //           configNodes}. configNodes = the Config tab: its CONFIG function is
 //           run once first and stores the shared settings in global context.
 export async function runFlow(nodes, options) {
@@ -133,6 +184,37 @@ export async function runFlow(nodes, options) {
       }
       msg.payload = Buffer.from(lake.get(msg.path), 'utf8');
       emit(n, [msg]);
+    } else if (n.type === 'csv') {
+      // Header row = names, values stay text. multi "mult" = one message
+      // with the array (the VFC node, tested by the user), "one" = per row.
+      const text = Buffer.isBuffer(msg.payload)
+        ? msg.payload.toString('utf8')
+        : msg.payload && msg.payload.type === 'Buffer'
+          ? Buffer.from(msg.payload.data).toString('utf8')
+          : String(msg.payload);
+      const rows = parseCsv(text);
+      if (n.multi === 'one') {
+        for (const row of rows) emit(n, [{ ...msg, payload: row }]);
+      } else {
+        emit(n, [{ ...msg, payload: rows }]);
+      }
+    } else if (n.type === 'list objects') {
+      // Direct children of the folder msg.path: [{key, lastModified,
+      // contentSize}].
+      const folder = String(msg.path || '').replace(/^\//, '');
+      const items = [];
+      for (const [key, text] of lake) {
+        const k = key.replace(/^\//, '');
+        if (k.startsWith(folder) && !k.slice(folder.length).includes('/')) {
+          items.push({
+            key: k,
+            lastModified: (options.lakeTimes || {})[k] || '2026-01-01T00:00:00.000Z',
+            contentSize: String(text).length
+          });
+        }
+      }
+      msg.payload = items;
+      emit(n, [msg]);
     } else if (n.type === 'delay' && n.pauseType === 'delay') {
       // A fixed delay sends when the rest of the flow is quiet.
       waiting.push([n, msg]);
@@ -215,7 +297,8 @@ export async function runFlow(nodes, options) {
     fn(flowContext, node, {}, Buffer, Promise, globalContext);
   }
   const config = nodes.find((n) => n.type === 'function' && /CONFIG|SETTINGS/.test(n.name));
-  queue.push([config.id, { payload: { start: startDay, end: endDay } }]);
+  const first = options.startPayload || { start: startDay, end: endDay };
+  queue.push([config.id, { payload: first }]);
   const catchNodes = nodes.filter((n) => n.type === 'catch');
   let guard = 0;
   for (;;) {

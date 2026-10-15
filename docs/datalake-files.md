@@ -69,3 +69,10 @@
 - Which of the three roles is the minimum. All three were in the token.
 - Whether a header is needed for storage other than AWS (the sample pages name `x-ms-blob-type: BlockBlob` for Azure only; the script retries once with it if an Azure host refuses).
 - The test objects of 2026-10-14 and 2026-10-15 are gone: `mufti_test/` was deleted on 2026-10-15.
+
+## Object events (subscribe object node, tested by the user 2026-10-15)
+- The VFC node `subscribe object` watches a lake folder and sends one message per event: `payload = { eventType, timestamp, path, tenant }`, `msg.path` the same path with a leading slash (for example `/mufti_test/test/sales_part_2.csv`).
+- Event types seen: `MODIFY` for a new file, an overwritten file and a new folder (the folder path has no file extension), `DELETE` for a deleted file. Files in subfolders of the watched folder also fire. Several files at once arrive as separate messages one after another.
+- A signed-URL upload from `scripts/datalake-upload-tree.js` fires the same `MODIFY` event (tested with `mufti_test/test/script_probe.txt`). Delay from the event timestamp to the node: about 0.3 to 15 seconds in 5 samples, so the order of events is not guaranteed.
+- Not tested: 200 or more events from a bulk upload; a script replace with `--overwrite` (the UI replace gave `MODIFY`).
+- Use: one subscription on `/eu_report/pbi_report/source/` and one on `/eu_report/reference/`; the flow takes type, site and month from the path, ignores paths that do not end in `.csv` and `DELETE`, and writes only below `eu_report/pbi_report/report/` (outside the watched folders, so no loop).
