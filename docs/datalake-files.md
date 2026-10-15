@@ -46,7 +46,10 @@
 - `node scripts/datalake-upload-tree.js [local dir] [lake root]` uploads every file under the local folder to the same relative path under the lake root. Defaults: `sharepoint/reference` to `eu_report/reference`. Existing objects are skipped, never replaced.
 - First run (old layout): 51 SharePoint files to `reports/static-reference/`, 51 uploaded, 0 failed. Then deleted again on the user's request with `node scripts/datalake-delete-tree.js reports/static-reference/` (51 deleted, 0 left), to redo it in the new layout.
 - `scripts/datalake-delete-tree.js <folder/>` walks the folder (list, subfolders, `nextToken`) and deletes each file with `DELETE /objects/<path>`, then lists again. Also used for `mufti_test/` (19 files, 0 left).
-- Planned layout (decided 2026-10-15, not uploaded yet): `eu_report/reference`, `eu_report/pbi_report`, `eu_report/ih_report`. The old `reports/` folder stays.
+- Layout uploaded 2026-10-15: `eu_report/reference` (14 reference files, from `sharepoint/reference`) and `eu_report/pbi_report/source/<type>/site=<Site>/<type>_<YYYY-MM>.csv` (the normalized month files, from `sharepoint/source`, see [sharepoint-files.md](sharepoint-files.md)). `eu_report/ih_report` is not used yet. The old `reports/` folder stays.
+- Options of `scripts/datalake-upload-tree.js`: `--overwrite` (replace existing objects) and `--only <list file>` (only the relative paths in the file, for example `sharepoint/normalize-changed.txt`). Without `--overwrite` existing objects are skipped.
+- `node scripts/datalake-verify-tree.js <local dir> <lake root> [sample]` compares a local tree with the lake (every file present with the same size) and downloads a random sample to compare the bytes. Read-only.
+- **Replace by upload, tested 2026-10-15:** a probe file `eu_report/_probe/replace.txt` was uploaded (new path, 10 bytes), again without a flag (skipped), again with `--overwrite` (same content, replaced), and with changed content (31 bytes, replaced). The lake then returned the new content, byte for byte. So the same path can be replaced by uploading it again; the probe was deleted afterwards (204).
 
 ## What did not work before, and why
 - **403 `accessDenied` on every data lake call (2026-10-05)**: the token had no `dl.*` scope (only `mdl.mdladmin`). After the data lake roles were added the same calls worked.
@@ -60,7 +63,7 @@
 - Not run by me: the file needs the secrets and the network. Syntax checked only.
 
 ## Not tested
-- Replacing an existing object by uploading the same path again (the upload script refuses unless `--overwrite`, so the flows' "same name replaces the day" is not confirmed through this route).
+- Replacing an existing object by uploading the same path: tested, works (see above).
 - Delete tested 2026-10-15: `DELETE <base>/objects/<path>` (scope `dl.ds.d`, path without the `data/ten=` prefix) answered **204** and the object was gone from the list (`scripts/datalake-delete.js`, one file per call). Used on `mufti_test/_mkdir_test/probe.txt`, then for whole folders (see above).
 - Not tested: `/deleteObjectsJobs` (bulk delete), more than one path per upload request, objects in COLD storage (the API refuses them with `objectNotAccessible`), subtenants, the `legacy` platform.
 - Which of the three roles is the minimum. All three were in the token.

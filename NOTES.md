@@ -345,3 +345,8 @@ Tried: Power BI flow with `Keep dim_asset` expecting an array. Error: "the file 
 
 ## Nottingham history downloaded, coverage (2026-10-15)
 - The user downloaded the 17 missing Nottingham files by hand (2 Plan OPT, 15 Line Losses); the watcher moved them and deleted 3 identical duplicates. Normalizer re-run: 29 month files changed, 0 problems. Coverage from 2024-12-01: Nottingham Plan OPT, Line Losses and Volume Correction now have the same missing days (24-26 Dec 2024, 1-3 Jan 2025 / 1-5 Jan 2026, 18-20 Apr 2025, 24-26 Dec 2025, 17 Jan 2026, 3-4 Apr 2026): the same days in all three types, so most likely no production, not missing files. Weinheim: weekday plant plus holidays, Hull complete except Plan OPT 16 Dec 2025 (Chrome says a file `20251216` exists; our copy holds 15 Dec) and the 17 Dec 2025 conflict. Still open: Mira (no access), the lake upload (Copilot prompt).
+
+## Upload to the data lake (2026-10-15)
+- Uploaded `sharepoint/reference` (14 files) to `eu_report/reference/` and `sharepoint/source` (204 normalized month files, 184 MB) to `eu_report/pbi_report/source/`, 0 failed. Verified with `scripts/datalake-verify-tree.js`: every file in the lake with the same size, 12 random files downloaded byte-identical.
+- Replace by upload tested on a probe file: the same path is replaced (new content returned byte for byte); `scripts/datalake-upload-tree.js` got `--overwrite` and `--only <list>`. Daily refresh: `python -I scripts/normalize-sharepoint-source.py`, then the upload script with `--only sharepoint/normalize-changed.txt --overwrite`. The probe was deleted.
+- Open: nothing automated yet (the refresh is by hand); `eu_report/ih_report` unused; a VFC read of these CSV files is untested.
