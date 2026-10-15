@@ -1887,6 +1887,174 @@ function consumeSheet(cfg) {
   pages.push(fp);
 }
 
+// ---- Page: plan of ih_report and pbi_report (2026-10-15) ------------------------------------
+// Two flow charts: where each report folder gets its data and what the sources cover.
+{
+  const pg = new Page('Plan ih_report and pbi_report');
+  const ROWH = 84;
+  const BH = 68;
+  pg.text(40, 20, 1500, 30, bold('Plan: ih_report and pbi_report in the data lake (eu_report)'), 'fontSize=18;');
+  pg.box(
+    40,
+    64,
+    740,
+    118,
+    [
+      bold('ih_report: the end goal'),
+      esc('Insights Hub data (OEE API) enriched with the reference files. Built by the VFC flows in the data lake folder eu_report/ih_report.'),
+      esc('Today only Hull is configured (2 assets: B2 Line and GT4). Flows pass the mock tests but have not run in the VFC. The merge with the reference files is not built.'),
+    ].join('<br>'),
+    'sih',
+    'verticalAlign=top;spacingTop=6;fontSize=10.5;',
+  );
+  pg.box(
+    800,
+    64,
+    740,
+    118,
+    [
+      bold('pbi_report: the data we have now'),
+      esc('Provideam exports from SharePoint (Hull, Nottingham, Weinheim, Dec 2024 to Oct 2026) plus the reference files, so Reckitt can open the dashboard with their own data.'),
+      esc('Source and reference are uploaded (204 + 14 files). The VFC step that builds the 6 tables is not built. Mira: no access.'),
+    ].join('<br>'),
+    'pbi',
+    'verticalAlign=top;spacingTop=6;fontSize=10.5;',
+  );
+
+  // generic flow chart: columns of boxes, rows on a grid, wires leave right and enter left
+  const chart = (top, title, cols, nodes, edges) => {
+    pg.text(40, top, 1500, 24, bold(title), 'fontSize=14;');
+    cols.forEach((c) => pg.text(c.x, top + 32, c.w, 20, bold(c.head), 'fontSize=11;'));
+    const ids = {};
+    nodes.forEach((n) => {
+      const c = cols[n.col];
+      const span = n.span || 1;
+      const y = top + 58 + n.row * ROWH;
+      const h = span * ROWH - (ROWH - BH);
+      const text = n.lines.map((l, i) => (i ? esc(l) : bold(l))).join('<br>');
+      ids[n.k] = pg.box(c.x, y, c.w, h, text, n.level, 'verticalAlign=middle;fontSize=10;');
+    });
+    edges.forEach(([a, b, color, dashed, down]) => {
+      const style = down
+        ? 'exitX=0.5;exitY=1;entryX=0.5;entryY=0;'
+        : 'exitX=1;exitY=0.5;entryX=0;entryY=0.5;';
+      pg.edge(ids[a], ids[b], color || '#555555', !!dashed, '', style);
+    });
+    return top + 58 + Math.max(...nodes.map((n) => n.row + (n.span || 1))) * ROWH;
+  };
+
+  // chart 1: ih_report
+  const c1 = [
+    { x: 40, w: 330, head: 'Sources' },
+    { x: 420, w: 360, head: 'VFC flows' },
+    { x: 830, w: 330, head: 'eu_report/ih_report (6 tables)' },
+  ];
+  const n1 = [
+    { k: 'oee', col: 0, row: 0, span: 2, level: 'sih', lines: ['Insights Hub OEE API (per asset)', 'assets, config (calendar id, product collection), calendarEvents, evaluateKPIs (hourly, per product and order), filterValues, products, downtimeReasons'] },
+    { k: 'am', col: 0, row: 2, level: 'sih', lines: ['Asset Management API', 'hierarchy: site, area, line'] },
+    { k: 'ref', col: 0, row: 3, span: 2, level: 'file', lines: ['eu_report/reference (14 files)', 'Glidepaths, Shift Patterns, Equipment Coding, Machine Names, Format List'] },
+    { k: 'f1', col: 1, row: 0, level: 'ok', lines: ['Reference flow (weekly)', 'machines, shift names from calendar events, generated dates'] },
+    { k: 'f2', col: 1, row: 1, span: 2, level: 'ok', lines: ['Daily flow per site (07:00 UTC)', 'KPIs per hour, shifts, products and orders, stops. Plan OPT, Time Utilisation, Daily Losses. Built, mock tested, not run in the VFC'] },
+    { k: 'f3', col: 1, row: 3, span: 2, level: 'partial', lines: ['Merge reference (to build)', 'targets from Glidepaths by machine + month, shift mapping, equipment lookup, loss targets'] },
+    { k: 'o1', col: 2, row: 0, level: 'ok', lines: ['Machine Names EU', 'Hull only today'] },
+    { k: 'o2', col: 2, row: 1, level: 'ok', lines: ['Shift Naming EU', 'names from calendar events (mapping missing)'] },
+    { k: 'o3', col: 2, row: 2, level: 'ok', lines: ['Calendar'] },
+    { k: 'o4', col: 2, row: 3, level: 'partial', lines: ['Plan OPT EU', 'targets empty until the merge'] },
+    { k: 'o5', col: 2, row: 4, level: 'partial', lines: ['Time Utilisation EU', 'follows Plan OPT'] },
+    { k: 'o6', col: 2, row: 5, level: 'partial', lines: ['Daily Losses EU', 'Loss Units assumed, loss names to map'] },
+  ];
+  const e1 = [
+    ['oee', 'f1'], ['am', 'f1'], ['oee', 'f2'], ['am', 'f2'],
+    ['ref', 'f3', '#9673a6', true],
+    ['f2', 'f3', '#555555', false, true],
+    ['f1', 'o1'], ['f1', 'o2'], ['f1', 'o3'],
+    ['f3', 'o4'], ['f3', 'o5'], ['f3', 'o6'],
+  ];
+  const end1 = chart(220, 'Flow chart 1: ih_report (Insights Hub, enriched with the reference files)', c1, n1, e1);
+  pg.box(
+    40,
+    end1 + 10,
+    1500,
+    120,
+    [
+      bold('What ih_report covers and does not cover'),
+      esc('Covers: the OEE assets listed in the Config tab. Today 2 Hull lines (B2 Line, GT4), from about 2026-08-31 (the depth of the Insights Hub data). Nottingham, Weinheim and Mira are not in the Config tab (asset ids needed); the report also has Mira.'),
+      esc('Does not cover: Provideam history before the Insights Hub data starts, product names that differ from the Format List, Provideam loss names and Loss Units (assumed as design speed x duration), shift names Yellow, Shift 1, Shift 2.'),
+      esc('Open: how a VFC node reads the reference CSV files (untested); where the daily parquet files of the flows end up in eu_report/ih_report (the flows write below their root folder setting).'),
+    ].join('<br>'),
+    'neutral',
+    'verticalAlign=top;spacingTop=6;fontSize=10.5;',
+  );
+
+  // chart 2: pbi_report
+  const c2 = [
+    { x: 40, w: 250, head: 'SharePoint' },
+    { x: 330, w: 250, head: 'Local steps (done)' },
+    { x: 620, w: 280, head: 'Data lake (done)' },
+    { x: 940, w: 290, head: 'VFC build (to build)' },
+    { x: 1270, w: 270, head: 'eu_report/pbi_report/report' },
+  ];
+  const n2 = [
+    { k: 'prov', col: 0, row: 0, span: 2, level: 'assumed', lines: ['Provideam exports (3 sites)', 'Plan OPT, Line Losses, Volume Loss Correction. Hull, Nottingham, Weinheim. Dec 2024 to now. Mira: no access'] },
+    { k: 'refs', col: 0, row: 2, span: 2, level: 'file', lines: ['Reference files', 'Glidepaths (4 sites), Shift Patterns, Equipment Coding, Machine Names (xlsx), Format List (3 sites)'] },
+    { k: 'dl', col: 1, row: 0, level: 'ok', lines: ['Download and sort', 'Chrome download, watcher into source_original (202 raw files)'] },
+    { k: 'nm', col: 1, row: 1, level: 'ok', lines: ['Normalize', 'one CSV per type, site and month, ISO dates, SiteName (204 files)'] },
+    { k: 'rp', col: 1, row: 2, span: 2, level: 'ok', lines: ['Prepare reference', 'xlsx to CSV, one folder per site'] },
+    { k: 'ls', col: 2, row: 0, span: 2, level: 'ok', lines: ['eu_report/pbi_report/source', '<type>/site=<Site>/<type>_<YYYY-MM>.csv, 204 files, verified'] },
+    { k: 'lr', col: 2, row: 2, span: 2, level: 'ok', lines: ['eu_report/reference', '14 files, verified'] },
+    { k: 'v1', col: 3, row: 0, level: 'partial', lines: ['Read the month files and reference files', 'CSV read in the VFC is untested'] },
+    { k: 'v2', col: 3, row: 1, level: 'partial', lines: ['Prepare (in memory, not stored)', 'keys, shift mapping, glidepath targets, equipment lookup, Loss Units'] },
+    { k: 'v3', col: 3, row: 2, level: 'partial', lines: ['Build the 6 tables', 'stack the sites, join, write'] },
+    { k: 'out', col: 4, row: 0, span: 4, level: 'partial', lines: ['6 tables, same shape as Power BI', 'Machine Names EU, Plan OPT EU, Time Utilisation EU, Daily Losses EU, Shift Naming EU, Calendar', 'Folder layout still to decide'] },
+  ];
+  const e2 = [
+    ['prov', 'dl', '#d79b00'], ['dl', 'nm', '#555555', false, true], ['nm', 'ls'], ['ls', 'v1'],
+    ['refs', 'rp', '#9673a6'], ['rp', 'lr', '#9673a6'], ['lr', 'v1', '#9673a6'], ['lr', 'v2', '#9673a6'],
+    ['v1', 'v2', '#555555', false, true], ['v2', 'v3', '#555555', false, true], ['v3', 'out'],
+  ];
+  const top2 = end1 + 160;
+  const end2 = chart(top2, 'Flow chart 2: pbi_report (Provideam exports from SharePoint, plus the reference files)', c2, n2, e2);
+  pg.box(
+    40,
+    end2 + 10,
+    1500,
+    120,
+    [
+      bold('What pbi_report covers and does not cover'),
+      esc('Covers: Hull, Nottingham and Weinheim from 2024-12-01 (Hull, Nottingham) or 2025-01 (Weinheim) to 2026-10; real Provideam values for Capacity, Planned OpT, OEE Time and Loss Units; Machine Names, Equipment Coding, Glidepaths and Shift Patterns from the real files.'),
+      esc('Does not cover: Mira (no access), Run Rates (not used), days with no export (holidays; 16 Dec 2025 Plan OPT in Hull; 17 Dec 2025 has two versions).'),
+      esc('Refresh: after new downloads run the normalizer, then upload only the changed month files (--only, --overwrite). Nothing is automatic yet.'),
+    ].join('<br>'),
+    'neutral',
+    'verticalAlign=top;spacingTop=6;fontSize=10.5;',
+  );
+
+  // table by table: what each source gives
+  const top3 = end2 + 160;
+  pg.text(40, top3, 1500, 24, bold('Table by table: where each report gets it'), 'fontSize=14;');
+  const mc = [
+    { x: 40, w: 220, head: 'Table' },
+    { x: 270, w: 640, head: 'ih_report' },
+    { x: 920, w: 620, head: 'pbi_report' },
+  ];
+  mc.forEach((c) => pg.text(c.x, top3 + 32, c.w, 20, bold(c.head), 'fontSize=11;'));
+  const matrix = [
+    ['Machine Names EU', 'Asset Management hierarchy and OEE assets. Hull B2 Line and GT4 only. Dept, Area, Product Type from the Machine Names file', 'Machine Names files (Hull, Nottingham, Weinheim), machine names seen in Plan OPT'],
+    ['Plan OPT EU', 'evaluateKPIs hourly per product and order, calendar shifts, design speed from products (Capacity assumed). Targets from Glidepaths', 'Plan OPT export (real Capacity, Planned OpT, OEE Time), targets from Glidepaths, shift names from Shift Patterns'],
+    ['Time Utilisation EU', 'built from our Plan OPT', 'built from the Plan OPT export (the report does the same)'],
+    ['Daily Losses EU', 'downtimeReasons per stop. Loss Units = design speed x duration (assumed). Equipment from Equipment Coding, loss targets from Glidepaths', 'Line Losses export (stops, loss groups), Loss Units from the Volume Loss Correction export, Equipment Coding, Glidepaths'],
+    ['Shift Naming EU', 'distinct names from calendarEvents, mapped with the Shift Patterns file', 'Shift Patterns file (188 raw names to 7 shifts)'],
+    ['Calendar', 'generated (no source)', 'generated (no source)'],
+  ];
+  matrix.forEach((r, i) => {
+    const y = top3 + 58 + i * 64;
+    pg.box(mc[0].x, y, mc[0].w, 56, bold(r[0]), 'neutral', 'verticalAlign=middle;fontSize=10.5;');
+    pg.box(mc[1].x, y, mc[1].w, 56, esc(r[1]), 'sih', 'verticalAlign=middle;fontSize=10;');
+    pg.box(mc[2].x, y, mc[2].w, 56, esc(r[2]), 'pbi', 'verticalAlign=middle;fontSize=10;');
+  });
+  pages.push(pg);
+}
+
 // ---- Page for the tables not created -----------------------------------------------------------
 const nc = new Page('Not created yet');
 nc.text(40, 20, 1500, 30, bold('Power BI tables not created from Insights Hub yet'), 'fontSize=18;');
