@@ -1,13 +1,13 @@
 // Deletes every object under one lake folder (recursive), one DELETE per file.
-// DESTRUCTIVE. Only runs for a folder path of at least two parts, ending in "/".
+// DESTRUCTIVE. Only runs for a folder path of a non-empty name, ending in "/".
 // Usage: node scripts/datalake-delete-tree.js reports/static-reference/
 import { getToken } from './lib-ih.js';
 import { lakeBase, listObjects } from './lib-datalake.js';
 
 const root = process.argv[2];
-if (!root || !root.endsWith('/') || root.split('/').length < 3
+if (!root || !root.endsWith('/') || root.split("/").length < 2
   || /^data\/ten=/.test(root)) {
-  console.error('usage: <folder path with at least 2 parts and a trailing />');
+  console.error('usage: <folder path with non-empty name and a trailing />');
   process.exit(2);
 }
 const { token } = await getToken();

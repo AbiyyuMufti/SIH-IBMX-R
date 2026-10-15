@@ -664,6 +664,107 @@ NOT_CREATED.forEach((t, i) => {
     'verticalAlign=top;spacingTop=6;fontSize=10.5;',
   );
 }
+// Table separation for eu_report (decided 2026-10-15): the finished tables, the reference files,
+// the monthly Provideam exports and the staging tables of the model. Panel right of the priority panel.
+{
+  const SX = 2400;
+  const W = 900;
+  const rows = (top, head, list, cw, level) => {
+    let x = SX;
+    head.forEach((h, i) => {
+      overview.text(x, top, cw[i], 20, bold(h), 'fontSize=11;');
+      x += cw[i] + 6;
+    });
+    list.forEach((r, j) => {
+      let cx = SX;
+      r.forEach((v, i) => {
+        overview.box(cx, top + 24 + j * 46, cw[i], 40, esc(v), r.level || level, 'verticalAlign=middle;fontSize=10;');
+        cx += cw[i] + 6;
+      });
+    });
+    return top + 24 + list.length * 46;
+  };
+  overview.text(SX, 170, W, 24, bold('Table separation for eu_report (decided 2026-10-15)'), 'fontSize=14;');
+  overview.box(
+    SX,
+    200,
+    W,
+    104,
+    [
+      bold('Folders in the data lake: eu_report/ih_report, eu_report/pbi_report, eu_report/reference'),
+      esc('ih_report = end goal: Insights Hub data enriched with the reference files.'),
+      esc('pbi_report = the data we have now (Provideam exports), so Reckitt can see the dashboard with their own data.'),
+      esc('Both hold the same 6 tables in the Power BI shape. Only the source differs. The old reports folder stays.'),
+    ].join('<br>'),
+    'neutral',
+    'verticalAlign=top;spacingTop=6;fontSize=10.5;',
+  );
+
+  overview.text(SX, 320, W, 22, bold('1. Finished tables (6): the only tables the VFC writes'), 'fontSize=12;');
+  const fin = [
+    ['Machine Names EU', 'Insights Hub assets', 'Machine Names files (site, area, line)'],
+    ['Plan OPT EU', 'Insights Hub KPIs, orders', 'Glidepaths (OEE, PDT, UPDT Target), Shift Patterns'],
+    ['Time Utilisation EU', 'Built from Plan OPT', 'none'],
+    ['Daily Losses EU', 'Insights Hub losses', 'Glidepaths (Value, Target), Shift Patterns, Equipment Coding'],
+    ['Shift Naming EU', 'Shift Patterns file', 'the 7 shift values'],
+    ['Calendar', 'Generated', 'none'],
+  ];
+  let y = rows(346, ['Table', 'Main source', 'Filled from reference'], fin, [200, 200, 482], 'ok');
+
+  y += 16;
+  overview.text(SX, y, W, 22, bold('2. Reference files (eu_report/reference): static or slow growing, read by the VFC'), 'fontSize=12;');
+  const ref = [
+    ['Format List EU', 'Hull, Mira, Weinheim (no Nottingham)', 'Product key lookup. Can be its own table for the By Format page'],
+    ['Glidepaths', 'Hull, Mira, Nottingham, Weinheim', 'Monthly targets: Plan OPT targets, Daily Losses Value and Target'],
+    ['Shift Patterns', 'one regional file', 'Raw shift name to 7 values. Missing: Yellow, Shift 1, Shift 2'],
+    ['Machine Names', 'Hull, Nottingham, Weinheim (no Mira)', 'Machine Names EU'],
+    ['Equipment Coding', 'Hull, Nottingham, Weinheim (no Mira)', 'Daily Losses Equipment (not used on the EU-Level Overview page)'],
+  ];
+  y = rows(y + 26, ['File', 'Sites we have', 'Fills'], ref, [200, 260, 422], 'file');
+
+  y += 16;
+  overview.text(SX, y, W, 22, bold('3. Monthly Provideam exports: data, not reference (source of pbi_report)'), 'fontSize=12;');
+  const prov = [
+    ['Plan OPT, Line Losses', 'one file per month + current month', 'pbi_report: Plan OPT EU, Daily Losses EU, Time Utilisation EU'],
+    ['Volume Loss Correction', 'one file per month + current month', 'pbi_report: Loss Units. ih_report: design speed x duration (assumption)'],
+    ['Run Rates', 'one file per month + current month', 'Not used (Run Rates EU is skipped)'],
+  ];
+  y = rows(y + 26, ['Export', 'Files', 'Used for'], prov, [200, 260, 422], 'assumed');
+
+  y += 16;
+  overview.text(SX, y, W, 22, bold('4. Staging tables of the Power BI model: never stored in the lake'), 'fontSize=12;');
+  const stg = [
+    ['OEE / PDT / UPDT Targets EU, Targets Losses EU', 'Logic in the VFC: unpivot Glidepaths, join machine + month', 'Reference file'],
+    ['Targets Volume H, M, N, W', 'Logic in the VFC: capacity per machine and day from Plan OPT', 'Computed'],
+    ['Shift Naming Provideam, Shift Naming M', 'Logic in the VFC: lookup in Shift Patterns', 'Reference file'],
+    ['Equipment Coding H, N, W', 'Logic in the VFC: lookup machine + loss description', 'Reference file'],
+    ['Volume Loss Correction H, N, W', 'Logic in the VFC: pbi_report reads the export, ih_report computes', 'Export or computed'],
+    ['Machine Names, Plan OPT, Daily Line Losses, Time Utilisation N, H, W, M', 'Not needed: one table for all sites', '-', 'none'],
+    ['Plan OPT Provideam, Daily Losses Provideam', 'Not needed: only append N, H, W', '-', 'none'],
+    ['Plan OPT N, Daily Line Losses N (in the lineage)', 'Not needed: Nottingham slice of the EU table', '-', 'none'],
+    ['Run Rates EU, Volume CoV EU', 'Not needed: no visual reads them', '-', 'none'],
+  ].map((r) => {
+    const level = r[3];
+    const out = r.slice(0, 3);
+    if (level) {
+      out.level = level;
+    }
+    return out;
+  });
+  y = rows(y + 26, ['Staging table', 'What happens to it', 'Input'], stg, [330, 400, 152], 'neutral');
+  overview.box(
+    SX,
+    y + 10,
+    W,
+    70,
+    [
+      bold('Rule'),
+      esc('Staging tables live only in the VFC memory during a run. No staging table is needed to check a run: the log says which rows found no match. One can be stored later for a single step if a problem needs it.'),
+    ].join('<br>'),
+    'neutral',
+    'verticalAlign=top;spacingTop=6;fontSize=10.5;',
+  );
+}
 pages.push(overview);
 
 // ---- One page per table ------------------------------------------------------------------
