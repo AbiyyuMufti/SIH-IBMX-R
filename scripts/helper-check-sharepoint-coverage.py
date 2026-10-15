@@ -1,4 +1,4 @@
-"""Read-only. Completeness check of the local sharepoint/source folder.
+"""Read-only. Completeness check of the local sharepoint/source_original folder.
 For each type (plan_opt, line_losses, volume_loss_correction) and site it reads the
 real dates inside every file (not the file names), then reports: days covered,
 first and last day, missing days (gaps) from the start day to the last day found,
@@ -14,7 +14,7 @@ from collections import defaultdict
 from datetime import date, timedelta
 
 START = sys.argv[1] if len(sys.argv) > 1 else "2025-01-01"
-ROOT = "sharepoint/source"
+ROOT = "sharepoint/source_original"
 TYPES = {
     "plan_opt": "YYYY-MM-DD",
     "line_losses": "ShiftStartDate",

@@ -56,7 +56,7 @@ def mins(c):
 F = {}
 ours_plan = pl.read_parquet("parquet/pbi_plan_opt.parquet")
 ours_loss = pl.read_parquet("parquet/pbi_daily_losses.parquet")
-hull_plan = concat("source/plan_opt/site=Hull/*.csv").filter(pl.col("YYYY-MM-DD").str.contains(r"^\d{4}-"))
+hull_plan = concat("source_original/plan_opt/site=Hull/*.csv").filter(pl.col("YYYY-MM-DD").str.contains(r"^\d{4}-"))
 
 # ---- Glidepaths ----
 g = concat("reference/glidepaths/*/*.csv")
@@ -146,8 +146,8 @@ F["shift"] = {
 # ---- Equipment coding ----
 eq = {}
 for site, ecp, llp in (
-    ("Nottingham", "reference/equipment_coding/site=Nottingham/*.csv", "source/line_losses/site=Nottingham/*.csv"),
-    ("Weinheim", "reference/equipment_coding/site=Weinheim/*.csv", "source/line_losses/site=Weinheim/*.csv"),
+    ("Nottingham", "reference/equipment_coding/site=Nottingham/*.csv", "source_original/line_losses/site=Nottingham/*.csv"),
+    ("Weinheim", "reference/equipment_coding/site=Weinheim/*.csv", "source_original/line_losses/site=Weinheim/*.csv"),
 ):
     ec = concat(ecp)
     ll = concat(llp)
@@ -166,7 +166,7 @@ F["equipment"] = eq
 
 # ---- Loss names ----
 names = {}
-for site, key, llp in (("Nottingham", "Nottingham", "source/line_losses/site=Nottingham/*.csv"), ("Weinheim", "Weinheim", "source/line_losses/site=Weinheim/*.csv")):
+for site, key, llp in (("Nottingham", "Nottingham", "source_original/line_losses/site=Nottingham/*.csv"), ("Weinheim", "Weinheim", "source_original/line_losses/site=Weinheim/*.csv")):
     ll = concat(llp)
     buckets = set(g.filter(pl.col("Site Name") == key)["OEE Bucket"].to_list())
     same = ll.filter(pl.col("OEELossLvl3SubGroup").is_in(list(buckets))).height
@@ -186,9 +186,9 @@ F["loss_names"] = {
 }
 
 # ---- Loss units rule ----
-vc = concat("source/volume_loss_correction/site=Nottingham/*.csv").filter(pl.col("ShiftStartDate").str.contains(r"^\d{2}/\d{2}/\d{4}"))
+vc = concat("source_original/volume_loss_correction/site=Nottingham/*.csv").filter(pl.col("ShiftStartDate").str.contains(r"^\d{2}/\d{2}/\d{4}"))
 vc = vc.with_columns(m=mins("Time"), u=num("Loss Units")).with_columns(per_min=pl.col("u") / pl.col("m")).filter(pl.col("m") > 5)
-po = concat("source/plan_opt/site=Nottingham/*.csv").filter(pl.col("YYYY-MM-DD").str.contains(r"^\d{4}-"))
+po = concat("source_original/plan_opt/site=Nottingham/*.csv").filter(pl.col("YYYY-MM-DD").str.contains(r"^\d{4}-"))
 po = po.with_columns(cap=num("Capacity"), opt=mins("Planned OpT")).filter(pl.col("opt") > 0)
 day = po.group_by("MachineName", "YYYY-MM-DD").agg(cap=pl.col("cap").sum(), opt=pl.col("opt").sum(), prods=pl.col("PartName").n_unique()).filter(pl.col("prods") == 1)
 day = day.with_columns(

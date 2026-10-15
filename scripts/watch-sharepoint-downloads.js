@@ -1,5 +1,5 @@
 // Watches the download folder and moves each new SharePoint file into the local layout:
-//   sharepoint/<source|reference>/<type>/site=<Site>/<file>
+//   sharepoint/<source_original|reference>/<type>/site=<Site>/<file>
 // Only files that appear after the start are handled (existing files are left alone).
 // A file is moved when it is complete: no .crdownload/.tmp name and the same size
 // on two polls in a row. Chrome's " (1)" suffix is removed.
@@ -42,10 +42,10 @@ function siteOf(name) {
 function typeOf(name) {
   const n = name.toLowerCase().replace(/[\s-]+/g, '_');
   const rules = [
-    [/vol_?corr|volume_?corr|volume_loss_correction|vol_losses|_vc_/, 'source', 'volume_loss_correction'],
-    [/line_losses|daily_losses|_losses_|_ll_|modelog|event_log/, 'source', 'line_losses'],
-    [/run_?rates/, 'source', 'run_rates'],
-    [/opt_volume|current_month_opt|_opt\.csv$|plan_?opt|_opt_/, 'source', 'plan_opt'],
+    [/vol_?corr|volume_?corr|volume_loss_correction|vol_losses|_vc_/, 'source_original', 'volume_loss_correction'],
+    [/line_losses|daily_losses|_losses_|_ll_|modelog|event_log/, 'source_original', 'line_losses'],
+    [/run_?rates/, 'source_original', 'run_rates'],
+    [/opt_volume|current_month_opt|_opt\.csv$|plan_?opt|_opt_/, 'source_original', 'plan_opt'],
     [/equipment/, 'reference', 'equipment_coding'],
     [/machine_?names/, 'reference', 'machine_names'],
     [/glidepath/, 'reference', 'glidepaths'],
@@ -78,7 +78,7 @@ function destOf(name) {
   }
   let file = cleanName(name);
   const hullPattern = /^([a-z]{3}\d{4}-monthly_|current_month_|\d{8}-daily_|(new )?plan opt \d|line_losses_v2|daily_losses|vol_losses|vol_correction|daily_volume_correction)/i;
-  if (!site && group === 'source' && hullPattern.test(name)) {
+  if (!site && group === 'source_original' && hullPattern.test(name)) {
     // Hull exports have no site in the name; the local copies carry "Hull_"
     site = 'Hull';
     file = 'Hull_' + file;
