@@ -85,6 +85,11 @@ check(calendar.length === 14610 && calendar[0].date === '2011-01-01' &&
 const mon = calendar.find((c) => c.date === '2026-10-15');
 check(mon.week_start === '2026-10-12' && mon.week_number === 42 && mon.month === 'October',
   'calendar columns for 2026-10-15 (Thursday): week starts 2026-10-12, week 42');
+// WEEKNUM(date, 2): week 1 holds 1 January, so a late December day can be 53
+const week = (d) => calendar.find((c) => c.date === d).week_number;
+check(week('2011-01-01') === 1 && week('2011-01-03') === 2 && week('2024-12-30') === 53 &&
+  week('2025-01-01') === 1 && week('2050-12-31') === 53,
+  'week number like DAX WEEKNUM(date, 2): 2011-01-01 week 1, 2024-12-30 week 53, 2025-01-01 week 1');
 check(machines.every((m) => Number.isInteger(m.loaded_at)), 'loaded_at is a timestamp number');
 
 // 2. dry run: nothing written, the log says why

@@ -17,7 +17,7 @@
 | Time Utilisation EU | `pbi_time_utilisation` | 4.1 Build plan opt rows | Sums of the plan rows per machine and day, `all_time` = 1440 |
 | Daily Losses EU | `pbi_daily_losses` | 4.2 Build daily loss rows | One row per stop. Local date and time (Europe/London, UK only). Loss group: planned roots from Config = Planned Loss, default reason `Unplanned Downtime` = Not Logged, else Unplanned Loss. Sub group = reason top level (stand-in), equipment = second level. Null: loss units, product, batch, comment text, targets, volume total |
 | Shift Naming EU | `pbi_shift_naming` | 4.3 Build table messages | Distinct shift names of the calendars of the site |
-| Calendar | `pbi_calendar` | 1.3 Build calendar rows | Dates from `calendarStart` to `calendarEnd` (settings node), Monday week start, ISO week number |
+| Calendar | `pbi_calendar` | 1.3 Build calendar rows | Dates from `calendarStart` to `calendarEnd` (settings node), Monday week start, week number as DAX `WEEKNUM(date, 2)` (week 1 holds 1 January; changed 2026-10-15, it was the ISO week) |
 | OEE / PDT / UPDT Targets, Targets Losses | none | | Missing: Reckitt Glidepaths files |
 
 ## Rules and limits

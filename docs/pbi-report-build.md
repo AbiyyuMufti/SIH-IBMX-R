@@ -17,7 +17,7 @@
 |---|---|---|---|
 | `pbi_machine_names` | `eu_report/reference/machine_names/site=<Site>/*.csv` (newest .csv of the folder) | Hull: no `GT4 - Auto`, Dept `Dries Pack` or `Liquids Pack`. Nottingham: Area `SD Packing` or `Strepsils Packing`. Weinheim: all rows. `unique_machine_name` = machine + `-` + site. One file for all sites | `pbi_machine_names/pbi_machine_names.parquet` |
 | `pbi_shift_naming` | `eu_report/reference/shift_naming/site=All/*.csv` | the distinct `Shift` values (Afternoon, Blue, Day, Gold, Green, Night, Red) | `pbi_shift_naming/pbi_shift_naming.parquet` |
-| `pbi_calendar` | generated | 2011-01-01 to 2050-12-31 (as the report), 14610 rows, Monday week start, ISO week number | `pbi_calendar/pbi_calendar.parquet` |
+| `pbi_calendar` | generated | 2011-01-01 to 2050-12-31 (as the report), 14610 rows, Monday week start, week number as DAX `WEEKNUM(date, 2)` (week 1 holds 1 January, not the ISO week) | `pbi_calendar/pbi_calendar.parquet` |
 
 A rerun replaces the file. A site without a file, or a file without the expected columns, makes the table fail: nothing is written and the log says which site (no half tables).
 
@@ -33,3 +33,8 @@ A rerun replaces the file. A site without a file, or a file without the expected
 
 ## Test runner
 `scripts/lib-vfc-runner.js` got the `csv` node, the `list objects` node and the option `startPayload` (the payload of the first message). The csv parser handles quoted fields and any line end; values stay text.
+
+## First VFC run and content check (2026-10-15)
+- Dry run in the VFC: calendar 14610 rows, shift naming 7 rows, machine names 60 rows (Hull 29, Nottingham 25, Weinheim 6). So `msg.parts` survives `list objects`, `read object` and `csv` (the join over the sites worked) and the key fix works.
+- Write run (user, DRY_RUN false): three files in `eu_report/pbi_report/report/`. Downloaded and read back with pandas: machine names 60 rows, no nulls, identical to the report's own Machine Names EU for the three sites, unique key unique, one `loaded_at` per run; shift names the 7 values; calendar 14610 dates 2011-01-01 to 2050-12-31, no duplicate date.
+- Found: `week_number` was the ISO week, the report uses DAX `WEEKNUM(date, 2)` (week 1 holds 1 January, so 2011-01-01 is week 1 and 2024-12-30 is week 53). Fixed in `scripts/vfc/p1-build-calendar.js` (shared with the Insights Hub reference flow and the old Power BI conversion flow, rebuilt and tested); checked against an independent calculation for all 14610 dates. The calendar file in the lake from the first write run still has ISO weeks: run the calendar again.

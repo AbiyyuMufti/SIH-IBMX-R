@@ -1,6 +1,6 @@
-// Builds the pbi_calendar table: one row per date, Monday week start.
-// In: any message after the settings node. Out 1: msg.payload = the rows
-// (topic pbi_calendar). Out 2: a log line. Dry run sends only the log line.
+// Builds the pbi_calendar table: one row per date, Monday week start, week
+// number like the report (DAX WEEKNUM(date, 2): week 1 holds 1 January).
+// Out 1: msg.payload = the rows (topic pbi_calendar). Out 2: a log line.
 var DAY_MS = 86400000;
 var cfg = flow.get('cfg');
 var MONTHS = [
@@ -22,12 +22,14 @@ function pad(n) {
   return n < 10 ? '0' + n : String(n);
 }
 
-// ISO week number (Monday start, week 1 holds the first Thursday).
-function isoWeek(ms) {
-  var d = new Date(ms);
-  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
-  var yearStart = Date.UTC(d.getUTCFullYear(), 0, 1);
-  return Math.ceil(((d.getTime() - yearStart) / DAY_MS + 1) / 7);
+// Week number as DAX WEEKNUM(date, 2): weeks start on Monday and the week
+// that holds 1 January of the year is week 1 (not the ISO week number).
+function weekNumber(ms) {
+  var year = new Date(ms).getUTCFullYear();
+  var jan1 = Date.UTC(year, 0, 1);
+  var jan1Offset = (new Date(jan1).getUTCDay() + 6) % 7;
+  var dayOfYear = Math.round((ms - jan1) / DAY_MS);
+  return Math.floor((dayOfYear + jan1Offset) / 7) + 1;
 }
 
 var rows = [];
@@ -49,7 +51,7 @@ for (var t = start; t <= end; t += DAY_MS) {
     month_year_number: pad(month + 1) + ' ' + String(year).slice(2),
     quarter: 'QTR' + quarter,
     quarter_number: quarter,
-    week_number: isoWeek(t),
+    week_number: weekNumber(t),
     week_start: new Date(t - mondayOffset * DAY_MS).toISOString().slice(0, 10)
   });
 }

@@ -128,7 +128,7 @@ function buildFlow() {
       ])
     ]);
   lane(r++, 'pbi_calendar',
-    'generated, no file: one row per date from CALENDAR_START to CALENDAR_END in 1.1 (2011-01-01 to 2050-12-31 as in the report, 14610 rows), Monday week start, ISO week number. Dates are text YYYY-MM-DD.',
+    'generated, no file: one row per date from CALENDAR_START to CALENDAR_END in 1.1 (2011-01-01 to 2050-12-31 as in the report, 14610 rows), Monday week start, week number as DAX WEEKNUM(date, 2). Dates are text YYYY-MM-DD.',
     [
       linkInStep('CALENDAR'),
       fn('calFn', 'Build calendar rows', 'p1-build-calendar.js',
