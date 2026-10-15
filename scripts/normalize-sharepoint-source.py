@@ -21,6 +21,9 @@ Rules
 - A column `SiteName` is added first.
 - A business day found in several raw files is taken from ONE file: the one
   with the most rows for that day, tie: the later file name (daily files carry the publish date). Differences are listed.
+- Text fields keep their spaces (the report keys on the exact text, for
+  example ' Strepsils Packing' and 'Bosch Capsulator '); only the enclosing
+  quotes are removed. Dates, numbers and times are trimmed when parsed.
 - Output: UTF-8 without BOM, comma, LF.
 
 Checks printed at the end: raw rows = kept + duplicates + invalid; the `Total:`
@@ -138,7 +141,9 @@ def normalize_row(site, header, cells, date_col, ts_cols, num_cols):
         return None, "bad date"
     out = {}
     for h in header:
-        v = rec[h].strip().strip('"')
+        # Text is kept exactly as exported (the report matches names with
+        # their leading and trailing spaces); only enclosing quotes go.
+        v = rec[h].strip('"')
         if h == date_col:
             v = day.strftime("%Y-%m-%d")
         elif h in ts_cols:
