@@ -3,6 +3,7 @@
 // data lake (eu_report/reference and eu_report/pbi_report/source).
 // Step 1: pbi_machine_names, pbi_shift_naming, pbi_calendar.
 // Step 2: pbi_plan_opt and pbi_time_utilisation, one file per site and month.
+// Step 3: pbi_daily_losses, one file per site and month.
 // Usage: node scripts/build-vfc-pbi-report-flow.js
 // Function code: scripts/vfc/b*.js (this flow), r5/r6/p1 (shared with the
 // reference flow). Do not edit the JSON. No loops, left to right, one lane
@@ -15,12 +16,22 @@ import {
   addLogLanes, applyLayout, compactLanes, measureSpacing
 } from './lib-flow-builder.js';
 import {
-  machineSchema, shiftSchema, calendarSchema, planSchema, utilSchema
+  machineSchema, shiftSchema, calendarSchema, planSchema, utilSchema,
+  lossSchema
 } from './lib-pbi-schemas.js';
+import { S } from './lib-flow-builder.js';
 
 const TABLES = [
   'pbi_machine_names', 'pbi_shift_naming', 'pbi_calendar',
-  'pbi_plan_opt', 'pbi_time_utilisation'
+  'pbi_plan_opt', 'pbi_time_utilisation', 'pbi_daily_losses'
+];
+// The loss table of the report has more columns than the Insights Hub one:
+// the comment text, the raw shift name and two helper keys.
+const lossReportSchema = [
+  ...lossSchema.filter(([name]) => name !== 'loaded_at'),
+  ['comment', S], ['merged', S], ['shift_name_copy', S],
+  ['volume_day_key', S],
+  ...lossSchema.filter(([name]) => name === 'loaded_at')
 ];
 const FILE = 'vfc-pbi-report.json';
 
@@ -95,7 +106,7 @@ function buildFlow() {
       [linkOut('MACHINES', col(3), rowY(r) - 60)],
       [linkOut('SHIFTS', col(3), rowY(r) - 20)],
       [linkOut('CALENDAR', col(3), rowY(r) + 20)],
-      [linkOut('PLAN', col(3), rowY(r) + 60)]
+      [linkOut('SITE', col(3), rowY(r) + 60)]
     ]
   });
   r++;
@@ -148,10 +159,10 @@ function buildFlow() {
         ['next', 'LOG']),
       ...tableEnd('pbi_calendar', calendarSchema)
     ]);
-  lane(r++, 'PLAN OPT: GLIDEPATHS',
-    'one message per site: the folder eu_report/reference/glidepaths/site=<Site>/ is listed, the newest .csv is read and parsed, and the target lookup of the site is stored in flow context: machine-site and month (01/MM/YYYY) give the OEE target (bucket "% OEE"), the PDT target ("Planned Downtime (Total)") and the UPDT target ("Unplanned Downtime (Total)"), as the three target queries of the report do after the unpivot. A site without a file stops here and the log says so.',
+  lane(r++, 'SITE SETUP: GLIDEPATHS',
+    'one message per site (plan OPT, time utilisation and daily losses share this setup): the folder eu_report/reference/glidepaths/site=<Site>/ is listed, the newest .csv is read and parsed, and the target lookup of the site is stored in flow context: machine-site and month (01/MM/YYYY) give the OEE target (bucket "% OEE"), the PDT target ("Planned Downtime (Total)") and the UPDT target ("Unplanned Downtime (Total)"), as the three target queries of the report do after the unpivot. A site without a file stops here and the log says so.',
     [
-      linkInStep('PLAN'),
+      linkInStep('SITE'),
       split('plSplit'),
       fn('plGlideFolder', 'Set glidepaths folder', 'b5-glide-folder.js',
         ['next']),
@@ -164,8 +175,8 @@ function buildFlow() {
         ['next', 'PLAN FAILED']),
       end('PLAN SHIFTS')
     ]);
-  lane(r++, 'PLAN OPT: SHIFT PATTERNS',
-    'the Shift Patterns file (eu_report/reference/shift_naming/site=All/) is listed, read and parsed, and the lookup raw shift name to Shift is stored in flow context (the report joins ShiftName to the Shift Type column and keeps the Shift; an unknown name gives an empty shift).',
+  lane(r++, 'SITE SETUP: SHIFT PATTERNS',
+    'the Shift Patterns file (eu_report/reference/shift_naming/site=All/) is listed, read and parsed, and the lookup raw shift name to Shift is stored in flow context (the report joins ShiftName to the Shift Type column and keeps the Shift; an unknown name gives an empty shift). Then the site goes to the plan OPT months and/or the daily losses, as the job asks.',
     [
       linkInStep('PLAN SHIFTS'),
       fn('plShiftFolder', 'Set shift folder', 'b5-plan-shift-folder.js',
@@ -177,7 +188,8 @@ function buildFlow() {
       csvNode('plShiftCsv'),
       fn('plShiftLookup', 'Build shift lookup', 'b5-shift-lookup.js',
         ['next', 'PLAN FAILED']),
-      end('PLAN MONTHS')
+      fn('siteRoute', 'Route the site', 'b7-route-site.js',
+        ['PLAN MONTHS', 'LOSS EQUIP'], {}, true)
     ]);
   lane(r++, 'PLAN OPT: MONTHS',
     'the month files of the site (eu_report/pbi_report/source/plan_opt/site=<Site>/plan_opt_YYYY-MM.csv) are listed and the months of the job that exist are chosen (a missing month is logged and skipped: a read node would stop on a missing file). One message per month, one per second.',
@@ -218,8 +230,89 @@ function buildFlow() {
         { __TABLE__: 'pbi_time_utilisation' }),
       ...monthEnd('pbi_time_utilisation', utilSchema)
     ]);
-  lane(r++, 'PLAN OPT: FAILED',
-    'a Glidepaths or Shift Patterns file that is missing or empty: one log line, nothing is built for that site.',
+  lane(r++, 'LOSSES: EQUIPMENT',
+    'daily losses only: the Equipment Coding file of the site (eu_report/reference/equipment_coding/site=<Site>/) is read and the lookup "machine + loss description" to equipment is stored in flow context (an empty equipment is "Unclassed", as in the report queries). Weinheim has no Merged Unique Identifier column: the key is built from machine and description.',
+    [
+      linkInStep('LOSS EQUIP'),
+      fn('lsEquipFolder', 'Set equipment folder', 'b7-set-folder.js',
+        ['next'], { __TYPE__: 'equipment_coding', __ROOT__: 'referenceFolder' }),
+      listNode('lsEquipList'),
+      fn('lsEquipPick', 'Pick the file', 'b3-pick-file.js',
+        ['next', 'PLAN FAILED']),
+      readStep('lsEquipRead', 'Read Equipment Coding file'),
+      csvNode('lsEquipCsv'),
+      fn('lsEquipLookup', 'Build equipment lookup', 'b7-equip-lookup.js',
+        ['next', 'PLAN FAILED']),
+      end('LOSS HAVE')
+    ]);
+  lane(r++, 'LOSSES: MONTHS',
+    'the month files of three types are listed for the site (volume loss correction, plan OPT, line losses) and the months that exist are stored (an optional type with a missing month is skipped, a read node would stop on it). The months of the job that have a line loss file are chosen: one message per month, one per second.',
+    [
+      linkInStep('LOSS HAVE'),
+      fn('lsVcFolder', 'Set correction folder', 'b7-set-folder.js', ['next'],
+        { __TYPE__: 'volume_loss_correction', __ROOT__: 'sourceFolder' }),
+      listNode('lsVcList'),
+      fn('lsVcStore', 'Store correction months', 'b7-store-months.js',
+        ['next']),
+      fn('lsPlanFolder', 'Set plan OPT folder', 'b5-plan-folder.js', ['next']),
+      listNode('lsPlanList'),
+      fn('lsPlanStore', 'Store plan OPT months', 'b7-store-months.js',
+        ['next']),
+      fn('lsLossFolder', 'Set line loss folder', 'b7-set-folder.js', ['next'],
+        { __TYPE__: 'line_losses', __ROOT__: 'sourceFolder' }),
+      listNode('lsLossList'),
+      fn('lsChoose', 'Choose months', 'b5-choose-months.js',
+        ['next', 'LOG']),
+      split('lsMonthSplit'),
+      delay('lsMonthDelay', 'One month per second'),
+      end('LOSS VC')
+    ]);
+  lane(r++, 'LOSSES: CORRECTION',
+    'one month of one site: the volume loss correction file of the month (loss units and time per date, machine, group, subgroup and description, text replacements of the site as in the report) is read and a lookup is stored in flow context. A month without a file goes on with an empty lookup (no loss units).',
+    [
+      linkInStep('LOSS VC'),
+      fn('lsMonth', 'Set month', 'b5-month-file.js', ['next']),
+      fn('lsVcFile', 'Set correction file', 'b7-month-file.js',
+        ['next', 'LOSS CAP'],
+        { __TYPE__: 'volume_loss_correction', __KEY__: 'vc', __OPTIONAL__: 'true' }),
+      readStep('lsVcRead', 'Read correction file'),
+      csvNode('lsVcCsv'),
+      fn('lsVcLookup', 'Build correction lookup', 'b7-vol-lookup.js',
+        ['next']),
+      end('LOSS CAP')
+    ]);
+  lane(r++, 'LOSSES: VOLUME TOTALS',
+    'the plan OPT file of the month gives the volume total per machine and day (the sum of Capacity, the Targets Volume query of the report). A month without a plan file goes on with an empty lookup.',
+    [
+      linkInStep('LOSS CAP'),
+      fn('lsPlanFile', 'Set plan OPT file', 'b7-month-file.js',
+        ['next', 'LOSS FILE'],
+        { __TYPE__: 'plan_opt', __KEY__: 'cap', __OPTIONAL__: 'true' }),
+      readStep('lsPlanRead', 'Read plan OPT file'),
+      csvNode('lsPlanCsv'),
+      fn('lsPlanLookup', 'Build volume totals', 'b7-cap-lookup.js', ['next']),
+      end('LOSS FILE')
+    ]);
+  lane(r++, 'LOSSES: ROWS',
+    'the line loss file of the month is read and the rows are built with the steps of the report queries of the site (duplicate stops, group and machine filters, shift name, volume key and loss units from the correction, equipment, text replacements of the subgroup, loss target key and value from Glidepaths, volume total). Out 2 is a check line: rows read, kept, filtered, without loss units, equipment or target.',
+    [
+      linkInStep('LOSS FILE'),
+      fn('lsLossFile', 'Set line loss file', 'b7-loss-file.js', ['next']),
+      readStep('lsLossRead', 'Read line loss file'),
+      csvNode('lsLossCsv'),
+      fn('lsRows', 'Build loss rows', 'b7-loss-rows.js',
+        ['LOSS TABLE', 'LOG'], {}, true)
+    ]);
+  lane(r++, 'pbi_daily_losses',
+    'decide (nothing is written in dry-run mode or for an empty month), then parquet, the month path eu_report/pbi_report/report/pbi_daily_losses/site=<Site>/pbi_daily_losses_<YYYY-MM>.parquet and write object. A rerun replaces the month.',
+    [
+      linkInStep('LOSS TABLE'),
+      fn('pbi_daily_losses_decide', 'Decide pbi_daily_losses', 'r5-decide.js',
+        ['next', 'LOG'], { __TABLE__: 'pbi_daily_losses' }),
+      ...monthEnd('pbi_daily_losses', lossReportSchema)
+    ]);
+  lane(r++, 'SITE SETUP: FAILED',
+    'a Glidepaths, Shift Patterns or Equipment Coding file that is missing or empty: one log line, nothing is built for that site.',
     [
       linkInStep('PLAN FAILED'),
       fn('plFailed', 'Describe failure', 'b5-pick-failed.js', ['LOG'])

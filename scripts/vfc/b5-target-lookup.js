@@ -1,7 +1,7 @@
 // Builds the target lookup of one site from its Glidepaths file.
-// In: msg.payload = parsed rows (Site Name, Line, OEE Bucket, one column per
-// month 01/MM/YYYY). Stores flow context targets_<site>: machine-site ->
-// month text -> {oee, pdt, updt}. Out 2: a failed item when the file is empty.
+// In: msg.payload = parsed rows (Site Name, Line, OEE Bucket, month columns).
+// Stores flow context targets_<site>: machine-site -> month 01/MM/YYYY ->
+// {oee, pdt, updt, b: {bucket: value}}. Out 2: a failed item for an empty file.
 var BUCKETS = {
   '% OEE': 'oee',
   'Planned Downtime (Total)': 'pdt',
@@ -28,9 +28,6 @@ var lookup = {};
 var cells = 0;
 rows.forEach(function (row) {
   var field = BUCKETS[row['OEE Bucket']];
-  if (!field) {
-    return;
-  }
   var key = row.Line + '-' + row['Site Name'];
   Object.keys(row).forEach(function (column) {
     var value = String(row[column]).trim();
@@ -43,7 +40,11 @@ rows.forEach(function (row) {
     }
     lookup[key] = lookup[key] || {};
     lookup[key][column] = lookup[key][column] || {};
-    lookup[key][column][field] = number;
+    lookup[key][column].b = lookup[key][column].b || {};
+    lookup[key][column].b[row['OEE Bucket']] = number;
+    if (field) {
+      lookup[key][column][field] = number;
+    }
     cells++;
   });
 });

@@ -1,9 +1,11 @@
 // Offline test of flows/vfc-pbi-report.json (step 1: machine names, shift
-// names, calendar; step 2: plan OPT and time utilisation). The data lake is a map in memory with small CSV files.
+// names, calendar; step 2: plan OPT and time utilisation; step 3: daily losses). The data lake is a map in memory with small CSV files.
 // Usage: node scripts/test-vfc-pbi-report.js platform=xcelerator
 //   node scripts/test-vfc-pbi-report.js platform=xcelerator real out=<file>
 //   node scripts/test-vfc-pbi-report.js platform=xcelerator real plan dir=<dir>
 //   (plan: also the real plan OPT month files, writes plan.json and util.json)
+//   node scripts/test-vfc-pbi-report.js platform=xcelerator real loss from=2026-08 to=2026-09 dir=<dir>
+//   (loss: the real daily losses of those months, writes loss.json)
 //   real: reads the real files of sharepoint/reference (local, git-ignored)
 //   and writes the machine rows to <file> for a comparison with the report.
 import { readFileSync, readdirSync, writeFileSync, existsSync } from 'node:fs';
@@ -239,7 +241,7 @@ check(JSON.stringify(tableWrites(stats).sort()) === JSON.stringify([
   outPath('pbi_plan_opt', 'Hull', '2026-09'), outPath('pbi_plan_opt', 'Hull', '2026-10'),
   outPath('pbi_time_utilisation', 'Hull', '2026-09'), outPath('pbi_time_utilisation', 'Hull', '2026-10')]),
   'months: 2026-09 and 2026-10 built, 2026-08 has no file');
-check(/no plan OPT file for 2026-08, skipped/.test(logText(stats)), 'months: the missing month is logged');
+check(/no plan_opt file for 2026-08, skipped/.test(logText(stats)), 'months: the missing month is logged');
 const oct = rowsOf(stats, PLAN).find((r) => r.date === '2026-10-03');
 check(oct.oee_target === null && oct.pdt_target === 13 && oct.updt_target === null,
   'targets: an empty glidepath cell gives an empty target, a filled one is kept');
@@ -272,6 +274,144 @@ stats = await run({ tables: STEP2, sites: ['Hull'], from: '2026-09', to: '2026-0
 check(tableWrites(stats).length === 2, 'plan: keys with the tenant folder are read');
 stats = await run({ tables: STEP2, from: '2026-10', to: '2026-09' });
 check(tableWrites(stats).length === 0 && stats.errors.some((e) => /from and to/.test(e)), 'from after to: error, nothing written');
+
+// ---- step 3: daily losses (synthetic month files) ----
+const LOSS_HEAD = 'SiteName,StartTime,MachineName,PartName,ShiftName,OEELossLvl3Group,OEELossLvl3SubGroup,OEELossLvl3Desc,Duration,ShiftStartDate,Comment';
+const lossRow = (site, start, machine, part, shift, group, sub, desc, duration, day, comment) =>
+  [site, start, machine, part, shift, group, sub, desc, duration, day, comment]
+    .map((v) => (/[",]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : v)).join(',');
+const lossLake = () => {
+  const lake = planLake();
+  lake.set(`${SRC}/line_losses/site=Hull/line_losses_2026-09.csv`, [
+    LOSS_HEAD,
+    lossRow('Hull', '2026-09-01 08:15:00', 'B2 Auto', 'NFC 12 X 100ML ', 'FriDay', 'Unplanned Loss', 'Breakdown - Mechanical', 'Capper', '00:30:45', '2026-09-01', 'jam, cleared'),
+    lossRow('Hull', '2026-09-01 08:15:00', 'B2 Auto', 'NFC 12 X 100ML ', 'FriDay', 'Unplanned Loss', 'Breakdown - Mechanical', 'Capper', '00:30:45', '2026-09-01', 'same start, dropped'),
+    lossRow('Hull', '2026-09-01 10:00:00', 'B2 Auto', 'NFC 12 X 100ML ', 'FriDay', 'Planned Loss', 'Meals & Breaks', 'Breaks', '01:00:00', '2026-09-01', ''),
+    lossRow('Hull', '2026-09-01 11:00:00', 'B2 Auto', 'NFC 12 X 100ML ', 'FriDay', 'Micro Stoppage', 'Other', 'Tiny', '00:01:00', '2026-09-01', ''),
+    lossRow('Hull', '2026-09-01 11:30:00', '4 Tonne', 'Bulk', 'FriDay', 'Unplanned Loss', 'Other', 'X', '00:10:00', '2026-09-01', ''),
+    lossRow('Hull', '2026-09-01 11:40:00', 'B1 - Auto', 'Bulk', 'FriDay', 'Unplanned Loss', 'Other', 'X', '00:10:00', '2026-09-01', ''),
+    lossRow('Hull', '2026-09-01 12:00:00', 'B2 Auto', 'NFC 12 X 100ML ', 'Mystery Shift', 'Unplanned Loss', 'Minor stop', 'Jam', '00:05:00', '2026-09-01', ''),
+    lossRow('Hull', '2026-09-02 07:00:00', 'B2 Auto', 'NFC 12 X 100ML ', 'FriDay', 'Unplanned Loss', 'Lack of resources', 'No staff', '00:20:00', '2026-09-02', ''),
+    ''
+  ].join('\n'));
+  lake.set(`${SRC}/volume_loss_correction/site=Hull/volume_loss_correction_2026-09.csv`, [
+    'ShiftStartDate,MachineName,OEELossLvl3Group,OEELossLvl3SubGroup,OEELossLvl3Desc,Time,Loss Units',
+    'Hull,x',
+    ''
+  ].join('\n').replace('Hull,x\n', '2026-09-01,B2 Auto,Unplanned Loss,Breakdown,Capper,03:00:00,9000.40\n2026-09-01,B2 Auto,Planned Loss,Meals & Breaks,Breaks,02:00:00,600.00\n'));
+  lake.set(`${REF}/equipment_coding/site=Hull/Hull_Equipment.csv`, [
+    'MachineName,OEELossLvl3Desc,Merged Unique Identifier,Equipment,Lvl 3 Loss Name',
+    'B2 Auto,Capper,B2 Auto Capper,Capper Head,Capper',
+    'B2 Auto,Breaks,B2 Auto Breaks,,Breaks',
+    'B2 Auto,Jam,B2 Auto Jam,Filler,Jam',
+    'B2 Auto,Jam,B2 Auto Jam,Labeller,Jam',
+    ''
+  ].join('\n'));
+  lake.set(`${REF}/glidepaths/site=Hull/Glidepath Hull.csv`, [
+    '﻿Site Name,Line,OEE Bucket,01/08/2026,01/09/2026,01/10/2026',
+    glide('Hull', 'B2 Auto', '% OEE', ['50.5', '56.1', '']),
+    glide('Hull', 'B2 Auto', 'Planned Downtime (Total)', ['10', '12.5', '13']),
+    glide('Hull', 'B2 Auto', 'Unplanned Downtime (Total)', ['20', '21.5', '']),
+    glide('Hull', 'B2 Auto', 'Breakdown', ['1', '2', '3']),
+    glide('Hull', 'B2 Auto', 'Minor Stops', ['4', '5', '6']),
+    glide('Hull', 'B2 Auto', 'Lack Of Resources', ['7', '8', '9']),
+    ''
+  ].join('\n'));
+  // Nottingham and Weinheim
+  lake.set(`${SRC}/line_losses/site=Nottingham/line_losses_2026-09.csv`, [
+    LOSS_HEAD,
+    lossRow('Nottingham', '2026-09-01 09:00:00', 'S06', 'Lozenge 24', 'MonDay', 'Planned Losses', 'Breaks and Meals', 'Lunch', '00:45:00', '2026-09-01', ''),
+    lossRow('Nottingham', '2026-09-01 09:30:00', 'Bosch', 'X', 'MonDay', 'Unplanned Losses', 'Minor Stop', 'X', '00:05:00', '2026-09-01', ''),
+    ''
+  ].join('\n'));
+  lake.set(`${REF}/equipment_coding/site=Nottingham/Notts_Equipment.csv`, [
+    'MachineName,OEELossLvl3Desc,Merged Unique Identifier,Equipment,Lvl 3 Loss Name', 'S06,Lunch,S06 Lunch,Cooler,Lunch', ''
+  ].join('\n'));
+  lake.set(`${SRC}/line_losses/site=Weinheim/line_losses_2026-09.csv`, [
+    LOSS_HEAD,
+    lossRow('Weinheim', '2026-09-01 07:00:00', 'Line 4', '3011627 SDENT,PURETE,FR', 'MonDay', 'Planned Losses', 'Meals&Breaks', 'Pause', '00:30:00', '2026-09-01', ''),
+    lossRow('Weinheim', '2026-09-01 08:00:00', 'Line 4', '3011627 SDENT,PURETE,FR', 'MonDay', 'Run', 'Run', 'Run', '03:00:00', '2026-09-01', ''),
+    ''
+  ].join('\n'));
+  lake.set(`${REF}/equipment_coding/site=Weinheim/Wein_Equipment_Map.csv`, [
+    'MachineName,OEELossLvl3Desc,Equipment,Lvl 3 Loss Name', 'Line 4,Pause,Packer,Pause', ''
+  ].join('\n'));
+  lake.set(`${REF}/glidepaths/site=Weinheim/Glidepath Wein.csv`, [
+    'Site Name,Line,OEE Bucket,01/09/2026', glide('Weinheim', 'Line 4', 'Breaks / Meals', ['3.5']), ''
+  ].join('\n'));
+  lake.set(`${REF}/glidepaths/site=Nottingham/Glidepath Notts.csv`, [
+    'Site Name,Line,OEE Bucket,01/09/2026', glide('Nottingham', 'S06', '% OEE', ['40']), glide('Nottingham', 'S06', 'Breaks / Meals', ['2']), ''
+  ].join('\n'));
+  return lake;
+};
+const LOSS = 'Write pbi_daily_losses parquet';
+const lossJob = (sites) => ({ tables: ['pbi_daily_losses'], sites, from: '2026-09', to: '2026-09' });
+
+stats = await run(lossJob(['Hull']), { lake: lossLake() });
+check(stats.errors.length === 0, 'losses: no error: ' + stats.errors.join(' | '));
+check(JSON.stringify(tableWrites(stats)) === JSON.stringify([outPath('pbi_daily_losses', 'Hull', '2026-09')]),
+  'losses: one file per site and month: ' + tableWrites(stats).join(', '));
+let loss = rowsOf(stats, LOSS);
+check(loss.length === 5, `losses: 5 rows (duplicate start, Micro Stoppage, B1 - Auto and 4 Tonne are left out; the duplicate equipment key doubles one row): ${loss.length}`);
+const cap = loss.find((r) => r.loss_lvl3_desc === 'Capper');
+check(cap.loss_lvl3_sub_group === 'Breakdown' && cap.breakdown_types === 'Breakdown - Mechanical',
+  'losses: subgroup Breakdown, the raw subgroup kept in breakdown_types: ' + cap.loss_lvl3_sub_group);
+check(cap.duration === 30 && cap.date === '2026-09-01' && cap.time === '08:15:00' && cap.shift_start_date === '2026-09-01',
+  `losses: duration in whole minutes (00:30:45 gives 30), date and time: ${cap.duration} ${cap.date} ${cap.time}`);
+check(Math.abs(cap.loss_units - 9000 * 30 / 180) < 1e-9, 'losses: loss units = correction units (rounded) x duration / correction minutes: ' + cap.loss_units);
+check(cap.equipment === 'Capper Head' && cap.shift_name === 'Day' && cap.shift_name_copy === 'FriDay',
+  'losses: equipment, mapped shift and the raw shift name');
+check(cap.value === 2 && Math.abs(cap.target - 0.02) < 1e-9 && cap.loss_target_key === 'B2 Auto-Hull Breakdown 01/09/2026',
+  'losses: loss target key and value from the Glidepaths bucket, target = value / 100');
+check(cap.volume_total === 2500.5 && cap.volume_day_key === 'B2 Auto 01/09/2026', 'losses: volume total = sum of Capacity of the machine and day');
+check(cap.volume_key === '01/09/2026 B2 Auto Unplanned Loss Breakdown Capper' && cap.merged === 'B2 Auto 01/09/2026 08:15:00',
+  'losses: volume key and merged key as the report builds them: ' + cap.volume_key);
+check(cap.comment === 'jam, cleared' && cap.product_key === 'B2 Auto-Hull NFC 12 X 100ML ' && cap.part_name === 'NFC 12 X 100ML ',
+  'losses: comment text kept, part name kept as exported');
+const brk = loss.find((r) => r.loss_lvl3_desc === 'Breaks');
+check(brk.loss_lvl3_sub_group === 'Breaks / Meals' && brk.equipment === 'Unclassed', 'losses: Meals & Breaks becomes Breaks / Meals, an empty equipment is Unclassed');
+check(Math.abs(brk.loss_units - 600 * 60 / 120) < 1e-9, 'losses: a second correction row: 600 x 60 / 120');
+const minor = loss.filter((r) => r.loss_lvl3_desc === 'Jam');
+check(minor.length === 2 && minor.map((r) => r.equipment).sort().join() === 'Filler,Labeller',
+  'losses: a duplicate key in the equipment file doubles the row, as the report join does: ' + minor.length);
+const minorRow = loss.find((r) => r.loss_lvl3_group === 'Unplanned Loss' && r.time === '12:00:00');
+check(minorRow.loss_lvl3_sub_group === 'Minor Stops' && minorRow.loss_units === null && minorRow.shift_name === null,
+  'losses: Text.Proper and the list give Minor Stops, no correction gives no loss units, an unknown shift is empty');
+const lack = loss.find((r) => r.date === '2026-09-02');
+check(lack.loss_lvl3_sub_group === 'Lack Of Resources' && lack.value === 8, 'losses: Lack of resources becomes Lack Of Resources, target found: ' + lack.loss_lvl3_sub_group);
+check(/CHECK Hull 2026-09: read 8 rows, kept 5/.test(logText(stats)) && /duplicate starts 1/.test(logText(stats)), 'losses: the check log counts rows and duplicates');
+
+stats = await run(lossJob(['Nottingham']), { lake: lossLake() });
+loss = rowsOf(stats, LOSS);
+check(loss.length === 1 && loss[0].machine_name === 'S06', 'Nottingham losses: the machine list drops Bosch: ' + loss.map((r) => r.machine_name));
+check(loss[0].loss_lvl3_group === 'Planned Loss' && loss[0].loss_lvl3_sub_group === 'Breaks / Meals' && loss[0].equipment === 'Cooler',
+  'Nottingham losses: group Planned Losses becomes Planned Loss, Breaks and Meals becomes Breaks / Meals: ' + loss[0].loss_lvl3_sub_group);
+check(loss[0].value === 2 && loss[0].breakdown_types === 'Breaks and Meals', 'Nottingham losses: target by subgroup, raw subgroup in breakdown_types');
+
+stats = await run(lossJob(['Weinheim']), { lake: lossLake() });
+loss = rowsOf(stats, LOSS);
+check(loss.length === 2, 'Weinheim losses: no group filter, the Run row stays: ' + loss.length);
+const wp = loss.find((r) => r.loss_lvl3_desc === 'Pause');
+check(wp.part_name === 'SDENT,PURETE,FR' && wp.breakdown_types === null, 'Weinheim losses: the first 8 characters of the part name are cut, no breakdown types');
+check(wp.loss_lvl3_group === 'Planned Loss' && wp.loss_lvl3_sub_group === 'Breaks / Meals' && wp.equipment === 'Packer' && wp.value === 3.5,
+  'Weinheim losses: Planned Losses and Meals&Breaks mapped, equipment key built from machine and description: ' + wp.loss_lvl3_sub_group);
+
+const noVc = lossLake();
+noVc.delete(`${SRC}/volume_loss_correction/site=Hull/volume_loss_correction_2026-09.csv`);
+noVc.delete(`${SRC}/plan_opt/site=Hull/plan_opt_2026-09.csv`);
+stats = await run(lossJob(['Hull']), { lake: noVc });
+loss = rowsOf(stats, LOSS);
+check(loss.length === 5 && loss.every((r) => r.loss_units === null && r.volume_total === null),
+  'losses: without a correction and a plan OPT file the rows are still built, loss units and volume total empty');
+const noEq = lossLake();
+noEq.delete(`${REF}/equipment_coding/site=Hull/Hull_Equipment.csv`);
+stats = await run(lossJob(['Hull', 'Weinheim']), { lake: noEq });
+check(tableWrites(stats).length === 1 && /FAILED, NOTHING WRITTEN: equipment_coding Hull/.test(logText(stats)),
+  'losses: no equipment file for a site: that site is skipped and logged, the other is built');
+stats = await run(lossJob(['Hull']), { lake: lossLake(), write: false });
+check(tableWrites(stats).length === 0 && /DRY RUN: pbi_daily_losses 5 rows/.test(logText(stats)), 'losses dry run: nothing written');
+stats = await run({ tables: ['pbi_plan_opt', 'pbi_daily_losses'], sites: ['Hull'], from: '2026-09', to: '2026-09' }, { lake: lossLake() });
+check(tableWrites(stats).length === 2, 'plan OPT and losses in one job: both written (the shared setup is run once per site)');
 
 // 7. real files (optional)
 if (process.argv.includes('real')) {
@@ -323,6 +463,45 @@ if (process.argv.includes('real') && process.argv.includes('plan')) {
     const dir = outDir.slice(4);
     writeFileSync(`${dir}/plan.json`, JSON.stringify(rowsOf(real, PLAN)));
     writeFileSync(`${dir}/util.json`, JSON.stringify(rowsOf(real, UTIL)));
+  }
+}
+
+// 7c. real daily losses (optional): `real loss from=2026-08 to=2026-09 dir=<dir>`
+// loads the month files of that range and writes loss.json.
+if (process.argv.includes('real') && process.argv.includes('loss')) {
+  const arg = (name, fallback) => {
+    const a = process.argv.find((x) => x.startsWith(name + '='));
+    return a ? a.slice(name.length + 1) : fallback;
+  };
+  const from = arg('from', '2026-09');
+  const to = arg('to', '2026-09');
+  const sites = arg('sites', 'Hull,Nottingham,Weinheim').split(',');
+  const root = new URL('../sharepoint/', import.meta.url);
+  const lake = new Map();
+  const load = (group, type, filter) => {
+    for (const site of readdirSync(new URL(`${group}/${type}/`, root))) {
+      for (const f of readdirSync(new URL(`${group}/${type}/${site}/`, root))) {
+        const month = (/_(\d{4}-\d{2})\.csv$/.exec(f) || [])[1];
+        if (filter && (!month || month < from || month > to)) {
+          continue;
+        }
+        const key = `${group === 'reference' ? REF : SRC}/${type}/${site}/${f}`;
+        lake.set(key, readFileSync(new URL(`${group}/${type}/${site}/${f}`, root), 'utf8'));
+      }
+    }
+  };
+  load('reference', 'glidepaths');
+  load('reference', 'shift_naming');
+  load('reference', 'equipment_coding');
+  for (const type of ['plan_opt', 'line_losses', 'volume_loss_correction']) {
+    load('source', type, true);
+  }
+  const real = await run({ tables: ['pbi_daily_losses'], sites, from, to }, { lake });
+  console.log('real loss run: errors', real.errors.length, '| files', tableWrites(real).length);
+  real.logs.forEach((l) => console.log('  ', String(l).slice(0, 420)));
+  const outDir = process.argv.find((a) => a.startsWith('dir='));
+  if (outDir) {
+    writeFileSync(`${outDir.slice(4)}/loss.json`, JSON.stringify(rowsOf(real, 'Write pbi_daily_losses parquet')));
   }
 }
 

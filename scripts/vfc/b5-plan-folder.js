@@ -4,5 +4,6 @@
 var cfg = flow.get('cfg');
 
 msg.what = 'plan opt';
+msg.filePrefix = 'plan_opt';
 msg.path = cfg.sourceFolder + '/plan_opt/site=' + msg.site + '/';
 return msg;
