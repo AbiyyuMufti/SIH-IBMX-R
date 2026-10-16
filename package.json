@@ -5,6 +5,11 @@
   "scripts": {
     "flow-unpack": "node scripts/flow-pack.js",
     "flow-list": "node scripts/flow-functions.js",
-    "validate": "node scripts/validate-flow.js"
+    "validate": "node scripts/validate-flow.js",
+    "watch": "node scripts/watch-sharepoint-downloads.js downloads sharepoint 8",
+    "normalize": "python -I scripts/normalize-sharepoint-source.py",
+    "normalize:check": "python -I scripts/normalize-sharepoint-source.py --dry-run",
+    "upload-changed": "node scripts/datalake-upload-tree.js sharepoint/source eu_report/pbi_report/source --only sharepoint/normalize-changed.txt --overwrite",
+    "publish-new": "npm run normalize && npm run upload-changed"
   }
 }
