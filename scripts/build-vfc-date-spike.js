@@ -1,6 +1,6 @@
 // Builds flows/vfc-date-spike.json, a small VFC tab "Date type spike": does
 // the parquet node write a real DATE column (and a time of day as a
-// timestamp)? Three tests, written to Sandbox/spike/ in the data lake.
+// timestamp)? Two tests (numbers only), written to Sandbox/spike/ in the data lake.
 // Usage: node scripts/build-vfc-date-spike.js
 // Function code: scripts/vfc/x1-date-rows.js, x2-spike-path.js.
 import { writeFileSync, mkdirSync } from 'node:fs';
@@ -24,7 +24,7 @@ function buildFlow() {
   const b = makeBuilder(360);
   let r = 1;
   b.lane(r++, 'SPIKE: BUILD ROWS',
-    'one inject, one function: three small tables with real JS Date objects. A: a DATE column from Date objects. B: a DATE column from ISO text. C: TIMESTAMP_MILLIS for a time of day (Excel day 1899-12-30) and a date at midnight. The three tests are written to Sandbox/spike/ so the types can be read afterwards.',
+    'one inject, one function: two small tables with numbers only (the first spike showed that the node reads text and Date objects as numbers: 2026-09-01 became 2026). A: a DATE column from a number of days since 1970-01-01. B: TIMESTAMP_MILLIS from epoch milliseconds, for a time of day (Excel day 1899-12-30, negative number) and for a date at midnight. Written to Sandbox/spike/ so the types and values can be read afterwards.',
     [
       rawStep('spikeInject', {
         type: 'inject', name: 'Run the date spike', topic: '', payload: '',
@@ -34,16 +34,13 @@ function buildFlow() {
         powerMode: false
       }),
       fn('spikeRows', 'Build spike rows', 'x1-date-rows.js',
-        ['TEST A', 'TEST B', 'TEST C'], {}, true)
+        ['TEST A', 'TEST B'], {}, true)
     ]);
-  testLane(b, r++, 'TEST A', 'SPIKE A: DATE FROM DATE OBJECT',
-    'parquet column d with type DATE, value a JS Date object. If the parquet node refuses the type, this lane stops with an error.',
+  testLane(b, r++, 'TEST A', 'SPIKE A: DATE FROM DAY NUMBER',
+    'parquet column d with type DATE, value the number of days since 1970-01-01 (20697 = 2026-09-01).',
     [['id', I], ['d', DATE]]);
-  testLane(b, r++, 'TEST B', 'SPIKE B: DATE FROM TEXT',
-    'parquet column d with type DATE, value ISO text (2026-09-01).',
-    [['id', I], ['d', DATE]]);
-  testLane(b, r++, 'TEST C', 'SPIKE C: TIMESTAMPS',
-    'TIMESTAMP_MILLIS for a time of day (1899-12-30 21:45:00, as in the Tableau data) and for a date at midnight.',
+  testLane(b, r++, 'TEST B', 'SPIKE B: TIMESTAMPS FROM MS',
+    'TIMESTAMP_MILLIS from epoch milliseconds, for a time of day (1899-12-30 21:45:00, as in the Tableau data, a negative number) and for a date at midnight.',
     [['id', I], ['t', TS], ['dt', TS]]);
   b.nodes.unshift({
     id: b.TAB, type: 'tab', label: 'Date type spike',

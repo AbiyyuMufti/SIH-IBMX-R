@@ -1,11 +1,12 @@
-// Builds the rows of three parquet date type tests (a spike, no real data).
-// In: the inject. Out 1: DATE from JS Date objects. Out 2: DATE from ISO
-// text. Out 3: TIMESTAMP_MILLIS for a time of day (Excel day 1899-12-30)
-// and for a date at midnight. msg.spike names the test file.
+// Builds the rows of two parquet date type tests (a spike, no real data).
+// In: the inject. Out 1: DATE from days since 1970-01-01. Out 2: epoch ms for
+// TIMESTAMP_MILLIS (a time of day on 1899-12-30, a date at midnight).
+// Only numbers are sent: the first spike showed text and Date become 2026.
 var DAY_MS = 86400000;
-var FIRST_DAY = Date.UTC(2026, 8, 1);
-var EXCEL_DAY = Date.UTC(1899, 11, 30);
-var QUARTER_PAST_NINE = (21 * 60 + 45) * 60000;
+var FIRST_DAY_MS = Date.UTC(2026, 8, 1);
+var FIRST_DAY = FIRST_DAY_MS / DAY_MS;
+var EXCEL_DAY_MS = Date.UTC(1899, 11, 30);
+var QUARTER_PAST_NINE_MS = (21 * 60 + 45) * 60000;
 
 function message(name, rows) {
   return {
@@ -14,45 +15,34 @@ function message(name, rows) {
   };
 }
 
-var dateObjects = [
+var dateRows = [
   {
     id: 1,
-    d: new Date(FIRST_DAY)
+    d: FIRST_DAY
   },
   {
     id: 2,
-    d: new Date(FIRST_DAY + DAY_MS)
+    d: FIRST_DAY + 1
   }
 ];
-var dateTexts = [
+var timestampRows = [
   {
     id: 1,
-    d: '2026-09-01'
+    t: EXCEL_DAY_MS + QUARTER_PAST_NINE_MS,
+    dt: FIRST_DAY_MS
   },
   {
     id: 2,
-    d: '2026-09-02'
-  }
-];
-var timestamps = [
-  {
-    id: 1,
-    t: new Date(EXCEL_DAY + QUARTER_PAST_NINE),
-    dt: new Date(FIRST_DAY)
-  },
-  {
-    id: 2,
-    t: new Date(EXCEL_DAY + 15 * 60000),
-    dt: new Date(FIRST_DAY + DAY_MS)
+    t: EXCEL_DAY_MS + 15 * 60000,
+    dt: FIRST_DAY_MS + DAY_MS
   }
 ];
 node.status({
   fill: 'green',
   shape: 'dot',
-  text: '3 test tables sent'
+  text: '2 test tables sent'
 });
 return [
-  message('a_date_from_date_object', dateObjects),
-  message('b_date_from_text', dateTexts),
-  message('c_timestamps', timestamps)
+  message('a_date_from_day_number', dateRows),
+  message('b_timestamps_from_ms', timestampRows)
 ];
