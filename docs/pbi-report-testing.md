@@ -14,7 +14,7 @@
 4. Look at the debug sidebar: the node `Run log` shows every log line (the same lines go to a CSV in the lake under `<root>/logs/pbi-report/`, `root` = the Config setting).
 
 ## 2. The job (inject payload)
-`{"tables": [...], "sites": [...], "from": "YYYY-MM", "to": "YYYY-MM"}`. **Only the tables you list run** (a table that is not in the list is not started and does not write, whatever its `DRY_RUN`). `sites` limits the month tables (plan OPT, time utilisation, daily losses); machine names, shift naming and the calendar are one file each for all sites. Everything is optional: no tables = all six, no sites = Hull, Nottingham, Weinheim, no months = last month and this month. A table name or site that is not known, or `from` after `to`, is refused before anything runs.
+`{"tables": [...], "sites": [...], "from": "YYYY-MM", "to": "YYYY-MM"}`. Everything is optional: no tables = all six, no sites = Hull, Nottingham, Weinheim, no months = last month and this month. A table name or site that is not known, or `from` after `to`, is refused before anything runs.
 
 ## 3. Test order
 | # | Payload | DRY_RUN | You should see |
@@ -59,3 +59,11 @@ Things Claude can do on the laptop while you are away, and where everything is:
 - **Not for remote work:** deleting in the lake, a change of the Config or credentials, running the flow in the VFC (only you can).
 - **Where the rules came from:** the report's load queries, read with `node scripts/helper-pbit-outline.js "<the .pbit>" --table "<table>"` (the files are outside the repo in `C:\WORK\IBM-RECKITT\ReportReplica\`). Every mismatch with the report found a rule: use the same method for the loss table when a sample exists.
 - **Bugs and the written report:** planned after your tests; send the lines from section 6.
+
+## 8. Test of the lake watcher (step 4)
+Import the new tab (it replaces the old one: the `JOB DONE` nodes and the 5 s delay you added by hand are now part of it). Then:
+1. **With every table `DRY_RUN` = true in node 1.1:** upload one changed file, for example `node scripts/datalake-upload-tree.js sharepoint/source eu_report/pbi_report/source --only <list with one plan_opt month> --overwrite`. In the debug sidebar the node `Read source event` shows a green status within seconds, `Collect events` shows `1 waiting`. After 2 to 2.5 minutes the `Run log` shows `[listener] JOB Hull source files changed: {"tables":[...],"sites":["Hull"],"from":"2026-09","to":"2026-09"}` and then the dry-run lines of that month. `JOB DONE` follows about 30 s after the last line.
+2. **With the three month tables `false`:** the same upload, and the three month files of that site and month are replaced (the lake time stamp changes).
+3. **Reference:** overwrite one Glidepaths file; after 5 to 5.5 minutes one job for that site with the months `REFERENCE_MONTHS_BACK` back.
+4. **Switch:** set `LISTENERS_ON = false` in `Collect events`, upload a file: the status says `listeners OFF` and no job follows.
+Send back: the `[listener]` lines, the node status of `Collect events` and `Release due events`, and whether an event arrived at all (the subscribe nodes are untested with an `--overwrite` upload; the UI replace gave `MODIFY`, see [datalake-files.md](datalake-files.md)).

@@ -106,7 +106,10 @@ export function makeBuilder(flowIndex) {
         }
         const fnId = id(step.key);
         const wires = wiresFor(step.outs, step.fan);
-        if (step.also) wires[0].push(id(step.also));
+        if (step.also) {
+          wires[0] = wires[0].filter(Boolean);
+          [].concat(step.also).forEach((key) => wires[0].push(id(key)));
+        }
         add({
           id: fnId, type: 'function', name: `${stageNo}.${fnNo} ${step.name}`,
           func, outputs: step.outs.length, language: 'javascript', noerr: 0, ...pos,
@@ -196,7 +199,7 @@ export function makeBuilder(flowIndex) {
       }
     });
   }
-  return { nodes, TAB, add, newId, id, col, rowY, comment, lane, linkOut, nextStage: () => ++stageNo };
+  return { nodes, TAB, add, newId, id, col, rowY, comment, lane, linkOut, linkIn, nextStage: () => ++stageNo };
 }
 
 // ---------- step helpers ----------
@@ -226,7 +229,8 @@ export const writeStep = (key, name) => ({ t: 'write', key, name });
 // The three log lanes every flow tab ends with. Errors caught anywhere in
 // the tab and all log lines go to one CSV file per month in the data lake:
 // <root>/logs/<flow name>/log_YYYY-MM.csv. Returns the next free row.
-export function addLogLanes(b, r, flowName) {
+// quiet: also add the "JOB DONE" watch (a tap on the log lines and a clock).
+export function addLogLanes(b, r, flowName, quiet = false) {
   const replace = { __FLOW__: flowName };
   b.lane(r++, 'ERRORS',
     'a catch node takes every error raised by a node of this tab and turns it into a log line with the name of the node and the message of the API (for example the limit message of evaluateKPIs). Errors of the log nodes themselves are not logged again.',
@@ -239,9 +243,14 @@ export function addLogLanes(b, r, flowName) {
     'every log line arrives here through the link "to LOG". 1 turns a line into a row (time, flow, site, production day, level) and shows it in the debug sidebar. The join collects the rows for 30 s, the delay lets one batch pass every 10 s so two writes do not overlap, 3 sets the file of the month and the read node loads the old file. A read of a file that does not exist answers nothing (only a warning), so the same batch also goes through a 10 s wait to the append step. The log is written whatever the dry-run switch says.',
     [
       linkInStep('LOG'),
-      fn('logFmt', 'Format log line', 'l2-format-line.js', ['next'], replace, false, 'logDebug'),
+      fn('logFmt', 'Format log line', 'l2-format-line.js', ['next'], replace, false,
+        quiet ? ['logDebug', 'noteLast'] : 'logDebug'),
       joinTimeout('logJoin', 'Collect log lines', 30),
       debugStep('logDebug', 'Run log', 'line', true, 80),
+      ...(quiet ? [{
+        ...fn('noteLast', 'Note last log line', 'w4-note-log.js', []),
+        stack: true, dy: 160
+      }] : []),
       delay('logDelay', 'One log batch per 10 s', 10),
       fn('logBuild', 'Build log write', 'l3-build-log-write.js', ['next'], replace, false, 'logWait'),
       readStep('logRead', 'Read log file'),
@@ -255,6 +264,21 @@ export function addLogLanes(b, r, flowName) {
       fn('logAppend', 'Append log rows', 'l4-append-log.js', ['next']),
       writeStep('logWrite', 'Log to data lake')
     ]);
+  if (quiet) {
+    b.lane(r++, 'JOB DONE',
+      'a clock checks every 10 s when the newest log line was written. When no log line came for 30 s the debug node JOB DONE shows one line; the next log line re-arms it. It means "quiet", not "all written": look at the log for errors.',
+      [
+        rawStep('quietClock', {
+          type: 'inject', name: 'Check every 10 s', topic: '', payload: '',
+          payloadType: 'date', repeat: '10', repeatEnd: '0', endTime: '0',
+          crontab: '', offset: 'NaN', once: false, properties: '',
+          timezone: 'UTC', betweentimesunit: 'm', showNextExecution: false,
+          powerMode: false
+        }),
+        fn('quietCheck', 'Check quiet', 'w5-check-quiet.js', ['next']),
+        debugStep('jobDone', 'JOB DONE', 'payload')
+      ]);
+  }
   return r;
 }
 

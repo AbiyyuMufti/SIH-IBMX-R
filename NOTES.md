@@ -378,3 +378,5 @@ Tried: Power BI flow with `Keep dim_asset` expecting an array. Error: "the file 
 
 - First VFC run of steps 2 and 3 (2026-10-16): plan OPT and time utilisation dry run fine; daily losses stopped at the equipment lookup because the VFC csv node omits empty cells (my test parser did not): all row-reading nodes fixed (`asText`), the runner's csv simulation now omits empty cells, fixture with an empty first equipment row. Also: `pbi_machine_names` always builds all sites (a job with one site had replaced the 60-row file by 29 Hull rows: re-run it once). Lesson: when something works offline and fails in the VFC, compare what the VFC node really outputs (empty cells, BOM, Buffer) with the runner.
 
+- Step 4 built (2026-10-16): lake watcher in the PBI report tab (two subscribe object nodes, collect, clock, release, rate limit, link to node 1.1), loss months 5 s apart (memory limit with 9 months at once), `JOB DONE` watch. Backfill 2024-12..2026-10 done and checked (207 files, problems 0, plan OPT 99.80 %). Tests: `node scripts/test-vfc-pbi-listener.js`. To check in the VFC: `docs/pbi-report-testing.md` section 8. Doc: `docs/pbi-report-build.md` Step 4.
+
