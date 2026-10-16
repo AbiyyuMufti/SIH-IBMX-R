@@ -1,0 +1,362 @@
+[
+  {
+    "id": "d7caf.492d59",
+    "type": "tab",
+    "label": "Date type spike",
+    "disabled": false,
+    "allowCycles": false,
+    "info": "Spike: can the parquet node write a DATE column? Output in Sandbox/spike/ of the data lake. Delete the tab after the test."
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "d9b9e.4ac672",
+    "type": "comment",
+    "name": "[1] SPIKE: BUILD ROWS",
+    "info": "STAGE 1 - one inject, one function: three small tables with real JS Date objects. A: a DATE column from Date objects. B: a DATE column from ISO text. C: TIMESTAMP_MILLIS for a time of day (Excel day 1899-12-30) and a date at midnight. The three tests are written to Sandbox/spike/ so the types can be read afterwards.",
+    "x": 160,
+    "y": 40,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "dd97c.4df8a4",
+    "type": "inject",
+    "name": "Run the date spike",
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "repeat": "",
+    "repeatEnd": "0",
+    "endTime": "0",
+    "crontab": "",
+    "offset": "NaN",
+    "once": false,
+    "properties": "",
+    "timezone": "UTC",
+    "betweentimesunit": "m",
+    "showNextExecution": false,
+    "powerMode": false,
+    "x": 140,
+    "y": 120,
+    "wires": [
+      [
+        "dba8d.4c5f8b"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "e175a.512ad6",
+    "type": "link out",
+    "name": "to TEST A",
+    "mode": "link",
+    "links": [
+      "df86b.4f91bd"
+    ],
+    "x": 500,
+    "y": 80,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "e5538.545d08",
+    "type": "link out",
+    "name": "to TEST B",
+    "mode": "link",
+    "links": [
+      "e3649.52c3ef"
+    ],
+    "x": 500,
+    "y": 120,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "e9316.578f3a",
+    "type": "link out",
+    "name": "to TEST C",
+    "mode": "link",
+    "links": [
+      "e7427.55f621"
+    ],
+    "x": 500,
+    "y": 160,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "dba8d.4c5f8b",
+    "type": "function",
+    "name": "1.1 Build spike rows",
+    "func": "// Builds the rows of three parquet date type tests (a spike, no real data).\n// In: the inject. Out 1: DATE from JS Date objects. Out 2: DATE from ISO\n// text. Out 3: TIMESTAMP_MILLIS for a time of day (Excel day 1899-12-30)\n// and for a date at midnight. msg.spike names the test file.\nvar DAY_MS = 86400000;\nvar FIRST_DAY = Date.UTC(2026, 8, 1);\nvar EXCEL_DAY = Date.UTC(1899, 11, 30);\nvar QUARTER_PAST_NINE = (21 * 60 + 45) * 60000;\n\nfunction message(name, rows) {\n  return {\n    spike: name,\n    payload: rows\n  };\n}\n\nvar dateObjects = [\n  {\n    id: 1,\n    d: new Date(FIRST_DAY)\n  },\n  {\n    id: 2,\n    d: new Date(FIRST_DAY + DAY_MS)\n  }\n];\nvar dateTexts = [\n  {\n    id: 1,\n    d: '2026-09-01'\n  },\n  {\n    id: 2,\n    d: '2026-09-02'\n  }\n];\nvar timestamps = [\n  {\n    id: 1,\n    t: new Date(EXCEL_DAY + QUARTER_PAST_NINE),\n    dt: new Date(FIRST_DAY)\n  },\n  {\n    id: 2,\n    t: new Date(EXCEL_DAY + 15 * 60000),\n    dt: new Date(FIRST_DAY + DAY_MS)\n  }\n];\nnode.status({\n  fill: 'green',\n  shape: 'dot',\n  text: '3 test tables sent'\n});\nreturn [\n  message('a_date_from_date_object', dateObjects),\n  message('b_date_from_text', dateTexts),\n  message('c_timestamps', timestamps)\n];\n",
+    "outputs": 3,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 360,
+    "y": 120,
+    "wires": [
+      [
+        "e175a.512ad6"
+      ],
+      [
+        "e5538.545d08"
+      ],
+      [
+        "e9316.578f3a"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "eb205.592853",
+    "type": "comment",
+    "name": "[2] SPIKE A: DATE FROM DATE OBJECT",
+    "info": "STAGE 2 - parquet column d with type DATE, value a JS Date object. If the parquet node refuses the type, this lane stops with an error.",
+    "x": 200,
+    "y": 260,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "df86b.4f91bd",
+    "type": "link in",
+    "name": "TEST A",
+    "links": [
+      "e175a.512ad6"
+    ],
+    "x": 60,
+    "y": 340,
+    "wires": [
+      [
+        "ed0f4.5ac16c"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "ed0f4.5ac16c",
+    "type": "parquet",
+    "name": "Write TEST A parquet",
+    "option": "write",
+    "columns": [
+      {
+        "column": "id",
+        "type": "INT64"
+      },
+      {
+        "column": "d",
+        "type": "DATE"
+      }
+    ],
+    "rcolumns": "",
+    "multi": "multiple",
+    "outputPty": "payload",
+    "outputPtyType": "msg",
+    "engine": "parquetjs",
+    "x": 200,
+    "y": 340,
+    "wires": [
+      [
+        "eefe3.5c5a85"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "eefe3.5c5a85",
+    "type": "function",
+    "name": "2.1 Set spike path",
+    "func": "// Sets the file path of a spike test in the data lake.\n// In: the output of the parquet node (msg.spike names the test).\n// Out: msg.path = Sandbox/spike/<test>.parquet and msg.filename.\nvar FOLDER = 'Sandbox/spike/';\n\nmsg.path = FOLDER + msg.spike + '.parquet';\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 420,
+    "y": 340,
+    "wires": [
+      [
+        "f0ed2.5df39e"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "f0ed2.5df39e",
+    "type": "write object",
+    "name": "SPIKE A: DATE FROM DATE OBJECT to data lake",
+    "path": "",
+    "mode": "object",
+    "x": 720,
+    "y": 340,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "f2dc1.5f8cb7",
+    "type": "comment",
+    "name": "[3] SPIKE B: DATE FROM TEXT",
+    "info": "STAGE 3 - parquet column d with type DATE, value ISO text (2026-09-01).",
+    "x": 180,
+    "y": 480,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "e3649.52c3ef",
+    "type": "link in",
+    "name": "TEST B",
+    "links": [
+      "e5538.545d08"
+    ],
+    "x": 60,
+    "y": 560,
+    "wires": [
+      [
+        "f4cb0.6125d0"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "f4cb0.6125d0",
+    "type": "parquet",
+    "name": "Write TEST B parquet",
+    "option": "write",
+    "columns": [
+      {
+        "column": "id",
+        "type": "INT64"
+      },
+      {
+        "column": "d",
+        "type": "DATE"
+      }
+    ],
+    "rcolumns": "",
+    "multi": "multiple",
+    "outputPty": "payload",
+    "outputPtyType": "msg",
+    "engine": "parquetjs",
+    "x": 200,
+    "y": 560,
+    "wires": [
+      [
+        "f6b9f.62bee9"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "f6b9f.62bee9",
+    "type": "function",
+    "name": "3.1 Set spike path",
+    "func": "// Sets the file path of a spike test in the data lake.\n// In: the output of the parquet node (msg.spike names the test).\n// Out: msg.path = Sandbox/spike/<test>.parquet and msg.filename.\nvar FOLDER = 'Sandbox/spike/';\n\nmsg.path = FOLDER + msg.spike + '.parquet';\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 420,
+    "y": 560,
+    "wires": [
+      [
+        "f8a8e.645802"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "f8a8e.645802",
+    "type": "write object",
+    "name": "SPIKE B: DATE FROM TEXT to data lake",
+    "path": "",
+    "mode": "object",
+    "x": 700,
+    "y": 560,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "fa97d.65f11b",
+    "type": "comment",
+    "name": "[4] SPIKE C: TIMESTAMPS",
+    "info": "STAGE 4 - TIMESTAMP_MILLIS for a time of day (1899-12-30 21:45:00, as in the Tableau data) and for a date at midnight.",
+    "x": 160,
+    "y": 700,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "e7427.55f621",
+    "type": "link in",
+    "name": "TEST C",
+    "links": [
+      "e9316.578f3a"
+    ],
+    "x": 60,
+    "y": 780,
+    "wires": [
+      [
+        "fc86c.678a34"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "fc86c.678a34",
+    "type": "parquet",
+    "name": "Write TEST C parquet",
+    "option": "write",
+    "columns": [
+      {
+        "column": "id",
+        "type": "INT64"
+      },
+      {
+        "column": "t",
+        "type": "TIMESTAMP_MILLIS"
+      },
+      {
+        "column": "dt",
+        "type": "TIMESTAMP_MILLIS"
+      }
+    ],
+    "rcolumns": "",
+    "multi": "multiple",
+    "outputPty": "payload",
+    "outputPtyType": "msg",
+    "engine": "parquetjs",
+    "x": 200,
+    "y": 780,
+    "wires": [
+      [
+        "fe75b.69234d"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "fe75b.69234d",
+    "type": "function",
+    "name": "4.1 Set spike path",
+    "func": "// Sets the file path of a spike test in the data lake.\n// In: the output of the parquet node (msg.spike names the test).\n// Out: msg.path = Sandbox/spike/<test>.parquet and msg.filename.\nvar FOLDER = 'Sandbox/spike/';\n\nmsg.path = FOLDER + msg.spike + '.parquet';\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 420,
+    "y": 780,
+    "wires": [
+      [
+        "0064a.6abc66"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "0064a.6abc66",
+    "type": "write object",
+    "name": "SPIKE C: TIMESTAMPS to data lake",
+    "path": "",
+    "mode": "object",
+    "x": 700,
+    "y": 780,
+    "wires": []
+  }
+]

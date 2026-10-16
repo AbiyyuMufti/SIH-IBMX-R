@@ -2,13 +2,16 @@
 // Read-only on the lake (list, signed download URL, GET). Existing local files of
 // the same size are skipped, so it can be run again after a new VFC run.
 // Usage: node scripts/datalake-download-tree.js eu_report/pbi_report/report/ [--max 200]
+//   [--out <local dir>]   (default downloads/)
 import { mkdirSync, writeFileSync, existsSync, statSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getToken } from './lib-ih.js';
 import { listObjects, downloadOne } from './lib-datalake.js';
 
-const OUT = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'downloads');
+const outAt = process.argv.indexOf('--out');
+const OUT = outAt >= 0 ? resolve(process.argv[outAt + 1]) :
+  resolve(dirname(fileURLToPath(import.meta.url)), '..', 'downloads');
 const PREFIX = /^data\/ten=[^/]+\//;
 const root = process.argv[2];
 const maxAt = process.argv.indexOf('--max');
@@ -26,6 +29,10 @@ async function collect(folder, out) {
     const r = await listObjects(token, folder, next);
     const o = (r.body && r.body.objects) || {};
     for (const f of o.files || []) {
+      // A folder placeholder object (key ends with a slash) is no file.
+      if (String(f.key).endsWith('/')) {
+        continue;
+      }
       out.push({ path: f.key.replace(PREFIX, ''), size: Number(f.contentSize) });
     }
     for (const d of o.folders || []) {
