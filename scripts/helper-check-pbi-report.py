@@ -95,7 +95,9 @@ for table, expected in EXPECTED.items():
         say("  empty share: " + ", ".join(f"{c} {d[c].isna().mean():.1%}" for c in cols))
     dupes = int(d.drop(columns=[c for c in ["_file", "loaded_at"] if c in d]).duplicated().sum())
     say(f"  fully duplicated rows: {dupes}")
-    if dupes and table != "pbi_daily_losses":
+    # Plan OPT rows can repeat (two shift segments of a product with the same values):
+    # the report has them too (170 of its 16655 Hull rows), so it is only a note.
+    if dupes and table not in ("pbi_daily_losses", "pbi_plan_opt"):
         problems += 1
     if table in ("pbi_plan_opt", "pbi_daily_losses", "pbi_time_utilisation"):
         d["month"] = d["date"].str[:7] if table != "pbi_daily_losses" else d["shift_start_date"].str[:7]
