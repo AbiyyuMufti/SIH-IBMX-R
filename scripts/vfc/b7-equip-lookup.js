@@ -11,20 +11,30 @@ rows = rows.map(function (row) {
   });
   return out;
 });
-if (!rows.length || rows[0].Equipment === undefined) {
+// Empty cells are left out of a row (the csv node), so the columns are looked
+// for in any row, not in the first one.
+var known = rows.some(function (row) {
+  return row.MachineName !== undefined ||
+    row['Merged Unique Identifier'] !== undefined;
+});
+if (!known) {
   msg.payload = {
-    failed: 'equipment coding ' + msg.site + ': no Equipment column or rows'
+    failed: 'equipment coding ' + msg.site + ': no MachineName column or rows'
   };
   return [null, msg];
+}
+
+function asText(value) {
+  return value === undefined || value === null ? '' : String(value);
 }
 
 var lookup = {};
 rows.forEach(function (row) {
   var merged = row['Merged Unique Identifier'];
-  var key = merged !== undefined ? merged :
-    row.MachineName + ' ' + row.OEELossLvl3Desc;
+  var key = merged !== undefined ? asText(merged) :
+    asText(row.MachineName) + ' ' + asText(row.OEELossLvl3Desc);
   lookup[key] = lookup[key] || [];
-  lookup[key].push(row.Equipment === '' ? 'Unclassed' : row.Equipment);
+  lookup[key].push(asText(row.Equipment) === '' ? 'Unclassed' : row.Equipment);
 });
 flow.set('equip_' + msg.site, lookup);
 node.status({

@@ -102,6 +102,11 @@ function inList(list, value) {
   return !!list && list.indexOf(value) !== -1;
 }
 
+// The csv node leaves empty cells out of the row: an empty text is ''.
+function asText(value) {
+  return value === undefined || value === null ? '' : String(value);
+}
+
 function number(value) {
   var text = value === undefined || value === null ? '' : String(value).trim();
   return text === '' || isNaN(Number(text)) ? null : Number(text);
@@ -174,7 +179,7 @@ rows.forEach(function (row) {
     count.planSkipped++;
     return;
   }
-  var part = replaceText(String(row.PartName));
+  var part = replaceText(asText(row.PartName));
   var known = shiftMap.hasOwnProperty(row.ShiftName);
   var shift = known ? shiftMap[row.ShiftName] : null;
   if (shift === null) {
@@ -188,7 +193,7 @@ rows.forEach(function (row) {
   count.planned++;
   planRows.push({
     site_name: site,
-    area_name: row.AreaName,
+    area_name: asText(row.AreaName),
     machine_name: machine,
     unique_machine_name: unique,
     date: date,

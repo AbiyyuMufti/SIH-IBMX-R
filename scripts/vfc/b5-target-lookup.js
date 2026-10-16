@@ -27,6 +27,9 @@ if (!rows.length || rows[0].Line === undefined) {
 var lookup = {};
 var cells = 0;
 rows.forEach(function (row) {
+  if (!row.Line || !row['Site Name'] || !row['OEE Bucket']) {
+    return;
+  }
   var field = BUCKETS[row['OEE Bucket']];
   var key = row.Line + '-' + row['Site Name'];
   Object.keys(row).forEach(function (column) {

@@ -108,7 +108,7 @@ check(JSON.stringify(tableWrites(stats)) === JSON.stringify([`${OUT}/pbi_shift_n
   'job with one table writes only that table');
 stats = await run({ tables: ['pbi_machine_names'], sites: ['Hull'] });
 const hull = rowsOf(stats, 'Write pbi_machine_names parquet');
-check(hull.length === 2 && hull.every((m) => m.site_name === 'Hull'), 'job with one site: only Hull rows');
+check(hull.length === 5, 'machine names always cover all sites (one file), whatever the sites of the job: ' + hull.length);
 
 // 4. a site without a file: nothing written for that table, others fine
 const lake = makeLake();
@@ -301,6 +301,7 @@ const lossLake = () => {
   ].join('\n').replace('Hull,x\n', '2026-09-01,B2 Auto,Unplanned Loss,Breakdown,Capper,03:00:00,9000.40\n2026-09-01,B2 Auto,Planned Loss,Meals & Breaks,Breaks,02:00:00,600.00\n'));
   lake.set(`${REF}/equipment_coding/site=Hull/Hull_Equipment.csv`, [
     'MachineName,OEELossLvl3Desc,Merged Unique Identifier,Equipment,Lvl 3 Loss Name',
+    '4 Tonne,Not Logged,4 Tonne Not Logged,,',
     'B2 Auto,Capper,B2 Auto Capper,Capper Head,Capper',
     'B2 Auto,Breaks,B2 Auto Breaks,,Breaks',
     'B2 Auto,Jam,B2 Auto Jam,Filler,Jam',

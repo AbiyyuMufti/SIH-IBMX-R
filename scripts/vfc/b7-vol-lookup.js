@@ -45,6 +45,11 @@ function replaceAll(text, pairs) {
   return out;
 }
 
+// The csv node leaves empty cells out of the row: an empty text is ''.
+function asText(value) {
+  return value === undefined || value === null ? '' : String(value);
+}
+
 function minutes(value) {
   var parts = /^(\d+):(\d{2}):(\d{2})$/.exec(String(value).trim());
   if (!parts) {
@@ -54,16 +59,19 @@ function minutes(value) {
 }
 
 rows.forEach(function (row) {
-  var machine = row.MachineName;
-  var day = row.ShiftStartDate;
+  var machine = asText(row.MachineName);
+  var day = asText(row.ShiftStartDate);
   if (!machine || !day) {
     return;
   }
-  var text = day.slice(8, 10) + '/' + day.slice(5, 7) + '/' + day.slice(0, 4);
-  var key = text + ' ' + machine + ' ' +
-    replaceAll(row.OEELossLvl3Group, rule.group) + ' ' +
-    replaceAll(row.OEELossLvl3SubGroup, rule.sub) + ' ' + row.OEELossLvl3Desc;
-  var units = Number(String(row['Loss Units']).trim());
+  var dayText = day.slice(8, 10) + '/' + day.slice(5, 7) + '/' +
+    day.slice(0, 4);
+  var key = dayText + ' ' + machine + ' ' +
+    replaceAll(asText(row.OEELossLvl3Group), rule.group) + ' ' +
+    replaceAll(asText(row.OEELossLvl3SubGroup), rule.sub) + ' ' +
+    asText(row.OEELossLvl3Desc);
+  var units = asText(row['Loss Units']).trim() === '' ? NaN :
+    Number(asText(row['Loss Units']).trim());
   map[key] = {
     u: isNaN(units) ? null : Math.round(units),
     m: minutes(row.Time)

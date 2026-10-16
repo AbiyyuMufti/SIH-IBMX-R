@@ -85,6 +85,7 @@ var cfg = Object.assign({}, shared);
 cfg.dryRun = DRY_RUN;
 cfg.referenceFolder = IN_REFERENCE;
 cfg.sourceFolder = IN_SOURCE;
+cfg.allSites = ALL_SITES;
 cfg.outRoot = OUT_ROOT;
 cfg.calendarStart = CALENDAR_START;
 cfg.calendarEnd = CALENDAR_END;

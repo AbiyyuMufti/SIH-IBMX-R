@@ -14,7 +14,7 @@
 4. Look at the debug sidebar: the node `Run log` shows every log line (the same lines go to a CSV in the lake under `<root>/logs/pbi-report/`, `root` = the Config setting).
 
 ## 2. The job (inject payload)
-`{"tables": [...], "sites": [...], "from": "YYYY-MM", "to": "YYYY-MM"}`. Everything is optional: no tables = all six, no sites = Hull, Nottingham, Weinheim, no months = last month and this month. A table name or site that is not known, or `from` after `to`, is refused before anything runs.
+`{"tables": [...], "sites": [...], "from": "YYYY-MM", "to": "YYYY-MM"}`. **Only the tables you list run** (a table that is not in the list is not started and does not write, whatever its `DRY_RUN`). `sites` limits the month tables (plan OPT, time utilisation, daily losses); machine names, shift naming and the calendar are one file each for all sites. Everything is optional: no tables = all six, no sites = Hull, Nottingham, Weinheim, no months = last month and this month. A table name or site that is not known, or `from` after `to`, is refused before anything runs.
 
 ## 3. Test order
 | # | Payload | DRY_RUN | You should see |

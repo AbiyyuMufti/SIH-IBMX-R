@@ -20,7 +20,9 @@ if (!rows.length || rows[0].ShiftName === undefined) {
 
 var map = {};
 rows.forEach(function (row) {
-  map[row.ShiftName] = row.Shift;
+  if (row.ShiftName !== undefined) {
+    map[row.ShiftName] = row.Shift === undefined ? null : row.Shift;
+  }
 });
 flow.set('shiftMap', map);
 node.status({

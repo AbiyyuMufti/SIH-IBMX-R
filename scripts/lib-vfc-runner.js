@@ -60,10 +60,12 @@ function parseCsv(text) {
     rows.push(row);
   }
   const names = rows.shift() || [];
+  // The VFC csv node leaves empty cells out of the row object (the option
+  // to keep empty strings is not in the node): the same here.
   return rows
     .filter((r) => !(r.length === 1 && r[0] === ''))
     .map((r) => Object.fromEntries(
-      names.map((n, i) => [n, r[i] === undefined ? '' : r[i]])
+      names.map((n, i) => [n, r[i]]).filter(([, v]) => v !== undefined && v !== '')
     ));
 }
 

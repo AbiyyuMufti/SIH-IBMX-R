@@ -177,6 +177,11 @@ function proper(text) {
   return result;
 }
 
+// The csv node leaves empty cells out of the row: an empty text is ''.
+function asText(value) {
+  return value === undefined || value === null ? '' : String(value);
+}
+
 function minutes(value) {
   var parts = /^(\d+):(\d{2}):(\d{2})$/.exec(String(value).trim());
   return parts ? Number(parts[1]) * 60 + Number(parts[2]) : null;
@@ -191,16 +196,16 @@ rows.forEach(function (row) {
   if (machine === undefined || machine === null || machine === '') {
     return;
   }
-  var start = row.StartTime;
+  var start = asText(row.StartTime);
   var mergedKey = machine + ' ' + start;
   if (seen[mergedKey]) {
     count.dupes++;
     return;
   }
   seen[mergedKey] = true;
-  var group = row.OEELossLvl3Group;
-  var sub = row.OEELossLvl3SubGroup;
-  var desc = row.OEELossLvl3Desc;
+  var group = asText(row.OEELossLvl3Group);
+  var sub = asText(row.OEELossLvl3SubGroup);
+  var desc = asText(row.OEELossLvl3Desc);
   var breakdownTypes = rule.breakdownTypes ? sub : null;
   sub = replaceAll(sub, rule.keyReplace);
   group = replaceAll(group, rule.groupBefore);
@@ -210,7 +215,7 @@ rows.forEach(function (row) {
     count.early++;
     return;
   }
-  var day = row.ShiftStartDate;
+  var day = asText(row.ShiftStartDate);
   var daily = dayText(day);
   var volumeKey = daily + ' ' + machine + ' ' + group + ' ' + sub + ' ' + desc;
   var correction = vcMap[volumeKey];
@@ -228,8 +233,8 @@ rows.forEach(function (row) {
     return;
   }
   var unique = machine + '-' + site;
-  var part = rule.cutPart ? String(row.PartName).slice(rule.cutPart) :
-    row.PartName;
+  var part = rule.cutPart ? asText(row.PartName).slice(rule.cutPart) :
+    asText(row.PartName);
   var shift = shiftMap.hasOwnProperty(row.ShiftName) ?
     shiftMap[row.ShiftName] : null;
   if (shift === null) {
@@ -281,9 +286,9 @@ rows.forEach(function (row) {
       volume_key: volumeKey,
       volume_total: capacity === undefined ? null : capacity,
       loaded_at: msg.loadedAt,
-      comment: row.Comment,
+      comment: asText(row.Comment),
       merged: machine + ' ' + dayText(start.slice(0, 10)) + start.slice(10),
-      shift_name_copy: row.ShiftName,
+      shift_name_copy: asText(row.ShiftName),
       volume_day_key: machine + ' ' + daily
     });
   });
