@@ -72,7 +72,7 @@ const csvNode = (key) => rawStep(key, {
 
 function buildFlow() {
   const b = makeBuilder(330);
-  const { add, id, col, rowY, comment, lane, linkOut, linkIn } = b;
+  const { add, id, col, rowY, comment, lane, linkOut } = b;
   let r = 1;
 
   const stage1 = b.nextStage();
@@ -90,9 +90,21 @@ function buildFlow() {
     timezone: 'UTC', betweentimesunit: 'm', showNextExecution: false,
     powerMode: false, x: col(0), y: rowY(r), wires: [[id('settings')]]
   });
-  // The jobs of the lake watcher enter node 1.1 here.
-  linkIn('JOB', 0, r, id('settings'));
-  b.nodes[b.nodes.length - 1].y += 60;
+  // The jobs of the lake watcher (tab PBI report listener) enter node 1.1:
+  // a clock takes one queued job from global context every 10 s.
+  add({
+    id: b.newId(), type: 'inject', name: 'Job queue check every 10 s',
+    topic: '', payload: '', payloadType: 'date', repeat: '10',
+    repeatEnd: '0', endTime: '0', crontab: '', offset: 'NaN', once: false,
+    properties: '', timezone: 'UTC', betweentimesunit: 'm',
+    showNextExecution: false, powerMode: false, x: col(0), y: rowY(r) + 80,
+    wires: [[id('jobTake')]]
+  });
+  add({
+    id: id('jobTake'), type: 'function', name: '1.0 Take queued job',
+    func: code('w6-take-job.js'), outputs: 1, language: 'javascript',
+    noerr: 0, x: col(1), y: rowY(r) + 80, wires: [[id('settings')]]
+  });
   const dryRun = TABLES.map((t, i) =>
     `  ${t}: true${i < TABLES.length - 1 ? ',' : ''}`).join('\n');
   add({
@@ -319,48 +331,6 @@ function buildFlow() {
     [
       linkInStep('PLAN FAILED'),
       fn('plFailed', 'Describe failure', 'b5-pick-failed.js', ['LOG'])
-    ]);
-  // Step 4: the lake watcher. Two subscribe object nodes (source files and
-  // reference files) feed one collector; a clock releases the jobs.
-  const subscribe = (name, path) => ({
-    type: 'subscribe object', name, path, powerMode: false
-  });
-  lane(r++, 'LISTEN: SOURCE FILES',
-    'a subscribe object node on eu_report/pbi_report/source/ (all subfolders) sends one message per file event. The event is kept when it is a MODIFY (new or replaced file) of a plan_opt, line_losses or volume_loss_correction month file; the site and the month come from the path. Deletes and other files are dropped.',
-    [
-      rawStep('wSourceSub', subscribe('Source files changed',
-        '/eu_report/pbi_report/source/')),
-      fn('wSourceEvent', 'Read source event', 'w1-source-event.js', ['next']),
-      end('EVENT')
-    ]);
-  lane(r++, 'LISTEN: REFERENCE FILES',
-    'a subscribe object node on eu_report/reference/ (all subfolders). Kept: a MODIFY of a machine_names, shift_naming, glidepaths or equipment_coding file; the type and the site come from the path.',
-    [
-      rawStep('wReferenceSub', subscribe('Reference files changed',
-        '/eu_report/reference/')),
-      fn('wReferenceEvent', 'Read reference event', 'w1-reference-event.js',
-        ['next']),
-      end('EVENT')
-    ]);
-  lane(r++, 'LISTEN: COLLECT',
-    'every event is kept in flow context (one entry per site and month, or per reference type and site; repeated events of the same file count once). LISTENERS_ON in this node switches the watcher off (for example during a bulk upload).',
-    [
-      linkInStep('EVENT'),
-      fn('wCollect', 'Collect events', 'w2-collect.js', [])
-    ]);
-  lane(r++, 'LISTEN: JOBS',
-    'a clock looks every 30 s for entries whose wait window is over (120 s for source files, 300 s for reference files, both counted from the first event) and turns them into jobs: months of one site that follow each other become one job; a reference change rebuilds the current month and the months before it (REFERENCE_MONTHS_BACK in node Release due events). The jobs pass a rate limit (one per 10 s) and enter node 1.1 like the inject.',
-    [
-      rawStep('wClock', {
-        type: 'inject', name: 'Release check every 30 s', topic: '',
-        payload: '', payloadType: 'date', repeat: '30', repeatEnd: '0',
-        endTime: '0', crontab: '', offset: 'NaN', once: false,
-        properties: '', timezone: 'UTC', betweentimesunit: 'm',
-        showNextExecution: false, powerMode: false
-      }),
-      fn('wRelease', 'Release due events', 'w3-release.js', ['next', 'LOG']),
-      delay('wJobDelay', 'One job per 10 s', 10),
-      end('JOB')
     ]);
   addLogLanes(b, r, 'pbi-report', true);
 

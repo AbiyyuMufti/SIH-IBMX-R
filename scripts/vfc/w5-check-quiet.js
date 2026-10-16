@@ -1,8 +1,9 @@
 // Runs on the clock. Reports "JOB DONE" once, when no log line came for
 // QUIET_SECONDS. In: nothing (inject). Out: msg.payload = the text.
+// The log lines are noted in global context by the tab PBI report build.
 var QUIET_SECONDS = 30;
-var last = flow.get('lastLog');
-var done = flow.get('done');
+var last = glob.get('lastLog');
+var done = glob.get('done');
 if (!last || done) {
   return null;
 }
@@ -11,7 +12,7 @@ var quiet = (Date.now() - last) / 1000;
 if (quiet < QUIET_SECONDS) {
   return null;
 }
-flow.set('done', true);
+glob.set('done', true);
 node.status({
   fill: 'green',
   shape: 'dot',

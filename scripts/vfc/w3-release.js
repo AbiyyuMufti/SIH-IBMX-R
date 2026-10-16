@@ -1,6 +1,7 @@
 // Runs on the clock. Takes the entries of flow context "pending" whose wait
-// window is over and turns them into jobs {tables, sites, from, to}.
-// Out 1: one message per job (payload = the job). Out 2: log lines.
+// window is over and turns them into jobs {tables, sites, from, to}. The jobs
+// go to global context "jobQueue" (the tab PBI report build takes them one by
+// one). Out: one log line per job (for a debug node).
 var SOURCE_WAIT_S = 120;
 var REFERENCE_WAIT_S = 300;
 // Months before the current month that a reference change rebuilds.
@@ -23,7 +24,8 @@ var TABLES_OF = {
 var pending = flow.get('pending') || {};
 var now = Date.now();
 var day = new Date(now).toISOString().slice(0, 10);
-var jobs = [];
+var queue = glob.get('jobQueue') || [];
+var added = 0;
 var logs = [];
 var sourceGroups = {};
 
@@ -46,10 +48,8 @@ function addTables(list, tables) {
 }
 
 function addJob(job, why) {
-  jobs.push({
-    topic: 'listener job',
-    payload: job
-  });
+  queue.push(job);
+  added++;
   logs.push({
     topic: 'log',
     payload: day + ' [listener] JOB ' + why + ': ' + JSON.stringify(job)
@@ -132,10 +132,11 @@ Object.keys(sourceGroups).forEach(function (key) {
 });
 
 flow.set('pending', pending);
+glob.set('jobQueue', queue);
 var waiting = Object.keys(pending).length;
 node.status({
-  fill: jobs.length ? 'green' : 'blue',
+  fill: added ? 'green' : 'blue',
   shape: 'dot',
-  text: waiting + ' waiting, ' + jobs.length + ' job(s) sent'
+  text: waiting + ' waiting, ' + added + ' job(s) queued'
 });
-return [jobs, logs];
+return [logs];

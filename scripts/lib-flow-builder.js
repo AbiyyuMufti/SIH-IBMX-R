@@ -229,7 +229,8 @@ export const writeStep = (key, name) => ({ t: 'write', key, name });
 // The three log lanes every flow tab ends with. Errors caught anywhere in
 // the tab and all log lines go to one CSV file per month in the data lake:
 // <root>/logs/<flow name>/log_YYYY-MM.csv. Returns the next free row.
-// quiet: also add the "JOB DONE" watch (a tap on the log lines and a clock).
+// quiet: also tap every log line (node Note last log line, global context
+// lastLog) for the JOB DONE watch of another tab.
 export function addLogLanes(b, r, flowName, quiet = false) {
   const replace = { __FLOW__: flowName };
   b.lane(r++, 'ERRORS',
@@ -264,21 +265,6 @@ export function addLogLanes(b, r, flowName, quiet = false) {
       fn('logAppend', 'Append log rows', 'l4-append-log.js', ['next']),
       writeStep('logWrite', 'Log to data lake')
     ]);
-  if (quiet) {
-    b.lane(r++, 'JOB DONE',
-      'a clock checks every 10 s when the newest log line was written. When no log line came for 30 s the debug node JOB DONE shows one line; the next log line re-arms it. It means "quiet", not "all written": look at the log for errors.',
-      [
-        rawStep('quietClock', {
-          type: 'inject', name: 'Check every 10 s', topic: '', payload: '',
-          payloadType: 'date', repeat: '10', repeatEnd: '0', endTime: '0',
-          crontab: '', offset: 'NaN', once: false, properties: '',
-          timezone: 'UTC', betweentimesunit: 'm', showNextExecution: false,
-          powerMode: false
-        }),
-        fn('quietCheck', 'Check quiet', 'w5-check-quiet.js', ['next']),
-        debugStep('jobDone', 'JOB DONE', 'payload')
-      ]);
-  }
   return r;
 }
 

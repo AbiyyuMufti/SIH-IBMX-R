@@ -1,11 +1,16 @@
-// Offline test of the lake watcher nodes of flows/vfc-pbi-report.json
-// (subscribe object -> event parsers -> collect -> release -> job).
-// The function code is run with a fake flow context, no network.
+// Offline test of the lake watcher: tab flows/vfc-pbi-listener.json (subscribe
+// object -> event parsers -> collect -> release -> global jobQueue) and the
+// node that takes a job in flows/vfc-pbi-report.json. The function code is
+// run with fake flow and global contexts, no network.
 // Usage: node scripts/test-vfc-pbi-listener.js
 import { readFileSync } from 'node:fs';
 
-const flowJson = JSON.parse(readFileSync(
-  new URL('../flows/vfc-pbi-report.json', import.meta.url), 'utf8'));
+const readFlow = (name) => JSON.parse(readFileSync(
+  new URL(`../flows/${name}`, import.meta.url), 'utf8'));
+const flowJson = readFlow('vfc-pbi-listener.json');
+const reportJson = readFlow('vfc-pbi-report.json');
+// The global context is shared by all tabs.
+const globalCtx = new Map();
 const code = (file) => readFileSync(
   new URL(`./vfc/${file}`, import.meta.url), 'utf8');
 
@@ -22,9 +27,14 @@ function run(file, msg, store, edit = (c) => c) {
     get: (k) => ctx.get(k),
     set: (k, v) => ctx.set(k, v)
   };
+  const glob = {
+    get: (k) => globalCtx.get(k),
+    set: (k, v) => globalCtx.set(k, v)
+  };
   const node = { status: () => {}, error: () => {}, warn: () => {} };
   const body = edit(code(file));
-  return new Function('msg', 'flow', 'node', body)(msg, flow, node);
+  return new Function('msg', 'flow', 'glob', 'node', body)(msg, flow, glob,
+    node);
 }
 
 const SOURCE = '/eu_report/pbi_report/source/';
@@ -153,7 +163,7 @@ ctx.set('pending', {
     reference(200, 'equipment_coding', 'Weinheim')
 });
 const out = run('w3-release.js', {}, ctx);
-const jobs = out[0].map((m) => m.payload);
+const jobs = globalCtx.get('jobQueue').slice();
 const find = (test) => jobs.filter(test);
 const monthTables = [
   'pbi_plan_opt',
@@ -187,11 +197,39 @@ check(shift.length === 1 && !shift[0].sites && shift[0].tables.length === 4,
 const names = find((j) => j.tables.join() === 'pbi_machine_names');
 check(names.length === 1 && !names[0].from,
 'release: machine names is a job with no months');
-check(out[1].length === jobs.length && /listener/.test(out[1][0].payload),
+check(out[0].length === jobs.length && /listener/.test(out[0][0].payload),
 'release: one log line per job');
 const again = run('w3-release.js', {}, ctx);
-check(again[0].length === 0,
-'release: a second check right after sends nothing');
+check(again[0].length === 0 && globalCtx.get('jobQueue').length === jobs.length,
+'release: a second check right after queues nothing');
+
+// ---- the report tab takes the jobs one by one
+const first = run('w6-take-job.js', {});
+check(first && first.payload === jobs[0] &&
+  globalCtx.get('jobQueue').length === jobs.length - 1,
+'take job: the oldest job leaves the queue, one per tick');
+while (globalCtx.get('jobQueue').length) {
+  run('w6-take-job.js', {});
+}
+check(run('w6-take-job.js', {}) === null, 'take job: an empty queue sends nothing');
+
+// ---- JOB DONE watch
+globalCtx.delete('lastLog');
+check(run('w5-check-quiet.js', {}) === null,
+'job done: nothing before the first log line');
+run('w4-note-log.js', {});
+check(run('w5-check-quiet.js', {}) === null,
+'job done: a log line just now is not quiet yet');
+globalCtx.set('lastLog', Date.now() - 45000);
+globalCtx.set('done', false);
+const quiet = run('w5-check-quiet.js', {});
+check(quiet && /JOB DONE/.test(quiet.payload),
+'job done: 45 s without a log line is reported');
+check(run('w5-check-quiet.js', {}) === null,
+'job done: reported once only');
+run('w4-note-log.js', {});
+check(globalCtx.get('done') === false,
+'job done: the next log line re-arms it');
 
 // ---- the generated flow
 const byName = (n) => flowJson.find((x) => x.name === n);
@@ -202,14 +240,22 @@ check(src && src.type === 'subscribe object' &&
 'flow: the source subscribe node watches the source folder');
 check(refSub && refSub.path === '/eu_report/reference/',
 'flow: the reference subscribe node watches the reference folder');
-const jobIn = flowJson.find((x) => x.type === 'link in' && x.name === 'JOB');
-const settings = byName('1.1 TASK SETTINGS (edit here)');
-check(jobIn && jobIn.wires[0][0] === settings.id,
-'flow: the JOB link in feeds node 1.1 like the inject');
+const reportByName = (n) => reportJson.find((x) => x.name === n);
+const settings = reportByName('1.1 TASK SETTINGS (edit here)');
+const take = reportByName('1.0 Take queued job');
+const poll = reportByName('Job queue check every 10 s');
+check(take && settings && take.wires[0][0] === settings.id &&
+  poll && poll.wires[0][0] === take.id && poll.repeat === '10',
+'flow: a clock and node 1.0 feed node 1.1 like the inject');
+check(reportJson.some((x) => /Note last log line$/.test(x.name || '')),
+'flow: the report tab notes every log line for the JOB DONE watch');
+check(reportJson.length < 200 && flowJson.length < 200,
+`flow: both tabs stay under the 200 node limit (${reportJson.length}, ` +
+  `${flowJson.length})`);
 const clock = byName('Release check every 30 s');
 check(clock && clock.repeat === '30',
 'flow: the release clock runs every 30 s');
-const delayNode = flowJson.find((x) => x.type === 'delay' &&
+const delayNode = reportJson.find((x) => x.type === 'delay' &&
   x.name === 'One month per 5 s');
 check(delayNode && delayNode.nbRateUnits === '5',
 'flow: the daily loss months go 5 s apart (memory)');

@@ -1,0 +1,298 @@
+[
+  {
+    "id": "524bf.dcccc9",
+    "type": "tab",
+    "label": "PBI report listener",
+    "disabled": false,
+    "allowCycles": false,
+    "info": "Lake watcher of the PBI report build: file events of the data lake become jobs for the tab PBI report build (global context jobQueue). Also the JOB DONE watch. No API calls."
+  },
+  {
+    "z": "524bf.dcccc9",
+    "id": "543ae.de65e2",
+    "type": "comment",
+    "name": "[1] LISTEN: SOURCE FILES",
+    "info": "STAGE 1 - a subscribe object node on eu_report/pbi_report/source/ (all subfolders) sends one message per file event. The event is kept when it is a MODIFY (new or replaced file) of a plan_opt, line_losses or volume_loss_correction month file; the site and the month come from the path. Deletes and other files are dropped.",
+    "x": 160,
+    "y": 40,
+    "wires": []
+  },
+  {
+    "z": "524bf.dcccc9",
+    "id": "5818c.e19814",
+    "type": "subscribe object",
+    "name": "Source files changed",
+    "path": "/eu_report/pbi_report/source/",
+    "powerMode": false,
+    "x": 140,
+    "y": 120,
+    "wires": [
+      [
+        "5629d.dffefb"
+      ]
+    ]
+  },
+  {
+    "z": "524bf.dcccc9",
+    "id": "5bf6a.e4ca46",
+    "type": "link out",
+    "name": "to EVENT",
+    "mode": "link",
+    "links": [
+      "5a07b.e3312d"
+    ],
+    "x": 540,
+    "y": 120,
+    "wires": []
+  },
+  {
+    "z": "524bf.dcccc9",
+    "id": "5629d.dffefb",
+    "type": "function",
+    "name": "1.1 Read source event",
+    "func": "// Reads one event of the source folder (subscribe object node).\n// In: msg.payload = {eventType, path}. Out: msg.event = {kind, type, site,\n// month}. Nothing is sent for a delete, another file type or another path.\nvar TYPES = [\n  'plan_opt',\n  'line_losses',\n  'volume_loss_correction'\n];\n// Path: .../source/<type>/site=<Site>/<type>_<YYYY-MM>.csv\nvar PATTERN = /source\\/([a-z_]+)\\/site=([^\\/]+)\\/[a-z_]+_(\\d{4}-\\d{2})\\.csv$/;\n\nvar event = msg.payload || {};\nvar path = String(event.path || msg.path || '');\nvar parts = PATTERN.exec(path);\nif (event.eventType !== 'MODIFY' || !parts) {\n  return null;\n}\nif (TYPES.indexOf(parts[1]) === -1) {\n  return null;\n}\n\nnode.status({\n  fill: 'green',\n  shape: 'dot',\n  text: parts[2] + ' ' + parts[3] + ' ' + parts[1]\n});\nreturn {\n  topic: 'event',\n  event: {\n    kind: 'source',\n    type: parts[1],\n    site: parts[2],\n    month: parts[3]\n  }\n};\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 380,
+    "y": 120,
+    "wires": [
+      [
+        "5bf6a.e4ca46"
+      ]
+    ]
+  },
+  {
+    "z": "524bf.dcccc9",
+    "id": "5de59.e6635f",
+    "type": "comment",
+    "name": "[2] LISTEN: REFERENCE FILES",
+    "info": "STAGE 2 - a subscribe object node on eu_report/reference/ (all subfolders). Kept: a MODIFY of a machine_names, shift_naming, glidepaths or equipment_coding file; the type and the site come from the path.",
+    "x": 180,
+    "y": 260,
+    "wires": []
+  },
+  {
+    "z": "524bf.dcccc9",
+    "id": "61c37.e99591",
+    "type": "subscribe object",
+    "name": "Reference files changed",
+    "path": "/eu_report/reference/",
+    "powerMode": false,
+    "x": 160,
+    "y": 340,
+    "wires": [
+      [
+        "5fd48.e7fc78"
+      ]
+    ]
+  },
+  {
+    "z": "524bf.dcccc9",
+    "id": "63b26.eb2eaa",
+    "type": "link out",
+    "name": "to EVENT",
+    "mode": "link",
+    "links": [
+      "5a07b.e3312d"
+    ],
+    "x": 580,
+    "y": 340,
+    "wires": []
+  },
+  {
+    "z": "524bf.dcccc9",
+    "id": "5fd48.e7fc78",
+    "type": "function",
+    "name": "2.1 Read reference event",
+    "func": "// Reads one event of the reference folder (subscribe object node).\n// In: msg.payload = {eventType, path}. Out: msg.event = {kind, type, site}.\n// Nothing is sent for a delete, another file type or a folder we do not use.\nvar TYPES = [\n  'machine_names',\n  'shift_naming',\n  'glidepaths',\n  'equipment_coding'\n];\n// Path: .../reference/<type>/site=<Site>/<file>.csv\nvar PATTERN = /reference\\/([a-z_]+)\\/site=([^\\/]+)\\/[^\\/]+\\.csv$/i;\n\nvar event = msg.payload || {};\nvar path = String(event.path || msg.path || '');\nvar parts = PATTERN.exec(path);\nif (event.eventType !== 'MODIFY' || !parts) {\n  return null;\n}\nif (TYPES.indexOf(parts[1]) === -1) {\n  return null;\n}\n\nnode.status({\n  fill: 'green',\n  shape: 'dot',\n  text: parts[1] + ' ' + parts[2]\n});\nreturn {\n  topic: 'event',\n  event: {\n    kind: 'reference',\n    type: parts[1],\n    site: parts[2]\n  }\n};\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 420,
+    "y": 340,
+    "wires": [
+      [
+        "63b26.eb2eaa"
+      ]
+    ]
+  },
+  {
+    "z": "524bf.dcccc9",
+    "id": "65a15.ecc7c3",
+    "type": "comment",
+    "name": "[3] LISTEN: COLLECT",
+    "info": "STAGE 3 - every event is kept in flow context (one entry per site and month, or per reference type and site; repeated events of the same file count once). LISTENERS_ON in this node switches the watcher off (for example during a bulk upload).",
+    "x": 140,
+    "y": 480,
+    "wires": []
+  },
+  {
+    "z": "524bf.dcccc9",
+    "id": "5a07b.e3312d",
+    "type": "link in",
+    "name": "EVENT",
+    "links": [
+      "5bf6a.e4ca46",
+      "63b26.eb2eaa"
+    ],
+    "x": 60,
+    "y": 560,
+    "wires": [
+      [
+        "67904.ee60dc"
+      ]
+    ]
+  },
+  {
+    "z": "524bf.dcccc9",
+    "id": "67904.ee60dc",
+    "type": "function",
+    "name": "3.1 Collect events",
+    "func": "// Collects the file events in flow context \"pending\", one entry per target\n// (source: site and month, reference: type and site). Nothing is sent on:\n// the release node sends the jobs when the wait window of an entry is over.\n// Set LISTENERS_ON to false to drop all events (for example a bulk upload).\nvar LISTENERS_ON = true;\n\nif (!LISTENERS_ON) {\n  node.status({\n    fill: 'grey',\n    shape: 'ring',\n    text: 'listeners OFF'\n  });\n  return null;\n}\n\nvar event = msg.event;\nvar pending = flow.get('pending') || {};\nvar key = event.kind + '|' + event.site + '|';\nkey += event.kind === 'source' ? event.month : event.type;\nvar now = Date.now();\n\nvar entry = pending[key];\nif (!entry) {\n  entry = {\n    kind: event.kind,\n    site: event.site,\n    month: event.month,\n    type: event.kind === 'reference' ? event.type : null,\n    types: {},\n    first: now,\n    events: 0\n  };\n}\nentry.types[event.type] = true;\nentry.events++;\npending[key] = entry;\nflow.set('pending', pending);\n\nnode.status({\n  fill: 'blue',\n  shape: 'dot',\n  text: Object.keys(pending).length + ' waiting'\n});\nreturn null;\n",
+    "outputs": 0,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 200,
+    "y": 560,
+    "wires": []
+  },
+  {
+    "z": "524bf.dcccc9",
+    "id": "697f3.eff9f5",
+    "type": "comment",
+    "name": "[4] LISTEN: JOBS",
+    "info": "STAGE 4 - a clock looks every 30 s for entries whose wait window is over (120 s for source files, 300 s for reference files, both counted from the first event) and turns them into jobs: months of one site that follow each other become one job; a reference change rebuilds the current month and the months before it (REFERENCE_MONTHS_BACK in node Release due events). The jobs are put in global context jobQueue; node 1.0 of the tab PBI report build takes one every 10 s and runs it like the inject. The debug node shows one line per job.",
+    "x": 140,
+    "y": 700,
+    "wires": []
+  },
+  {
+    "z": "524bf.dcccc9",
+    "id": "6d5d1.f32c27",
+    "type": "inject",
+    "name": "Release check every 30 s",
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "repeat": "30",
+    "repeatEnd": "0",
+    "endTime": "0",
+    "crontab": "",
+    "offset": "NaN",
+    "once": false,
+    "properties": "",
+    "timezone": "UTC",
+    "betweentimesunit": "m",
+    "showNextExecution": false,
+    "powerMode": false,
+    "x": 160,
+    "y": 780,
+    "wires": [
+      [
+        "6b6e2.f1930e"
+      ]
+    ]
+  },
+  {
+    "z": "524bf.dcccc9",
+    "id": "6b6e2.f1930e",
+    "type": "function",
+    "name": "4.1 Release due events",
+    "func": "// Runs on the clock. Takes the entries of flow context \"pending\" whose wait\n// window is over and turns them into jobs {tables, sites, from, to}. The jobs\n// go to global context \"jobQueue\" (the tab PBI report build takes them one by\n// one). Out: one log line per job (for a debug node).\nvar SOURCE_WAIT_S = 120;\nvar REFERENCE_WAIT_S = 300;\n// Months before the current month that a reference change rebuilds.\nvar REFERENCE_MONTHS_BACK = 3;\nvar MONTH_TABLES = [\n  'pbi_plan_opt',\n  'pbi_time_utilisation',\n  'pbi_daily_losses'\n];\nvar TABLES_OF = {\n  plan_opt: MONTH_TABLES,\n  line_losses: ['pbi_daily_losses'],\n  volume_loss_correction: ['pbi_daily_losses'],\n  machine_names: ['pbi_machine_names'],\n  shift_naming: ['pbi_shift_naming'].concat(MONTH_TABLES),\n  glidepaths: MONTH_TABLES,\n  equipment_coding: ['pbi_daily_losses']\n};\n\nvar pending = flow.get('pending') || {};\nvar now = Date.now();\nvar day = new Date(now).toISOString().slice(0, 10);\nvar queue = glob.get('jobQueue') || [];\nvar added = 0;\nvar logs = [];\nvar sourceGroups = {};\n\nfunction monthIndex(text) {\n  return Number(text.slice(0, 4)) * 12 + Number(text.slice(5, 7)) - 1;\n}\n\nfunction monthText(index) {\n  var year = Math.floor(index / 12);\n  var month = (index % 12) + 1;\n  return year + '-' + (month < 10 ? '0' + month : month);\n}\n\nfunction addTables(list, tables) {\n  tables.forEach(function (table) {\n    if (list.indexOf(table) === -1) {\n      list.push(table);\n    }\n  });\n}\n\nfunction addJob(job, why) {\n  queue.push(job);\n  added++;\n  logs.push({\n    topic: 'log',\n    payload: day + ' [listener] JOB ' + why + ': ' + JSON.stringify(job)\n  });\n}\n\n// Source files: one group per site and set of tables; the months of a group\n// that follow each other become one job.\nfunction groupSource(entry) {\n  var tables = [];\n  Object.keys(entry.types).forEach(function (type) {\n    addTables(tables, TABLES_OF[type]);\n  });\n  var key = entry.site + '|' + tables.join(',');\n  sourceGroups[key] = sourceGroups[key] || {\n    site: entry.site,\n    tables: tables,\n    months: []\n  };\n  sourceGroups[key].months.push(monthIndex(entry.month));\n}\n\nfunction referenceJob(entry) {\n  var tables = TABLES_OF[entry.type];\n  var job = {\n    tables: tables\n  };\n  if (entry.site !== 'All') {\n    job.sites = [entry.site];\n  }\n  var hasMonths = tables.some(function (table) {\n    return MONTH_TABLES.indexOf(table) !== -1;\n  });\n  if (hasMonths) {\n    var current = monthIndex(new Date(now).toISOString().slice(0, 7));\n    job.from = monthText(current - REFERENCE_MONTHS_BACK);\n    job.to = monthText(current);\n  }\n  addJob(job, entry.type + ' ' + entry.site + ' changed');\n}\n\nObject.keys(pending).forEach(function (key) {\n  var entry = pending[key];\n  var wait = entry.kind === 'source' ? SOURCE_WAIT_S : REFERENCE_WAIT_S;\n  if (now - entry.first < wait * 1000) {\n    return;\n  }\n  delete pending[key];\n  if (entry.kind === 'source') {\n    groupSource(entry);\n  } else {\n    referenceJob(entry);\n  }\n});\n\nObject.keys(sourceGroups).forEach(function (key) {\n  var group = sourceGroups[key];\n  var months = group.months.sort(function (a, b) {\n    return a - b;\n  });\n  var start = months[0];\n  var last = months[0];\n  months.slice(1).concat([null]).forEach(function (index) {\n    if (index === last + 1) {\n      last = index;\n      return;\n    }\n    if (index === last) {\n      return;\n    }\n    addJob({\n      tables: group.tables,\n      sites: [group.site],\n      from: monthText(start),\n      to: monthText(last)\n    }, group.site + ' source files changed');\n    start = index;\n    last = index;\n  });\n});\n\nflow.set('pending', pending);\nglob.set('jobQueue', queue);\nvar waiting = Object.keys(pending).length;\nnode.status({\n  fill: added ? 'green' : 'blue',\n  shape: 'dot',\n  text: waiting + ' waiting, ' + added + ' job(s) queued'\n});\nreturn [logs];\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 420,
+    "y": 780,
+    "wires": [
+      [
+        "6f4c0.f4c540"
+      ]
+    ]
+  },
+  {
+    "z": "524bf.dcccc9",
+    "id": "6f4c0.f4c540",
+    "type": "debug",
+    "name": "Listener log",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "x": 640,
+    "y": 780,
+    "wires": []
+  },
+  {
+    "z": "524bf.dcccc9",
+    "id": "713af.f65e59",
+    "type": "comment",
+    "name": "[5] JOB DONE",
+    "info": "STAGE 5 - a clock checks every 10 s when the newest log line of the tab PBI report build was written (node Note last log line there, global context lastLog). When no log line came for 30 s the debug node JOB DONE shows one line; the next log line re-arms it. It means \"quiet\", not \"all written\": look at the log for errors.",
+    "x": 120,
+    "y": 920,
+    "wires": []
+  },
+  {
+    "z": "524bf.dcccc9",
+    "id": "7518d.f9908b",
+    "type": "inject",
+    "name": "Check every 10 s",
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "repeat": "10",
+    "repeatEnd": "0",
+    "endTime": "0",
+    "crontab": "",
+    "offset": "NaN",
+    "once": false,
+    "properties": "",
+    "timezone": "UTC",
+    "betweentimesunit": "m",
+    "showNextExecution": false,
+    "powerMode": false,
+    "x": 140,
+    "y": 1000,
+    "wires": [
+      [
+        "7329e.f7f772"
+      ]
+    ]
+  },
+  {
+    "z": "524bf.dcccc9",
+    "id": "7329e.f7f772",
+    "type": "function",
+    "name": "5.1 Check quiet",
+    "func": "// Runs on the clock. Reports \"JOB DONE\" once, when no log line came for\n// QUIET_SECONDS. In: nothing (inject). Out: msg.payload = the text.\n// The log lines are noted in global context by the tab PBI report build.\nvar QUIET_SECONDS = 30;\nvar last = glob.get('lastLog');\nvar done = glob.get('done');\nif (!last || done) {\n  return null;\n}\n\nvar quiet = (Date.now() - last) / 1000;\nif (quiet < QUIET_SECONDS) {\n  return null;\n}\nglob.set('done', true);\nnode.status({\n  fill: 'green',\n  shape: 'dot',\n  text: 'quiet since ' + new Date(last).toISOString().slice(11, 19)\n});\nreturn {\n  payload: 'JOB DONE: no log line for ' + Math.round(quiet) + ' s'\n};\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 340,
+    "y": 1000,
+    "wires": [
+      [
+        "7707c.fb29a4"
+      ]
+    ]
+  },
+  {
+    "z": "524bf.dcccc9",
+    "id": "7707c.fb29a4",
+    "type": "debug",
+    "name": "JOB DONE",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "x": 520,
+    "y": 1000,
+    "wires": []
+  }
+]
