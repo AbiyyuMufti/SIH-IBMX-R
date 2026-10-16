@@ -176,7 +176,7 @@ export function makeBuilder(flowIndex) {
         add({
           id: id(step.key), type: 'parquet', name: `Write ${step.table} parquet`, option: 'write',
           columns: step.schema.map(([column, type]) => ({ column, type })), rcolumns: '',
-          multi: 'multiple', outputPty: 'payload', outputPtyType: 'msg', engine: 'parquetjs',
+          multi: 'multiple', outputPty: 'payload', outputPtyType: 'msg', engine: step.engine || 'parquetjs',
           ...pos, wires: [[nextId]]
         });
       } else if (step.t === 'pqread') {
