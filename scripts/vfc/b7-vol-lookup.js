@@ -72,6 +72,12 @@ rows.forEach(function (row) {
     asText(row.OEELossLvl3Desc);
   var units = asText(row['Loss Units']).trim() === '' ? NaN :
     Number(asText(row['Loss Units']).trim());
+  // Two correction rows can get the same key after the text replacements
+  // (Breakdown - Electrical and - Mechanical): the first one is kept, as the
+  // report does (checked against its Daily Losses table, 2026-10-17).
+  if (map[key] !== undefined) {
+    return;
+  }
   map[key] = {
     u: isNaN(units) ? null : Math.round(units),
     m: minutes(row.Time)

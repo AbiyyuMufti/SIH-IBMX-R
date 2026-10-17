@@ -1,9 +1,12 @@
 """Read-only. Checks the pbi_* parquet files that the VFC flow wrote, after they
-were downloaded with `node scripts/datalake-download.js get <path>` into
-downloads/eu_report/pbi_report/report/<table>/.... For every table it checks the
-columns and types, the row counts per file, the share of empty values in the
-key columns, duplicate rows, and (plan OPT, machine names) the comparison with
-the report's own tables when the files of the report folder are there.
+were downloaded with `node scripts/datalake-download-tree.js
+eu_report/pbi_report/report/` into downloads/eu_report/pbi_report/report/<table>/.
+For every table it checks the columns and types (the names and types of the
+Tableau workbook "EU Daily OEE Report - WIP5", then our extra columns), the row
+counts per file, the share of empty values in the key columns, duplicate rows,
+and the comparison with the report's own tables (Segun's data, downloaded with
+`node scripts/datalake-download-tree.js Sandbox/report_test/ --out
+downloads/sandbox-report-test`).
 Usage: python -I scripts/helper-check-pbi-report.py [folder]
 """
 import glob
@@ -15,47 +18,48 @@ import pandas as pd
 import pyarrow.parquet as pq
 
 ROOT = sys.argv[1] if len(sys.argv) > 1 else "downloads/eu_report/pbi_report/report"
-REPORT = "C:/WORK/IBM-RECKITT/ReportReplica/Seguns/"
+REPORT = "downloads/sandbox-report-test/Sandbox/report_test/"
 
-STR, DBL, I64, TS = "string", "double", "int64", "timestamp[ms, tz=UTC]"
+STR, DBL, I64, TS, DT = "string", "double", "int64", "timestamp[ms, tz=UTC]", "date32[day]"
 EXPECTED = {
     "pbi_machine_names": [
-        ("site_name", STR), ("area", STR), ("dept", STR), ("machine_name", STR),
-        ("product_type", STR), ("unique_machine_name", STR), ("loaded_at", TS)],
+        ("MachineName", STR), ("Dept", STR), ("Area", STR), ("Product Type", STR),
+        ("SiteName", STR), ("Unique Machine Name", STR), ("loaded_at", TS)],
     "pbi_shift_naming": [("shift", STR), ("loaded_at", TS)],
     "pbi_calendar": [
         ("date", STR), ("year", I64), ("month_number", I64), ("month", STR),
         ("month_short_name", STR), ("month_year", STR), ("month_year_number", STR),
         ("quarter", STR), ("quarter_number", I64), ("week_number", I64), ("week_start", STR)],
     "pbi_plan_opt": [
-        ("site_name", STR), ("area_name", STR), ("machine_name", STR),
-        ("unique_machine_name", STR), ("date", STR), ("shift_name", STR),
-        ("part_name", STR), ("product_key", STR), ("good_parts", DBL),
-        ("capacity", DBL), ("downtime_units", DBL), ("total_time", DBL),
-        ("planned_opt", DBL), ("oee_time", DBL), ("oee_target", DBL),
-        ("pdt_target", DBL), ("updt_target", DBL), ("source_hours", I64), ("loaded_at", TS)],
+        ("Date", DT), ("AreaName", STR), ("MachineName", STR), ("ShiftName", STR),
+        ("PartName", STR), ("Good Parts", I64), ("Capacity", DBL), ("Total Time", I64),
+        ("Planned OpT", I64), ("OEE Time", I64), ("Downtime Units", DBL), ("SiteName", STR),
+        ("Unique Machine Name", STR), ("Product Key", STR), ("UPDT Target", DBL),
+        ("PDT Target", DBL), ("OEE Target", DBL), ("source_hours", I64), ("loaded_at", TS)],
     "pbi_time_utilisation": [
-        ("site_name", STR), ("machine_name", STR), ("unique_machine_name", STR),
-        ("date", STR), ("total_time_total", DBL), ("planned_opt_total", DBL),
-        ("oee_time_total", DBL), ("all_time", I64), ("loaded_at", TS)],
+        ("Date", DT), ("MachineName", STR), ("OEE Time Total", DBL), ("Total Time Total", DBL),
+        ("Planned OPT Total", DBL), ("SiteName", STR), ("Unique Machine Name", STR),
+        ("All Time", I64), ("loaded_at", TS)],
     "pbi_daily_losses": [
-        ("site_name", STR), ("machine_name", STR), ("unique_machine_name", STR),
-        ("date", STR), ("time", STR), ("shift_start_date", STR), ("shift_name", STR),
-        ("duration", DBL), ("loss_units", DBL), ("loss_lvl3_group", STR),
-        ("loss_lvl3_sub_group", STR), ("loss_lvl3_desc", STR), ("loss_final_level", STR),
-        ("equipment", STR), ("breakdown_types", STR), ("batch_id", STR),
-        ("comment_count", I64), ("part_name", STR), ("product_key", STR),
-        ("loss_target_key", STR), ("value", DBL), ("target", DBL), ("volume_key", STR),
-        ("volume_total", DBL), ("comment", STR), ("merged", STR),
-        ("shift_name_copy", STR), ("volume_day_key", STR), ("loaded_at", TS)],
+        ("Date", DT), ("Time", TS), ("MachineName", STR), ("PartDesc", STR), ("Shift Time", STR),
+        ("ShiftName", STR), ("OEELossLvl3Group", STR), ("OEELossLvl3SubGroup", STR),
+        ("OEELossLvl3Desc", STR), ("Duration", TS), ("SiteName", STR),
+        ("Unique Machine Name", STR), ("Breakdown Types", STR), ("ShiftStartDate.1", DT),
+        ("Comment", STR), ("Product Key", STR), ("Volume Key", STR), ("Loss Units", DBL),
+        ("Time in Mins", DBL), ("Equipment Loss Key", STR), ("Equipment", STR),
+        ("Lvl 3 Loss Name", STR), ("Loss Target Key", STR), ("Value", STR),
+        ("Volume Total", DBL), ("Loss Final Level", STR), ("target", DBL), ("batch_id", STR),
+        ("comment_count", I64), ("loaded_at", TS)],
 }
 KEY_COLUMNS = {
-    "pbi_plan_opt": ["shift_name", "oee_target", "pdt_target", "updt_target", "total_time", "product_key"],
-    "pbi_time_utilisation": ["total_time_total", "planned_opt_total"],
-    "pbi_daily_losses": ["shift_name", "loss_units", "equipment", "value", "volume_total",
-                         "loss_lvl3_sub_group", "duration"],
-    "pbi_machine_names": ["dept", "area", "product_type"],
+    "pbi_plan_opt": ["ShiftName", "OEE Target", "PDT Target", "UPDT Target", "Total Time", "Product Key"],
+    "pbi_time_utilisation": ["Total Time Total", "Planned OPT Total"],
+    "pbi_daily_losses": ["ShiftName", "Loss Units", "Equipment", "Value", "Volume Total",
+                         "OEELossLvl3SubGroup", "Duration", "Comment"],
+    "pbi_machine_names": ["Dept", "Area", "Product Type"],
 }
+MONTH_COLUMN = {"pbi_plan_opt": "Date", "pbi_time_utilisation": "Date",
+                "pbi_daily_losses": "ShiftStartDate.1"}
 problems = 0
 
 
@@ -66,6 +70,11 @@ def say(text=""):
 def schema_of(path):
     s = pq.read_schema(path)
     return [(n, str(t)) for n, t in zip(s.names, s.types)]
+
+
+def load(table):
+    files = sorted(glob.glob(f"{ROOT}/{table}/**/*.parquet", recursive=True))
+    return files, (pd.concat([pd.read_parquet(f) for f in files], ignore_index=True) if files else None)
 
 
 for table, expected in EXPECTED.items():
@@ -88,67 +97,125 @@ for table, expected in EXPECTED.items():
     d = pd.concat(frames, ignore_index=True)
     problems += bad_schema
     say(f"\n{table}: {len(files)} file(s), {len(d)} rows, schema ok in {len(files) - bad_schema}/{len(files)}")
-    if "site_name" in d:
-        say("  rows per site: " + str(d.site_name.value_counts().to_dict()))
+    if "SiteName" in d:
+        say("  rows per site: " + str(d.SiteName.value_counts().to_dict()))
     cols = [c for c in KEY_COLUMNS.get(table, []) if c in d]
     if cols:
         say("  empty share: " + ", ".join(f"{c} {d[c].isna().mean():.1%}" for c in cols))
     dupes = int(d.drop(columns=[c for c in ["_file", "loaded_at"] if c in d]).duplicated().sum())
     say(f"  fully duplicated rows: {dupes}")
     # Plan OPT rows can repeat (two shift segments of a product with the same values):
-    # the report has them too (170 of its 16655 Hull rows), so it is only a note.
+    # the report has them too, so it is only a note. Daily losses: two identical stops.
     if dupes and table not in ("pbi_daily_losses", "pbi_plan_opt"):
         problems += 1
-    if table in ("pbi_plan_opt", "pbi_daily_losses", "pbi_time_utilisation"):
-        d["month"] = d["date"].str[:7] if table != "pbi_daily_losses" else d["shift_start_date"].str[:7]
-        per = d.groupby(["site_name", "month"]).size().unstack(0)
+    if table in MONTH_COLUMN and MONTH_COLUMN[table] in d:
+        d["month"] = d[MONTH_COLUMN[table]].astype(str).str[:7]
+        per = d.groupby(["SiteName", "month"]).size().unstack(0)
         say("  rows per month and site (first 6):")
         say(per.head(6).to_string())
 
+if problems:
+    say(f"\nproblems: {problems} (the files do not have the columns of the workbook: "
+        "run the flow again; the comparisons with the report are skipped)")
+    sys.exit(1)
+mn_files, mn = load("pbi_machine_names")
+plan_files, plan = load("pbi_plan_opt")
+util_files, util = load("pbi_time_utilisation")
+loss_files, loss = load("pbi_daily_losses")
+
+
+def report(name):
+    path = REPORT + name
+    return pd.read_parquet(path) if os.path.exists(path) else None
+
+
 # machine names against the report
-mn = f"{ROOT}/pbi_machine_names/pbi_machine_names.parquet"
-rep_mn = REPORT + "Machine Names EU.parquet"
-if os.path.exists(mn) and os.path.exists(rep_mn):
-    m = pd.read_parquet(mn)
-    r = pd.read_parquet(rep_mn)
-    r = r[r.SiteName.isin(m.site_name.unique())]
-    a = set(zip(m.machine_name, m.dept, m.area, m.product_type, m.site_name, m.unique_machine_name))
-    b = set(zip(r.MachineName, r.Dept, r.Area, r["Product Type"], r.SiteName, r["Unique Machine Name"]))
+rep = report("Machine_Names_EU.parquet")
+if mn is not None and rep is not None:
+    rep = rep[rep.SiteName.isin(mn.SiteName.unique())]
+    cols = ["MachineName", "Dept", "Area", "Product Type", "SiteName", "Unique Machine Name"]
+    a, b = set(map(tuple, mn[cols].values)), set(map(tuple, rep[cols].values))
     say(f"\nmachine names against the report: identical sets {a == b} ({len(a)} vs {len(b)})")
     problems += a != b
 
-# plan OPT against the report
-plan_files = sorted(glob.glob(f"{ROOT}/pbi_plan_opt/**/*.parquet", recursive=True))
-rep_plan = REPORT + "Plan OPT EU.parquet"
-if plan_files and os.path.exists(rep_plan):
-    o = pd.concat([pd.read_parquet(f) for f in plan_files], ignore_index=True)
-    r = pd.read_parquet(rep_plan)
-    r["date"] = r.Date.dt.strftime("%Y-%m-%d")
-    r = r.rename(columns={"AreaName": "area_name", "MachineName": "machine_name", "ShiftName": "shift_name",
-                          "PartName": "part_name", "Good Parts": "good_parts", "Capacity": "capacity",
-                          "Total Time": "total_time", "Planned OpT": "planned_opt", "OEE Time": "oee_time",
-                          "Downtime Units": "downtime_units", "SiteName": "site_name",
-                          "Unique Machine Name": "unique_machine_name", "Product Key": "product_key",
-                          "UPDT Target": "updt_target", "PDT Target": "pdt_target", "OEE Target": "oee_target"})
-    cols = ["site_name", "date", "area_name", "machine_name", "shift_name", "part_name", "good_parts", "capacity",
-            "total_time", "planned_opt", "oee_time", "downtime_units", "unique_machine_name", "product_key",
-            "updt_target", "pdt_target", "oee_target"]
-    sites = set(o.site_name)
-    months = {(s, m) for s, m in zip(o.site_name, o.date.str[:7])}
-    r = r[r.site_name.isin(sites) & (r.date <= r.date.max())]
-    r = r[[(s, m) in months for s, m in zip(r.site_name, r.date.str[:7])]]
-    o = o[o.date <= r.date.max()] if len(r) else o
+# plan OPT against the report: the 17 columns of the workbook
+rep = report("Plan_OPT_EU.parquet")
+if plan is not None and rep is not None:
+    cols = [c for c, _ in EXPECTED["pbi_plan_opt"][:17]]
+    last = rep.Date.max()
+    months = {(s, str(x)[:7]) for s, x in zip(plan.SiteName, plan.Date)}
+    r = rep[rep.SiteName.isin(set(plan.SiteName))]
+    r = r[[(s, str(x)[:7]) in months for s, x in zip(r.SiteName, r.Date)]]
+    o = plan[plan.Date <= last]
 
     def keyset(df):
         x = df[cols].copy()
-        for c in ["good_parts", "capacity", "total_time", "planned_opt", "oee_time", "downtime_units",
-                  "updt_target", "pdt_target", "oee_target"]:
+        for c in ["Good Parts", "Capacity", "Total Time", "Planned OpT", "OEE Time", "Downtime Units",
+                  "UPDT Target", "PDT Target", "OEE Target"]:
             x[c] = pd.to_numeric(x[c], errors="coerce").round(4)
+        x["Date"] = x["Date"].astype(str)
         x = x.astype(object).where(x.notna(), None)
         return Counter(x.apply(tuple, axis=1))
     co, cr = keyset(o), keyset(r)
     same = sum((co & cr).values())
-    say(f"\nplan OPT against the report (same sites and months, up to {r.date.max() if len(r) else '-'}): "
+    say(f"\nplan OPT against the report (same sites and months, up to {last}): "
         f"{same} of {len(r)} report rows identical in 17 columns ({same / max(len(r), 1):.2%})")
+
+# time utilisation against the report: one row per machine and day
+rep = report("Time_Utilisation_EU.parquet")
+if util is not None and rep is not None:
+    last = rep.Date.max()
+    months = {(s, str(x)[:7]) for s, x in zip(util.SiteName, util.Date)}
+    r = rep[rep.SiteName.isin(set(util.SiteName))]
+    r = r[[(s, str(x)[:7]) in months for s, x in zip(r.SiteName, r.Date)]]
+    o = util[util.Date <= last]
+    m = o.merge(r, on=["SiteName", "MachineName", "Date"], how="outer", suffixes=("_o", "_r"), indicator=True)
+    both = m[m._merge == "both"]
+    say(f"\ntime utilisation against the report (up to {last}): rows {len(o)} vs {len(r)}, "
+        f"same machine-day {len(both)}, only ours {int((m._merge == 'left_only').sum())}, "
+        f"only report {int((m._merge == 'right_only').sum())}")
+    for c in ["OEE Time Total", "Total Time Total", "Planned OPT Total", "All Time"]:
+        ok = ((both[c + "_o"] - both[c + "_r"]).abs() <= 0.01) | (both[c + "_o"].isna() & both[c + "_r"].isna())
+        say(f"  {c}: {ok.mean():.2%} equal")
+
+# daily losses against the report: one row per stop and equipment
+rep = report("Daily_Losses_EU.parquet")
+if loss is not None and rep is not None:
+    def prep(df, ours):
+        x = df.copy()
+        x["d"] = x["Date"].astype(str).str[:10]
+        t = pd.to_datetime(x["Time"])
+        x["t"] = (t.dt.hour * 3600 + t.dt.minute * 60 + t.dt.second + t.dt.microsecond / 1e6).round()
+        x["dl"] = x["OEELossLvl3Desc"].str.lower()
+        x["el"] = x["Equipment"].fillna("")
+        return x
+    o, r = prep(loss, True), prep(rep, False)
+    last = r.d.max()
+    months = {(s, x[:7]) for s, x in zip(o.SiteName, o.d)}
+    r = r[r.SiteName.isin(set(o.SiteName))]
+    r = r[[(s, x[:7]) in months for s, x in zip(r.SiteName, r.d)]]
+    o = o[o.d <= last]
+    key = ["SiteName", "MachineName", "d", "t", "dl", "el"]
+    o["n"] = o.groupby(key).cumcount()
+    r["n"] = r.groupby(key).cumcount()
+    m = o.merge(r, on=key + ["n"], how="outer", suffixes=("_o", "_r"), indicator=True)
+    both = m[m._merge == "both"]
+    say(f"\ndaily losses against the report (up to {last}): rows {len(o)} vs {len(r)}, "
+        f"same stop {len(both)} ({len(both) / max(len(r), 1):.2%}), only ours {int((m._merge == 'left_only').sum())}, "
+        f"only report {int((m._merge == 'right_only').sum())}")
+    say("  (the stop is matched on site, machine, start and description without case; the report "
+        "model keeps ONE spelling of texts that differ only in capitals, ours keeps the spelling of the file)")
+    texts = ["ShiftName", "Shift Time", "OEELossLvl3Group", "OEELossLvl3SubGroup", "OEELossLvl3Desc",
+             "PartDesc", "Breakdown Types", "Comment", "Product Key", "Volume Key", "Equipment Loss Key",
+             "Lvl 3 Loss Name", "Loss Target Key", "Value", "Loss Final Level"]
+    line = []
+    for c in texts:
+        a, b = both[c + "_o"], both[c + "_r"]
+        line.append(f"{c} {(((a == b) | (a.isna() & b.isna())).mean()):.2%}")
+    say("  equal: " + "; ".join(line))
+    for c, tol in [("Loss Units", 0.01), ("Time in Mins", 0.02), ("Volume Total", 0.01)]:
+        a, b = both[c + "_o"], both[c + "_r"]
+        ok = ((a - b).abs() <= tol) | (a.isna() & b.isna())
+        say(f"  {c}: {ok.mean():.2%} equal (tolerance {tol})")
 say(f"\nproblems: {problems}")
 sys.exit(1 if problems else 0)

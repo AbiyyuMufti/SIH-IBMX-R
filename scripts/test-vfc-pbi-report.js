@@ -62,7 +62,56 @@ const run = (job, extra = {}) => runFlow(flow, {
   ...extra
 });
 const tableWrites = (stats) => stats.written.filter((p) => p.startsWith(OUT));
-const rowsOf = (stats, name) => (stats.parquetPayloads[name] || []).flat();
+const rawRowsOf = (stats, name) => (stats.parquetPayloads[name] || []).flat();
+// The tables use the Tableau column names. Most checks below were written for
+// the snake_case names of the first version: this adapter turns the rows back,
+// so the same checks prove the content did not change (names and types of the
+// Tableau columns are checked in section 13).
+const dayText = (n) => (n === null ? null : new Date(n * 86400000).toISOString().slice(0, 10));
+const timeText = (ms) => (ms === null ? null : new Date(ms).toISOString().slice(11, 19));
+const RENAME = {
+  'Write pbi_machine_names parquet': {
+    MachineName: 'machine_name', Dept: 'dept', Area: 'area', 'Product Type': 'product_type',
+    SiteName: 'site_name', 'Unique Machine Name': 'unique_machine_name'
+  },
+  'Write pbi_plan_opt parquet': {
+    Date: ['date', dayText], AreaName: 'area_name', MachineName: 'machine_name', ShiftName: 'shift_name',
+    PartName: 'part_name', 'Good Parts': 'good_parts', Capacity: 'capacity', 'Total Time': 'total_time',
+    'Planned OpT': 'planned_opt', 'OEE Time': 'oee_time', 'Downtime Units': 'downtime_units',
+    SiteName: 'site_name', 'Unique Machine Name': 'unique_machine_name', 'Product Key': 'product_key',
+    'UPDT Target': 'updt_target', 'PDT Target': 'pdt_target', 'OEE Target': 'oee_target'
+  },
+  'Write pbi_time_utilisation parquet': {
+    Date: ['date', dayText], MachineName: 'machine_name', 'OEE Time Total': 'oee_time_total',
+    'Total Time Total': 'total_time_total', 'Planned OPT Total': 'planned_opt_total',
+    SiteName: 'site_name', 'Unique Machine Name': 'unique_machine_name', 'All Time': 'all_time'
+  },
+  'Write pbi_daily_losses parquet': {
+    Date: ['date', dayText], Time: ['time', timeText], MachineName: 'machine_name', PartDesc: 'part_name',
+    ShiftName: 'shift_name', OEELossLvl3Group: 'loss_lvl3_group', OEELossLvl3SubGroup: 'loss_lvl3_sub_group',
+    OEELossLvl3Desc: 'loss_lvl3_desc', Duration: ['duration', (ms) => (ms === null ? null : Math.floor(ms / 60000))],
+    SiteName: 'site_name', 'Unique Machine Name': 'unique_machine_name', 'Breakdown Types': 'breakdown_types',
+    'ShiftStartDate.1': ['shift_start_date', dayText], Comment: 'comment', 'Product Key': 'product_key',
+    'Volume Key': 'volume_key', 'Loss Units': 'loss_units', Equipment: 'equipment',
+    'Loss Target Key': 'loss_target_key', Value: ['value', (v) => (v === null ? null : Number(v))],
+    'Volume Total': 'volume_total', 'Loss Final Level': 'loss_final_level'
+  }
+};
+const rowsOf = (stats, name) => {
+  const map = RENAME[name];
+  const raw = rawRowsOf(stats, name);
+  if (!map) {
+    return raw;
+  }
+  return raw.map((row) => {
+    const out = { ...row };
+    Object.entries(map).forEach(([from, to]) => {
+      const [key, convert] = Array.isArray(to) ? to : [to, (v) => v];
+      out[key] = convert(row[from]);
+    });
+    return out;
+  });
+};
 const logText = (stats) => stats.logs.map(String).join('\n');
 
 // 1. everything, write mode
@@ -360,15 +409,17 @@ check(cap.loss_lvl3_sub_group === 'Breakdown' && cap.breakdown_types === 'Breakd
 check(cap.duration === 30 && cap.date === '2026-09-01' && cap.time === '08:15:00' && cap.shift_start_date === '2026-09-01',
   `losses: duration in whole minutes (00:30:45 gives 30), date and time: ${cap.duration} ${cap.date} ${cap.time}`);
 check(Math.abs(cap.loss_units - 9000 * 30 / 180) < 1e-9, 'losses: loss units = correction units (rounded) x duration / correction minutes: ' + cap.loss_units);
-check(cap.equipment === 'Capper Head' && cap.shift_name === 'Day' && cap.shift_name_copy === 'FriDay',
+check(cap.equipment === 'Capper Head' && cap.shift_name === 'Day',
   'losses: equipment, mapped shift and the raw shift name');
 check(cap.value === 2 && Math.abs(cap.target - 0.02) < 1e-9 && cap.loss_target_key === 'B2 Auto-Hull Breakdown 01/09/2026',
   'losses: loss target key and value from the Glidepaths bucket, target = value / 100');
-check(cap.volume_total === 2500.5 && cap.volume_day_key === 'B2 Auto 01/09/2026', 'losses: volume total = sum of Capacity of the machine and day');
-check(cap.volume_key === '01/09/2026 B2 Auto Unplanned Loss Breakdown Capper' && cap.merged === 'B2 Auto 01/09/2026 08:15:00',
-  'losses: volume key and merged key as the report builds them: ' + cap.volume_key);
-check(cap.comment === 'jam, cleared' && cap.product_key === 'B2 Auto-Hull NFC 12 X 100ML ' && cap.part_name === 'NFC 12 X 100ML ',
-  'losses: comment text kept, part name kept as exported');
+check(cap.volume_total === 2500.5, 'losses: volume total = sum of Capacity of the machine and day');
+check(cap.volume_key === '01/09/2026 B2 Auto Unplanned Loss Breakdown Capper',
+  'losses: volume key as the report builds it: ' + cap.volume_key);
+check(cap.comment === 'jam, cleared' && cap.product_key === 'B2 Auto-Hull NFC 12 X 100ML' && cap.part_name === 'NFC 12 X 100ML',
+  'losses: comment text kept, trailing spaces of the part name removed (the report has none)');
+const noComment = loss.find((r) => r.loss_lvl3_desc === 'Breaks');
+check(noComment && noComment.comment === null, 'losses: an empty comment is a null (the report has null, not an empty text)');
 const brk = loss.find((r) => r.loss_lvl3_desc === 'Breaks');
 check(brk.loss_lvl3_sub_group === 'Breaks / Meals' && brk.equipment === 'Unclassed', 'losses: Meals & Breaks becomes Breaks / Meals, an empty equipment is Unclassed');
 check(Math.abs(brk.loss_units - 600 * 60 / 120) < 1e-9, 'losses: a second correction row: 600 x 60 / 120');
@@ -413,6 +464,70 @@ stats = await run(lossJob(['Hull']), { lake: lossLake(), write: false });
 check(tableWrites(stats).length === 0 && /DRY RUN: pbi_daily_losses 5 rows/.test(logText(stats)), 'losses dry run: nothing written');
 stats = await run({ tables: ['pbi_plan_opt', 'pbi_daily_losses'], sites: ['Hull'], from: '2026-09', to: '2026-09' }, { lake: lossLake() });
 check(tableWrites(stats).length === 2, 'plan OPT and losses in one job: both written (the shared setup is run once per site)');
+
+// ---- 13. the column names and types of the Tableau workbook (WIP5) ----
+// Names and order of the four data sources of "EU Daily OEE Report - WIP5",
+// then our own extra columns. The three columns the diagram marks as not
+// needed (Merged, ShiftName - Copy, Volume Key.1) are left out.
+const TABLEAU = {
+  'Write pbi_machine_names parquet': [
+    ['MachineName', 'UTF8'], ['Dept', 'UTF8'], ['Area', 'UTF8'], ['Product Type', 'UTF8'],
+    ['SiteName', 'UTF8'], ['Unique Machine Name', 'UTF8'], ['loaded_at', 'TIMESTAMP_MILLIS']
+  ],
+  [PLAN]: [
+    ['Date', 'DATE'], ['AreaName', 'UTF8'], ['MachineName', 'UTF8'], ['ShiftName', 'UTF8'],
+    ['PartName', 'UTF8'], ['Good Parts', 'INT64'], ['Capacity', 'DOUBLE'], ['Total Time', 'INT64'],
+    ['Planned OpT', 'INT64'], ['OEE Time', 'INT64'], ['Downtime Units', 'DOUBLE'], ['SiteName', 'UTF8'],
+    ['Unique Machine Name', 'UTF8'], ['Product Key', 'UTF8'], ['UPDT Target', 'DOUBLE'],
+    ['PDT Target', 'DOUBLE'], ['OEE Target', 'DOUBLE'], ['source_hours', 'INT64'],
+    ['loaded_at', 'TIMESTAMP_MILLIS']
+  ],
+  [UTIL]: [
+    ['Date', 'DATE'], ['MachineName', 'UTF8'], ['OEE Time Total', 'DOUBLE'], ['Total Time Total', 'DOUBLE'],
+    ['Planned OPT Total', 'DOUBLE'], ['SiteName', 'UTF8'], ['Unique Machine Name', 'UTF8'],
+    ['All Time', 'INT64'], ['loaded_at', 'TIMESTAMP_MILLIS']
+  ],
+  [LOSS]: [
+    ['Date', 'DATE'], ['Time', 'TIMESTAMP_MILLIS'], ['MachineName', 'UTF8'], ['PartDesc', 'UTF8'],
+    ['Shift Time', 'UTF8'], ['ShiftName', 'UTF8'], ['OEELossLvl3Group', 'UTF8'],
+    ['OEELossLvl3SubGroup', 'UTF8'], ['OEELossLvl3Desc', 'UTF8'], ['Duration', 'TIMESTAMP_MILLIS'],
+    ['SiteName', 'UTF8'], ['Unique Machine Name', 'UTF8'], ['Breakdown Types', 'UTF8'],
+    ['ShiftStartDate.1', 'DATE'], ['Comment', 'UTF8'], ['Product Key', 'UTF8'], ['Volume Key', 'UTF8'],
+    ['Loss Units', 'DOUBLE'], ['Time in Mins', 'DOUBLE'], ['Equipment Loss Key', 'UTF8'],
+    ['Equipment', 'UTF8'], ['Lvl 3 Loss Name', 'UTF8'], ['Loss Target Key', 'UTF8'], ['Value', 'UTF8'],
+    ['Volume Total', 'DOUBLE'], ['Loss Final Level', 'UTF8'], ['target', 'DOUBLE'], ['batch_id', 'UTF8'],
+    ['comment_count', 'INT64'], ['loaded_at', 'TIMESTAMP_MILLIS']
+  ]
+};
+Object.entries(TABLEAU).forEach(([node, expected]) => {
+  const parquet = flow.find((n) => n.type === 'parquet' && n.name === node);
+  const have = parquet.columns.map((c) => [c.column, c.type]);
+  check(JSON.stringify(have) === JSON.stringify(expected), `${node}: column names, order and types of the Tableau source`);
+});
+const dropped = ['Merged', 'ShiftName - Copy', 'Volume Key.1'];
+check(!flow.some((n) => n.type === 'parquet' && (n.columns || []).some((c) => dropped.includes(c.column))),
+  'the three columns marked not needed are not written');
+
+stats = await run({ tables: ['pbi_machine_names', ...STEP2, 'pbi_daily_losses'], sites: ['Hull'], from: '2026-09', to: '2026-09' },
+  { lake: lossLake() });
+check(stats.errors.length === 0, 'tableau names: no error: ' + stats.errors.join(' | '));
+Object.keys(TABLEAU).forEach((node) => {
+  const names = TABLEAU[node].map(([c]) => c).sort();
+  const rows = rawRowsOf(stats, node);
+  check(rows.length > 0 && rows.every((r) => JSON.stringify(Object.keys(r).sort()) === JSON.stringify(names)),
+    `${node}: every row has exactly the columns of the schema (${rows.length} rows)`);
+});
+const planRaw = rawRowsOf(stats, PLAN).find((r) => r.PartName.startsWith('NFC') && r.Date === 20697);
+check(planRaw['Total Time'] === 600 && planRaw['Good Parts'] === 1500 && planRaw['Planned OpT'] === 570,
+  'tableau plan row: Date is a day number (20697 = 2026-09-01), whole-number columns');
+const lossRaw = rawRowsOf(stats, LOSS).find((r) => r.OEELossLvl3Desc === 'Capper');
+check(lossRaw.Date === 20697 && lossRaw['ShiftStartDate.1'] === 20697 && lossRaw.Time === 29700000,
+  'tableau loss row: Date and ShiftStartDate.1 are day numbers, Time is the ms of the day (08:15:00)');
+check(lossRaw.Duration === 1845000 && lossRaw['Time in Mins'] === 30.75,
+  'tableau loss row: Duration and Time in Mins keep the seconds (00:30:45)');
+check(lossRaw['Shift Time'] === 'Day' && lossRaw.ShiftName === 'Day' && lossRaw['Equipment Loss Key'] === 'B2 Auto Capper' &&
+  lossRaw['Lvl 3 Loss Name'] === 'Capper' && lossRaw['Loss Final Level'] === 'Capper' && lossRaw.Value === '2.0',
+  'tableau loss row: Shift Time, Equipment Loss Key, Lvl 3 Loss Name, Value as text with a decimal point (2.0)');
 
 // 7. real files (optional)
 if (process.argv.includes('real')) {
@@ -462,8 +577,8 @@ if (process.argv.includes('real') && process.argv.includes('plan')) {
   const outDir = process.argv.find((a) => a.startsWith('dir='));
   if (outDir) {
     const dir = outDir.slice(4);
-    writeFileSync(`${dir}/plan.json`, JSON.stringify(rowsOf(real, PLAN)));
-    writeFileSync(`${dir}/util.json`, JSON.stringify(rowsOf(real, UTIL)));
+    writeFileSync(`${dir}/plan.json`, JSON.stringify(rawRowsOf(real, PLAN)));
+    writeFileSync(`${dir}/util.json`, JSON.stringify(rawRowsOf(real, UTIL)));
   }
 }
 
@@ -502,7 +617,7 @@ if (process.argv.includes('real') && process.argv.includes('loss')) {
   real.logs.forEach((l) => console.log('  ', String(l).slice(0, 420)));
   const outDir = process.argv.find((a) => a.startsWith('dir='));
   if (outDir) {
-    writeFileSync(`${outDir.slice(4)}/loss.json`, JSON.stringify(rowsOf(real, 'Write pbi_daily_losses parquet')));
+    writeFileSync(`${outDir.slice(4)}/loss.json`, JSON.stringify(rawRowsOf(real, 'Write pbi_daily_losses parquet')));
   }
 }
 

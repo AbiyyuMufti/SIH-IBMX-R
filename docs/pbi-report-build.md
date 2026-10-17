@@ -2,7 +2,7 @@
 
 | At a glance | |
 |---|---|
-| **What** | One VFC tab, `PBI report build`, that builds the Power BI shaped tables of `eu_report/pbi_report/report/` from the CSV files in the data lake (`eu_report/reference`, later `eu_report/pbi_report/source`). No API calls. Same tables and column names as the Insights Hub flows in [powerbi-direct.md](powerbi-direct.md), so a dashboard can switch the source |
+| **What** | One VFC tab, `PBI report build`, that builds the Power BI shaped tables of `eu_report/pbi_report/report/` from the CSV files in the data lake (`eu_report/reference`, later `eu_report/pbi_report/source`). No API calls. Column names and types of the Tableau workbook (WIP5), see "Step 5" at the end; the Insights Hub flows in [powerbi-direct.md](powerbi-direct.md) still use snake_case names |
 | **Flow** | `flows/vfc-pbi-report.json`. Generator `scripts/build-vfc-pbi-report-flow.js`, code `scripts/vfc/b*.js` (and `r5`, `r6`, `p1`, `m5-distinct` shared with the reference flow). Needs the Config tab (`1.1 CONFIG`) |
 | **Status** | Step 1 ran in the VFC (checked, see below). Steps 2 and 3 built and tested offline (`node scripts/test-vfc-pbi-report.js platform=xcelerator`, 77 checks; real data: plan OPT compared with the report, losses checked for plausibility), not run in the VFC yet. `DRY_RUN` is `true` for every table by default (the user sets it). **How to test it all: [pbi-report-testing.md](pbi-report-testing.md)** |
 | **Step 1 tables** | `pbi_machine_names`, `pbi_shift_naming`, `pbi_calendar` |
@@ -87,3 +87,41 @@ Own tab `PBI report listener` (`flows/vfc-pbi-listener.json`, 20 nodes, made by 
 - **Also in this build:** the loss months go 5 s apart (node `One month per 5 s`, was 1 s: with all months of three sites in one run the VFC stopped with `memory limit reached` in `15.3 Build correction lookup`).
 - **Known limits:** `pending` lives in flow context and `jobQueue` in global context, so a restart of the VFC loses what is waiting (the next full job fixes that); the listener lines are in the debug node only, not in the CSV log (the jobs write their own log lines when they run); `pbi_calendar` is not rebuilt by the watcher (static, 2011 to 2050); the order of events is not guaranteed (delay 0.3 to 15 s), which the window absorbs.
 - **Backfill (2026-10-16):** 2024-12 to 2026-10, all sites, all six tables, run by the user in the VFC in three jobs (2026-08..2026-10, 2025-01..2026-07, 2024-12). Checker on the 207 files: `problems: 0`, plan OPT 99.80 % identical to the report. A first run of 9 loss months at once failed once in Nottingham 2026-09 (memory), the 5 s rate fixed it. Aborting a long run by saving the flow works (queued months are dropped) but the log lane of the aborted run lost its lines until the next run.
+
+## Step 5: the column names of the Tableau workbook (2026-10-17)
+**Why.** Segun works in Tableau Desktop and uses the columns like for like; the workbook `EU Daily OEE Report - WIP5.twbx` is converted by a script to a workbook on the Insights Hub data source, so the files in the data lake must have the same column names (and types) as its four data sources. The first version of this build used the snake_case names of the Insights Hub flows (`site_name`, `good_parts`, ...): wrong for this purpose. Done in `scripts/lib-pbi-report-schemas.js`, the three row builders and the checker. The Insights Hub flows (`vfc-pbi-daily-hull.json`, `vfc-pbi-reference.json`) still use the old names: later, together with the reference files.
+
+**What the workbook reads** (data sources of WIP5, read from the .twbx, and the converted parquet files in the lake at `Sandbox/report_test/`, which have the same names and types):
+| Tableau source | Columns | In `pbi_report` |
+|---|---|---|
+| Machine Names EU | 6 | `pbi_machine_names`: the 6, then `loaded_at` |
+| Plan OPT EU | 17 | `pbi_plan_opt`: the 17 in the same order, then `source_hours`, `loaded_at` |
+| Time Utilisation EU | 8 | `pbi_time_utilisation`: the 8, then `loaded_at` |
+| Daily Losses EU | 29 | `pbi_daily_losses`: 26 of them, then `target`, `batch_id`, `comment_count`, `loaded_at`. Left out (marked "not needed" in the diagram): `Merged`, `ShiftName - Copy`, `Volume Key.1` |
+| Plan OPT N | 30 | not used any more |
+`pbi_shift_naming` and `pbi_calendar` are not used by the workbook and keep their names. Our own extra columns stay (they are for the Insights Hub report) and follow the Tableau columns.
+
+**Types** (the same as in the workbook's extracts): `Date` and `ShiftStartDate.1` are real `DATE` columns; `Good Parts`, `Total Time`, `Planned OpT`, `OEE Time`, `All Time` are integers; `Capacity`, `Downtime Units`, the targets, `Loss Units`, `Time in Mins`, `Volume Total` and the `... Total` times are doubles; `Value` is TEXT (as in the workbook: `'3.9'`, `'15.0'`).
+
+**Time of day.** In the workbook `Time` and `Duration` are Excel times on 1899-12-30. The parquet node cannot write dates before 1970, so they are written as timestamps on **1970-01-01** (same time of day, other date part). In the sheets of the workbook these two columns look unused (the sheets use `Time in Mins` and `Shift Time`); if a calculation uses the date part of `Time` or `Duration`, tell us. `Duration` and `Time in Mins` keep the seconds.
+
+**What the parquet node can write (spikes 2026-10-16/17, tab `Date type spike`, results in `Sandbox/spike/`).**
+| Engine | Type and value | Result |
+|---|---|---|
+| Legacy (`parquetjs`, the engine of all our tables) | `DATE` from a day number (days since 1970-01-01) | real `date32` |
+| Legacy | `TIMESTAMP_MILLIS` from epoch ms | real timestamp; a negative ms (before 1970) is refused: `invalid value for TIMESTAMP_MILLIS` |
+| Legacy | `TIME_MILLIS` from ms of a day | real time type |
+| Legacy | text or a JS Date object in a `DATE` or `TIMESTAMP_MILLIS` column | read as a number and cut at the first non-digit (`2026-09-01` becomes 2026, 1975-07-20 as a date): send numbers only |
+| Legacy | column names with spaces, dots and a dash; a null in every type; a row with missing keys | all work (checked in two tenants) |
+| Modern (`hyparquet`) | `DATE` | `parquet unsupported type: DATE` |
+| Modern | `TIMESTAMP_MILLIS`, `TIME_MILLIS` from numbers | written as a plain int64 / int32, no timestamp or time type |
+| Modern | `TIMESTAMP_MILLIS` from a Date object or BigInt | error |
+**Use the legacy engine.** Warning: the VFC type menu of the parquet node has no `DATE`. Opening such a node in the editor and pressing Done may reset the column to text (seen on 2026-10-17: an error `must be of type string or Buffer ... Received type number (20697)` and a text column filled with nulls). Do not edit a parquet node with a DATE column in the VFC: re-import the flow instead.
+
+**Checked against Segun's Daily Losses EU** (offline run of the three sites, 2025-01 to 2026-09, against `Sandbox/report_test/Daily_Losses_EU.parquet` up to 2026-09-16; the stop is matched on site, machine, start time and description without case):
+- Rows 555,602 ours vs 555,392 in the report. Stops found in both: 94 % (the rest is almost all Hull, see the difference below).
+- Equal in the matched stops: `ShiftName`, `Shift Time`, group, `Equipment Loss Key`, `Lvl 3 Loss Name`, `Loss Final Level`, `Unique Machine Name`, `ShiftStartDate.1`, `Product Key` 100 %; sub group, `Volume Key`, `Loss Target Key` 99.999 %; `Value` 99.999 %; `PartDesc` 99.8 %; `Time in Mins` 99.8 %; `Volume Total` 99.9 %; `Loss Units` 99.1 %.
+- Found by this comparison and fixed: the correction file has two rows with the same key after the text replacement (Breakdown - Electrical / - Mechanical): the report keeps the **first**, we kept the last; trailing spaces of the part name are removed; an empty comment is a null; `Value` has a decimal point (`15.0`).
+- **Known difference, not fixed:** the report model keeps ONE spelling for texts that differ only in capitals (`No Labour` for every `No labour` / `No Labour`; same for `Breakdown Types`, comments and Nottingham part names); our files keep the spelling of the source file. About 6 % of the Hull stops (the description differs only in case) do not match exactly, and `Breakdown Types` differs in 3 % of the stops. If Tableau filters on these texts, the lists differ in case variants. A fix needs a list of the spellings (a reference file); decide later.
+- `Loss Units` differs in 0.9 % of the stops (small rounding of the correction minutes, and short stops); not explained.
+- Mira is in the workbook data but not built here (no files).

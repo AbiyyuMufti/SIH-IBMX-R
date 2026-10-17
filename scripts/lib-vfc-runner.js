@@ -14,7 +14,10 @@ const typeOk = (type, v) => {
   if (type === 'BOOLEAN') return typeof v === 'boolean';
   if (type === 'INT64') return Number.isInteger(v);
   if (type === 'DOUBLE') return typeof v === 'number';
-  if (type === 'TIMESTAMP_MILLIS') return Number.isInteger(v);
+  // The legacy parquet engine (spike 2026-10-17): a DATE column takes a day
+  // number, a timestamp takes epoch ms but not a negative one (before 1970).
+  if (type === 'DATE') return Number.isInteger(v);
+  if (type === 'TIMESTAMP_MILLIS') return Number.isInteger(v) && v >= 0;
   return false;
 };
 

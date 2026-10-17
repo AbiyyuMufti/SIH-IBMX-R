@@ -15,23 +15,15 @@ import {
   rawStep,
   addLogLanes, applyLayout, compactLanes, measureSpacing
 } from './lib-flow-builder.js';
+import { shiftSchema, calendarSchema } from './lib-pbi-schemas.js';
 import {
-  machineSchema, shiftSchema, calendarSchema, planSchema, utilSchema,
-  lossSchema
-} from './lib-pbi-schemas.js';
+  reportMachineSchema, reportPlanSchema, reportUtilSchema, reportLossSchema
+} from './lib-pbi-report-schemas.js';
 import { S } from './lib-flow-builder.js';
 
 const TABLES = [
   'pbi_machine_names', 'pbi_shift_naming', 'pbi_calendar',
   'pbi_plan_opt', 'pbi_time_utilisation', 'pbi_daily_losses'
-];
-// The loss table of the report has more columns than the Insights Hub one:
-// the comment text, the raw shift name and two helper keys.
-const lossReportSchema = [
-  ...lossSchema.filter(([name]) => name !== 'loaded_at'),
-  ['comment', S], ['merged', S], ['shift_name_copy', S],
-  ['volume_day_key', S],
-  ...lossSchema.filter(([name]) => name === 'loaded_at')
 ];
 const FILE = 'vfc-pbi-report.json';
 
@@ -144,7 +136,7 @@ function buildFlow() {
     [
       linkInStep('MN ITEM'),
       join('mnJoin', 'Wait for all sites'),
-      ...refEnd('pbi_machine_names', machineSchema)
+      ...refEnd('pbi_machine_names', reportMachineSchema)
     ]);
   lane(r++, 'SHIFT NAMES: FILE',
     'the folder eu_report/reference/shift_naming/site=All/ is listed, the newest .csv file (Shift Patterns Provideam EU, columns ShiftName and Shift) is read and parsed, one row per line.',
@@ -234,7 +226,7 @@ function buildFlow() {
       linkInStep('PLAN TABLE'),
       fn('pbi_plan_opt_decide', 'Decide pbi_plan_opt', 'r5-decide.js',
         ['next', 'LOG'], { __TABLE__: 'pbi_plan_opt' }),
-      ...monthEnd('pbi_plan_opt', planSchema)
+      ...monthEnd('pbi_plan_opt', reportPlanSchema)
     ]);
   lane(r++, 'pbi_time_utilisation',
     'the same for pbi_time_utilisation: one row per machine and day, total, planned and OEE time summed in minutes, All Time 1440.',
@@ -243,7 +235,7 @@ function buildFlow() {
       fn('pbi_time_utilisation_decide', 'Decide pbi_time_utilisation',
         'r5-decide.js', ['next', 'LOG'],
         { __TABLE__: 'pbi_time_utilisation' }),
-      ...monthEnd('pbi_time_utilisation', utilSchema)
+      ...monthEnd('pbi_time_utilisation', reportUtilSchema)
     ]);
   lane(r++, 'LOSSES: EQUIPMENT',
     'daily losses only: the Equipment Coding file of the site (eu_report/reference/equipment_coding/site=<Site>/) is read and the lookup "machine + loss description" to equipment is stored in flow context (an empty equipment is "Unclassed", as in the report queries). Weinheim has no Merged Unique Identifier column: the key is built from machine and description.',
@@ -324,7 +316,7 @@ function buildFlow() {
       linkInStep('LOSS TABLE'),
       fn('pbi_daily_losses_decide', 'Decide pbi_daily_losses', 'r5-decide.js',
         ['next', 'LOG'], { __TABLE__: 'pbi_daily_losses' }),
-      ...monthEnd('pbi_daily_losses', lossReportSchema)
+      ...monthEnd('pbi_daily_losses', reportLossSchema)
     ]);
   lane(r++, 'SITE SETUP: FAILED',
     'a Glidepaths, Shift Patterns or Equipment Coding file that is missing or empty: one log line, nothing is built for that site.',

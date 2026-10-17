@@ -59,13 +59,13 @@ rows.forEach(function (row) {
     return;
   }
   item.rows.push({
-    site_name: site,
-    area: area,
-    dept: dept,
-    machine_name: name,
-    product_type: text(row['Product Type']),
-    unique_machine_name: name + '-' + site,
-    loaded_at: msg.loadedAt
+    'MachineName': name,
+    'Dept': dept,
+    'Area': area,
+    'Product Type': text(row['Product Type']),
+    'SiteName': site,
+    'Unique Machine Name': name + '-' + site,
+    'loaded_at': msg.loadedAt
   });
 });
 if (dropped) {

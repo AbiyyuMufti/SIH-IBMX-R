@@ -187,6 +187,40 @@ function minutes(value) {
   return parts ? Number(parts[1]) * 60 + Number(parts[2]) : null;
 }
 
+// "H:MM:SS" (hours can pass 24) -> seconds, with the seconds of the file.
+function seconds(value) {
+  var parts = /^(\d+):(\d{2}):(\d{2})$/.exec(String(value).trim());
+  if (!parts) {
+    return null;
+  }
+  return Number(parts[1]) * 3600 + Number(parts[2]) * 60 + Number(parts[3]);
+}
+
+// Days since 1970-01-01 of a date text YYYY-MM-DD (a DATE column value).
+function dayNumber(text) {
+  var parts = /^(\d{4})-(\d{2})-(\d{2})/.exec(text);
+  if (!parts) {
+    return null;
+  }
+  return Date.UTC(Number(parts[1]), Number(parts[2]) - 1, Number(parts[3])) /
+    86400000;
+}
+
+// Milliseconds of the day of a time text HH:MM:SS (the parquet node cannot
+// write the Excel day 1899-12-30, so a time of day is on 1970-01-01).
+function timeOfDay(text) {
+  var secs = seconds(text);
+  return secs === null ? null : secs * 1000;
+}
+
+// The target as text with a decimal point, like the report (15.0, 3.9).
+function valueText(number) {
+  if (number === null) {
+    return null;
+  }
+  return Number.isInteger(number) ? number + '.0' : String(number);
+}
+
 function dayText(day) {
   return day.slice(8, 10) + '/' + day.slice(5, 7) + '/' + day.slice(0, 4);
 }
@@ -235,6 +269,8 @@ rows.forEach(function (row) {
   var unique = machine + '-' + site;
   var part = rule.cutPart ? asText(row.PartName).slice(rule.cutPart) :
     asText(row.PartName);
+  // Trailing spaces go: the report data has none (as in the plan OPT rows).
+  part = part.replace(/\s+$/, '');
   var shift = shiftMap.hasOwnProperty(row.ShiftName) ?
     shiftMap[row.ShiftName] : null;
   if (shift === null) {
@@ -248,6 +284,7 @@ rows.forEach(function (row) {
     count.noTarget++;
   }
   var duration = minutes(row.Duration);
+  var durationSeconds = seconds(row.Duration);
   var units = null;
   if (correction && correction.u !== null && correction.m &&
       duration !== null) {
@@ -261,35 +298,36 @@ rows.forEach(function (row) {
       count.noEquip++;
     }
     out.push({
-      site_name: site,
-      machine_name: machine,
-      unique_machine_name: unique,
-      date: start.slice(0, 10),
-      time: start.slice(11, 19),
-      shift_start_date: day,
-      shift_name: shift,
-      duration: duration,
-      loss_units: units,
-      loss_lvl3_group: group,
-      loss_lvl3_sub_group: sub,
-      loss_lvl3_desc: desc,
-      loss_final_level: desc,
-      equipment: name,
-      breakdown_types: breakdownTypes,
-      batch_id: null,
-      comment_count: null,
-      part_name: part,
-      product_key: unique + ' ' + part,
-      loss_target_key: unique + ' ' + sub + ' ' + monthText,
-      value: value,
-      target: value === null ? null : value / 100,
-      volume_key: volumeKey,
-      volume_total: capacity === undefined ? null : capacity,
-      loaded_at: msg.loadedAt,
-      comment: asText(row.Comment),
-      merged: machine + ' ' + dayText(start.slice(0, 10)) + start.slice(10),
-      shift_name_copy: asText(row.ShiftName),
-      volume_day_key: machine + ' ' + daily
+      'Date': dayNumber(start.slice(0, 10)),
+      'Time': timeOfDay(start.slice(11, 19)),
+      'MachineName': machine,
+      'PartDesc': part,
+      'Shift Time': shift,
+      'ShiftName': shift,
+      'OEELossLvl3Group': group,
+      'OEELossLvl3SubGroup': sub,
+      'OEELossLvl3Desc': desc,
+      'Duration': durationSeconds === null ? null : durationSeconds * 1000,
+      'SiteName': site,
+      'Unique Machine Name': unique,
+      'Breakdown Types': breakdownTypes,
+      'ShiftStartDate.1': dayNumber(day),
+      'Comment': asText(row.Comment) === '' ? null : asText(row.Comment),
+      'Product Key': unique + ' ' + part,
+      'Volume Key': volumeKey,
+      'Loss Units': units,
+      'Time in Mins': durationSeconds === null ? null : durationSeconds / 60,
+      'Equipment Loss Key': machine + ' ' + desc,
+      'Equipment': name,
+      'Lvl 3 Loss Name': desc,
+      'Loss Target Key': unique + ' ' + sub + ' ' + monthText,
+      'Value': valueText(value),
+      'Volume Total': capacity === undefined ? null : capacity,
+      'Loss Final Level': desc,
+      'target': value === null ? null : value / 100,
+      'batch_id': null,
+      'comment_count': null,
+      'loaded_at': msg.loadedAt
     });
   });
 });

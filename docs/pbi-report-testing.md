@@ -67,3 +67,16 @@ Two tabs: import `flows/vfc-pbi-report.json` (replaces the report tab: your hand
 3. **Reference:** overwrite one Glidepaths file; after 5 to 5.5 minutes one job for that site with the months `REFERENCE_MONTHS_BACK` back.
 4. **Switch:** set `LISTENERS_ON = false` in `Collect events`, upload a file: the status says `listeners OFF` and no job follows.
 Send back: the `Listener log` lines, the node status of `Collect events`, `Release due events` and `1.0 Take queued job`, and whether an event arrived at all (the subscribe nodes are untested with an `--overwrite` upload; the UI replace gave `MODIFY`, see [datalake-files.md](datalake-files.md)).
+
+## 9. After the rename to the Tableau column names (2026-10-17)
+The tables now have the names and types of the Tableau workbook (see [pbi-report-build.md](pbi-report-build.md) "Step 5"). The files in the lake still have the old names until the flow runs again.
+1. **Import** `flows/vfc-pbi-report.json` (replaces the report tab; the node count stays 195). The listener tab does not change. Do not open the parquet nodes of the month tables in the editor afterwards (a DATE column may reset to text).
+2. **Run the backfill again** (the old files are replaced, the file names do not change), for example in three jobs: `2026-08` to `2026-10`, `2025-01` to `2026-07`, `2024-12` to `2024-12`, all tables and sites, `DRY_RUN` false. The three small tables: machine names has the new names; shift naming and calendar are unchanged.
+3. **Download and check:**
+```
+node scripts/datalake-download-tree.js eu_report/pbi_report/report/
+node scripts/datalake-download-tree.js Sandbox/report_test/ --out downloads/sandbox-report-test
+python -I scripts/helper-check-pbi-report.py
+```
+Expected: `problems: 0` (schemas equal to the workbook), machine names identical sets, plan OPT about 99.8 % identical rows, time utilisation and daily losses compared with Segun's tables (the percentages in "Step 5"). The offline version of the loss comparison: `node scripts/test-vfc-pbi-report.js platform=xcelerator real loss from=2025-01 to=2026-09 dir=downloads/offline-cmp` writes `loss.json` with the Tableau names.
+4. **Tableau:** Replace Data Source on a copy of the workbook; the first things to look at are the date fields (real dates), `Value` (text) and `Time` / `Duration` (1970-01-01 instead of 1899-12-30).

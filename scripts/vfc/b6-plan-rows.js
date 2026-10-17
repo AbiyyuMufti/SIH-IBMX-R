@@ -107,6 +107,14 @@ function asText(value) {
   return value === undefined || value === null ? '' : String(value);
 }
 
+// Days since 1970-01-01 of a date text YYYY-MM-DD: the value of a DATE column.
+function dayNumber(text) {
+  var year = Number(text.slice(0, 4));
+  var month = Number(text.slice(5, 7));
+  var day = Number(text.slice(8, 10));
+  return Date.UTC(year, month - 1, day) / 86400000;
+}
+
 function number(value) {
   var text = value === undefined || value === null ? '' : String(value).trim();
   return text === '' || isNaN(Number(text)) ? null : Number(text);
@@ -156,21 +164,21 @@ rows.forEach(function (row) {
     var key = date + '|' + machine;
     if (!utilByKey[key]) {
       utilByKey[key] = {
-        site_name: site,
-        machine_name: machine,
-        unique_machine_name: unique,
-        date: date,
-        total_time_total: 0,
-        planned_opt_total: 0,
-        oee_time_total: 0,
-        all_time: UTIL_ALL_TIME,
-        loaded_at: msg.loadedAt
+        'Date': dayNumber(date),
+        'MachineName': machine,
+        'OEE Time Total': 0,
+        'Total Time Total': 0,
+        'Planned OPT Total': 0,
+        'SiteName': site,
+        'Unique Machine Name': unique,
+        'All Time': UTIL_ALL_TIME,
+        'loaded_at': msg.loadedAt
       };
       utilOrder.push(key);
     }
-    utilByKey[key].total_time_total += total ? total.exact : 0;
-    utilByKey[key].planned_opt_total += planned ? planned.exact : 0;
-    utilByKey[key].oee_time_total += used ? used.exact : 0;
+    utilByKey[key]['Total Time Total'] += total ? total.exact : 0;
+    utilByKey[key]['Planned OPT Total'] += planned ? planned.exact : 0;
+    utilByKey[key]['OEE Time Total'] += used ? used.exact : 0;
   }
 
   // Plan OPT: the machine and area rules of the site.
@@ -192,25 +200,25 @@ rows.forEach(function (row) {
   }
   count.planned++;
   planRows.push({
-    site_name: site,
-    area_name: asText(row.AreaName),
-    machine_name: machine,
-    unique_machine_name: unique,
-    date: date,
-    shift_name: shift,
-    part_name: part,
-    product_key: unique + ' ' + part,
-    good_parts: number(row['Good Parts']),
-    capacity: number(row.Capacity),
-    downtime_units: number(row['Downtime Units']),
-    total_time: total ? total.whole : null,
-    planned_opt: planned ? planned.whole : null,
-    oee_time: used ? used.whole : null,
-    oee_target: target.oee === undefined ? null : target.oee,
-    pdt_target: target.pdt === undefined ? null : target.pdt,
-    updt_target: target.updt === undefined ? null : target.updt,
-    source_hours: null,
-    loaded_at: msg.loadedAt
+    'Date': dayNumber(date),
+    'AreaName': asText(row.AreaName),
+    'MachineName': machine,
+    'ShiftName': shift,
+    'PartName': part,
+    'Good Parts': number(row['Good Parts']),
+    'Capacity': number(row.Capacity),
+    'Total Time': total ? total.whole : null,
+    'Planned OpT': planned ? planned.whole : null,
+    'OEE Time': used ? used.whole : null,
+    'Downtime Units': number(row['Downtime Units']),
+    'SiteName': site,
+    'Unique Machine Name': unique,
+    'Product Key': unique + ' ' + part,
+    'UPDT Target': target.updt === undefined ? null : target.updt,
+    'PDT Target': target.pdt === undefined ? null : target.pdt,
+    'OEE Target': target.oee === undefined ? null : target.oee,
+    'source_hours': null,
+    'loaded_at': msg.loadedAt
   });
 });
 
