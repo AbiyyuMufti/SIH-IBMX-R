@@ -5,14 +5,14 @@
     "label": "Date type spike",
     "disabled": false,
     "allowCycles": false,
-    "info": "Spike: which date and time types does the parquet node write (legacy and modern engine)? Output in Sandbox/spike/ of the data lake. Delete the tab after the test."
+    "info": "Spike v4: column names with spaces and dots, nulls and missing keys in the legacy parquet engine. Output in Sandbox/spike/ of the data lake. Delete the tab after the test."
   },
   {
     "z": "d7caf.492d59",
     "id": "d9b9e.4ac672",
     "type": "comment",
     "name": "[1] SPIKE: BUILD ROWS",
-    "info": "STAGE 1 - one inject, one function that builds the legacy engine cases (numbers only: legacy reads text and Date objects as numbers); its last output starts the modern engine cases in the next lane. Each case has its own parquet node. Run once, then the result files in Sandbox/spike/ are read with pyarrow.",
+    "info": "STAGE 1 - one inject, one function that builds the rows of all eight cases (day numbers for dates, ms for times). Each case has its own parquet node. Run once, then the result files in Sandbox/spike/ are read with pyarrow.",
     "x": 160,
     "y": 40,
     "wires": []
@@ -21,7 +21,7 @@
     "z": "d7caf.492d59",
     "id": "dd97c.4df8a4",
     "type": "inject",
-    "name": "Run the date spike",
+    "name": "Run the spike",
     "topic": "",
     "payload": "",
     "payloadType": "date",
@@ -36,7 +36,7 @@
     "betweentimesunit": "m",
     "showNextExecution": false,
     "powerMode": false,
-    "x": 140,
+    "x": 120,
     "y": 120,
     "wires": [
       [
@@ -48,77 +48,116 @@
     "z": "d7caf.492d59",
     "id": "e175a.512ad6",
     "type": "link out",
-    "name": "to LEGACY_DATE_DAY_NUMBER",
+    "name": "to NAMES_AND_TYPES_WITH_NULLS",
     "mode": "link",
     "links": [
       "df86b.4f91bd"
     ],
-    "x": 540,
-    "y": 40,
+    "x": 460,
+    "y": -20,
     "wires": []
   },
   {
     "z": "d7caf.492d59",
     "id": "e5538.545d08",
     "type": "link out",
-    "name": "to LEGACY_TIMESTAMP_MS",
+    "name": "to NULL_INT64",
     "mode": "link",
     "links": [
       "e3649.52c3ef"
     ],
-    "x": 540,
-    "y": 80,
+    "x": 460,
+    "y": 20,
     "wires": []
   },
   {
     "z": "d7caf.492d59",
     "id": "e9316.578f3a",
     "type": "link out",
-    "name": "to LEGACY_TIMESTAMP_MS_1899",
+    "name": "to NULL_DOUBLE",
     "mode": "link",
     "links": [
       "e7427.55f621"
     ],
-    "x": 540,
-    "y": 120,
+    "x": 460,
+    "y": 60,
     "wires": []
   },
   {
     "z": "d7caf.492d59",
     "id": "ed0f4.5ac16c",
     "type": "link out",
-    "name": "to LEGACY_TIME_MILLIS",
+    "name": "to NULL_DATE",
     "mode": "link",
     "links": [
       "eb205.592853"
     ],
-    "x": 540,
-    "y": 160,
+    "x": 460,
+    "y": 100,
     "wires": []
   },
   {
     "z": "d7caf.492d59",
     "id": "f0ed2.5df39e",
     "type": "link out",
-    "name": "to MODERN",
+    "name": "to NULL_TEXT",
     "mode": "link",
     "links": [
       "eefe3.5c5a85"
     ],
-    "x": 540,
-    "y": 200,
+    "x": 460,
+    "y": 140,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "f4cb0.6125d0",
+    "type": "link out",
+    "name": "to NULL_TIMESTAMP",
+    "mode": "link",
+    "links": [
+      "f2dc1.5f8cb7"
+    ],
+    "x": 460,
+    "y": 180,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "f8a8e.645802",
+    "type": "link out",
+    "name": "to MISSING_KEYS",
+    "mode": "link",
+    "links": [
+      "f6b9f.62bee9"
+    ],
+    "x": 460,
+    "y": 220,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "fc86c.678a34",
+    "type": "link out",
+    "name": "to TIMESTAMP_1970_TIME_OF_DAY",
+    "mode": "link",
+    "links": [
+      "fa97d.65f11b"
+    ],
+    "x": 460,
+    "y": 260,
     "wires": []
   },
   {
     "z": "d7caf.492d59",
     "id": "dba8d.4c5f8b",
     "type": "function",
-    "name": "1.1 Build legacy cases",
-    "func": "// Builds the rows of the LEGACY engine cases of the date type spike (no real\n// data), one message per case in the order of the case lanes. msg.spike names\n// the case and its result file. Only numbers are sent (legacy reads text and\n// Date objects as numbers). Out 5 starts the modern cases.\nvar DAY_MS = 86400000;\nvar FIRST_DAY_MS = Date.UTC(2026, 8, 1);\nvar FIRST_DAY = FIRST_DAY_MS / DAY_MS;\nvar EXCEL_DAY_MS = Date.UTC(1899, 11, 30);\nvar TIME_OF_DAY_MS = (21 * 60 + 45) * 60000;\n\n// Two rows per case: 2026-09-01 and the next day (the time of day case:\n// 21:45:00 and 00:15:00).\nfunction rows(first, second) {\n  return [\n    {\n      id: 1,\n      x: first\n    },\n    {\n      id: 2,\n      x: second\n    }\n  ];\n}\n\nfunction message(name, list) {\n  return {\n    spike: name,\n    payload: list\n  };\n}\n\nvar dates = [\n  new Date(FIRST_DAY_MS),\n  new Date(FIRST_DAY_MS + DAY_MS)\n];\nvar times = [\n  new Date(EXCEL_DAY_MS + TIME_OF_DAY_MS),\n  new Date(EXCEL_DAY_MS + 15 * 60000)\n];\nnode.status({\n  fill: 'green',\n  shape: 'dot',\n  text: '4 legacy cases sent'\n});\nreturn [\n  message('legacy_date_day_number', rows(FIRST_DAY, FIRST_DAY + 1)),\n  message('legacy_timestamp_ms', rows(FIRST_DAY_MS, FIRST_DAY_MS + DAY_MS)),\n  message('legacy_timestamp_ms_1899', rows(times[0].getTime(),\n    times[1].getTime())),\n  message('legacy_time_millis', rows(TIME_OF_DAY_MS, 15 * 60000)),\n  {\n    topic: 'start modern cases'\n  }\n];\n",
-    "outputs": 5,
+    "name": "1.1 Build spike rows",
+    "func": "// Builds the rows of the parquet spike v4 (no real data), one message per\n// case in the order of the case lanes. msg.spike names the case and its file.\n// Cases: column names with spaces and dots in the real types, a null in each\n// type, and a row with missing keys. Dates are day numbers, times are ms.\nvar DAY_MS = 86400000;\nvar FIRST_DAY = Date.UTC(2026, 8, 1) / DAY_MS;\nvar TIME_OF_DAY_MS = (21 * 60 + 45) * 60000;\nvar QUARTER_HOUR_MS = 15 * 60000;\nvar EPOCH_MS = Date.UTC(2026, 8, 1);\n\nfunction message(name, rows) {\n  return {\n    spike: name,\n    payload: rows\n  };\n}\n\n// One value and one null, in the column x, for the null cases.\nfunction withNull(value) {\n  return [\n    {\n      id: 1,\n      x: value\n    },\n    {\n      id: 2,\n      x: null\n    }\n  ];\n}\n\nvar names = [\n  {\n    'Good Parts': 9996,\n    'Planned OpT': 480,\n    'Capacity': 13500.5,\n    'Date': FIRST_DAY,\n    'ShiftStartDate.1': FIRST_DAY,\n    'Time': TIME_OF_DAY_MS,\n    'Duration': QUARTER_HOUR_MS,\n    'Time in Mins': 15.5,\n    'Value': '3.9',\n    'Volume Key.1': 'Fybogel 30s 16/01/2025',\n    'ShiftName - Copy': 'ThurNight',\n    'Unique Machine Name': 'B2 Line-Hull'\n  },\n  {\n    'Good Parts': null,\n    'Planned OpT': null,\n    'Capacity': null,\n    'Date': FIRST_DAY + 1,\n    'ShiftStartDate.1': null,\n    'Time': null,\n    'Duration': null,\n    'Time in Mins': null,\n    'Value': null,\n    'Volume Key.1': null,\n    'ShiftName - Copy': null,\n    'Unique Machine Name': 'B2 Line-Hull'\n  }\n];\nvar missing = [\n  {\n    id: 1,\n    i: 5,\n    s: 'a'\n  },\n  {\n    id: 2\n  }\n];\nnode.status({\n  fill: 'green',\n  shape: 'dot',\n  text: '8 cases sent'\n});\nreturn [\n  message('names_and_types_with_nulls', names),\n  message('null_int64', withNull(7)),\n  message('null_double', withNull(7.5)),\n  message('null_date', withNull(FIRST_DAY)),\n  message('null_text', withNull('abc')),\n  message('null_timestamp', withNull(EPOCH_MS)),\n  message('missing_keys', missing),\n  message('timestamp_1970_time_of_day', withNull(TIME_OF_DAY_MS))\n];\n",
+    "outputs": 8,
     "language": "javascript",
     "noerr": 0,
-    "x": 380,
+    "x": 320,
     "y": 120,
     "wires": [
       [
@@ -135,172 +174,291 @@
       ],
       [
         "f0ed2.5df39e"
-      ]
-    ]
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "f2dc1.5f8cb7",
-    "type": "comment",
-    "name": "[2] SPIKE: MODERN CASES",
-    "info": "STAGE 2 - the last output of the legacy function starts this one: it builds the modern engine cases (day numbers, epoch ms, negative ms, Date objects, ISO text, BigInt, ms of a day).",
-    "x": 160,
-    "y": 260,
-    "wires": []
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "eefe3.5c5a85",
-    "type": "link in",
-    "name": "MODERN",
-    "links": [
-      "f0ed2.5df39e"
-    ],
-    "x": 60,
-    "y": 340,
-    "wires": [
+      ],
       [
         "f4cb0.6125d0"
-      ]
-    ]
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "f8a8e.645802",
-    "type": "link out",
-    "name": "to MODERN_DATE_DAY_NUMBER",
-    "mode": "link",
-    "links": [
-      "f6b9f.62bee9"
-    ],
-    "x": 380,
-    "y": 200,
-    "wires": []
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "fc86c.678a34",
-    "type": "link out",
-    "name": "to MODERN_DATE_OBJECT",
-    "mode": "link",
-    "links": [
-      "fa97d.65f11b"
-    ],
-    "x": 380,
-    "y": 240,
-    "wires": []
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "0064a.6abc66",
-    "type": "link out",
-    "name": "to MODERN_DATE_TEXT",
-    "mode": "link",
-    "links": [
-      "fe75b.69234d"
-    ],
-    "x": 380,
-    "y": 280,
-    "wires": []
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "04428.6dee98",
-    "type": "link out",
-    "name": "to MODERN_TIMESTAMP_MS",
-    "mode": "link",
-    "links": [
-      "02539.6c557f"
-    ],
-    "x": 380,
-    "y": 320,
-    "wires": []
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "08206.7120ca",
-    "type": "link out",
-    "name": "to MODERN_TIMESTAMP_MS_1899",
-    "mode": "link",
-    "links": [
-      "06317.6f87b1"
-    ],
-    "x": 380,
-    "y": 360,
-    "wires": []
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "0bfe4.7452fc",
-    "type": "link out",
-    "name": "to MODERN_TIMESTAMP_OBJECT",
-    "mode": "link",
-    "links": [
-      "0a0f5.72b9e3"
-    ],
-    "x": 380,
-    "y": 400,
-    "wires": []
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "0fdc2.77852e",
-    "type": "link out",
-    "name": "to MODERN_TIMESTAMP_BIGINT",
-    "mode": "link",
-    "links": [
-      "0ded3.75ec15"
-    ],
-    "x": 380,
-    "y": 440,
-    "wires": []
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "13ba0.7ab760",
-    "type": "link out",
-    "name": "to MODERN_TIME_MILLIS",
-    "mode": "link",
-    "links": [
-      "11cb1.791e47"
-    ],
-    "x": 380,
-    "y": 480,
-    "wires": []
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "f4cb0.6125d0",
-    "type": "function",
-    "name": "2.1 Build modern cases",
-    "func": "// Builds the rows of the MODERN engine cases of the date type spike (no real\n// data), one message per case in the order of the case lanes. msg.spike names\n// the case and its result file. Value forms: day number, epoch ms (also\n// negative), Date object, ISO text, BigInt ms, ms of a day.\nvar DAY_MS = 86400000;\nvar FIRST_DAY_MS = Date.UTC(2026, 8, 1);\nvar FIRST_DAY = FIRST_DAY_MS / DAY_MS;\nvar EXCEL_DAY_MS = Date.UTC(1899, 11, 30);\nvar TIME_OF_DAY_MS = (21 * 60 + 45) * 60000;\n\n// Two rows per case: 2026-09-01 and the next day (the time of day case:\n// 21:45:00 and 00:15:00).\nfunction rows(first, second) {\n  return [\n    {\n      id: 1,\n      x: first\n    },\n    {\n      id: 2,\n      x: second\n    }\n  ];\n}\n\nfunction message(name, list) {\n  return {\n    spike: name,\n    payload: list\n  };\n}\n\nvar dates = [\n  new Date(FIRST_DAY_MS),\n  new Date(FIRST_DAY_MS + DAY_MS)\n];\nvar times = [\n  new Date(EXCEL_DAY_MS + TIME_OF_DAY_MS),\n  new Date(EXCEL_DAY_MS + 15 * 60000)\n];\nnode.status({\n  fill: 'green',\n  shape: 'dot',\n  text: '8 modern cases sent'\n});\nreturn [\n  message('modern_date_day_number', rows(FIRST_DAY, FIRST_DAY + 1)),\n  message('modern_date_object', rows(dates[0], dates[1])),\n  message('modern_date_text', rows('2026-09-01', '2026-09-02')),\n  message('modern_timestamp_ms', rows(FIRST_DAY_MS, FIRST_DAY_MS + DAY_MS)),\n  message('modern_timestamp_ms_1899', rows(times[0].getTime(),\n    times[1].getTime())),\n  message('modern_timestamp_object', rows(dates[0], dates[1])),\n  message('modern_timestamp_bigint', rows(BigInt(FIRST_DAY_MS),\n    BigInt(FIRST_DAY_MS + DAY_MS))),\n  message('modern_time_millis', rows(TIME_OF_DAY_MS, 15 * 60000))\n];\n",
-    "outputs": 8,
-    "language": "javascript",
-    "noerr": 0,
-    "x": 220,
-    "y": 340,
-    "wires": [
+      ],
       [
         "f8a8e.645802"
       ],
       [
         "fc86c.678a34"
-      ],
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "fe75b.69234d",
+    "type": "comment",
+    "name": "[2] CASE names_and_types_with_nulls",
+    "info": "STAGE 2 - engine parquetjs: names with spaces, dots and a dash in the real types; row 2 has a null in every nullable column. The result is Sandbox/spike/names_and_types_with_nulls.parquet; a failure gives names_and_types_with_nulls_ERROR.txt.",
+    "x": 200,
+    "y": 260,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "df86b.4f91bd",
+    "type": "link in",
+    "name": "NAMES_AND_TYPES_WITH_NULLS",
+    "links": [
+      "e175a.512ad6"
+    ],
+    "x": 60,
+    "y": 340,
+    "wires": [
       [
         "0064a.6abc66"
-      ],
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "0064a.6abc66",
+    "type": "parquet",
+    "name": "Write names_and_types_with_nulls parquet",
+    "option": "write",
+    "columns": [
+      {
+        "column": "Good Parts",
+        "type": "INT64"
+      },
+      {
+        "column": "Planned OpT",
+        "type": "INT64"
+      },
+      {
+        "column": "Capacity",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "Date",
+        "type": "DATE"
+      },
+      {
+        "column": "ShiftStartDate.1",
+        "type": "DATE"
+      },
+      {
+        "column": "Time",
+        "type": "TIMESTAMP_MILLIS"
+      },
+      {
+        "column": "Duration",
+        "type": "TIMESTAMP_MILLIS"
+      },
+      {
+        "column": "Time in Mins",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "Value",
+        "type": "UTF8"
+      },
+      {
+        "column": "Volume Key.1",
+        "type": "UTF8"
+      },
+      {
+        "column": "ShiftName - Copy",
+        "type": "UTF8"
+      },
+      {
+        "column": "Unique Machine Name",
+        "type": "UTF8"
+      }
+    ],
+    "rcolumns": "",
+    "multi": "multiple",
+    "outputPty": "payload",
+    "outputPtyType": "msg",
+    "engine": "parquetjs",
+    "x": 280,
+    "y": 340,
+    "wires": [
+      [
+        "02539.6c557f"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "02539.6c557f",
+    "type": "function",
+    "name": "2.1 Set spike path",
+    "func": "// Sets the file path of a spike test in the data lake.\n// In: the output of the parquet node (msg.spike names the test).\n// Out: msg.path = Sandbox/spike/<test>.parquet and msg.filename.\nvar FOLDER = 'Sandbox/spike/';\n\nmsg.path = FOLDER + msg.spike + '.parquet';\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 580,
+    "y": 340,
+    "wires": [
       [
         "04428.6dee98"
-      ],
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "04428.6dee98",
+    "type": "write object",
+    "name": "names_and_types_with_nulls to data lake",
+    "path": "",
+    "mode": "object",
+    "x": 880,
+    "y": 340,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "06317.6f87b1",
+    "type": "comment",
+    "name": "[3] CASE null_int64",
+    "info": "STAGE 3 - engine parquetjs: INT64 with a null. The result is Sandbox/spike/null_int64.parquet; a failure gives null_int64_ERROR.txt.",
+    "x": 140,
+    "y": 480,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "e3649.52c3ef",
+    "type": "link in",
+    "name": "NULL_INT64",
+    "links": [
+      "e5538.545d08"
+    ],
+    "x": 60,
+    "y": 560,
+    "wires": [
       [
         "08206.7120ca"
-      ],
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "08206.7120ca",
+    "type": "parquet",
+    "name": "Write null_int64 parquet",
+    "option": "write",
+    "columns": [
+      {
+        "column": "id",
+        "type": "INT64"
+      },
+      {
+        "column": "x",
+        "type": "INT64"
+      }
+    ],
+    "rcolumns": "",
+    "multi": "multiple",
+    "outputPty": "payload",
+    "outputPtyType": "msg",
+    "engine": "parquetjs",
+    "x": 220,
+    "y": 560,
+    "wires": [
+      [
+        "0a0f5.72b9e3"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "0a0f5.72b9e3",
+    "type": "function",
+    "name": "3.1 Set spike path",
+    "func": "// Sets the file path of a spike test in the data lake.\n// In: the output of the parquet node (msg.spike names the test).\n// Out: msg.path = Sandbox/spike/<test>.parquet and msg.filename.\nvar FOLDER = 'Sandbox/spike/';\n\nmsg.path = FOLDER + msg.spike + '.parquet';\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 460,
+    "y": 560,
+    "wires": [
       [
         "0bfe4.7452fc"
-      ],
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "0bfe4.7452fc",
+    "type": "write object",
+    "name": "null_int64 to data lake",
+    "path": "",
+    "mode": "object",
+    "x": 700,
+    "y": 560,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "0ded3.75ec15",
+    "type": "comment",
+    "name": "[4] CASE null_double",
+    "info": "STAGE 4 - engine parquetjs: DOUBLE with a null. The result is Sandbox/spike/null_double.parquet; a failure gives null_double_ERROR.txt.",
+    "x": 140,
+    "y": 700,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "e7427.55f621",
+    "type": "link in",
+    "name": "NULL_DOUBLE",
+    "links": [
+      "e9316.578f3a"
+    ],
+    "x": 60,
+    "y": 780,
+    "wires": [
       [
         "0fdc2.77852e"
-      ],
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "0fdc2.77852e",
+    "type": "parquet",
+    "name": "Write null_double parquet",
+    "option": "write",
+    "columns": [
+      {
+        "column": "id",
+        "type": "INT64"
+      },
+      {
+        "column": "x",
+        "type": "DOUBLE"
+      }
+    ],
+    "rcolumns": "",
+    "multi": "multiple",
+    "outputPty": "payload",
+    "outputPtyType": "msg",
+    "engine": "parquetjs",
+    "x": 220,
+    "y": 780,
+    "wires": [
+      [
+        "11cb1.791e47"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "11cb1.791e47",
+    "type": "function",
+    "name": "4.1 Set spike path",
+    "func": "// Sets the file path of a spike test in the data lake.\n// In: the output of the parquet node (msg.spike names the test).\n// Out: msg.path = Sandbox/spike/<test>.parquet and msg.filename.\nvar FOLDER = 'Sandbox/spike/';\n\nmsg.path = FOLDER + msg.spike + '.parquet';\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 460,
+    "y": 780,
+    "wires": [
       [
         "13ba0.7ab760"
       ]
@@ -308,24 +466,35 @@
   },
   {
     "z": "d7caf.492d59",
-    "id": "15a8f.7c5079",
-    "type": "comment",
-    "name": "[3] CASE legacy_date_day_number",
-    "info": "STAGE 3 - engine parquetjs, column x of type DATE, value a day number. The result is Sandbox/spike/legacy_date_day_number.parquet; a failure gives legacy_date_day_number_ERROR.txt.",
-    "x": 180,
-    "y": 480,
+    "id": "13ba0.7ab760",
+    "type": "write object",
+    "name": "null_double to data lake",
+    "path": "",
+    "mode": "object",
+    "x": 700,
+    "y": 780,
     "wires": []
   },
   {
     "z": "d7caf.492d59",
-    "id": "df86b.4f91bd",
+    "id": "15a8f.7c5079",
+    "type": "comment",
+    "name": "[5] CASE null_date",
+    "info": "STAGE 5 - engine parquetjs: DATE with a null. The result is Sandbox/spike/null_date.parquet; a failure gives null_date_ERROR.txt.",
+    "x": 140,
+    "y": 920,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "eb205.592853",
     "type": "link in",
-    "name": "LEGACY_DATE_DAY_NUMBER",
+    "name": "NULL_DATE",
     "links": [
-      "e175a.512ad6"
+      "ed0f4.5ac16c"
     ],
     "x": 60,
-    "y": 560,
+    "y": 1000,
     "wires": [
       [
         "1797e.7de992"
@@ -336,7 +505,7 @@
     "z": "d7caf.492d59",
     "id": "1797e.7de992",
     "type": "parquet",
-    "name": "Write legacy_date_day_number parquet",
+    "name": "Write null_date parquet",
     "option": "write",
     "columns": [
       {
@@ -353,8 +522,8 @@
     "outputPty": "payload",
     "outputPtyType": "msg",
     "engine": "parquetjs",
-    "x": 260,
-    "y": 560,
+    "x": 220,
+    "y": 1000,
     "wires": [
       [
         "1986d.7f82ab"
@@ -365,13 +534,13 @@
     "z": "d7caf.492d59",
     "id": "1986d.7f82ab",
     "type": "function",
-    "name": "3.1 Set spike path",
+    "name": "5.1 Set spike path",
     "func": "// Sets the file path of a spike test in the data lake.\n// In: the output of the parquet node (msg.spike names the test).\n// Out: msg.path = Sandbox/spike/<test>.parquet and msg.filename.\nvar FOLDER = 'Sandbox/spike/';\n\nmsg.path = FOLDER + msg.spike + '.parquet';\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 540,
-    "y": 560,
+    "x": 460,
+    "y": 1000,
     "wires": [
       [
         "1b75c.811bc4"
@@ -382,33 +551,33 @@
     "z": "d7caf.492d59",
     "id": "1b75c.811bc4",
     "type": "write object",
-    "name": "legacy_date_day_number to data lake",
+    "name": "null_date to data lake",
     "path": "",
     "mode": "object",
-    "x": 820,
-    "y": 560,
+    "x": 700,
+    "y": 1000,
     "wires": []
   },
   {
     "z": "d7caf.492d59",
     "id": "1d64b.82b4dd",
     "type": "comment",
-    "name": "[4] CASE legacy_timestamp_ms",
-    "info": "STAGE 4 - engine parquetjs, column x of type TIMESTAMP_MILLIS, value epoch ms, 2026. The result is Sandbox/spike/legacy_timestamp_ms.parquet; a failure gives legacy_timestamp_ms_ERROR.txt.",
-    "x": 180,
-    "y": 700,
+    "name": "[6] CASE null_text",
+    "info": "STAGE 6 - engine parquetjs: UTF8 with a null. The result is Sandbox/spike/null_text.parquet; a failure gives null_text_ERROR.txt.",
+    "x": 140,
+    "y": 1140,
     "wires": []
   },
   {
     "z": "d7caf.492d59",
-    "id": "e3649.52c3ef",
+    "id": "eefe3.5c5a85",
     "type": "link in",
-    "name": "LEGACY_TIMESTAMP_MS",
+    "name": "NULL_TEXT",
     "links": [
-      "e5538.545d08"
+      "f0ed2.5df39e"
     ],
     "x": 60,
-    "y": 780,
+    "y": 1220,
     "wires": [
       [
         "1f53a.844df6"
@@ -419,7 +588,7 @@
     "z": "d7caf.492d59",
     "id": "1f53a.844df6",
     "type": "parquet",
-    "name": "Write legacy_timestamp_ms parquet",
+    "name": "Write null_text parquet",
     "option": "write",
     "columns": [
       {
@@ -428,7 +597,7 @@
       },
       {
         "column": "x",
-        "type": "TIMESTAMP_MILLIS"
+        "type": "UTF8"
       }
     ],
     "rcolumns": "",
@@ -436,8 +605,8 @@
     "outputPty": "payload",
     "outputPtyType": "msg",
     "engine": "parquetjs",
-    "x": 260,
-    "y": 780,
+    "x": 220,
+    "y": 1220,
     "wires": [
       [
         "21429.85e70f"
@@ -448,13 +617,13 @@
     "z": "d7caf.492d59",
     "id": "21429.85e70f",
     "type": "function",
-    "name": "4.1 Set spike path",
+    "name": "6.1 Set spike path",
     "func": "// Sets the file path of a spike test in the data lake.\n// In: the output of the parquet node (msg.spike names the test).\n// Out: msg.path = Sandbox/spike/<test>.parquet and msg.filename.\nvar FOLDER = 'Sandbox/spike/';\n\nmsg.path = FOLDER + msg.spike + '.parquet';\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 540,
-    "y": 780,
+    "x": 460,
+    "y": 1220,
     "wires": [
       [
         "23318.878028"
@@ -465,33 +634,33 @@
     "z": "d7caf.492d59",
     "id": "23318.878028",
     "type": "write object",
-    "name": "legacy_timestamp_ms to data lake",
+    "name": "null_text to data lake",
     "path": "",
     "mode": "object",
-    "x": 820,
-    "y": 780,
+    "x": 700,
+    "y": 1220,
     "wires": []
   },
   {
     "z": "d7caf.492d59",
     "id": "25207.891941",
     "type": "comment",
-    "name": "[5] CASE legacy_timestamp_ms_1899",
-    "info": "STAGE 5 - engine parquetjs, column x of type TIMESTAMP_MILLIS, value epoch ms, 1899-12-30 time of day (negative). The result is Sandbox/spike/legacy_timestamp_ms_1899.parquet; a failure gives legacy_timestamp_ms_1899_ERROR.txt.",
-    "x": 200,
-    "y": 920,
+    "name": "[7] CASE null_timestamp",
+    "info": "STAGE 7 - engine parquetjs: TIMESTAMP_MILLIS with a null. The result is Sandbox/spike/null_timestamp.parquet; a failure gives null_timestamp_ERROR.txt.",
+    "x": 160,
+    "y": 1360,
     "wires": []
   },
   {
     "z": "d7caf.492d59",
-    "id": "e7427.55f621",
+    "id": "f2dc1.5f8cb7",
     "type": "link in",
-    "name": "LEGACY_TIMESTAMP_MS_1899",
+    "name": "NULL_TIMESTAMP",
     "links": [
-      "e9316.578f3a"
+      "f4cb0.6125d0"
     ],
     "x": 60,
-    "y": 1000,
+    "y": 1440,
     "wires": [
       [
         "270f6.8ab25a"
@@ -502,7 +671,7 @@
     "z": "d7caf.492d59",
     "id": "270f6.8ab25a",
     "type": "parquet",
-    "name": "Write legacy_timestamp_ms_1899 parquet",
+    "name": "Write null_timestamp parquet",
     "option": "write",
     "columns": [
       {
@@ -519,8 +688,8 @@
     "outputPty": "payload",
     "outputPtyType": "msg",
     "engine": "parquetjs",
-    "x": 280,
-    "y": 1000,
+    "x": 240,
+    "y": 1440,
     "wires": [
       [
         "28fe5.8c4b73"
@@ -531,13 +700,13 @@
     "z": "d7caf.492d59",
     "id": "28fe5.8c4b73",
     "type": "function",
-    "name": "5.1 Set spike path",
+    "name": "7.1 Set spike path",
     "func": "// Sets the file path of a spike test in the data lake.\n// In: the output of the parquet node (msg.spike names the test).\n// Out: msg.path = Sandbox/spike/<test>.parquet and msg.filename.\nvar FOLDER = 'Sandbox/spike/';\n\nmsg.path = FOLDER + msg.spike + '.parquet';\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 580,
-    "y": 1000,
+    "x": 500,
+    "y": 1440,
     "wires": [
       [
         "2aed4.8de48c"
@@ -548,33 +717,33 @@
     "z": "d7caf.492d59",
     "id": "2aed4.8de48c",
     "type": "write object",
-    "name": "legacy_timestamp_ms_1899 to data lake",
+    "name": "null_timestamp to data lake",
     "path": "",
     "mode": "object",
-    "x": 860,
-    "y": 1000,
+    "x": 760,
+    "y": 1440,
     "wires": []
   },
   {
     "z": "d7caf.492d59",
     "id": "2cdc3.8f7da5",
     "type": "comment",
-    "name": "[6] CASE legacy_time_millis",
-    "info": "STAGE 6 - engine parquetjs, column x of type TIME_MILLIS, value ms of a day. The result is Sandbox/spike/legacy_time_millis.parquet; a failure gives legacy_time_millis_ERROR.txt.",
-    "x": 180,
-    "y": 1140,
+    "name": "[8] CASE missing_keys",
+    "info": "STAGE 8 - engine parquetjs: a row where the keys i and s are missing (not null). The result is Sandbox/spike/missing_keys.parquet; a failure gives missing_keys_ERROR.txt.",
+    "x": 160,
+    "y": 1580,
     "wires": []
   },
   {
     "z": "d7caf.492d59",
-    "id": "eb205.592853",
+    "id": "f6b9f.62bee9",
     "type": "link in",
-    "name": "LEGACY_TIME_MILLIS",
+    "name": "MISSING_KEYS",
     "links": [
-      "ed0f4.5ac16c"
+      "f8a8e.645802"
     ],
     "x": 60,
-    "y": 1220,
+    "y": 1660,
     "wires": [
       [
         "2ecb2.9116be"
@@ -585,7 +754,7 @@
     "z": "d7caf.492d59",
     "id": "2ecb2.9116be",
     "type": "parquet",
-    "name": "Write legacy_time_millis parquet",
+    "name": "Write missing_keys parquet",
     "option": "write",
     "columns": [
       {
@@ -593,8 +762,12 @@
         "type": "INT64"
       },
       {
-        "column": "x",
-        "type": "TIME_MILLIS"
+        "column": "i",
+        "type": "INT64"
+      },
+      {
+        "column": "s",
+        "type": "UTF8"
       }
     ],
     "rcolumns": "",
@@ -602,8 +775,8 @@
     "outputPty": "payload",
     "outputPtyType": "msg",
     "engine": "parquetjs",
-    "x": 260,
-    "y": 1220,
+    "x": 220,
+    "y": 1660,
     "wires": [
       [
         "30ba1.92afd7"
@@ -614,13 +787,13 @@
     "z": "d7caf.492d59",
     "id": "30ba1.92afd7",
     "type": "function",
-    "name": "6.1 Set spike path",
+    "name": "8.1 Set spike path",
     "func": "// Sets the file path of a spike test in the data lake.\n// In: the output of the parquet node (msg.spike names the test).\n// Out: msg.path = Sandbox/spike/<test>.parquet and msg.filename.\nvar FOLDER = 'Sandbox/spike/';\n\nmsg.path = FOLDER + msg.spike + '.parquet';\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 540,
-    "y": 1220,
+    "x": 460,
+    "y": 1660,
     "wires": [
       [
         "32a90.9448f0"
@@ -631,33 +804,33 @@
     "z": "d7caf.492d59",
     "id": "32a90.9448f0",
     "type": "write object",
-    "name": "legacy_time_millis to data lake",
+    "name": "missing_keys to data lake",
     "path": "",
     "mode": "object",
-    "x": 800,
-    "y": 1220,
+    "x": 700,
+    "y": 1660,
     "wires": []
   },
   {
     "z": "d7caf.492d59",
     "id": "3497f.95e209",
     "type": "comment",
-    "name": "[7] CASE modern_date_day_number",
-    "info": "STAGE 7 - engine hyparquet, column x of type DATE, value a day number. The result is Sandbox/spike/modern_date_day_number.parquet; a failure gives modern_date_day_number_ERROR.txt.",
-    "x": 180,
-    "y": 1360,
+    "name": "[9] CASE timestamp_1970_time_of_day",
+    "info": "STAGE 9 - engine parquetjs: a time of day (21:45) as a timestamp on 1970-01-01, with a null. The result is Sandbox/spike/timestamp_1970_time_of_day.parquet; a failure gives timestamp_1970_time_of_day_ERROR.txt.",
+    "x": 200,
+    "y": 1800,
     "wires": []
   },
   {
     "z": "d7caf.492d59",
-    "id": "f6b9f.62bee9",
+    "id": "fa97d.65f11b",
     "type": "link in",
-    "name": "MODERN_DATE_DAY_NUMBER",
+    "name": "TIMESTAMP_1970_TIME_OF_DAY",
     "links": [
-      "f8a8e.645802"
+      "fc86c.678a34"
     ],
     "x": 60,
-    "y": 1440,
+    "y": 1880,
     "wires": [
       [
         "3686e.977b22"
@@ -668,7 +841,7 @@
     "z": "d7caf.492d59",
     "id": "3686e.977b22",
     "type": "parquet",
-    "name": "Write modern_date_day_number parquet",
+    "name": "Write timestamp_1970_time_of_day parquet",
     "option": "write",
     "columns": [
       {
@@ -677,16 +850,16 @@
       },
       {
         "column": "x",
-        "type": "DATE"
+        "type": "TIMESTAMP_MILLIS"
       }
     ],
     "rcolumns": "",
     "multi": "multiple",
     "outputPty": "payload",
     "outputPtyType": "msg",
-    "engine": "hyparquet",
-    "x": 260,
-    "y": 1440,
+    "engine": "parquetjs",
+    "x": 280,
+    "y": 1880,
     "wires": [
       [
         "3875d.99143b"
@@ -697,13 +870,13 @@
     "z": "d7caf.492d59",
     "id": "3875d.99143b",
     "type": "function",
-    "name": "7.1 Set spike path",
+    "name": "9.1 Set spike path",
     "func": "// Sets the file path of a spike test in the data lake.\n// In: the output of the parquet node (msg.spike names the test).\n// Out: msg.path = Sandbox/spike/<test>.parquet and msg.filename.\nvar FOLDER = 'Sandbox/spike/';\n\nmsg.path = FOLDER + msg.spike + '.parquet';\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 540,
-    "y": 1440,
+    "x": 580,
+    "y": 1880,
     "wires": [
       [
         "3a64c.9aad54"
@@ -714,33 +887,32 @@
     "z": "d7caf.492d59",
     "id": "3a64c.9aad54",
     "type": "write object",
-    "name": "modern_date_day_number to data lake",
+    "name": "timestamp_1970_time_of_day to data lake",
     "path": "",
     "mode": "object",
-    "x": 820,
-    "y": 1440,
+    "x": 880,
+    "y": 1880,
     "wires": []
   },
   {
     "z": "d7caf.492d59",
     "id": "3c53b.9c466d",
     "type": "comment",
-    "name": "[8] CASE modern_date_object",
-    "info": "STAGE 8 - engine hyparquet, column x of type DATE, value a JS Date object. The result is Sandbox/spike/modern_date_object.parquet; a failure gives modern_date_object_ERROR.txt.",
-    "x": 180,
-    "y": 1580,
+    "name": "[10] SPIKE: ERRORS",
+    "info": "STAGE 10 - a catch node takes the error of any case and writes it as a text file next to the results, so nothing needs to be copied by hand.",
+    "x": 140,
+    "y": 2020,
     "wires": []
   },
   {
     "z": "d7caf.492d59",
-    "id": "fa97d.65f11b",
-    "type": "link in",
-    "name": "MODERN_DATE_OBJECT",
-    "links": [
-      "fc86c.678a34"
-    ],
-    "x": 60,
-    "y": 1660,
+    "id": "40319.9f789f",
+    "type": "catch",
+    "name": "Catch spike errors",
+    "scope": null,
+    "uncaught": false,
+    "x": 140,
+    "y": 2100,
     "wires": [
       [
         "3e42a.9ddf86"
@@ -750,43 +922,14 @@
   {
     "z": "d7caf.492d59",
     "id": "3e42a.9ddf86",
-    "type": "parquet",
-    "name": "Write modern_date_object parquet",
-    "option": "write",
-    "columns": [
-      {
-        "column": "id",
-        "type": "INT64"
-      },
-      {
-        "column": "x",
-        "type": "DATE"
-      }
-    ],
-    "rcolumns": "",
-    "multi": "multiple",
-    "outputPty": "payload",
-    "outputPtyType": "msg",
-    "engine": "hyparquet",
-    "x": 260,
-    "y": 1660,
-    "wires": [
-      [
-        "40319.9f789f"
-      ]
-    ]
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "40319.9f789f",
     "type": "function",
-    "name": "8.1 Set spike path",
-    "func": "// Sets the file path of a spike test in the data lake.\n// In: the output of the parquet node (msg.spike names the test).\n// Out: msg.path = Sandbox/spike/<test>.parquet and msg.filename.\nvar FOLDER = 'Sandbox/spike/';\n\nmsg.path = FOLDER + msg.spike + '.parquet';\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
+    "name": "10.1 Describe spike error",
+    "func": "// Turns an error of a spike case into a small text file in the data lake.\n// In: the message of a catch node (msg.spike names the case).\n// Out: msg.payload = the error text, msg.path = Sandbox/spike/<case>_ERROR.txt.\nvar FOLDER = 'Sandbox/spike/';\nvar err = msg.error || {};\nvar name = msg.spike || 'unknown_case';\nvar source = (err.source && err.source.name) || 'unknown node';\n\nmsg.payload = name + ' failed in ' + source + ': ' + String(err.message);\nmsg.path = FOLDER + name + '_ERROR.txt';\nmsg.filename = name + '_ERROR.txt';\nreturn msg;\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 540,
-    "y": 1660,
+    "x": 380,
+    "y": 2100,
     "wires": [
       [
         "42208.a111b8"
@@ -797,562 +940,11 @@
     "z": "d7caf.492d59",
     "id": "42208.a111b8",
     "type": "write object",
-    "name": "modern_date_object to data lake",
-    "path": "",
-    "mode": "object",
-    "x": 800,
-    "y": 1660,
-    "wires": []
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "440f7.a2aad1",
-    "type": "comment",
-    "name": "[9] CASE modern_date_text",
-    "info": "STAGE 9 - engine hyparquet, column x of type DATE, value ISO text. The result is Sandbox/spike/modern_date_text.parquet; a failure gives modern_date_text_ERROR.txt.",
-    "x": 160,
-    "y": 1800,
-    "wires": []
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "fe75b.69234d",
-    "type": "link in",
-    "name": "MODERN_DATE_TEXT",
-    "links": [
-      "0064a.6abc66"
-    ],
-    "x": 60,
-    "y": 1880,
-    "wires": [
-      [
-        "45fe6.a443ea"
-      ]
-    ]
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "45fe6.a443ea",
-    "type": "parquet",
-    "name": "Write modern_date_text parquet",
-    "option": "write",
-    "columns": [
-      {
-        "column": "id",
-        "type": "INT64"
-      },
-      {
-        "column": "x",
-        "type": "DATE"
-      }
-    ],
-    "rcolumns": "",
-    "multi": "multiple",
-    "outputPty": "payload",
-    "outputPtyType": "msg",
-    "engine": "hyparquet",
-    "x": 240,
-    "y": 1880,
-    "wires": [
-      [
-        "47ed5.a5dd03"
-      ]
-    ]
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "47ed5.a5dd03",
-    "type": "function",
-    "name": "9.1 Set spike path",
-    "func": "// Sets the file path of a spike test in the data lake.\n// In: the output of the parquet node (msg.spike names the test).\n// Out: msg.path = Sandbox/spike/<test>.parquet and msg.filename.\nvar FOLDER = 'Sandbox/spike/';\n\nmsg.path = FOLDER + msg.spike + '.parquet';\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
-    "outputs": 1,
-    "language": "javascript",
-    "noerr": 0,
-    "x": 500,
-    "y": 1880,
-    "wires": [
-      [
-        "49dc4.a7761c"
-      ]
-    ]
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "49dc4.a7761c",
-    "type": "write object",
-    "name": "modern_date_text to data lake",
-    "path": "",
-    "mode": "object",
-    "x": 760,
-    "y": 1880,
-    "wires": []
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "4bcb3.a90f35",
-    "type": "comment",
-    "name": "[10] CASE modern_timestamp_ms",
-    "info": "STAGE 10 - engine hyparquet, column x of type TIMESTAMP_MILLIS, value epoch ms, 2026. The result is Sandbox/spike/modern_timestamp_ms.parquet; a failure gives modern_timestamp_ms_ERROR.txt.",
-    "x": 180,
-    "y": 2020,
-    "wires": []
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "02539.6c557f",
-    "type": "link in",
-    "name": "MODERN_TIMESTAMP_MS",
-    "links": [
-      "04428.6dee98"
-    ],
-    "x": 60,
-    "y": 2100,
-    "wires": [
-      [
-        "4dba2.aaa84e"
-      ]
-    ]
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "4dba2.aaa84e",
-    "type": "parquet",
-    "name": "Write modern_timestamp_ms parquet",
-    "option": "write",
-    "columns": [
-      {
-        "column": "id",
-        "type": "INT64"
-      },
-      {
-        "column": "x",
-        "type": "TIMESTAMP_MILLIS"
-      }
-    ],
-    "rcolumns": "",
-    "multi": "multiple",
-    "outputPty": "payload",
-    "outputPtyType": "msg",
-    "engine": "hyparquet",
-    "x": 260,
-    "y": 2100,
-    "wires": [
-      [
-        "4fa91.ac4167"
-      ]
-    ]
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "4fa91.ac4167",
-    "type": "function",
-    "name": "10.1 Set spike path",
-    "func": "// Sets the file path of a spike test in the data lake.\n// In: the output of the parquet node (msg.spike names the test).\n// Out: msg.path = Sandbox/spike/<test>.parquet and msg.filename.\nvar FOLDER = 'Sandbox/spike/';\n\nmsg.path = FOLDER + msg.spike + '.parquet';\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
-    "outputs": 1,
-    "language": "javascript",
-    "noerr": 0,
-    "x": 540,
-    "y": 2100,
-    "wires": [
-      [
-        "51980.adda80"
-      ]
-    ]
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "51980.adda80",
-    "type": "write object",
-    "name": "modern_timestamp_ms to data lake",
-    "path": "",
-    "mode": "object",
-    "x": 820,
-    "y": 2100,
-    "wires": []
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "5386f.af7399",
-    "type": "comment",
-    "name": "[11] CASE modern_timestamp_ms_1899",
-    "info": "STAGE 11 - engine hyparquet, column x of type TIMESTAMP_MILLIS, value epoch ms, 1899-12-30 time of day (negative). The result is Sandbox/spike/modern_timestamp_ms_1899.parquet; a failure gives modern_timestamp_ms_1899_ERROR.txt.",
-    "x": 200,
-    "y": 2240,
-    "wires": []
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "06317.6f87b1",
-    "type": "link in",
-    "name": "MODERN_TIMESTAMP_MS_1899",
-    "links": [
-      "08206.7120ca"
-    ],
-    "x": 60,
-    "y": 2320,
-    "wires": [
-      [
-        "5575e.b10cb2"
-      ]
-    ]
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "5575e.b10cb2",
-    "type": "parquet",
-    "name": "Write modern_timestamp_ms_1899 parquet",
-    "option": "write",
-    "columns": [
-      {
-        "column": "id",
-        "type": "INT64"
-      },
-      {
-        "column": "x",
-        "type": "TIMESTAMP_MILLIS"
-      }
-    ],
-    "rcolumns": "",
-    "multi": "multiple",
-    "outputPty": "payload",
-    "outputPtyType": "msg",
-    "engine": "hyparquet",
-    "x": 280,
-    "y": 2320,
-    "wires": [
-      [
-        "5764d.b2a5cb"
-      ]
-    ]
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "5764d.b2a5cb",
-    "type": "function",
-    "name": "11.1 Set spike path",
-    "func": "// Sets the file path of a spike test in the data lake.\n// In: the output of the parquet node (msg.spike names the test).\n// Out: msg.path = Sandbox/spike/<test>.parquet and msg.filename.\nvar FOLDER = 'Sandbox/spike/';\n\nmsg.path = FOLDER + msg.spike + '.parquet';\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
-    "outputs": 1,
-    "language": "javascript",
-    "noerr": 0,
-    "x": 580,
-    "y": 2320,
-    "wires": [
-      [
-        "5953c.b43ee4"
-      ]
-    ]
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "5953c.b43ee4",
-    "type": "write object",
-    "name": "modern_timestamp_ms_1899 to data lake",
-    "path": "",
-    "mode": "object",
-    "x": 860,
-    "y": 2320,
-    "wires": []
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "5b42b.b5d7fd",
-    "type": "comment",
-    "name": "[12] CASE modern_timestamp_object",
-    "info": "STAGE 12 - engine hyparquet, column x of type TIMESTAMP_MILLIS, value a JS Date object. The result is Sandbox/spike/modern_timestamp_object.parquet; a failure gives modern_timestamp_object_ERROR.txt.",
-    "x": 200,
-    "y": 2460,
-    "wires": []
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "0a0f5.72b9e3",
-    "type": "link in",
-    "name": "MODERN_TIMESTAMP_OBJECT",
-    "links": [
-      "0bfe4.7452fc"
-    ],
-    "x": 60,
-    "y": 2540,
-    "wires": [
-      [
-        "5d31a.b77116"
-      ]
-    ]
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "5d31a.b77116",
-    "type": "parquet",
-    "name": "Write modern_timestamp_object parquet",
-    "option": "write",
-    "columns": [
-      {
-        "column": "id",
-        "type": "INT64"
-      },
-      {
-        "column": "x",
-        "type": "TIMESTAMP_MILLIS"
-      }
-    ],
-    "rcolumns": "",
-    "multi": "multiple",
-    "outputPty": "payload",
-    "outputPtyType": "msg",
-    "engine": "hyparquet",
-    "x": 260,
-    "y": 2540,
-    "wires": [
-      [
-        "5f209.b90a2f"
-      ]
-    ]
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "5f209.b90a2f",
-    "type": "function",
-    "name": "12.1 Set spike path",
-    "func": "// Sets the file path of a spike test in the data lake.\n// In: the output of the parquet node (msg.spike names the test).\n// Out: msg.path = Sandbox/spike/<test>.parquet and msg.filename.\nvar FOLDER = 'Sandbox/spike/';\n\nmsg.path = FOLDER + msg.spike + '.parquet';\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
-    "outputs": 1,
-    "language": "javascript",
-    "noerr": 0,
-    "x": 540,
-    "y": 2540,
-    "wires": [
-      [
-        "610f8.baa348"
-      ]
-    ]
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "610f8.baa348",
-    "type": "write object",
-    "name": "modern_timestamp_object to data lake",
-    "path": "",
-    "mode": "object",
-    "x": 820,
-    "y": 2540,
-    "wires": []
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "62fe7.bc3c61",
-    "type": "comment",
-    "name": "[13] CASE modern_timestamp_bigint",
-    "info": "STAGE 13 - engine hyparquet, column x of type TIMESTAMP_MILLIS, value a BigInt of ms. The result is Sandbox/spike/modern_timestamp_bigint.parquet; a failure gives modern_timestamp_bigint_ERROR.txt.",
-    "x": 200,
-    "y": 2680,
-    "wires": []
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "0ded3.75ec15",
-    "type": "link in",
-    "name": "MODERN_TIMESTAMP_BIGINT",
-    "links": [
-      "0fdc2.77852e"
-    ],
-    "x": 60,
-    "y": 2760,
-    "wires": [
-      [
-        "64ed6.bdd57a"
-      ]
-    ]
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "64ed6.bdd57a",
-    "type": "parquet",
-    "name": "Write modern_timestamp_bigint parquet",
-    "option": "write",
-    "columns": [
-      {
-        "column": "id",
-        "type": "INT64"
-      },
-      {
-        "column": "x",
-        "type": "TIMESTAMP_MILLIS"
-      }
-    ],
-    "rcolumns": "",
-    "multi": "multiple",
-    "outputPty": "payload",
-    "outputPtyType": "msg",
-    "engine": "hyparquet",
-    "x": 260,
-    "y": 2760,
-    "wires": [
-      [
-        "66dc5.bf6e93"
-      ]
-    ]
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "66dc5.bf6e93",
-    "type": "function",
-    "name": "13.1 Set spike path",
-    "func": "// Sets the file path of a spike test in the data lake.\n// In: the output of the parquet node (msg.spike names the test).\n// Out: msg.path = Sandbox/spike/<test>.parquet and msg.filename.\nvar FOLDER = 'Sandbox/spike/';\n\nmsg.path = FOLDER + msg.spike + '.parquet';\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
-    "outputs": 1,
-    "language": "javascript",
-    "noerr": 0,
-    "x": 540,
-    "y": 2760,
-    "wires": [
-      [
-        "68cb4.c107ac"
-      ]
-    ]
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "68cb4.c107ac",
-    "type": "write object",
-    "name": "modern_timestamp_bigint to data lake",
-    "path": "",
-    "mode": "object",
-    "x": 820,
-    "y": 2760,
-    "wires": []
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "6aba3.c2a0c5",
-    "type": "comment",
-    "name": "[14] CASE modern_time_millis",
-    "info": "STAGE 14 - engine hyparquet, column x of type TIME_MILLIS, value ms of a day. The result is Sandbox/spike/modern_time_millis.parquet; a failure gives modern_time_millis_ERROR.txt.",
-    "x": 180,
-    "y": 2900,
-    "wires": []
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "11cb1.791e47",
-    "type": "link in",
-    "name": "MODERN_TIME_MILLIS",
-    "links": [
-      "13ba0.7ab760"
-    ],
-    "x": 60,
-    "y": 2980,
-    "wires": [
-      [
-        "6ca92.c439de"
-      ]
-    ]
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "6ca92.c439de",
-    "type": "parquet",
-    "name": "Write modern_time_millis parquet",
-    "option": "write",
-    "columns": [
-      {
-        "column": "id",
-        "type": "INT64"
-      },
-      {
-        "column": "x",
-        "type": "TIME_MILLIS"
-      }
-    ],
-    "rcolumns": "",
-    "multi": "multiple",
-    "outputPty": "payload",
-    "outputPtyType": "msg",
-    "engine": "hyparquet",
-    "x": 260,
-    "y": 2980,
-    "wires": [
-      [
-        "6e981.c5d2f7"
-      ]
-    ]
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "6e981.c5d2f7",
-    "type": "function",
-    "name": "14.1 Set spike path",
-    "func": "// Sets the file path of a spike test in the data lake.\n// In: the output of the parquet node (msg.spike names the test).\n// Out: msg.path = Sandbox/spike/<test>.parquet and msg.filename.\nvar FOLDER = 'Sandbox/spike/';\n\nmsg.path = FOLDER + msg.spike + '.parquet';\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
-    "outputs": 1,
-    "language": "javascript",
-    "noerr": 0,
-    "x": 540,
-    "y": 2980,
-    "wires": [
-      [
-        "70870.c76c10"
-      ]
-    ]
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "70870.c76c10",
-    "type": "write object",
-    "name": "modern_time_millis to data lake",
-    "path": "",
-    "mode": "object",
-    "x": 800,
-    "y": 2980,
-    "wires": []
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "7275f.c90529",
-    "type": "comment",
-    "name": "[15] SPIKE: ERRORS",
-    "info": "STAGE 15 - a catch node takes the error of any case and writes it as a text file next to the results, so nothing needs to be copied by hand.",
-    "x": 140,
-    "y": 3120,
-    "wires": []
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "7653d.cc375b",
-    "type": "catch",
-    "name": "Catch spike errors",
-    "scope": null,
-    "uncaught": false,
-    "x": 140,
-    "y": 3200,
-    "wires": [
-      [
-        "7464e.ca9e42"
-      ]
-    ]
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "7464e.ca9e42",
-    "type": "function",
-    "name": "15.1 Describe spike error",
-    "func": "// Turns an error of a spike case into a small text file in the data lake.\n// In: the message of a catch node (msg.spike names the case).\n// Out: msg.payload = the error text, msg.path = Sandbox/spike/<case>_ERROR.txt.\nvar FOLDER = 'Sandbox/spike/';\nvar err = msg.error || {};\nvar name = msg.spike || 'unknown_case';\nvar source = (err.source && err.source.name) || 'unknown node';\n\nmsg.payload = name + ' failed in ' + source + ': ' + String(err.message);\nmsg.path = FOLDER + name + '_ERROR.txt';\nmsg.filename = name + '_ERROR.txt';\nreturn msg;\n",
-    "outputs": 1,
-    "language": "javascript",
-    "noerr": 0,
-    "x": 380,
-    "y": 3200,
-    "wires": [
-      [
-        "7842c.cdd074"
-      ]
-    ]
-  },
-  {
-    "z": "d7caf.492d59",
-    "id": "7842c.cdd074",
-    "type": "write object",
     "name": "Spike error to data lake",
     "path": "",
     "mode": "object",
     "x": 640,
-    "y": 3200,
+    "y": 2100,
     "wires": []
   }
 ]

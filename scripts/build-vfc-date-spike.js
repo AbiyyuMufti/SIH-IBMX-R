@@ -1,51 +1,46 @@
-// Builds flows/vfc-date-spike.json, a small VFC tab "Date type spike": which
-// date and time types does the parquet node write, with which value forms,
-// in the legacy (parquetjs) and the modern (hyparquet) engine? Twelve cases,
-// each its own parquet node, written to Sandbox/spike/ in the data lake. An
-// error of a case becomes a text file <case>_ERROR.txt next to the results.
+// Builds flows/vfc-date-spike.json, a small VFC tab "Date type spike" (v4):
+// the legacy (parquetjs) engine writes column names with spaces and dots in
+// the real Tableau types, a null in every type, and rows with missing keys.
+// Eight cases, each its own parquet node, written to Sandbox/spike/. An error
+// of a case becomes a text file <case>_ERROR.txt next to the results.
 // Usage: node scripts/build-vfc-date-spike.js
-// Function code: scripts/vfc/x1-*.js, x2-spike-path.js, x3-spike-error.js.
+// Function code: scripts/vfc/x1-rows.js, x2-spike-path.js, x3-spike-error.js.
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { validateFlow } from './validate-flow.js';
 import {
   makeBuilder, fn, linkInStep, rawStep, catchStep, writeStep,
-  compactLanes, measureSpacing, I
+  compactLanes, measureSpacing, I, D, S, TS
 } from './lib-flow-builder.js';
 
 const FILE = 'vfc-date-spike.json';
-const LEGACY = 'parquetjs';
-const MODERN = 'hyparquet';
+const DATE = 'DATE';
 
-// One case per lane: file name (= msg.spike), engine, column type, text.
-const LEGACY_CASES = [
-  ['legacy_date_day_number', LEGACY, 'DATE', 'a day number'],
-  ['legacy_timestamp_ms', LEGACY, 'TIMESTAMP_MILLIS', 'epoch ms, 2026'],
-  ['legacy_timestamp_ms_1899', LEGACY, 'TIMESTAMP_MILLIS',
-    'epoch ms, 1899-12-30 time of day (negative)'],
-  ['legacy_time_millis', LEGACY, 'TIME_MILLIS', 'ms of a day']
-];
-const MODERN_CASES = [
-  ['modern_date_day_number', MODERN, 'DATE', 'a day number'],
-  ['modern_date_object', MODERN, 'DATE', 'a JS Date object'],
-  ['modern_date_text', MODERN, 'DATE', 'ISO text'],
-  ['modern_timestamp_ms', MODERN, 'TIMESTAMP_MILLIS', 'epoch ms, 2026'],
-  ['modern_timestamp_ms_1899', MODERN, 'TIMESTAMP_MILLIS',
-    'epoch ms, 1899-12-30 time of day (negative)'],
-  ['modern_timestamp_object', MODERN, 'TIMESTAMP_MILLIS', 'a JS Date object'],
-  ['modern_timestamp_bigint', MODERN, 'TIMESTAMP_MILLIS', 'a BigInt of ms'],
-  ['modern_time_millis', MODERN, 'TIME_MILLIS', 'ms of a day']
+// One case per lane: file name (= msg.spike), columns, text.
+const CASES = [
+  ['names_and_types_with_nulls', [
+    ['Good Parts', I], ['Planned OpT', I], ['Capacity', D], ['Date', DATE],
+    ['ShiftStartDate.1', DATE], ['Time', TS], ['Duration', TS],
+    ['Time in Mins', D], ['Value', S], ['Volume Key.1', S],
+    ['ShiftName - Copy', S], ['Unique Machine Name', S]
+  ], 'names with spaces, dots and a dash in the real types; row 2 has a null in every nullable column'],
+  ['null_int64', [['id', I], ['x', I]], 'INT64 with a null'],
+  ['null_double', [['id', I], ['x', D]], 'DOUBLE with a null'],
+  ['null_date', [['id', I], ['x', DATE]], 'DATE with a null'],
+  ['null_text', [['id', I], ['x', S]], 'UTF8 with a null'],
+  ['null_timestamp', [['id', I], ['x', TS]], 'TIMESTAMP_MILLIS with a null'],
+  ['missing_keys', [['id', I], ['i', I], ['s', S]],
+    'a row where the keys i and s are missing (not null)'],
+  ['timestamp_1970_time_of_day', [['id', I], ['x', TS]],
+    'a time of day (21:45) as a timestamp on 1970-01-01, with a null']
 ];
 
-function caseLane(b, r, [name, engine, type, form]) {
+function caseLane(b, r, [name, schema, text]) {
   const key = name.toUpperCase();
   b.lane(r, `CASE ${name}`,
-    `engine ${engine}, column x of type ${type}, value ${form}. The result is Sandbox/spike/${name}.parquet; a failure gives ${name}_ERROR.txt.`,
+    `engine parquetjs: ${text}. The result is Sandbox/spike/${name}.parquet; a failure gives ${name}_ERROR.txt.`,
     [
       linkInStep(key),
-      {
-        t: 'parquet', key: `${key}_pq`, table: name, engine,
-        schema: [['id', I], ['x', type]]
-      },
+      { t: 'parquet', key: `${key}_pq`, table: name, engine: 'parquetjs', schema },
       fn(`${key}_path`, 'Set spike path', 'x2-spike-path.js', ['next']),
       writeStep(`${key}_write`, `${name} to data lake`)
     ]);
@@ -55,27 +50,19 @@ function buildFlow() {
   const b = makeBuilder(360);
   let r = 1;
   b.lane(r++, 'SPIKE: BUILD ROWS',
-    'one inject, one function that builds the legacy engine cases (numbers only: legacy reads text and Date objects as numbers); its last output starts the modern engine cases in the next lane. Each case has its own parquet node. Run once, then the result files in Sandbox/spike/ are read with pyarrow.',
+    'one inject, one function that builds the rows of all eight cases (day numbers for dates, ms for times). Each case has its own parquet node. Run once, then the result files in Sandbox/spike/ are read with pyarrow.',
     [
       rawStep('spikeInject', {
-        type: 'inject', name: 'Run the date spike', topic: '', payload: '',
+        type: 'inject', name: 'Run the spike', topic: '', payload: '',
         payloadType: 'date', repeat: '', repeatEnd: '0', endTime: '0',
         crontab: '', offset: 'NaN', once: false, properties: '',
         timezone: 'UTC', betweentimesunit: 'm', showNextExecution: false,
         powerMode: false
       }),
-      fn('legacyRows', 'Build legacy cases', 'x1-legacy-rows.js',
-        [...LEGACY_CASES.map(([name]) => name.toUpperCase()), 'MODERN'], {},
-        true)
+      fn('spikeRows', 'Build spike rows', 'x1-rows.js',
+        CASES.map(([name]) => name.toUpperCase()), {}, true)
     ]);
-  b.lane(r++, 'SPIKE: MODERN CASES',
-    'the last output of the legacy function starts this one: it builds the modern engine cases (day numbers, epoch ms, negative ms, Date objects, ISO text, BigInt, ms of a day).',
-    [
-      linkInStep('MODERN'),
-      fn('modernRows', 'Build modern cases', 'x1-modern-rows.js',
-        MODERN_CASES.map(([name]) => name.toUpperCase()), {}, true)
-    ]);
-  [...LEGACY_CASES, ...MODERN_CASES].forEach((c) => caseLane(b, r++, c));
+  CASES.forEach((c) => caseLane(b, r++, c));
   b.lane(r++, 'SPIKE: ERRORS',
     'a catch node takes the error of any case and writes it as a text file next to the results, so nothing needs to be copied by hand.',
     [
@@ -86,7 +73,7 @@ function buildFlow() {
   b.nodes.unshift({
     id: b.TAB, type: 'tab', label: 'Date type spike',
     disabled: false, allowCycles: false,
-    info: 'Spike: which date and time types does the parquet node write (legacy and modern engine)? Output in Sandbox/spike/ of the data lake. Delete the tab after the test.'
+    info: 'Spike v4: column names with spaces and dots, nulls and missing keys in the legacy parquet engine. Output in Sandbox/spike/ of the data lake. Delete the tab after the test.'
   });
   return b.nodes;
 }
