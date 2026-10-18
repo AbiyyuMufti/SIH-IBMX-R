@@ -15,3 +15,4 @@ local-flow
 __pycache__/
 *.bkp
 sharepoint/
+*.ipynb
