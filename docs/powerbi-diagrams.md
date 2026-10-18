@@ -14,6 +14,7 @@
 2. `python scripts/helper-profile-parquet.py parquet diagrams/data/ours-profile.json` reads them (types, filled share, examples; asset ids are shortened).
 3. `node scripts/build-drawio.js` writes the diagram. The paths of the Power BI files are constants at the top of the script.
 4. `node scripts/validate-drawio.js` checks ids, arrows, overlaps and whether the text fits the boxes.
+5. `node scripts/export-drawio-summary.js` writes `docs/powerbi-data-map.md` (a text table per sheet 1 to 6) from the saved `.drawio`. Run it after every change of the diagram. `.graphifyignore` hides `diagrams/` from graphify, so it reads this Markdown instead of the big XML.
 
 ## Columns on a table sheet (left to right)
 Power BI column and example, Insights Hub column and example, and **SIH integration** (status and difference, with the colour levels below). Inside the SIH integration box, below its last text, a **SIH source** box (bold dashed border, see-through fill) gives the API endpoint and the field the column is built from. Teal = API endpoint, indigo = built in the flow without an API call, grey = no Insights Hub source (file) or not needed. The endpoint texts are in the `SIH_SRC` map of `scripts/build-drawio.js` (key: `Power BI table|column`). Paths are shown without the Xcelerator service suffix (target platform), see [platform-switch.md](platform-switch.md). The overview cards list the endpoints of each table, and the last sheet shows the possible source of each missing table.
