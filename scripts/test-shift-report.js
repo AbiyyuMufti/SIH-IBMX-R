@@ -1,7 +1,7 @@
 // Probe for the shift report (steps A to F of prompt-response/shift-report-data-map.md).
 // Read only: GET, plus the read-style POSTs approved before (evaluateKPIs,
 // timeModelCategoryDistribution). One call per second. B2 Line and its machines.
-// Run: node scripts/test-shift-report.js [YYYY-MM-DD] [steps=A,A2,B,C,D,E,F]
+// Run: node scripts/test-shift-report.js [YYYY-MM-DD] [steps=A,A2,B,C,D,E,F,G]
 // Needs .env (IH_PLATFORM and the technical user). Nothing is written to the API.
 // Console output is also saved to samples/shift-report-summary.txt, raw answers
 // (ids and emails hidden) to samples/shift_*.json. Both are git-ignored.
@@ -13,7 +13,7 @@ const OTHER_DAY = '2026-10-08';
 const stepArg = process.argv.find((a) => a.startsWith('steps='));
 const STEPS = stepArg ? stepArg.slice(6).split(',') : ['A', 'A2', 'B', 'C', 'D', 'E', 'F'];
 // Steps A and A2 find the machines and the products the other steps need.
-const NEEDS = { B: ['A'], C: ['A'], D: ['A', 'A2'], E: ['A'] };
+const NEEDS = { B: ['A'], C: ['A'], D: ['A', 'A2'], E: ['A'], G: ['A'] };
 STEPS.slice().forEach((s) => (NEEDS[s] || []).forEach((n) => {
   if (!STEPS.includes(n)) {
     STEPS.unshift(n);
@@ -357,6 +357,35 @@ await step('F', 'Comment text (7 days of B2 Line)', async () => {
   const list = Array.isArray(c.body) ? c.body : [];
   say(`/comment: HTTP ${c.status}, ${list.length} items, keys: ${list[0] ? Object.keys(list[0]) : '-'}`);
   saveSample('shift_F_comment.json', c.body);
+});
+
+// G is not part of the default run: node scripts/test-shift-report.js
+// 2026-09-15 steps=G. Do the machines have their own calendar, product
+// collection, shifts, products and orders (phase 2)?
+await step('G', 'Config, calendar and filter values per machine', async () => {
+  const w = window(DAY);
+  const targets = [{ id: line.id, name: `${line.name} (line)` }, ...machines];
+  const lineCal = {};
+  for (const m of targets) {
+    const c = await get(`${OEE}/assets/${m.id}/config`);
+    const cfgBody = c.body || {};
+    if (m.id === line.id) {
+      lineCal.id = cfgBody.calendarId;
+      lineCal.pc = cfgBody.productCollectionId;
+    }
+    say(`${m.name}: config HTTP ${c.status}, calendar ${cfgBody.calendarId ? (cfgBody.calendarId === lineCal.id ? 'same as the line' : 'OWN') : 'none'},` +
+      ` product collection ${cfgBody.productCollectionId ? (cfgBody.productCollectionId === lineCal.pc ? 'same as the line' : 'OWN') : 'none'}`);
+    if (cfgBody.calendarId) {
+      const ev = await get(`${OEE}/calendars/${cfgBody.calendarId}/calendarEvents`, { from: iso(w.from), to: iso(w.to) });
+      const events = (ev.body && ev.body.calendarEvents) || [];
+      say(`   calendar events: HTTP ${ev.status}, ${events.length}, names ${[...new Set(events.map((e) => e.name))].join(', ')}`);
+    }
+    const fv = await get(`${OEE}/assets/${m.id}/filterValues`, { from: iso(w.from), to: iso(w.to) });
+    const list = (fv.body && fv.body.filterValues) || [];
+    const count = (key) => ((list.find((f) => f.key === key) || {}).value || []).length;
+    say(`   filterValues: HTTP ${fv.status}, products ${count('product')}, orders ${count('order')}, shifts ${count('shift')}`);
+    saveSample(`shift_G_${safe(m.name)}.json`, { config: cfgBody, filterValues: fv.body });
+  }
 });
 
 mkdirSync('samples', { recursive: true });
