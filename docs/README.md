@@ -37,6 +37,7 @@
 | [powerbi-source-files.md](powerbi-source-files.md) | Where the Power BI report reads its data (SharePoint folders), the format of the real Hull Plan OPT files and a comparison with our pbi_plan_opt | Explored 2026-10-13 |
 | [provideam-source.md](provideam-source.md) | Provideam is the real source of the Hull board: reports, email, Power Automate, SharePoint; what differs from our assumptions | Read 2026-10-13 |
 | [sharepoint-files.md](sharepoint-files.md) | What the downloaded SharePoint files contain, how the report uses them and how they fit Insights Hub (names, rules, coverage); what is completed and what is missing | Analysed 2026-10-14 |
+| [shift-report-flow.md](shift-report-flow.md) | The flow that writes the three shift report tables (`rpt_window`, `rpt_hour`, `rpt_event`) for the line, with a local production day | Mock only |
 | [lake-api.md](lake-api.md) | Python downloads parquet files or folder lists from the data lake through an `http in` endpoint of the VFC (spike checked in the VFC, final flow built) | Spike in the VFC |
 | [datalake-files.md](datalake-files.md) | List, download and upload data lake files from a script with signed URLs (`scripts/datalake-download.js`, `datalake-upload.js`) | Tested 2026-10-14 on xcelerator: list, download and upload work |
 | [logging.md](logging.md) | The CSV run log in the data lake (one file per month and flow) and the error catch | Mock only |

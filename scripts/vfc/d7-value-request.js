@@ -5,6 +5,12 @@ var cfg = flow.get('cfg');
 var DAY_MS = 86400000;
 var HOUR_MS = 3600000;
 var from = Date.parse(msg.day + 'T00:00:00.000Z') + cfg.dayStartHour * HOUR_MS;
+var to = from + DAY_MS;
+// The shift report sets the exact window of the day (local day start).
+if (msg.dayFromMs !== undefined) {
+  from = msg.dayFromMs;
+  to = msg.dayToMs;
+}
 
 function filterFor(key) {
   return { key: key, value: msg.job.key === key ? [msg.job.value] : [] };
@@ -21,7 +27,7 @@ msg.payload = {
   assetId: msg.asset.id,
   scope: {
     from: new Date(from).toISOString(),
-    to: new Date(from + DAY_MS).toISOString(),
+    to: new Date(to).toISOString(),
     filter: [
       filterFor('PRODUCT'),
       filterFor('ORDER'),

@@ -15,15 +15,24 @@ var cfg = {
   clientSecret: 'PUT_CLIENT_SECRET_HERE',
   // One entry per site: the assets to read and the first hour (UTC) of its
   // production day. A site flow needs a non-empty assetIds list.
+  // The shift report flow uses a local production day instead:
+  // dayStartLocal (hour of the local clock) in timeZone, and the lines in
+  // reportLineIds. Only the timeZone Europe/London is supported so far.
   sites: [
     {
       name: 'Hull',
       dayStartHour: 6,
+      dayStartLocal: 6,
+      timeZone: 'Europe/London',
       assetIds: [
         // B2 Line
         'cf4565d7da1e4efcbc0ea6a4814b8eee',
         // GT4
         'bc08dae161124f1cb533199f556190b3'
+      ],
+      reportLineIds: [
+        // B2 Line
+        'cf4565d7da1e4efcbc0ea6a4814b8eee'
       ]
     }
   ],

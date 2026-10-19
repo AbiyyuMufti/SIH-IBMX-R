@@ -51,6 +51,12 @@ if (excluded || parentExcluded) {
 
 // A production day D runs from D start hour to D+1 start hour (UTC).
 var from = Date.parse(msg.day + 'T00:00:00.000Z') + cfg.dayStartHour * HOUR_MS;
+var to = from + DAY_MS;
+// The shift report sets the exact window of the day (local day start).
+if (msg.dayFromMs !== undefined) {
+  from = msg.dayFromMs;
+  to = msg.dayToMs;
+}
 msg.method = 'POST';
 msg.url = cfg.oeeBase + '/expressions/evaluateKPIs';
 msg.headers = {
@@ -62,7 +68,7 @@ msg.payload = {
   assetId: msg.asset.id,
   scope: {
     from: new Date(from).toISOString(),
-    to: new Date(from + DAY_MS).toISOString(),
+    to: new Date(to).toISOString(),
     filter: [{ key: 'PRODUCT', value: [] }],
     recursive: false,
     groupedByDateTime: true

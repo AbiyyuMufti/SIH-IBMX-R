@@ -10,8 +10,14 @@ var PAGE_SIZE = 5000;
 
 // A production day D runs from D start hour to D+1 start hour (UTC).
 var from = Date.parse(msg.day + 'T00:00:00.000Z') + cfg.dayStartHour * HOUR_MS;
+var to = from + DAY_MS;
+// The shift report sets the exact window of the day (local day start).
+if (msg.dayFromMs !== undefined) {
+  from = msg.dayFromMs;
+  to = msg.dayToMs;
+}
 var fromIso = new Date(from).toISOString();
-var toIso = new Date(from + DAY_MS).toISOString();
+var toIso = new Date(to).toISOString();
 var query = '?from=' + encodeURIComponent(fromIso) +
   '&to=' + encodeURIComponent(toIso) +
   '&size=' + PAGE_SIZE + '&page=0';

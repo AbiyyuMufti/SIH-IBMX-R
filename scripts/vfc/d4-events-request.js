@@ -32,13 +32,19 @@ if (!config.calendarId) {
 
 // The events that cover the production day D (D start hour to D+1).
 var from = Date.parse(msg.day + 'T00:00:00.000Z') + cfg.dayStartHour * HOUR_MS;
+var to = from + DAY_MS;
+// The shift report sets the exact window of the day (local day start).
+if (msg.dayFromMs !== undefined) {
+  from = msg.dayFromMs;
+  to = msg.dayToMs;
+}
 msg.calendarId = config.calendarId;
 msg.productCollectionId = config.productCollectionId || null;
 msg.method = 'GET';
 msg.url = cfg.oeeBase + '/calendars/' +
   encodeURIComponent(config.calendarId) + '/calendarEvents' +
   '?from=' + new Date(from).toISOString() +
-  '&to=' + new Date(from + DAY_MS).toISOString();
+  '&to=' + new Date(to).toISOString();
 msg.headers = {
   'Authorization': 'Bearer ' + msg.token,
   'Accept': 'application/json'
