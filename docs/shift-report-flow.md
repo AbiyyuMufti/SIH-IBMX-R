@@ -6,7 +6,7 @@
 | **Flow** | `flows/vfc-rpt-hull.json` (tab `Hull shift report`). Generator `scripts/build-vfc-rpt-flows.js`, code `scripts/vfc/q*.js` plus the `s*` and `d*` nodes of the Power BI daily flow, columns `scripts/lib-rpt-schemas.js` |
 | **Status** | Phases 1 and 2 done and checked (2026-10-19). Mock tests pass (`node scripts/test-vfc-rpt.js platform=legacy` and `platform=xcelerator`, 74 checks). `dryRun` is true by default. What is left: `docs/shift-report-flow.md` section "Open points and next steps" and the handover note `session_handover/shift-report-handover.md` (local, git-ignored) |
 | **Needs** | The Config tab, re-imported: sites have `dayStartLocal`, `timeZone`, `reportLineIds` and `reportExcludeNames` |
-| **Design** | `prompt-response/shift-report-data-map.md` (3 tables, data lake layout, test results) |
+| **Design** | `prompt-response/shift-report-data-map.md` (3 tables, data lake layout, test results). For the Tableau developer: `prompt-response/shift-report-csv-for-segun.md` (the three CSV exports, columns, which day to use) |
 
 ## Tables and files
 One file per table, site and production day, `<root>/shift_report/<table>/site=<site>/<table>_YYYY-MM-DD.parquet`. A rerun replaces the file. Log: `<root>/logs/rpt-hull/log_YYYY-MM.csv`. Every table starts with `site`, `line_id`, `line_name`, `asset_id`, `asset_name`, `asset_level` (`line`; `machine` from phase 2), `production_day` (text). Times are epoch milliseconds (TIMESTAMP_MILLIS, UTC); local date and time are extra text columns.

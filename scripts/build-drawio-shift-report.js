@@ -1,8 +1,8 @@
 // Builds diagrams/shift-report-data-map.drawio: what the shift (management)
 // report needs and where each part can come from in Insights Hub.
 // Page 1: sources -> proposed rpt_* tables -> report blocks.
-// Page 2: every item of every block, coloured by availability.
-// Page 3: what is not available. Text source: prompt-response/shift-report-data-map.md
+// Page 2: the columns each block needs. Page 3: every item of every block,
+// coloured by availability. Page 4: what is not available. Text source: prompt-response/shift-report-data-map.md
 // Usage: node scripts/build-drawio-shift-report.js
 import { writeFileSync, mkdirSync } from 'node:fs';
 
@@ -132,6 +132,58 @@ const BLOCKS = [
     ['Why the cartoner rejected', 'none', 'cartoner has a reject flag, no reason variable'],
     ['Product dumped by a clean', 'none', 'no rule'],
   ]],
+];
+
+// Columns each report block needs, per table: [filter, [columns]]. Used by
+// the page "Columns per block". Column names are those of the rpt_* tables.
+const BLOCK_COLUMNS = {
+  header: {
+    window: ['line rows, day window', ['site', 'line_name', 'production_day', 'window_start', 'window_end']],
+    hour: ['line rows', ['local_date', 'local_time (times in local time)']],
+  },
+  how: {
+    window: ['asset_level = line, day or shift', ['oee', 'availability', 'performance', 'quality', 'total_parts', 'good_parts', 'rejected_parts', 'operational_min', 'net_production_min', 'availability_loss_min', 'planned_stop_min', 'downtime_min', 'micro_stop_min', 'performance_loss_min (time under target: rule needed)']],
+  },
+  bottles: {
+    window: ['asset_level = line, day or shift', ['capacity_units', 'good_parts', 'rejected_parts', 'availability_loss_units', 'performance_loss_units', 'quality_loss_units', 'running_rate', 'design_speed_per_min']],
+  },
+  hourly: {
+    hour: ['asset_level = line', ['hour_start', 'local_time', 'shift_name', 'total_parts', 'good_parts', 'net_production_min', 'speed_per_min', 'capacity_units']],
+    window: ['line, window_kind = day, last 30 days', ['production_day', 'good_parts', 'capacity_units']],
+  },
+  machines: {
+    window: ['asset_level = machine, day or shift', ['asset_name', 'availability', 'quality', 'performance', 'total_parts', 'rejected_parts', 'downtime_min']],
+    event: ['asset_level = machine', ['asset_name', 'reason', 'minutes', 'occurrence']],
+  },
+  ran: {
+    hour: ['line or machine', ['batch_id', 'product_key', 'part_name', 'hour_start', 'total_parts', 'good_parts (a run block = hours of one batch and product)']],
+    event: ['event_kind = planned', ['reason', 'event_start', 'event_end', 'minutes (cleans, maintenance: planned reasons untested)']],
+    reckitt: ['file', ['batch target quantity (SAP)']],
+  },
+  planned: {
+    event: ['event_kind = planned', ['asset_name', 'reason', 'event_start', 'event_end', 'minutes']],
+    reckitt: ['file', ['target per changeover or clean']],
+  },
+  wrote: {
+    event: ['line or machine', ['asset_name', 'local_time', 'event_start', 'event_end', 'reason', 'minutes', 'comment_count (the text is in Provideam)']],
+  },
+  measured: {},
+  stopped: {
+    window: ['asset_level = machine, day or shift', ['asset_name', 'ran_min', 'fault_min', 'waiting_min', 'planned_min', 'other_min', 'operator_min (empty)', 'total_parts', 'rejected_parts']],
+    event: ['asset_level = machine', ['asset_name', 'reason', 'reason_path', 'minutes', 'occurrence', 'event_kind (top 3 faults and waits: ranking in Tableau)']],
+  },
+  threw: {
+    window: ['asset_level = machine', ['asset_name', 'total_parts', 'rejected_parts']],
+    counter: ['later', ['counter name', 'count in the window (filler: bad cap, torque, weight, no insert, insert)']],
+    reckitt: ['file', ['cost per reject (costing sheet)']],
+  },
+};
+
+// Best days to design on (from the exports of 2026-10-19).
+const DAY_GUIDE = [
+  ['2026-09-15', 'Use this one first. Line and 7 machines, a product, OEE and performance filled, orders on the machines Antares and Palletiser, 1,952 events.'],
+  ['2026-09-14', 'Second day. Line and 7 machines, but no product: performance, OEE, capacity and loss units are empty (the OEE app shows the same). Good to test empty values.'],
+  ['2026-10-16 and 2026-10-18', 'Line only (no machine rows, written before the machines were added). Only for line level visuals.'],
 ];
 
 // ---- Writer -------------------------------------------------------------------
@@ -294,8 +346,61 @@ for (const [key, name, level] of BLOCKS) {
   y += 40;
 }
 
+
+// ---- Page 2: the columns each block needs ----------------------------------------------
+const columns = new Page('Columns per block', 1);
+let cHead = bold('Which columns each report block needs');
+cHead += `<br>${small('One row per report block, one column per table. Each cell: the rows to filter on, then the columns to use. Colour of the block = availability (page legend).')}`;
+columns.text(40, 20, 1500, 50, cHead);
+legend(columns, 1900, 20);
+const CCOLS = [
+  ['window', 'rpt_window'],
+  ['hour', 'rpt_hour'],
+  ['event', 'rpt_event'],
+  ['counter', 'rpt_counter (later)'],
+  ['reckitt', 'Reckitt files'],
+];
+const CW = 300;
+const CX = 290;
+let cy = 100;
+CCOLS.forEach(([, label], i) => {
+  columns.box(CX + i * (CW + 10), cy, CW, 30, bold(label), 'table');
+});
+cy += 40;
+for (const [key, name, level] of BLOCKS) {
+  const spec = BLOCK_COLUMNS[key] || {};
+  const cells = CCOLS.map(([ckey]) => {
+    const entry = spec[ckey];
+    if (!entry) {
+      return null;
+    }
+    const [filter, cols] = entry;
+    const html = `${small(filter)}<br>${cols.map((c) => esc(c)).join('<br>')}`;
+    return { html, h: fit(CW, [filter, ...cols]) };
+  });
+  const rowH = Math.max(40, ...cells.map((c) => (c ? c.h : 0)));
+  columns.box(40, cy, 240, rowH, bold(name), level, 'strokeWidth=3;');
+  cells.forEach((c, i) => {
+    if (c) {
+      columns.box(CX + i * (CW + 10), cy, CW, rowH, c.html, CCOLS[i][0] === 'reckitt' ? 'source' : 'table');
+    }
+  });
+  if (!Object.keys(spec).length) {
+    columns.text(CX, cy + 8, 900, 24, small('no data source known (see page Not available)'));
+  }
+  cy += rowH + 10;
+}
+cy += 20;
+columns.text(40, cy, 900, 24, bold('Which day to use'));
+cy += 30;
+for (const [day, why] of DAY_GUIDE) {
+  const h = fit(1200, [day, why]);
+  columns.box(40, cy, 1200, h, `${bold(day)}<br>${small(why)}`, 'neutral');
+  cy += h + 10;
+}
+
 // ---- Page 2: every item ------------------------------------------------------------
-const items = new Page('Items per block', 1);
+const items = new Page('Items per block', 2);
 let head = bold('Every item of the report and its availability');
 head += `<br>${small('One row per report block. Small text = where it comes from in Insights Hub.')}`;
 items.text(40, 20, 1100, 50, head);
@@ -319,7 +424,7 @@ for (const [, name, level, list] of BLOCKS) {
 }
 
 // ---- Page 3: not available -------------------------------------------------------------
-const missing = new Page('Not available', 2);
+const missing = new Page('Not available', 3);
 let mHead = bold('Not available in Insights Hub: to raise with Reckitt');
 mHead += `<br>${small('Built from page 2: every red and blue item. Red: no source known. Blue: a file or a rule from Reckitt would close it.')}`;
 missing.text(40, 20, 900, 50, mHead);
@@ -337,7 +442,7 @@ for (const [, blockName, , list] of BLOCKS) {
 }
 
 // ---- Write -----------------------------------------------------------------------------
-const pages = [overview, items, missing];
+const pages = [overview, columns, items, missing];
 let out = '<mxfile host="build-drawio-shift-report.js" type="device">';
 out += pages.map((p) => p.xml()).join('');
 out += '</mxfile>\n';
