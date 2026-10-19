@@ -10,7 +10,11 @@ var cfg = flow.get('cfg');
 var loadedAt = msg.loadedAt || Date.now();
 
 // The shift of an instant: the event whose recurrence covers it, else null.
-function shiftOf(ms) {
+// The calendar rules hold local wall clock times written with a Z (a shift
+// of 06:00 local starts at 05:00 UTC in summer), so the instant is looked
+// up on its local wall clock time.
+function shiftOf(instant) {
+  var ms = instant + londonOffsetHours(instant) * HOUR_MS;
   var found = null;
   msg.shiftRules.forEach(function (rule) {
     if (found) {

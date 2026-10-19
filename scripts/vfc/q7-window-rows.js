@@ -17,9 +17,6 @@ var SUMS = {
   operational_time_ms: 'operational',
   net_production_time_ms: 'net',
   availability_losses_ms: 'availLoss',
-  performance_losses_ms: 'perfLoss',
-  quality_losses_ms: 'qualLoss',
-  used_operational_time_ms: 'used',
   downtime_ms: 'down',
   micro_stops_ms: 'micro',
   macro_stops_ms: 'macro',
@@ -111,6 +108,30 @@ function windowRow(kind, name, from, to, hours) {
   if (capacity !== null && operational) {
     speed = capacity / operational;
   }
+  // The loss times of the OEE app are worked out on the window ratios, not
+  // summed per hour: performance loss = (1 - performance) x net production
+  // time, quality loss = (1 - quality) x (net - performance loss).
+  var net = get(s, 'net');
+  var perfLoss = null;
+  if (performance !== null && net !== null) {
+    perfLoss = (1 - performance) * net;
+  }
+  var netOperational = perfLoss === null ? null : net - perfLoss;
+  var qualLoss = null;
+  if (quality !== null && netOperational !== null) {
+    qualLoss = (1 - quality) * netOperational;
+  }
+  var used = qualLoss === null ? null : netOperational - qualLoss;
+  var perfLossMin = perfLoss === null ? null : perfLoss / MIN_MS;
+  var qualLossMin = qualLoss === null ? null : qualLoss / MIN_MS;
+  var perfLossUnits = null;
+  var qualLossUnits = null;
+  if (speed !== null && perfLossMin !== null) {
+    perfLossUnits = perfLossMin * speed;
+  }
+  if (speed !== null && qualLossMin !== null) {
+    qualLossUnits = qualLossMin * speed;
+  }
   return {
     site: msg.h.site,
     line_id: msg.asset.id,
@@ -137,9 +158,9 @@ function windowRow(kind, name, from, to, hours) {
     operational_min: operational,
     net_production_min: minutes(s, 'net'),
     availability_loss_min: minutes(s, 'availLoss'),
-    performance_loss_min: minutes(s, 'perfLoss'),
-    quality_loss_min: minutes(s, 'qualLoss'),
-    used_operational_min: minutes(s, 'used'),
+    performance_loss_min: perfLossMin,
+    quality_loss_min: qualLossMin,
+    used_operational_min: used === null ? null : used / MIN_MS,
     downtime_min: minutes(s, 'down'),
     micro_stop_min: minutes(s, 'micro'),
     macro_stop_min: minutes(s, 'macro'),
@@ -148,8 +169,8 @@ function windowRow(kind, name, from, to, hours) {
     macro_stop_count: count(s, 'macroCount'),
     capacity_units: capacity,
     availability_loss_units: units(hours, 'availability_losses_ms'),
-    performance_loss_units: units(hours, 'performance_losses_ms'),
-    quality_loss_units: units(hours, 'quality_losses_ms'),
+    performance_loss_units: perfLossUnits,
+    quality_loss_units: qualLossUnits,
     design_speed_per_min: speed,
     running_rate: ratio(get(s, 'total'), minutes(s, 'net')),
     ran_min: null,

@@ -75,16 +75,22 @@ check(hoursA.every((r) => r.hour_end === r.hour_start + H), 'hour end = start + 
 const sum = (rows, k) => rows.reduce((t, r) => t + (r[k] || 0), 0);
 check(dayA && near(dayA.total_parts, sum(hoursA, 'total_parts')) && near(dayA.good_parts, sum(hoursA, 'good_parts')),
   'A: day window parts = sum of the hour rows');
-// The mock calendar has the Red shift on 1 Oct only (12 h from 06:00 UTC).
+// The mock calendar has the Red shift on 1 Oct only: 12 h from 06:00 local
+// (the rule holds a wall clock time with a Z), so 05:00 to 17:00 UTC in BST.
 const oct = await runFlow(flow, base({ startDay: '2026-10-01', fetchImpl: makeMockFetch('products') }));
 const winOct = rowsOf(oct, 'rpt_window').filter((r) => r.asset_name === 'Mock Line A');
 const hoursOct = rowsOf(oct, 'rpt_hour').filter((r) => r.asset_name === 'Mock Line A');
+const evOct = rowsOf(oct, 'rpt_event').filter((r) => r.asset_name === 'Mock Line A');
 const dayOct = winOct.find((r) => r.window_kind === 'day');
 const shiftOct = winOct.filter((r) => r.window_kind === 'shift');
 const none = hoursOct.filter((r) => r.shift_name === null);
 check(shiftOct.length === 1 && shiftOct[0].window_name === 'Red' && shiftOct[0].hours === 12 &&
-  shiftOct[0].window_start === ms('2026-10-01T06:00:00Z') && shiftOct[0].window_end === ms('2026-10-01T18:00:00Z'),
-  'Red shift window: 12 hours from 06:00 to 18:00 UTC');
+  shiftOct[0].window_start === ms('2026-10-01T05:00:00Z') && shiftOct[0].window_end === ms('2026-10-01T17:00:00Z'),
+  'Red shift window: 12 hours from 05:00 to 17:00 UTC (06:00 to 18:00 local)');
+check(hoursOct[0].shift_name === 'Red' && hoursOct[11].shift_name === 'Red' && hoursOct[12].shift_name === null,
+  'hours 05:00 to 16:00 UTC are in the Red shift, 17:00 is not');
+check(evOct.every((r) => r.shift_name === (r.event_start < ms('2026-10-01T17:00:00Z') ? 'Red' : null)),
+  'a stop gets the shift of its local time');
 check(near(sum(shiftOct, 'total_parts') + sum(none, 'total_parts'), dayOct.total_parts),
   'shift window plus the hours outside a shift add up to the day');
 check(dayA && near(dayA.capacity_units, 210 * 360 + 200 * 360),
@@ -193,7 +199,10 @@ check(red && near(red.availability, 0.5) && near(red.performance, 0.5) && near(r
   'ratios from sums: availability net/operational, performance total/theoretical, quality good/total, OEE product');
 check(dayRow && near(dayRow.good_parts, 360) && near(dayRow.total_parts, 400), 'a null hour adds nothing to the sums');
 check(red && near(red.capacity_units, 2 * 120) && near(red.availability_loss_units, 2 * 60), 'capacity and loss units = design speed x minutes of each hour');
-check(red && red.performance_loss_min === null && red.running_rate !== null && near(red.running_rate, 200 / 60), 'no value stays null, running rate = parts per net production minute');
+check(red && near(red.running_rate, 200 / 60), 'running rate = parts per net production minute');
+check(red && near(red.performance_loss_min, 30) && near(red.quality_loss_min, 3) && near(red.used_operational_min, 27),
+  'loss times from the window ratios: (1 - performance) x net, (1 - quality) x (net - performance loss)');
+check(red && near(red.performance_loss_units, 30 * 2) && near(red.quality_loss_units, 3 * 2), 'performance and quality loss units = loss minutes x average design speed');
 check(red && red.ran_min === null && red.waiting_min === null, 'group minutes are null in phase 1');
 
 console.log(failures ? `${failures} FAILED` : 'ALL PASS');

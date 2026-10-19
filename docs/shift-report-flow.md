@@ -4,7 +4,7 @@
 |---|---|
 | **What** | One VFC tab per site that writes three tables for the shift (management) report: `rpt_window`, `rpt_hour`, `rpt_event`. Phase 1 reads the report lines of the Config tab (B2 Line only), no machines yet |
 | **Flow** | `flows/vfc-rpt-hull.json` (tab `Hull shift report`). Generator `scripts/build-vfc-rpt-flows.js`, code `scripts/vfc/q*.js` plus the `s*` and `d*` nodes of the Power BI daily flow, columns `scripts/lib-rpt-schemas.js` |
-| **Status** | Mock tests pass (`node scripts/test-vfc-rpt.js platform=legacy` and `platform=xcelerator`). Not run in the VFC yet. `dryRun` is true by default |
+| **Status** | Mock tests pass (`node scripts/test-vfc-rpt.js platform=legacy` and `platform=xcelerator`). Run in the VFC by the user for 14 and 15 Sep 2026 (dry run and write), files checked against the OEE app and the Provideam files, see below. `dryRun` is true by default |
 | **Needs** | The Config tab, re-imported: sites now have `dayStartLocal`, `timeZone` and `reportLineIds` |
 | **Design** | `prompt-response/shift-report-data-map.md` (3 tables, data lake layout, test results) |
 
@@ -29,6 +29,23 @@ Starts at `dayStartLocal` local time, so it is 23, 24 or 25 hours long. Node `1.
 2. Import `flows/vfc-rpt-hull.json`, run the backfill with one day and `DRY_RUN` true. The log line gives windows, hours and events per asset.
 3. Compare the day row of `rpt_window` with the OEE app for the same window (OEE, availability, performance, quality). This checks the recalculated ratios against the app; if they differ, the sums are not linear for that KPI and the window needs its own `evaluateKPIs` call.
 4. Set `DRY_RUN` false, write one day, read the three files.
+
+## Checked on real data (14 and 15 Sep 2026, B2 Line, 2026-10-19)
+Files downloaded with `node scripts/datalake-download-tree.js reports/shift_report/` (the user's root is `reports`).
+| Check | Result |
+|---|---|
+| Files and rows | Per day 4 window rows, 24 hour rows, 246 and 183 event rows; all columns and types as in the schema; no duplicate stops, no negative minutes |
+| Day window against the OEE app (`evaluateKPIs` for the same window) | 15 Sep: availability 0.7028, performance 0.8495, quality 0.9968, OEE 0.5951, theoretical output 118,226.2 and net production time 1,012.0 min all equal. 14 Sep: availability, quality, parts, downtime and micro stops equal. So summing the hours and recalculating the ratios gives the app values |
+| Against the Provideam Plan OPT files | Day totals of good parts: 14 Sep 114,339 equal; 15 Sep 100,112 against 99,812 (0.3 %, the real file may be older or edited) |
+| Days without a product | 14 Sep has no product (as in the Power BI tables): product columns, capacity, performance and OEE are null, in the app too (theoretical output 0) |
+| Events | Minutes of the stops add up to the KPI downtime (303.71 against 303.76 min; one stop that starts before the day is dropped, the same rule as `pbi_daily_losses`) |
+| Order | No order on these days: `batch_id` null everywhere |
+
+**Found and fixed: the shifts were one hour late in summer.** The real shifts run 06:00 to 18:00 local (05:00 to 17:00 UTC in BST): the good parts of 05:00 to 17:00 UTC equal the Provideam day shift (70,182 and 55,487). The calendar rules hold the local wall clock time written with a Z (`dtstart` 18:00:00Z for the night shift), and the first version read them as UTC, so the shift windows were 06:00 to 18:00 UTC and left a 1 hour piece at each end of the day. Now the shift of an instant is looked up on its local time (`q7-tag-hours.js`, `q8-event-rows.js`). **The Power BI flows (`pbi_plan_opt`, `pbi_daily_losses`) still read the rules as UTC**, so in summer their shift of one hour per shift change is wrong. To decide: change them the same way (it changes `pbi_plan_opt` rows).
+
+**Found and fixed: loss times of a window.** The first version summed the hourly performance and quality losses, which differs from the app (performance loss 132.8 against 152.3 min on 15 Sep) because the formula is not linear. Now they are worked out from the window ratios as in the app.
+
+Not explained: the crew names. The Provideam file says `Blue` for both shifts of 14 and 15 Sep, the calendar rotates Red, Gold, Blue, Yellow, Green. Names may differ (accepted before), the structure is the same.
 
 ## Limits and open points
 - Phase 1: line rows only. Machines (7 on B2 Line, all OEE assets) need their ids in Config and a per-line list.
