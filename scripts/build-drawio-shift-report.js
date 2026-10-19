@@ -5,6 +5,7 @@
 // coloured by availability. Page 4: what is not available. Text source: prompt-response/shift-report-data-map.md
 // Usage: node scripts/build-drawio-shift-report.js
 import { writeFileSync, mkdirSync } from 'node:fs';
+import { BLOCK_COLUMNS, DAY_GUIDE } from './lib-shift-report-columns.js';
 
 const OUTPUT = 'diagrams/shift-report-data-map.drawio';
 
@@ -132,58 +133,6 @@ const BLOCKS = [
     ['Why the cartoner rejected', 'none', 'cartoner has a reject flag, no reason variable'],
     ['Product dumped by a clean', 'none', 'no rule'],
   ]],
-];
-
-// Columns each report block needs, per table: [filter, [columns]]. Used by
-// the page "Columns per block". Column names are those of the rpt_* tables.
-const BLOCK_COLUMNS = {
-  header: {
-    window: ['line rows, day window', ['site', 'line_name', 'production_day', 'window_start', 'window_end']],
-    hour: ['line rows', ['local_date', 'local_time (times in local time)']],
-  },
-  how: {
-    window: ['asset_level = line, day or shift', ['oee', 'availability', 'performance', 'quality', 'total_parts', 'good_parts', 'rejected_parts', 'operational_min', 'net_production_min', 'availability_loss_min', 'planned_stop_min', 'downtime_min', 'micro_stop_min', 'performance_loss_min (time under target: rule needed)']],
-  },
-  bottles: {
-    window: ['asset_level = line, day or shift', ['capacity_units', 'good_parts', 'rejected_parts', 'availability_loss_units', 'performance_loss_units', 'quality_loss_units', 'running_rate', 'design_speed_per_min']],
-  },
-  hourly: {
-    hour: ['asset_level = line', ['hour_start', 'local_time', 'shift_name', 'total_parts', 'good_parts', 'net_production_min', 'speed_per_min', 'capacity_units']],
-    window: ['line, window_kind = day, last 30 days', ['production_day', 'good_parts', 'capacity_units']],
-  },
-  machines: {
-    window: ['asset_level = machine, day or shift', ['asset_name', 'availability', 'quality', 'performance', 'total_parts', 'rejected_parts', 'downtime_min']],
-    event: ['asset_level = machine', ['asset_name', 'reason', 'minutes', 'occurrence']],
-  },
-  ran: {
-    hour: ['line or machine', ['batch_id', 'product_key', 'part_name', 'hour_start', 'total_parts', 'good_parts (a run block = hours of one batch and product)']],
-    event: ['event_kind = planned', ['reason', 'event_start', 'event_end', 'minutes (cleans, maintenance: planned reasons untested)']],
-    reckitt: ['file', ['batch target quantity (SAP)']],
-  },
-  planned: {
-    event: ['event_kind = planned', ['asset_name', 'reason', 'event_start', 'event_end', 'minutes']],
-    reckitt: ['file', ['target per changeover or clean']],
-  },
-  wrote: {
-    event: ['line or machine', ['asset_name', 'local_time', 'event_start', 'event_end', 'reason', 'minutes', 'comment_count (the text is in Provideam)']],
-  },
-  measured: {},
-  stopped: {
-    window: ['asset_level = machine, day or shift', ['asset_name', 'ran_min', 'fault_min', 'waiting_min', 'planned_min', 'other_min', 'operator_min (empty)', 'total_parts', 'rejected_parts']],
-    event: ['asset_level = machine', ['asset_name', 'reason', 'reason_path', 'minutes', 'occurrence', 'event_kind (top 3 faults and waits: ranking in Tableau)']],
-  },
-  threw: {
-    window: ['asset_level = machine', ['asset_name', 'total_parts', 'rejected_parts']],
-    counter: ['later', ['counter name', 'count in the window (filler: bad cap, torque, weight, no insert, insert)']],
-    reckitt: ['file', ['cost per reject (costing sheet)']],
-  },
-};
-
-// Best days to design on (from the exports of 2026-10-19).
-const DAY_GUIDE = [
-  ['2026-09-15', 'Use this one first. Line and 7 machines, a product, OEE and performance filled, orders on the machines Antares and Palletiser, 1,952 events.'],
-  ['2026-09-14', 'Second day. Line and 7 machines, but no product: performance, OEE, capacity and loss units are empty (the OEE app shows the same). Good to test empty values.'],
-  ['2026-10-16 and 2026-10-18', 'Line only (no machine rows, written before the machines were added). Only for line level visuals.'],
 ];
 
 // ---- Writer -------------------------------------------------------------------
