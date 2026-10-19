@@ -25,22 +25,45 @@ const SOURCES = [
   ['order', 'have', 'Order and product', 'filterValues, filtered hourly KPIs, product collection'],
   ['stops', 'have', 'Line stops', 'downtimeReasons on the line'],
   ['history', 'have', 'Daily files in the lake', 'pbi_plan_opt history (30 days)'],
-  ['machine', 'test', 'Machine KPIs and stops', '7 machine assets: evaluateKPIs, downtimeReasons'],
-  ['segments', 'test', 'Time segments', 'statusDistribution, timeModelCategoryDistribution'],
+  ['machine', 'api', 'Machine KPIs and stops', '7 machine assets: evaluateKPIs, downtimeReasons (tested 2026-10-19)'],
+  ['segments', 'api', 'Time segments', 'statusDistribution, timeModelCategoryDistribution (tested)'],
   ['counters', 'api', 'Reject counters', 'time series of the filler (cartoner to check)'],
-  ['comments', 'test', 'Comment text', 'comment read per stop (never tested)'],
+  ['comments', 'source', 'Comment text', 'not used in Insights Hub (0 of 1997 stops); Provideam Mode Log has it'],
   ['reckitt', 'source', 'Reckitt files', 'SAP order quantity, costs, changeover and clean targets'],
 ];
 
+// Three tables for all lines and all sites. A row says which line and
+// machine it belongs to, so Tableau filters by line. rpt_counter is later.
 const TABLES = [
-  ['line_window', 'rpt_line_window', 'line x window: OEE, A, P, Q, parts, capacity, losses in units'],
-  ['line_hour', 'rpt_line_hour', 'line x hour: product, order, parts, running minutes, speed'],
-  ['machine_window', 'rpt_machine_window', 'machine x window: A, Q, counted, rejects, down, stops, time per group'],
-  ['machine_reason', 'rpt_machine_reason', 'machine x window x reason: group, minutes, count, rank'],
-  ['booking', 'rpt_booking', 'one booked stop or activity: time, machine, reason, minutes, comment'],
-  ['batch', 'rpt_batch', 'order x window: product, minutes, made in window, made over the batch'],
-  ['reject_counter', 'rpt_reject_counter', 'machine x window x counter: count'],
+  ['window', 'rpt_window', 'asset x window (day or shift). Line and machine rows: OEE, A, P, Q, parts, capacity, losses in units, time per group, counted, rejects'],
+  ['hour', 'rpt_hour', 'asset x hour: product, order, total and good parts, running minutes, speed'],
+  ['event', 'rpt_event', 'one stop or planned activity: time, asset, reason path, group, minutes, comment text'],
+  ['counter', 'rpt_counter (later)', 'asset x window x counter: reject count. After test 4 and a time series address in Config'],
 ];
+
+// Bands of the flow strip: table key, sources that feed it (SOURCES keys).
+const BANDS = [
+  ['window', ['line', 'machine', 'segments']],
+  ['hour', ['line', 'order']],
+  ['event', ['stops', 'machine', 'comments']],
+  ['counter', ['counters']],
+];
+
+// Matrix: which table each report block reads. 'reckitt' = a file joined in
+// Tableau, not a table. A block with no entry has no data at all.
+const USES = {
+  header: ['window'],
+  how: ['window'],
+  bottles: ['window'],
+  hourly: ['hour', 'window'],
+  machines: ['window'],
+  ran: ['hour', 'event', 'reckitt'],
+  planned: ['event', 'reckitt'],
+  wrote: ['event'],
+  measured: [],
+  stopped: ['window', 'event'],
+  threw: ['window', 'counter', 'reckitt'],
+};
 
 // Block: key, title, level of the block as a whole, items [text, level, source].
 const BLOCKS = [
@@ -66,13 +89,14 @@ const BLOCKS = [
     ['Running speed per hour', 'have', 'hourly parts / running minutes'],
     ['This day against the last 30', 'have', 'history of the daily files'],
   ]],
-  ['machines', 'Machines', 'test', [
-    ['A, Q, rate and speed per machine', 'test', 'evaluateKPIs per machine'],
-    ['Counted and rejects per machine', 'test', 'KPIs per machine'],
-    ['Down time and stops per machine', 'test', 'downtimeReasons per machine'],
+  ['machines', 'Machines', 'api', [
+    ['A, Q, rate and speed per machine', 'api', 'evaluateKPIs per machine (tested)'],
+    ['Counted and rejects per machine', 'api', 'KPIs per machine (tested)'],
+    ['Down time and stops per machine', 'api', 'downtimeReasons per machine (tested)'],
   ]],
   ['ran', 'What ran', 'test', [
-    ['Batch and product of each block', 'have', 'order and product per hour'],
+    ['Product of each block', 'have', 'product per hour'],
+    ['Batch (order) of each block', 'have', 'order per hour, empty on days with no order'],
     ['Exact run blocks and changeovers', 'test', 'time segments or counter series'],
     ['Made in the window per batch', 'have', 'KPIs filtered on the order'],
     ['Made over the whole batch', 'api', 'same call, batch window'],
@@ -85,58 +109,29 @@ const BLOCKS = [
     ['Target per changeover or clean', 'source', 'target table from Reckitt'],
     ['Actual and difference in units', 'test', 'needs exact run blocks'],
   ]],
-  ['wrote', 'What the operators wrote', 'test', [
+  ['wrote', 'What the operators wrote', 'have', [
     ['Time, reason, duration', 'have', 'downtimeReasons (pbi_daily_losses)'],
-    ['Comment text', 'test', 'only the count read so far'],
+    ['Comment text', 'source', 'Provideam Mode Log, not Insights Hub'],
   ]],
   ['measured', 'What it measured (filler heads)', 'none', [
     ['Fill weight per head', 'none', 'not in the filler aspects seen'],
     ['Cap torque per head, flagged heads', 'none', 'not in the filler aspects seen'],
   ]],
-  ['stopped', 'What stopped it, machine performance', 'test', [
-    ['Good and reject per machine', 'test', 'KPIs per machine'],
-    ['Worst own alarm per machine', 'test', 'downtimeReasons per machine'],
-    ['Waiting on the line', 'test', 'reasons per machine + grouping'],
-    ['Time per group: ran, faults, operator, waiting, planned, other', 'test', 'segments per machine + mapping'],
-    ['Top 3 faults and waits', 'test', 'downtimeReasons per machine'],
+  ['stopped', 'What stopped it, machine performance', 'api', [
+    ['Good and reject per machine', 'api', 'KPIs per machine (tested)'],
+    ['Worst own alarm per machine', 'api', 'reason text with alarm code (tested)'],
+    ['Waiting on the line', 'api', 'category Lack of resources (tested)'],
+    ['Operator stops: which reasons count', 'source', 'Reckitt confirms the rule; other categories exist'],
+    ['Time per group: ran, faults, operator, waiting, planned, other', 'api', 'segment categories per machine (tested)'],
+    ['Top 3 faults and waits', 'api', 'downtimeReasons per machine (tested)'],
   ]],
-  ['threw', 'What it threw away', 'test', [
-    ['Counted and rejects per machine', 'test', 'KPIs per machine'],
+  ['threw', 'What it threw away', 'api', [
+    ['Counted and rejects per machine', 'api', 'KPIs per machine (tested)'],
     ['Cost per reject', 'source', 'costing sheet'],
     ['Why the filler rejected', 'api', 'filler reject counters'],
-    ['Why the cartoner rejected', 'test', 'cartoner aspects, to list'],
+    ['Why the cartoner rejected', 'none', 'cartoner has a reject flag, no reason variable'],
     ['Product dumped by a clean', 'none', 'no rule'],
   ]],
-];
-
-// Wires: source -> table, table -> block, source -> block (direct).
-const SOURCE_TO_TABLE = [
-  ['line', 'line_window'], ['line', 'line_hour'], ['order', 'line_hour'],
-  ['order', 'batch'], ['stops', 'booking'], ['stops', 'line_window'],
-  ['machine', 'machine_window'], ['machine', 'machine_reason'],
-  ['segments', 'machine_window'], ['segments', 'line_window'],
-  ['counters', 'reject_counter'], ['comments', 'booking'],
-];
-const TABLE_TO_BLOCK = [
-  ['line_window', 'header'], ['line_window', 'how'], ['line_window', 'bottles'],
-  ['line_hour', 'hourly'], ['machine_window', 'machines'],
-  ['machine_window', 'stopped'], ['machine_reason', 'stopped'],
-  ['machine_window', 'threw'], ['booking', 'ran'], ['booking', 'planned'],
-  ['booking', 'wrote'], ['batch', 'ran'], ['reject_counter', 'threw'],
-];
-const SOURCE_TO_BLOCK = [
-  ['history', 'hourly'], ['reckitt', 'ran'], ['reckitt', 'planned'], ['reckitt', 'threw'],
-];
-
-const NOT_AVAILABLE = [
-  ['none', 'Fill weight and cap torque per head', 'unless the aspect types show variables we did not see'],
-  ['source', 'Cost per reject', 'costing sheet from Reckitt'],
-  ['source', 'Batch target quantity', 'SAP'],
-  ['none', 'Work order number', 'ask where it comes from'],
-  ['source', 'Targets for changeovers and cleans', 'target table from Reckitt'],
-  ['none', 'Product dumped by a clean', 'the rule, from Reckitt'],
-  ['none', 'Old system OEE figure', 'only a cross-check, not needed later'],
-  ['source', 'Reason groups', 'which reasons are cleans, maintenance, changeovers; faults, operator, waiting, planned'],
 ];
 
 // ---- Writer -------------------------------------------------------------------
@@ -222,42 +217,81 @@ function legend(page, x, y) {
 // ---- Page 1: overview ------------------------------------------------------------
 const overview = new Page('Overview', 0);
 let title = bold('Shift (management) report: where the data comes from');
-title += `<br>${small('Left: Insights Hub and Reckitt sources. Middle: proposed rpt_* tables (not built). Right: report blocks. Colour = availability.')}`;
-overview.text(40, 20, 1100, 50, title);
+title += `<br>${small('Top: which Insights Hub calls fill which of 3 proposed tables (not built). Bottom: which table each report block reads. Colour of a box = availability.')}`;
+title += `<br>${small('Every table holds all lines of a site, one file per site and day (rpt_*/site=Hull/..._YYYY-MM-DD.parquet). Tableau filters by line.')}`;
+overview.text(40, 20, 1100, 70, title);
 legend(overview, 1220, 20);
 
-const ids = {};
-const COL_W = 300;
-let y = 100;
-overview.text(40, y - 30, COL_W, 24, bold('Sources'));
-for (const [key, level, name, detail] of SOURCES) {
-  const h = fit(COL_W, [name, detail]);
-  ids[key] = overview.box(40, y, COL_W, h, `${bold(name)}<br>${small(detail)}`, level);
-  y += h + 20;
+const SRC_W = 300;
+const TBL_X = 440;
+const TBL_W = 380;
+const byKey = (list) => Object.fromEntries(list.map((r) => [r[0], r]));
+const srcByKey = byKey(SOURCES);
+const tblByKey = byKey(TABLES);
+const tableIds = {};
+let y = 120;
+overview.text(40, y - 30, SRC_W, 24, bold('Insights Hub calls (sources)'));
+overview.text(TBL_X, y - 30, TBL_W, 24, bold('Proposed tables'));
+for (const [tkey, srcs] of BANDS) {
+  const [, tname, tdetail] = tblByKey[tkey];
+  let sy = y;
+  const srcIds = [];
+  for (const k of srcs) {
+    const [, level, name, detail] = srcByKey[k];
+    const h = fit(SRC_W, [name, detail]);
+    srcIds.push(overview.box(40, sy, SRC_W, h, `${bold(name)}<br>${small(detail)}`, level));
+    sy += h + 10;
+  }
+  const bandH = sy - y - 10;
+  const th = Math.min(bandH, fit(TBL_W, [tname, tdetail]));
+  const ty = y + Math.floor((bandH - th) / 2);
+  tableIds[tkey] = overview.box(TBL_X, ty, TBL_W, th, `${bold(tname)}<br>${small(tdetail)}`, 'table');
+  for (const sid of srcIds) {
+    overview.edge(sid, tableIds[tkey], '#555555', tkey === 'counter');
+  }
+  y = sy + 20;
 }
-y = 100;
-overview.text(440, y - 30, COL_W, 24, bold('Proposed tables (not built)'));
-for (const [key, name, detail] of TABLES) {
-  const h = fit(COL_W, [name, detail]);
-  ids[key] = overview.box(440, y, COL_W, h, `${bold(name)}<br>${small(detail)}`, 'table');
-  y += h + 30;
+// Reckitt files are not a table: they are joined in Tableau.
+{
+  const [, level, name, detail] = srcByKey.reckitt;
+  const h = fit(SRC_W, [name, detail]);
+  const a = overview.box(40, y, SRC_W, h, `${bold(name)}<br>${small(detail)}`, level);
+  const note = 'Not a table: files from Reckitt, joined in Tableau by line, product or reason';
+  const hb = fit(TBL_W, [note]);
+  const b = overview.box(TBL_X, y, TBL_W, Math.max(h, hb), small(note), 'source');
+  overview.edge(a, b, '#6c8ebf', true);
+  y += Math.max(h, hb) + 50;
 }
-y = 100;
-overview.text(840, y - 30, COL_W, 24, bold('Report blocks'));
+
+// Matrix: one row per report block, one column per table.
+const MX_LABEL_W = 300;
+const MX_COL_W = 150;
+const COLS = [
+  ['window', 'rpt_window'],
+  ['hour', 'rpt_hour'],
+  ['event', 'rpt_event'],
+  ['counter', 'rpt_counter (later)'],
+  ['reckitt', 'Reckitt files'],
+];
+overview.text(40, y, 700, 24, bold('Report blocks and the table each one reads'));
+y += 34;
+COLS.forEach(([, label], i) => {
+  overview.box(40 + MX_LABEL_W + 10 + i * (MX_COL_W + 10), y, MX_COL_W, 30, bold(label), 'table');
+});
+y += 40;
 for (const [key, name, level] of BLOCKS) {
-  const label = LEVEL[level].label.toLowerCase();
-  const h = fit(COL_W, [name, `mostly: ${label}`]);
-  ids[key] = overview.box(840, y, COL_W, h, `${bold(name)}<br>${small(`mostly: ${label}`)}`, level);
-  y += h + 20;
-}
-for (const [a, b] of SOURCE_TO_TABLE) {
-  overview.edge(ids[a], ids[b], '#555555');
-}
-for (const [a, b] of TABLE_TO_BLOCK) {
-  overview.edge(ids[a], ids[b], '#555555');
-}
-for (const [a, b] of SOURCE_TO_BLOCK) {
-  overview.edge(ids[a], ids[b], a === 'reckitt' ? '#6c8ebf' : '#82b366', true);
+  const uses = USES[key] || [];
+  overview.box(40, y, MX_LABEL_W, 30, bold(name), level);
+  COLS.forEach(([ckey], i) => {
+    const x = 40 + MX_LABEL_W + 10 + i * (MX_COL_W + 10);
+    if (uses.includes(ckey)) {
+      overview.box(x, y, MX_COL_W, 30, bold('reads'), ckey === 'reckitt' ? 'source' : 'neutral');
+    }
+  });
+  if (!uses.length) {
+    overview.text(40 + MX_LABEL_W + 10, y, 5 * MX_COL_W, 30, small('no data source known (see page Not available)'));
+  }
+  y += 40;
 }
 
 // ---- Page 2: every item ------------------------------------------------------------
@@ -287,13 +321,19 @@ for (const [, name, level, list] of BLOCKS) {
 // ---- Page 3: not available -------------------------------------------------------------
 const missing = new Page('Not available', 2);
 let mHead = bold('Not available in Insights Hub: to raise with Reckitt');
-mHead += `<br>${small('Red: no source known. Blue: a file or a rule from Reckitt would close it.')}`;
+mHead += `<br>${small('Built from page 2: every red and blue item. Red: no source known. Blue: a file or a rule from Reckitt would close it.')}`;
 missing.text(40, 20, 900, 50, mHead);
 y = 100;
-for (const [lv, name, detail] of NOT_AVAILABLE) {
-  const h = fit(700, [name, detail]);
-  missing.box(40, y, 700, h, `${bold(name)}<br>${small(detail)}`, lv);
-  y += h + 15;
+// Built from page 2: every red (none) and blue (source) item, with its block.
+for (const [, blockName, , list] of BLOCKS) {
+  for (const [name, lv, detail] of list) {
+    if (lv !== 'none' && lv !== 'source') {
+      continue;
+    }
+    const h = fit(700, [name, `${blockName}: ${detail}`]);
+    missing.box(40, y, 700, h, `${bold(name)}<br>${small(`${blockName}: ${detail}`)}`, lv);
+    y += h + 15;
+  }
 }
 
 // ---- Write -----------------------------------------------------------------------------
