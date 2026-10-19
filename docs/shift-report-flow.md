@@ -2,9 +2,9 @@
 
 | At a glance | |
 |---|---|
-| **What** | One VFC tab per site that writes three tables for the shift (management) report: `rpt_window`, `rpt_hour`, `rpt_event`. For every report line of the Config tab (B2 Line) it writes the line rows (phase 1, run and checked in the VFC) and the rows of its machines (phase 2, built, mock tested, not run in the VFC yet) |
+| **What** | One VFC tab per site that writes three tables for the shift (management) report: `rpt_window`, `rpt_hour`, `rpt_event`. For every report line of the Config tab (B2 Line) it writes the line rows (phase 1) and the rows of its machines (phase 2). Both phases ran in the VFC for 14 and 15 Sep 2026 and were checked against the OEE app |
 | **Flow** | `flows/vfc-rpt-hull.json` (tab `Hull shift report`). Generator `scripts/build-vfc-rpt-flows.js`, code `scripts/vfc/q*.js` plus the `s*` and `d*` nodes of the Power BI daily flow, columns `scripts/lib-rpt-schemas.js` |
-| **Status** | Mock tests pass (`node scripts/test-vfc-rpt.js platform=legacy` and `platform=xcelerator`). Run in the VFC by the user for 14 and 15 Sep 2026 (dry run and write), files checked against the OEE app and the Provideam files, see below. `dryRun` is true by default |
+| **Status** | Phases 1 and 2 done and checked (2026-10-19). Mock tests pass (`node scripts/test-vfc-rpt.js platform=legacy` and `platform=xcelerator`, 74 checks). `dryRun` is true by default. What is left: `docs/shift-report-flow.md` section "Open points and next steps" and the handover note `session_handover/shift-report-handover.md` (local, git-ignored) |
 | **Needs** | The Config tab, re-imported: sites have `dayStartLocal`, `timeZone`, `reportLineIds` and `reportExcludeNames` |
 | **Design** | `prompt-response/shift-report-data-map.md` (3 tables, data lake layout, test results) |
 
@@ -33,7 +33,34 @@ One file per table, site and production day, `<root>/shift_report/<table>/site=<
 Starts at `dayStartLocal` local time, so it is 23, 24 or 25 hours long. Node `1.2 Build day list` puts the exact window on every message (`dayFromMs`, `dayToMs`). The reused request nodes (`s3-kpi-request`, `d7-value-request`, `d7-values-request`, `d4-events-request`, `s4-stops-request`) use them when present and otherwise keep their old rule (day start hour in UTC, 24 hours), so the Power BI and fact flows are unchanged (proof: `test-vfc-pbi-direct`, `test-platform-switch`). Hours are the hours of that window, one KPI hour per UTC hour.
 
 ## Phase 2 tests (offline)
-`node scripts/test-vfc-rpt.js platform=legacy|xcelerator` (72 checks): the line and its two OEE machines are found, a child that is no OEE asset is not, the exclusion line works, group minutes add up to the window (day and shift), the line has none, time segments are asked for machines only, machines have their own orders, two lines are written once, a failed machine list or failed segments write nothing. Not tested: the real API for the machines (run the tab for one day and compare a machine with the OEE app).
+`node scripts/test-vfc-rpt.js platform=legacy|xcelerator` (74 checks): the line and its two OEE machines are found, a child that is no OEE asset is not, the exclusion line works, group minutes add up to the window (day and shift), the line has none, time segments are asked for machines only, machines have their own orders, two lines are written once, a failed machine list or failed segments write nothing. Also a busy day (3 x 1,800 stops) with the 2 MB context limit of the VFC. The real API for the machines was checked afterwards, see the next section.
+
+## Checked on real data, phase 2 (15 Sep 2026, 2026-10-19)
+The tab was run for 14 and 15 Sep with write on (files in `reports/shift_report/`, downloaded with `node scripts/datalake-download-tree.js reports/shift_report/ --out downloads/<new folder>`; the downloader skips files of the same size, so use a new folder for every check).
+| Check | Result |
+|---|---|
+| Files | 8 assets (the line and 7 machines): 24 window rows, 192 hour rows, 1,952 event rows. Line rows `asset_level` = `line`, machine rows `machine`, one `line_id` and `line_name` |
+| Day window against the OEE app, per asset | Availability, performance, quality, OEE, total and good parts, theoretical output and downtime equal for the line and all 7 machines (Antares has 28 KPI values and also matches) |
+| Group minutes against the time segments of the app | Equal for every machine; the groups add up to 1,440 min per day and 720 min per shift; the line rows are empty |
+| Shifts | Two windows per asset, Gold (05:00 to 17:00 UTC) and Green (17:00 to 05:00 UTC) |
+| Events | No duplicates, no negative minutes. Stop minutes equal the KPI downtime for the line, DePalletiser, CasePacker, Palletiser and Antares. Filler, Labeller and Cartoner are 15 to 20 min lower: one stop each starts before the window and is dropped whole (same rule as `pbi_daily_losses`) |
+| Orders | The line has none; `05 Antares` and `07 Palletiser` carry the same two orders |
+| Event kinds | All `unplanned`: no planned reason occurred that day (planned stops are untested) |
+
+## Open points and next steps
+Decisions for the user:
+1. **Stop that starts before the window.** Cut it at the window start (its minutes inside the window count) instead of dropping it. Recommended: cut. Then the events add up to the KPI downtime per day and per shift. Change in `scripts/vfc/q8-event-rows.js` (and its mock test).
+2. **Order of the line.** The line has no order on 15 Sep, its machines Antares and Palletiser have. Decide whether the line rows show the order of the machines (a rule such as "the line takes the order of its machines").
+3. **Antares.** Keep it (it has no stops, but it is the order source), or exclude it with `reportExcludeNames`.
+
+Waiting on Hull or Reckitt: the rule for operator stops (which reasons of the tree), costs, batch targets, changeover and clean targets, comment text (Provideam), the Power BI summer time shift question (the Power BI flows still read the calendar rules as UTC; left unchanged on purpose).
+
+To build or test:
+- `rpt_counter` (filler reject counters; needs a time series address `tsBase` in Config, sparse and cumulative counters, see the data map).
+- GT4 (manual asset: product, order, stops and segments differ; `timeModelCategoryDistribution` is refused for manual assets).
+- Probe tests not done: changeover exactness (`node scripts/test-shift-report.js 2026-10-08 steps=D`) and a day with planned stops.
+- Backfill about 30 days for the trend, then the schedule (08:00 UTC) live. Runtime of a long backfill not measured.
+- Tableau: how it reads the `site=` folders, the report layout, PDF and email.
 
 ## First run in the VFC
 1. Re-import the Config tab and run it (fill client, secret, platform, tenant ID as before).
