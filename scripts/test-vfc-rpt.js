@@ -204,6 +204,15 @@ check(m.requests.filter((q) => /assetmanagement.*\/assets\?/.test(q.url)).length
 check(Object.keys(m.parquetRows).length === 3 && m.written.filter((p) => !p.includes('/logs/')).length === 3,
   'the day is written once: three files');
 
+// A busy day: 1800 stops for each of the 3 assets must not break the flow
+// (the VFC refuses a context value over 2 MB, the runner has the same limit).
+const big = await runFlow(flow, mach({ fetchImpl: makeMockFetch('machines-big') }));
+big.errors.forEach((e) => console.log('ERROR big:', e));
+check(big.errors.length === 0 && rowsOf(big, 'rpt_event').length === 3 * 1800,
+  `busy day: no error, ${rowsOf(big, 'rpt_event').length} event rows written`);
+check(big.maxContextBytes < 100000,
+  `no rows kept in the flow context (largest value ${big.maxContextBytes} bytes, the limit is 2097152)`);
+
 // Exclusion: the commented line of the Config tab, switched on.
 const ex = await runFlow(flow, mach({
   configNodes: withConfig((f) => f.replace("// '05 Antares'", "'Mock Filler'"))

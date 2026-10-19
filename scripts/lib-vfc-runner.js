@@ -7,6 +7,7 @@
 import vm from 'node:vm';
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
+const CONTEXT_LIMIT = 2097152;
 
 const typeOk = (type, v) => {
   if (v === null || v === undefined) return true;
@@ -105,6 +106,13 @@ export async function runFlow(nodes, options) {
   const flowContext = {
     get: (key) => context[key],
     set: (key, value) => {
+      // The VFC refuses a context value over 2 MB (error "Maximal size of
+      // 2097152 bytes is exceeded"): the same limit here.
+      const size = JSON.stringify(value === undefined ? null : value).length;
+      if (size > CONTEXT_LIMIT) {
+        throw new Error(`Maximal size of ${CONTEXT_LIMIT} bytes is exceeded (flow context ${key})`);
+      }
+      stats.maxContextBytes = Math.max(stats.maxContextBytes, size);
       context[key] = value;
       if (key === 'cfg') {
         value.clientId = options.clientId;
@@ -130,6 +138,7 @@ export async function runFlow(nodes, options) {
     written: [],
     parquetRows: {},
     parquetPayloads: {},
+    maxContextBytes: 0,
     status: [],
     errors: [],
     warnings: [],

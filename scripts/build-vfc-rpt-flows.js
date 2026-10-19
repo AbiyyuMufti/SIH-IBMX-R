@@ -15,7 +15,7 @@ import {
 } from 'node:fs';
 import { validateFlow } from './validate-flow.js';
 import {
-  code, makeBuilder, fn, http, linkInStep, end, split, delay,
+  code, makeBuilder, fn, http, linkInStep, end, split, delay, join,
   addLogLanes, applyLayout, compactLanes, measureSpacing
 } from './lib-flow-builder.js';
 import { windowSchema, hourSchema, eventSchema } from './lib-rpt-schemas.js';
@@ -79,7 +79,7 @@ function buildFlow(site, index) {
   r++;
 
   lane(r++, 'DAY SETUP',
-    'one message per day: token request, OEE asset list (2.3 keeps a short copy of it), choose the report lines of the Config tab, one message per line (one per second). 2.5 asks Asset Management for the machines below the line, 2.6 sends one message per asset: the line itself and every child that is a configured OEE asset and is not in reportExcludeNames of the Config tab (machines come in by themselves). All messages of the day carry a run key: the state of the day (how many assets to wait for) is kept in flow context under dayRuns. Function nodes cannot use fetch in the VFC, so every call is an http request node: the function before it sets msg.method, msg.url and msg.headers. A failure goes to the LOG and nothing is written for that day.',
+    'one message per day: token request, OEE asset list (2.3 keeps a short copy of it), choose the report lines of the Config tab, one message per line (one per second). 2.5 asks Asset Management for the machines below the line, 2.6 packs the answer with its line, a join waits for the lists of all lines and 2.7 sends one message per asset: every line and every child that is a configured OEE asset and is not in reportExcludeNames of the Config tab (machines come in by themselves). The messages of the day form one group (msg.parts), so the join of stage 10 waits for all of them without keeping any rows in the flow context (the context accepts 2 MB per value only). Function nodes cannot use fetch in the VFC, so every call is an http request node: the function before it sets msg.method, msg.url and msg.headers. A failure goes to the LOG and nothing is written for that day.',
     [
       linkInStep('DAY'),
       fn('tokenFn', 'Build token request', 's2-token-request.js', ['next']),
@@ -94,8 +94,11 @@ function buildFlow(site, index) {
       fn('childReqFn', 'Build machine list request', 'q2-children-request.js',
         ['next']),
       http('childHttp', 'GET machines of the line'),
+      fn('packFn', 'Pack machine list with line', 'q2-pack-children.js',
+        ['next']),
+      join('childJoin', 'Wait for the machine lists of all lines'),
       fn('expandFn', 'Expand to machines', 'q2-expand-machines.js',
-        ['next', 'JOIN']),
+        ['next', 'LOG']),
       delay('assetDelay', 'One asset per second'),
       end('ASSET')
     ]);
@@ -188,11 +191,10 @@ function buildFlow(site, index) {
       end('JOIN')
     ]);
   lane(r++, 'JOIN & BUILD TABLES',
-    'the wait node holds the results until all assets of the day (the lines and their machines) have delivered. 10.1 collects the results, 10.2 decides: it writes NOTHING if any asset failed (no half days) and nothing in dry-run mode, 10.3 builds one message per table. Output 1 of 10.3 = rpt_window, 2 = rpt_hour, 3 = rpt_event, 4 = log.',
+    'the join waits for all assets of the day (the lines and their machines). 10.1 collects the results, 10.2 decides: it writes NOTHING if any asset failed (no half days) and nothing in dry-run mode, 10.3 builds one message per table. Output 1 of 10.3 = rpt_window, 2 = rpt_hour, 3 = rpt_event, 4 = log.',
     [
       linkInStep('JOIN'),
-      fn('waitFn', 'Wait for all assets of the day', 'q9-wait-assets.js',
-        ['next']),
+      join('dayJoin', 'Wait for all assets of the day'),
       fn('collectFn', 'Collect results', 'q9-collect.js', ['next']),
       fn('decideFn', 'Decide day', 'q9-decide.js', ['next', 'LOG']),
       fn('tablesFn', 'Build table messages', 'q9-table-messages.js',

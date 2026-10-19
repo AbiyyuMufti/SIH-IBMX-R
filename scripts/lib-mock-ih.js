@@ -14,6 +14,7 @@
 //                 the products scenario data)
 //   machines      the products data plus two machines below A1 (a third child
 //                 is no OEE asset), time segments per machine
+//   machines-big  the machines data with 1800 stops per asset (size test)
 //   segments-fail, children-fail   (the machines data; M1 segments answer
 //                 500, or the machine list of A1 answers 500)
 // Every other scenario has no product and no order (empty filterValues).
@@ -41,7 +42,7 @@ export const SCENARIOS = [
 ];
 
 // Scenarios of the shift report flow (test-vfc-rpt.js only).
-const MACHINE_SCENARIOS = ['machines', 'segments-fail', 'children-fail'];
+const MACHINE_SCENARIOS = ['machines', 'segments-fail', 'children-fail', 'machines-big'];
 
 const PRODUCT_SCENARIOS = [
   'products',
@@ -156,6 +157,16 @@ function kpiBody(asset, scenario, fromIso) {
 function stopsBody(asset, scenario, fromIso) {
   const start = Date.parse(fromIso);
   const at = (minutes) => new Date(start + minutes * 60000).toISOString();
+  if (scenario === 'machines-big') {
+    // A busy machine: 1800 stops in the day (the real CasePacker has 640).
+    const many = Array.from({ length: 1800 }, (_, i) => ({
+      from: at(i * 0.8), to: at(i * 0.8 + 0.4), reason: `Reason ${i % 40} with a long text like a real alarm`,
+      reasonPath: 'Unplanned Downtime / Group', reasonFullPath: `Unplanned Downtime / Group / Reason ${i % 40} with a long text like a real alarm`,
+      duration: 24000, lossTime: 24000, occurrence: 1, commentCount: 0, overwritten: false,
+      statusId: 'a'.repeat(32), reasonId: 'b'.repeat(32), originalReasonId: 'b'.repeat(32), userId: null, changedAt: null
+    }));
+    return { page: { totalPages: 1, totalElements: many.length }, _embedded: { downtimeReasons: many } };
+  }
   const rows = [
     { from: at(0), to: at(5), reason: 'Start of day', reasonFullPath: 'Unplanned / Other', duration: 300000, lossTime: 300000, occurrence: 1, commentCount: 0, overwritten: false },
     { from: at(70), to: at(95), reason: 'Jam', reasonFullPath: 'Unplanned / Mechanical / Jam', duration: 1500000.4, lossTime: 1200000, occurrence: 2, commentCount: '3', overwritten: true },
