@@ -1,8 +1,10 @@
-// Builds the importable VFC flow of the shift report, phase 1 (the line):
+// Builds the importable VFC flow of the shift report (the line and its machines):
 //   flows/vfc-rpt-<site>.json  per site and production day:
 //     rpt_window (asset x window), rpt_hour (asset x hour), rpt_event (stop)
 // The production day starts at dayStartLocal o'clock local time (Config).
 // Usage: node scripts/build-vfc-rpt-flows.js
+// Phase 2: the machines of a line come in by themselves (the OEE assets below
+// it, minus reportExcludeNames of the Config tab).
 // Function code: scripts/vfc/q*.js, plus the s*, d* nodes of the Power BI
 // daily flow that read the KPIs, shifts, products, orders and stops (they
 // use msg.dayFromMs and msg.dayToMs when the day list sets them).
@@ -13,7 +15,7 @@ import {
 } from 'node:fs';
 import { validateFlow } from './validate-flow.js';
 import {
-  code, makeBuilder, fn, http, linkInStep, end, split, delay, join,
+  code, makeBuilder, fn, http, linkInStep, end, split, delay,
   addLogLanes, applyLayout, compactLanes, measureSpacing
 } from './lib-flow-builder.js';
 import { windowSchema, hourSchema, eventSchema } from './lib-rpt-schemas.js';
@@ -77,7 +79,7 @@ function buildFlow(site, index) {
   r++;
 
   lane(r++, 'DAY SETUP',
-    'one message per day: token request, OEE asset list, choose the assets (the report lines of the Config tab), one message per asset (one per second). Function nodes cannot use fetch in the VFC, so every call is an http request node: the function before it sets msg.method, msg.url and msg.headers. A failure goes to the LOG and nothing is written for that day.',
+    'one message per day: token request, OEE asset list (2.3 keeps a short copy of it), choose the report lines of the Config tab, one message per line (one per second). 2.5 asks Asset Management for the machines below the line, 2.6 sends one message per asset: the line itself and every child that is a configured OEE asset and is not in reportExcludeNames of the Config tab (machines come in by themselves). All messages of the day carry a run key: the state of the day (how many assets to wait for) is kept in flow context under dayRuns. Function nodes cannot use fetch in the VFC, so every call is an http request node: the function before it sets msg.method, msg.url and msg.headers. A failure goes to the LOG and nothing is written for that day.',
     [
       linkInStep('DAY'),
       fn('tokenFn', 'Build token request', 's2-token-request.js', ['next']),
@@ -85,8 +87,15 @@ function buildFlow(site, index) {
       fn('listFn', 'Build asset list request', 's2-asset-list-request.js',
         ['next', 'LOG']),
       http('listHttp', 'GET OEE assets'),
+      fn('keepFn', 'Keep OEE list', 'q2-keep-oee-list.js', ['next']),
       fn('chooseFn', 'Choose assets', 's2-choose-assets.js', ['next', 'LOG']),
       split('split'),
+      delay('lineDelay', 'One line per second'),
+      fn('childReqFn', 'Build machine list request', 'q2-children-request.js',
+        ['next']),
+      http('childHttp', 'GET machines of the line'),
+      fn('expandFn', 'Expand to machines', 'q2-expand-machines.js',
+        ['next', 'JOIN']),
       delay('assetDelay', 'One asset per second'),
       end('ASSET')
     ]);
@@ -153,10 +162,21 @@ function buildFlow(site, index) {
         ['next']),
       fn('hourRowsFn', 'Build hour rows', 'q7-hour-rows.js', ['next']),
       fn('windowRowsFn', 'Build window rows', 'q7-window-rows.js', ['next']),
+      end('SEGMENTS')
+    ]);
+  lane(r++, 'ASSET SEGMENTS',
+    'one asset. A line goes straight on ("to STOPS"). A machine: 8.1 asks the time segments of the day (timeModelCategoryDistribution, read-style POST, one answer for the whole day), 8.2 adds the minutes per group to every window row: Run = ran, Unplanned Downtime = faults, Lack of resources = waiting, Planned Downtime = planned, everything else (also a segment without a category) = other. The segments are cut to the window (day and each shift run). operator_min stays empty: Insights Hub has no category for operator stops (the reason of a stop comes from the machine status mapping), so operator stops are counted in the groups above until Reckitt defines a rule. A failed call fails the day (link "to JOIN").',
+    [
+      linkInStep('SEGMENTS'),
+      fn('segReqFn', 'Build time segments request', 'q8-segments-request.js',
+        ['next', 'STOPS']),
+      http('segHttp', 'POST timeModelCategoryDistribution'),
+      fn('segGroupsFn', 'Add group minutes', 'q8-segments-groups.js',
+        ['next', 'JOIN']),
       end('STOPS')
     ]);
   lane(r++, 'ASSET STOPS',
-    'one asset. 8.1 downtimeReasons GET over the exact window of the day (size 5000, one page), 8.2 checks the response, 8.3 builds the rpt_event rows (one per stop that starts inside the production day: UTC and local time, shift, kind microstop, planned or unplanned, reason and reason path, minutes, comment count, product and order of the hour of the stop, loss units = design speed per minute x minutes), 8.4 builds the result of the asset and sends it to the join.',
+    'one asset. 9.1 downtimeReasons GET over the exact window of the day (size 5000, one page), 9.2 checks the response, 9.3 builds the rpt_event rows (one per stop that starts inside the production day: UTC and local time, shift, kind microstop, planned or unplanned, reason and reason path, minutes, comment count, product and order of the hour of the stop, loss units = design speed per minute x minutes), 9.4 builds the result of the asset and sends it to the wait node (link "to JOIN").',
     [
       linkInStep('STOPS'),
       fn('stopsReqFn', 'Build stops request', 's4-stops-request.js', ['next']),
@@ -168,10 +188,11 @@ function buildFlow(site, index) {
       end('JOIN')
     ]);
   lane(r++, 'JOIN & BUILD TABLES',
-    'the join waits for all assets of the day. 9.1 collects the results, 9.2 decides: it writes NOTHING if any asset failed (no half days) and nothing in dry-run mode, 9.3 builds one message per table. Output 1 of 9.3 = rpt_window, 2 = rpt_hour, 3 = rpt_event, 4 = log.',
+    'the wait node holds the results until all assets of the day (the lines and their machines) have delivered. 10.1 collects the results, 10.2 decides: it writes NOTHING if any asset failed (no half days) and nothing in dry-run mode, 10.3 builds one message per table. Output 1 of 10.3 = rpt_window, 2 = rpt_hour, 3 = rpt_event, 4 = log.',
     [
       linkInStep('JOIN'),
-      join('dayJoin', 'Wait for all assets of the day'),
+      fn('waitFn', 'Wait for all assets of the day', 'q9-wait-assets.js',
+        ['next']),
       fn('collectFn', 'Collect results', 'q9-collect.js', ['next']),
       fn('decideFn', 'Decide day', 'q9-decide.js', ['next', 'LOG']),
       fn('tablesFn', 'Build table messages', 'q9-table-messages.js',

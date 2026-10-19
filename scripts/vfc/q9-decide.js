@@ -1,7 +1,7 @@
 // Decides what happens with the day.
 // In: msg.windowRows, hourRows, eventRows and summary. Out 1: the message
-// goes on to node 9.3 (write). Out 2: a log line (failed, nothing to write,
-// dry run). Any failed asset means nothing is written for the day.
+// goes on to the table node (write). Out 2: a log line (failed, nothing to
+// write, dry run). Any failed asset means nothing is written for the day.
 var cfg = flow.get('cfg');
 var day = msg.day;
 var summary = msg.summary;

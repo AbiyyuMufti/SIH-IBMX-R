@@ -1,6 +1,7 @@
 // Offline test of the shift report flow (flows/vfc-rpt-hull.json) against the
 // fake Insights Hub: tables, windows, local day start, paths, dry run,
-// failures, Config errors, and the ratios of node 7.4 on a synthetic day.
+// failures, Config errors, machines found automatically (exclusions, group
+// minutes, two lines) and the ratios of node 7.4 on a synthetic day.
 // Usage: node scripts/test-vfc-rpt.js platform=legacy|xcelerator
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
@@ -154,6 +155,78 @@ const wins = [...new Set(kpiWindows(sched).map((w) => w.join('|')))].map((w) => 
 check(wins.length === 3 && wins.every(([, to]) => to <= Date.now() - 2 * H) &&
   wins[2][1] > Date.now() - 27 * H && wins[1][0] === wins[0][1] && wins[2][0] === wins[1][1],
   'schedule: 3 consecutive finished days, the newest ended at least 2 h ago');
+
+// ---- machines: found automatically, exclusions, group minutes ----
+const REAL_LINE = 'cf4565d7da1e4efcbc0ea6a4814b8eee';
+const A1 = 'a'.repeat(32);
+const A2 = 'b'.repeat(32);
+const withConfig = (edit) => config.map((n) => (n.type === 'function'
+  ? { ...n, func: edit(n.func.replaceAll(REAL_LINE, A1)) } : n));
+const mach = (extra) => base({
+  startDay: '2026-10-01', allAssets: false, configNodes: withConfig((f) => f),
+  fetchImpl: makeMockFetch('machines'), ...extra
+});
+const m = await runFlow(flow, mach());
+m.errors.forEach((e) => console.log('ERROR machines:', e));
+check(m.errors.length === 0, 'machines: no error');
+const mWin = rowsOf(m, 'rpt_window');
+const mHour = rowsOf(m, 'rpt_hour');
+const names = [...new Set(mWin.map((r) => r.asset_name))].sort();
+check(JSON.stringify(names) === JSON.stringify(['Mock Filler', 'Mock Labeller', 'Mock Line A']),
+  `the line and its two OEE machines are in, the cabinet (no OEE asset) is not: ${names.join(', ')}`);
+const mDay = (n) => mWin.find((r) => r.asset_name === n && r.window_kind === 'day');
+const mShift = (n) => mWin.find((r) => r.asset_name === n && r.window_kind === 'shift');
+check(mDay('Mock Filler').asset_level === 'machine' && mDay('Mock Line A').asset_level === 'line',
+  'asset level: machine and line');
+check(mWin.every((r) => r.line_id === A1 && r.line_name === 'Mock Line A'),
+  'machine rows carry the line id and the line name');
+check(mHour.filter((r) => r.asset_name === 'Mock Filler').every((r) => r.line_id === A1),
+  'machine hour rows carry the line id');
+const d = mDay('Mock Filler');
+check(near(d.ran_min, 1080) && near(d.waiting_min, 120) && near(d.fault_min, 60) &&
+  near(d.planned_min, 60) && near(d.other_min, 120) && d.operator_min === null,
+  'machine day: ran 1080, waiting 120, faults 60, planned 60, other 120 (no category + Other), operator null');
+check(near(d.ran_min + d.waiting_min + d.fault_min + d.planned_min + d.other_min, 1440),
+  'the groups add up to the 24 hours of the day');
+const sh = mShift('Mock Filler');
+check(sh && sh.window_name === 'Red' && near(sh.ran_min, 360) && near(sh.waiting_min, 120) &&
+  near(sh.fault_min, 60) && near(sh.planned_min, 60) && near(sh.other_min, 120),
+  'machine shift window: the segments are cut to the shift (12 h)');
+check(mWin.filter((r) => r.asset_name === 'Mock Line A').every((r) => r.ran_min === null && r.fault_min === null),
+  'the line rows keep empty group minutes');
+check(m.requests.filter((q) => /timeModelCategoryDistribution$/.test(q.url)).length === 2,
+  'time segments asked for the two machines only, not for the line');
+check(mHour.filter((r) => r.asset_name === 'Mock Labeller').every((r) => r.batch_id === 'O-7') &&
+  mHour.filter((r) => r.asset_name === 'Mock Filler').every((r) => r.batch_id === null),
+  'a machine has its own orders (Labeller O-7, Filler none)');
+check(m.requests.filter((q) => /assetmanagement.*\/assets\?/.test(q.url)).length === 1,
+  'one machine list request for the one line');
+check(Object.keys(m.parquetRows).length === 3 && m.written.filter((p) => !p.includes('/logs/')).length === 3,
+  'the day is written once: three files');
+
+// Exclusion: the commented line of the Config tab, switched on.
+const ex = await runFlow(flow, mach({
+  configNodes: withConfig((f) => f.replace("// '05 Antares'", "'Mock Filler'"))
+}));
+const exNames = [...new Set(rowsOf(ex, 'rpt_window').map((r) => r.asset_name))].sort();
+check(JSON.stringify(exNames) === JSON.stringify(['Mock Labeller', 'Mock Line A']) &&
+  ex.logs.some((l) => /Mock Filler excluded/.test(String(l))),
+  'reportExcludeNames: the excluded machine is left out and the log says so');
+
+// Two lines in one day: still one write, both lines in the files.
+const two = await runFlow(flow, mach({
+  configNodes: withConfig((f) => f.replace('reportLineIds: [', `reportLineIds: ['${A2}',`))
+}));
+const twoNames = [...new Set(rowsOf(two, 'rpt_window').map((r) => r.asset_name))].sort();
+check(twoNames.includes('Mock Line B') && twoNames.includes('Mock Filler') &&
+  two.written.filter((p) => !p.includes('/logs/')).length === 3,
+  `two lines and their machines in one write of three files: ${twoNames.join(', ')}`);
+
+for (const [scenario, text] of [['segments-fail', 'time segments failed'], ['children-fail', 'machine list failed']]) {
+  const f = await runFlow(flow, mach({ fetchImpl: makeMockFetch(scenario) }));
+  check(Object.keys(f.parquetRows).length === 0 && f.logs.some((l) => new RegExp(`FAILED, NOTHING WRITTEN.*${text}`).test(String(l))),
+    `${scenario}: nothing written, FAILED (${text}) in the log`);
+}
 
 // ---- Config errors stop the flow before any call ----
 const badConfig = (from, to) => config.map((n) => (n.type === 'function'

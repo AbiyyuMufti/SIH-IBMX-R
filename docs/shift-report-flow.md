@@ -1,11 +1,11 @@
-# Shift report flow (phase 1: the line)
+# Shift report flow (line and machines)
 
 | At a glance | |
 |---|---|
-| **What** | One VFC tab per site that writes three tables for the shift (management) report: `rpt_window`, `rpt_hour`, `rpt_event`. Phase 1 reads the report lines of the Config tab (B2 Line only), no machines yet |
+| **What** | One VFC tab per site that writes three tables for the shift (management) report: `rpt_window`, `rpt_hour`, `rpt_event`. For every report line of the Config tab (B2 Line) it writes the line rows (phase 1, run and checked in the VFC) and the rows of its machines (phase 2, built, mock tested, not run in the VFC yet) |
 | **Flow** | `flows/vfc-rpt-hull.json` (tab `Hull shift report`). Generator `scripts/build-vfc-rpt-flows.js`, code `scripts/vfc/q*.js` plus the `s*` and `d*` nodes of the Power BI daily flow, columns `scripts/lib-rpt-schemas.js` |
 | **Status** | Mock tests pass (`node scripts/test-vfc-rpt.js platform=legacy` and `platform=xcelerator`). Run in the VFC by the user for 14 and 15 Sep 2026 (dry run and write), files checked against the OEE app and the Provideam files, see below. `dryRun` is true by default |
-| **Needs** | The Config tab, re-imported: sites now have `dayStartLocal`, `timeZone` and `reportLineIds` |
+| **Needs** | The Config tab, re-imported: sites have `dayStartLocal`, `timeZone`, `reportLineIds` and `reportExcludeNames` |
 | **Design** | `prompt-response/shift-report-data-map.md` (3 tables, data lake layout, test results) |
 
 ## Tables and files
@@ -17,12 +17,23 @@ One file per table, site and production day, `<root>/shift_report/<table>/site=<
 | `rpt_event` | one stop | `event_kind` = `microstop`, `planned` (reason root in Config `plannedRoots`) or `unplanned`; reason, reason path, minutes, comment count, product and order of its hour, loss units. About 300 rows per line and day (machines will add about 1,500) |
 
 ## Settings
-- Config tab, per site: `dayStartLocal` (whole hour from 2 to 23, local clock), `timeZone` (only `Europe/London` so far; any other value stops the flow with an error), `reportLineIds` (the lines of the report). `dayStartHour` stays for the UTC day of the Power BI and fact flows.
+- Config tab, per site: `reportExcludeNames` (names of machines to leave out, empty; the commented line `// '05 Antares'` shows how), `dayStartLocal` (whole hour from 2 to 23, local clock), `timeZone` (only `Europe/London` so far; any other value stops the flow with an error), `reportLineIds` (the lines of the report). `dayStartHour` stays for the UTC day of the Power BI and fact flows.
 - Tab node `1.1 SITE SETTINGS`: `SITE_NAME`, `DRY_RUN`, `REBUILD_DAYS`, `REPORT_FOLDER`, `FOLDER_PREFIX`.
 - Schedule: daily 08:00 UTC, builds the days that ended at least two hours before (`GRACE_HOURS` in `1.2`) and the `REBUILD_DAYS` days before. Backfill: edit the inject payload.
 
+## Phase 2: the machines of a line
+- **Found automatically.** For every report line the flow asks Asset Management for its children (`GET /assets?filter={"parentId":...}`, tested on B2 Line: 7 children) and keeps those that are configured OEE assets (from the OEE asset list of the same run). A machine added to the line comes in at the next run. Nothing is listed in Config except the exclusions (`reportExcludeNames`). The machine rows have `asset_level` = `machine`, and `line_id` and `line_name` of the line.
+- **Same lanes as the line.** A machine goes through the same steps (KPIs per hour, calendar, products and orders, stops). The probe of 2026-10-19 (step G) showed that every machine of B2 Line has the same calendar and the same product collection as the line, and its own `filterValues`: on 15 Sep the line had no order, `05 Antares` and `07 Palletiser` had 2 orders each. So the orders of a day are found on machines, not always on the line.
+- **Group minutes** (`ran_min`, `fault_min`, `waiting_min`, `planned_min`, `other_min`, machine rows only): one `POST /assets/{id}/timeModelCategoryDistribution` per machine and day, the segments cut to each window. `Run` = ran, `Unplanned Downtime` = faults, `Lack of resources` = waiting, `Planned Downtime` = planned, everything else and segments without a category = other. They add up to the length of the window. The line rows keep them empty (the line has hours without a category).
+- **Operator stops are not separated** (`operator_min` is empty, they stay in the groups above; decision of the user 2026-10-19, "others first"). Why: there is no field for it. The stop list is `GET /assets/{id}/downtimeReasons`; the reason of every stop comes from the machine status mapping (`GET /stateTables/{id}/states` maps a PLC state code to a reason of the reason tree `GET /reasontrees/{id}/reasons`), and the time category comes from the segments. A person only enters the picture when they overwrite a reason (`userId`, `overwritten`, `changedAt` on the row): on 15 Sep none of the 1,785 stops of the 7 machines had any of the three. So the data cannot tell an operator stop from a machine fault; Hull or Reckitt must say which reasons of the tree count as operator stops, and then it is a rule on the reason (or a branch of the tree).
+- **Waiting for all assets.** The number of assets of a day is known only after the machines of every line are found, so a wait node (state in flow context `dayRuns`) replaces the join node. A day is written once, with every line and machine; a failed machine fails the day (no half days).
+- **Cost.** About 10 calls per machine and day plus one filtered KPI call per product and order of the machine; one call per second. B2 Line with 7 machines is about 8 times the calls of phase 1.
+
 ## The production day
 Starts at `dayStartLocal` local time, so it is 23, 24 or 25 hours long. Node `1.2 Build day list` puts the exact window on every message (`dayFromMs`, `dayToMs`). The reused request nodes (`s3-kpi-request`, `d7-value-request`, `d7-values-request`, `d4-events-request`, `s4-stops-request`) use them when present and otherwise keep their old rule (day start hour in UTC, 24 hours), so the Power BI and fact flows are unchanged (proof: `test-vfc-pbi-direct`, `test-platform-switch`). Hours are the hours of that window, one KPI hour per UTC hour.
+
+## Phase 2 tests (offline)
+`node scripts/test-vfc-rpt.js platform=legacy|xcelerator` (72 checks): the line and its two OEE machines are found, a child that is no OEE asset is not, the exclusion line works, group minutes add up to the window (day and shift), the line has none, time segments are asked for machines only, machines have their own orders, two lines are written once, a failed machine list or failed segments write nothing. Not tested: the real API for the machines (run the tab for one day and compare a machine with the OEE app).
 
 ## First run in the VFC
 1. Re-import the Config tab and run it (fill client, secret, platform, tenant ID as before).
@@ -52,7 +63,8 @@ Files downloaded with `node scripts/datalake-download-tree.js reports/shift_repo
 Not explained: the crew names. The Provideam file says `Blue` for both shifts of 14 and 15 Sep, the calendar rotates Red, Gold, Blue, Yellow, Green. Names may differ (accepted before), the structure is the same.
 
 ## Limits and open points
-- Phase 1: line rows only. Machines (7 on B2 Line, all OEE assets) need their ids in Config and a per-line list.
+- `operator_min` is empty until the operator stop rule is defined. The line rows have no group minutes.
+- Each machine repeats the calendar and product calls although it shares them with the line (simple, more calls); the product and order of the line could be reused later.
 - GT4 is a manual asset: product and order, stops and segments differ. Same concept, to test later.
 - Shift windows come from whole hours (shift changes at whole hours). A shift that starts at a half hour is rounded to the hour grid.
-- Not in phase 1: time per group per machine, reject counters (`rpt_counter`, needs a time series address in Config), comment text (source is Provideam), batch targets and costs.
+- Not built: reject counters (`rpt_counter`, needs a time series address in Config), comment text (source is Provideam), batch targets and costs.

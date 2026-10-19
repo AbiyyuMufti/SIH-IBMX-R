@@ -45,7 +45,7 @@ msg.hourRows = msg.hours.map(function (hour) {
   }
   return {
     site: msg.h.site,
-    line_id: msg.asset.id,
+    line_id: msg.lineId || msg.asset.id,
     line_name: line,
     asset_id: msg.asset.id,
     asset_name: msg.h.asset_name,

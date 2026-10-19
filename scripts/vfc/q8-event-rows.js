@@ -95,7 +95,7 @@ msg.stops.forEach(function (r) {
   }
   eventRows.push({
     site: msg.h.site,
-    line_id: msg.asset.id,
+    line_id: msg.lineId || msg.asset.id,
     line_name: line,
     asset_id: msg.asset.id,
     asset_name: msg.h.asset_name,

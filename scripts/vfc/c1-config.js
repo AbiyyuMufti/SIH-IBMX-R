@@ -17,7 +17,8 @@ var cfg = {
   // production day. A site flow needs a non-empty assetIds list.
   // The shift report flow uses a local production day instead:
   // dayStartLocal (hour of the local clock) in timeZone, and the lines in
-  // reportLineIds. Only the timeZone Europe/London is supported so far.
+  // reportLineIds (the machines below them come in by themselves, minus
+  // reportExcludeNames). Only the timeZone Europe/London is supported so far.
   sites: [
     {
       name: 'Hull',
@@ -33,6 +34,11 @@ var cfg = {
       reportLineIds: [
         // B2 Line
         'cf4565d7da1e4efcbc0ea6a4814b8eee'
+      ],
+      // The machines of a report line come in automatically (the OEE
+      // assets below the line). Names listed here are left out.
+      reportExcludeNames: [
+        // '05 Antares'
       ]
     }
   ],

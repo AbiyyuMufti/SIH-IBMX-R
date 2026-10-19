@@ -242,3 +242,8 @@ Tab `Hull shift report`, built by a new `scripts/build-vfc-rpt-flows.js` in the 
 | 6. Changeover exactness | Not done: one product that day. Needs `node scripts/test-shift-report.js 2026-10-08 steps=D`. |
 | A2. Orders | 2026-09-15: 0 orders; 2026-10-08: 2 orders, 2 products. |
 Run count: OEE assets 56 (55 on 2026-10-13). Levels on page 2 of the diagram were changed to match.
+
+## Probe step G and the operator stops (2026-10-19)
+- Every machine of B2 Line has the same calendar and product collection as the line. Orders on 15 Sep: line 0, `05 Antares` 2, `07 Palletiser` 2 (the other machines 0). Batches are therefore found on machines.
+- Operator stops: no field in Insights Hub. The reason of a stop comes from the machine status mapping (state table, PLC state to reason); none of the 1,785 stops of 15 Sep was set or changed by a person. Decision (user): `operator_min` empty for now, the stops stay in faults, waiting or other. A rule from Hull or Reckitt is needed (which reasons are operator stops).
+- Built: machines in the flow (automatic, exclusions in Config), group minutes from the time segments. See `docs/shift-report-flow.md`.

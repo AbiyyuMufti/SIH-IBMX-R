@@ -12,6 +12,10 @@
 //   products      products and orders on A1 and A2 (filterValues, filtered KPIs)
 //   values-fail, products-fail, value-kpi-fail, no-collection   (A1, with
 //                 the products scenario data)
+//   machines      the products data plus two machines below A1 (a third child
+//                 is no OEE asset), time segments per machine
+//   segments-fail, children-fail   (the machines data; M1 segments answer
+//                 500, or the machine list of A1 answers 500)
 // Every other scenario has no product and no order (empty filterValues).
 export const SCENARIOS = [
   'ok',
@@ -36,12 +40,16 @@ export const SCENARIOS = [
   'no-collection'
 ];
 
+// Scenarios of the shift report flow (test-vfc-rpt.js only).
+const MACHINE_SCENARIOS = ['machines', 'segments-fail', 'children-fail'];
+
 const PRODUCT_SCENARIOS = [
   'products',
   'values-fail',
   'products-fail',
   'value-kpi-fail',
-  'no-collection'
+  'no-collection',
+  ...MACHINE_SCENARIOS
 ];
 
 // Hours (0 to 23 of the production day) in which a value has parts.
@@ -52,7 +60,8 @@ const VALUE_HOURS = {
   'O-2': [12, 23],
   Slow: [2, 5],
   Unknown: [6, 8],
-  Odd: [9, 10]
+  Odd: [9, 10],
+  'O-7': [2, 5]
 };
 
 // Products and orders of a day per asset (the filterValues answer).
@@ -60,6 +69,8 @@ function valuesFor(asset, scenario) {
   if (!PRODUCT_SCENARIOS.includes(scenario)) return { product: [], order: [] };
   if (asset === ASSETS.A1) return { product: ['1001', '1002'], order: ['O-1', 'O-2'] };
   if (asset === ASSETS.A2) return { product: ['Slow', 'Odd', 'Unknown'], order: [] };
+  if (asset === ASSETS.M1) return { product: ['1001'], order: [] };
+  if (asset === ASSETS.M2) return { product: ['1001'], order: ['O-7'] };
   return { product: [], order: [] };
 }
 
@@ -89,13 +100,18 @@ const ASSETS = {
   A3: { id: hex('c'), name: 'Mock Line C', manual: false, path: ['mock-tenant', 'EU', 'Site2', 'Tubes'], unconfigured: true },
   A4: { id: hex('d'), tree: 'tree-2', cal: 'cal-2', pc: 'pc-2', name: 'Mock Rig', manual: false, path: ['mock-tenant', 'EU', 'Site1', 'Test Line'] },
   A5: { id: hex('e'), tree: 'tree-2', cal: 'cal-2', pc: 'pc-2', name: 'Mock Line E', manual: false, path: ['mock-tenant', 'EU', 'Site1', 'Pouches'] },
-  A6: { id: hex('f'), name: 'Mock Line F', manual: false, path: ['mock-tenant', 'EU', 'Site1', 'Caps'] }
+  A6: { id: hex('f'), name: 'Mock Line F', manual: false, path: ['mock-tenant', 'EU', 'Site1', 'Caps'] },
+  M1: { id: hex('1'), tree: 'tree-1', cal: 'cal-1', pc: 'pc-1', name: 'Mock Filler', manual: false, path: ['mock-tenant', 'EU', 'Site1', 'Bottles', 'Mock Line A'] },
+  M2: { id: hex('2'), tree: 'tree-1', cal: 'cal-1', pc: 'pc-1', name: 'Mock Labeller', manual: false, path: ['mock-tenant', 'EU', 'Site1', 'Bottles', 'Mock Line A'] }
 };
+// A child of A1 that is not an OEE asset (a cabinet).
+const NOT_OEE_CHILD = { id: hex('9'), name: 'Mock Cabinet' };
 
 function assetsFor(scenario) {
   if (scenario === 'empty') return [];
   if (scenario === 'only-unconfigured') return [ASSETS.A3];
   const list = [ASSETS.A1, ASSETS.A2, ASSETS.A3, ASSETS.A4];
+  if (MACHINE_SCENARIOS.includes(scenario)) list.push(ASSETS.M1, ASSETS.M2);
   if (scenario === 'not-finished') list.push(ASSETS.A5);
   if (scenario === 'no-data') list.push(ASSETS.A6);
   return list;
@@ -249,6 +265,15 @@ export function makeMockFetch(scenario = 'ok') {
       if (scenario === 'list-fail') return reply(500, { error: 'boom' });
       return reply(200, assetsFor(scenario).map((a) => ({ assetId: a.id, name: a.name, isManual: a.manual, isConfigured: !a.unconfigured, reasonTreeId: a.tree })));
     }
+    if (path === '/api/assetmanagement/v3/assets') {
+      // Children of one asset: ?filter={"parentId":"<id>"}
+      const parent = JSON.parse(u.searchParams.get('filter') || '{}').parentId;
+      if (scenario === 'children-fail' && parent === ASSETS.A1.id) return reply(500, { error: 'boom' });
+      const kids = MACHINE_SCENARIOS.includes(scenario) && parent === ASSETS.A1.id
+        ? [ASSETS.M2, ASSETS.M1, NOT_OEE_CHILD] : [];
+      const assets = kids.map((k) => ({ assetId: k.id, name: k.name, parentId: parent }));
+      return reply(200, { _embedded: { assets }, page: { totalPages: 1, totalElements: assets.length } });
+    }
     const detail = path.match(/^\/api\/assetmanagement\/v3\/assets\/(\w+)$/);
     if (detail) {
       const asset = Object.values(ASSETS).find((a) => a.id === detail[1]);
@@ -271,6 +296,23 @@ export function makeMockFetch(scenario = 'ok') {
         return reply(200, restrictTo(kpiBody(asset, scenario, body.scope.from), value));
       }
       return reply(200, kpiBody(asset, scenario, body.scope.from));
+    }
+    const segments = path.match(/^\/api\/oee\/v3\/assets\/(\w+)\/timeModelCategoryDistribution$/);
+    if (segments) {
+      const asset = Object.values(ASSETS).find((a) => a.id === segments[1]);
+      if (scenario === 'segments-fail' && asset === ASSETS.M1) return reply(500, { error: 'boom' });
+      const body = JSON.parse(init.body);
+      const start = Date.parse(body.from);
+      // Hours 0-6 Run, 6-8 Lack of resources, 8-9 Unplanned Downtime,
+      // 9-10 Planned Downtime, 10-11 no category, 11-12 Other, 12-24 Run.
+      const plan = [[0, 6, 'Run'], [6, 8, 'Lack of resources'], [8, 9, 'Unplanned Downtime'],
+        [9, 10, 'Planned Downtime'], [10, 11, null], [11, 12, 'Other'], [12, 24, 'Run']];
+      const distribution = plan.map(([a, b, name]) => ({
+        from: new Date(start + a * HOUR).toISOString(),
+        to: new Date(start + b * HOUR).toISOString(),
+        timeCategoryName: name
+      }));
+      return reply(200, { from: body.from, to: body.to, distribution });
     }
     const stops = path.match(/^\/api\/oee\/v3\/assets\/(\w+)\/downtimeReasons$/);
     if (stops) {

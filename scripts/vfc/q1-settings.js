@@ -66,6 +66,7 @@ cfg.site = site.name;
 cfg.dayStartLocal = start;
 cfg.timeZone = site.timeZone;
 cfg.assetIds = site.reportLineIds;
+cfg.excludeMachineNames = site.reportExcludeNames || [];
 cfg.dryRun = DRY_RUN;
 cfg.rebuildDays = REBUILD_DAYS;
 var folder = FOLDER_PREFIX + site.name;
