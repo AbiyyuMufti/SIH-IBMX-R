@@ -114,8 +114,9 @@ function lineProblem(site, line, seen) {
   if (!line.sih) {
     return where + ': sih (the Insights Hub name) is missing';
   }
-  if (!line.report || line.report === '?') {
-    return where + ': report (the MachineName in the report) is missing';
+  // report defaults to sih; set it only when the names differ
+  if (!line.report) {
+    line.report = line.sih;
   }
   if (line.reportSource && SOURCES.indexOf(line.reportSource) === -1) {
     return where + ': reportSource must be provideam or sih';

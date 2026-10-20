@@ -93,7 +93,7 @@ lines.forEach(function (entry) {
   var block = '{\n';
   block += "  id: '" + item.id + "',\n";
   block += "  sih: '" + item.name + "',\n";
-  block += "  report: '?'\n";
+  block += "  report: '" + item.name + "',\n";
   block += '},\n';
   paste[entry.site] = (paste[entry.site] || '') + block;
 });

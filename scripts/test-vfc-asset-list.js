@@ -30,7 +30,6 @@ check(JSON.stringify(hull.assetIds) === JSON.stringify([B2, GT4]),
 check(JSON.stringify(hull.reportLineIds) === JSON.stringify([B2]),
   'reportLineIds = the lines with shiftReport true');
 for (const [from, to, what] of [
-  ["report: 'GT4'", "report: '?'", 'report still ?'],
   [`id: '${GT4}'`, `id: '${B2}'`, 'the same id twice'],
   [`id: '${GT4}'`, "id: 'GT4'", 'an id that is not 32 characters'],
   ["sih: 'GT4',", "sih: '',", 'empty sih name'],
@@ -87,8 +86,8 @@ check(/Hull \/ Bottles \/ B2 line \| auto \| id cf45.* \| 1 machines \| in Confi
   'a Config line: path, auto, id, machine count, report name');
 check(/Nottingham \/ Solid dose \/ N1 \| manual .*not in Config/.test(list.lines[1]),
   'a new line is marked not in Config');
-check(/id: 'N1',\n  sih: 'N1',\n  report: '\?'/.test(list.paste.Nottingham) && !list.paste.Hull,
-  'paste block only for the lines not in Config, report left as ?');
+check(/id: 'N1',\n  sih: 'N1',\n  report: 'N1'/.test(list.paste.Nottingham) && !list.paste.Hull,
+  'paste block only for the lines not in Config, report defaults to sih name');
 const problems = list.problems.join(' | ');
 check(/GT4: id not found/.test(problems), 'a Config id that is gone is a problem');
 check(/now calls it "B2 line"/.test(problems), 'a renamed line is a problem');
