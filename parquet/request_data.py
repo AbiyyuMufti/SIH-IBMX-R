@@ -127,6 +127,37 @@ def request_parquet(
     return pl.concat(frames, how="vertical_relaxed")
 
 
+def request_csv(
+    path: str,
+    token: str,
+    *,
+    base_url: str = GATEWAY + DATALAKE_PATH,
+    timeout: int = 60,
+) -> pl.DataFrame:
+    """Read a CSV file, or all CSV files directly inside a folder.
+
+    Directory paths must end with ``/``. Only the files directly in that
+    folder are read, not the subfolders. The token is passed per call
+    (see ``get_token``).
+    """
+    if not path.endswith("/"):
+        return pl.read_csv(
+            BytesIO(download_bytes(path, token, base_url=base_url, timeout=timeout))
+        )
+
+    frames = []
+    for key in list_keys(path, token, base_url=base_url, timeout=timeout):
+        if not key.endswith(".csv"):
+            continue
+        data = download_bytes(key, token, base_url=base_url, timeout=timeout)
+        frames.append(pl.read_csv(BytesIO(data)))
+
+    if not frames:
+        raise FileNotFoundError(f"No CSV files found in directory {path!r}")
+
+    return pl.concat(frames, how="vertical_relaxed")
+
+
 def request_parquet_vfc(
     path: str,
     api_key: str,
