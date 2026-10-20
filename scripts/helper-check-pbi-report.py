@@ -1,6 +1,6 @@
 """Read-only. Checks the pbi_* parquet files that the VFC flow wrote, after they
 were downloaded with `node scripts/datalake-download-tree.js
-eu_report/pbi_report/report/` into downloads/eu_report/pbi_report/report/<table>/.
+eu_report/report/` into downloads/eu_report/report/<table>/.
 For every table it checks the columns and types (the names and types of the
 Tableau workbook "EU Daily OEE Report - WIP5", then our extra columns), the row
 counts per file, the share of empty values in the key columns, duplicate rows,
@@ -17,7 +17,7 @@ from collections import Counter
 import pandas as pd
 import pyarrow.parquet as pq
 
-ROOT = sys.argv[1] if len(sys.argv) > 1 else "downloads/eu_report/pbi_report/report"
+ROOT = sys.argv[1] if len(sys.argv) > 1 else "downloads/eu_report/report"
 REPORT = "downloads/sandbox-report-test/Sandbox/report_test/"
 
 STR, DBL, I64, TS, DT = "string", "double", "int64", "timestamp[ms, tz=UTC]", "date32[day]"

@@ -14,6 +14,7 @@ Build and maintain Node-RED flows for Siemens Insights Hub (Reckitt OEE), based 
 - Done: draw.io map of every Power BI table (columns, examples, our column, differences), `diagrams/powerbi-data-map.drawio`, see `docs/powerbi-diagrams.md`. Refresh: `python scripts/helper-profile-parquet.py`, then `node scripts/build-drawio.js` and `node scripts/validate-drawio.js`
 - Done: explored the Power BI sources (SharePoint folders) and compared our `pbi_plan_opt` with the real Hull Plan OPT files: B2 close, GT4 not (open), see `docs/powerbi-source-files.md`
 - Earlier work: first dashboard draft on the group 1 tables (Config, reference tables, Hull facts). Group 2 (shift KPIs, manual entries, run rate, derived loss columns) is DECIDE LATER, not planned. Group 3 waits for Reckitt
+- Current work (branch `general-report-configurations`): one place for the report data, `docs/report-config.md`. Step 1 (Config: root `eu_report`, sites with `reportSource`, `lines` with ids from the `List SIH assets` button) built and tested offline, to import in the VFC. Next: step 2, the three report tables with the Tableau extract columns (`downloads/eu_oee_latest/`)
 - `dryRun` is set in the VFC by the user, not in dev work: do not change the default
 - Read `docs/README.md` first, then only the doc for the area you are working on. Do not re-parse `source/` unless I ask
 

@@ -224,7 +224,8 @@ check(JSON.stringify(exNames) === JSON.stringify(['Mock Labeller', 'Mock Line A'
 
 // Two lines in one day: still one write, both lines in the files.
 const two = await runFlow(flow, mach({
-  configNodes: withConfig((f) => f.replace('reportLineIds: [', `reportLineIds: ['${A2}',`))
+  configNodes: withConfig((f) => f.replace('lines: [',
+    `lines: [{ id: '${A2}', sih: 'Mock Line B', report: 'B', shiftReport: true },`))
 }));
 const twoNames = [...new Set(rowsOf(two, 'rpt_window').map((r) => r.asset_name))].sort();
 check(twoNames.includes('Mock Line B') && twoNames.includes('Mock Filler') &&
@@ -243,7 +244,8 @@ const badConfig = (from, to) => config.map((n) => (n.type === 'function'
 for (const [from, to, what] of [
   ["timeZone: 'Europe/London'", "timeZone: 'Europe/Paris'", 'time zone other than Europe/London'],
   ['dayStartLocal: 6', 'dayStartLocal: 1', 'day start 1 (before the clock change)'],
-  ['reportLineIds: [', 'reportLinesGone: [', 'no report lines']
+  ['shiftReport: true', 'shiftReport: false', 'no shift report lines'],
+  ["report: 'GT4'", "report: '?'", 'a line without its report name']
 ]) {
   const s = await runFlow(flow, base({ configNodes: badConfig(from, to) }));
   check(s.requests.length === 0 && s.errors.length > 0 && Object.keys(s.parquetRows).length === 0,

@@ -50,13 +50,16 @@ cfg.assetIds = site.assetIds;
 cfg.dryRun = DRY_RUN;
 cfg.rebuildDays = REBUILD_DAYS;
 var folder = FOLDER_PREFIX + site.name;
+// shortcut: always candidate/sih, as these tables do not have the report
+// columns yet; use the site's reportSource once they do (step 4).
+var base = shared.root + '/candidate/sih/';
 // YYYY-MM-DD becomes the production day.
 cfg.paths = {
-  pbi_plan_opt: shared.root + '/pbi_plan_opt/' + folder +
+  pbi_plan_opt: base + 'pbi_plan_opt/' + folder +
     '/pbi_plan_opt_YYYY-MM-DD.parquet',
-  pbi_time_utilisation: shared.root + '/pbi_time_utilisation/' + folder +
+  pbi_time_utilisation: base + 'pbi_time_utilisation/' + folder +
     '/pbi_time_utilisation_YYYY-MM-DD.parquet',
-  pbi_daily_losses: shared.root + '/pbi_daily_losses/' + folder +
+  pbi_daily_losses: base + 'pbi_daily_losses/' + folder +
     '/pbi_daily_losses_YYYY-MM-DD.parquet'
 };
 flow.set('cfg', cfg);

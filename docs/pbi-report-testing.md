@@ -4,7 +4,7 @@
 |---|---|
 | **What** | One checklist for the flow `flows/vfc-pbi-report.json` (tab `PBI report build`): what to import, what to run in which order, what you should see, how to check the files in the data lake, and what to send back when something is wrong |
 | **State of the build** | Steps 1 to 3 are built (6 tables). Steps 1 and 2 ran in the VFC for the three small tables; plan OPT, time utilisation and daily losses passed the offline tests and the real-data runs but have **not run in the VFC yet**. Details of the rules: [pbi-report-build.md](pbi-report-build.md) |
-| **Files** | Input in the lake: `eu_report/reference/` (14 files) and `eu_report/pbi_report/source/` (204 month files). Output: `eu_report/pbi_report/report/<table>/` |
+| **Files** | Input in the lake: `eu_report/reference/` (14 files) and `eu_report/pbi_report/source/` (204 month files). Output: `eu_report/report/<table>/` |
 | **Dry run** | Every table is `true` in `DRY_RUN` of node `1.1 TASK SETTINGS`. Nothing is written until you set a table to `false` and deploy |
 
 ## 1. Import and prepare (once)
@@ -31,8 +31,8 @@ Between runs you can write only one table: set its `DRY_RUN` to `true` and the o
 
 ## 4. Check the files in the lake (from the laptop)
 ```
-node scripts/datalake-download-tree.js eu_report/pbi_report/report/      (read-only, skips files of the same size)
-python -I scripts/helper-check-pbi-report.py                              (downloads/eu_report/pbi_report/report)
+node scripts/datalake-download-tree.js eu_report/report/      (read-only, skips files of the same size)
+python -I scripts/helper-check-pbi-report.py                              (downloads/eu_report/report)
 ```
 The checker prints per table: files, rows, schema (names and types), empty shares of the key columns, duplicates, rows per month and site; machine names and plan OPT are compared with the report's own tables (`C:\WORK\IBM-RECKITT\ReportReplica\Seguns\`). Expected: `problems: 0`, plan OPT about 99.8 % identical rows for the months the report has (it stops on 18 Sep 2026, so September differs), loss unit and equipment shares like in the real-data run (units 99.8 to 100 %, equipment 84 to 99 %, targets 80 to 99 %).
 
@@ -74,7 +74,7 @@ The tables now have the names and types of the Tableau workbook (see [pbi-report
 2. **Run the backfill again** (the old files are replaced, the file names do not change), for example in three jobs: `2026-08` to `2026-10`, `2025-01` to `2026-07`, `2024-12` to `2024-12`, all tables and sites, `DRY_RUN` false. The three small tables: machine names has the new names; shift naming and calendar are unchanged.
 3. **Download and check:**
 ```
-node scripts/datalake-download-tree.js eu_report/pbi_report/report/
+node scripts/datalake-download-tree.js eu_report/report/
 node scripts/datalake-download-tree.js Sandbox/report_test/ --out downloads/sandbox-report-test
 python -I scripts/helper-check-pbi-report.py
 ```

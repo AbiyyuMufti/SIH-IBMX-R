@@ -14,7 +14,7 @@
 - The production day D runs from D `dayStartHour` UTC to D+1 `dayStartHour` UTC (Hull 6). The schedule time is the cron of the inject node: day end plus one hour.
 
 ## Add a site (for example Nottingham)
-1. In `1.1 CONFIG` on the Config tab, add an entry to `sites`: `name`, `dayStartHour`, `assetIds`. Click `Apply`.
+1. In `1.1 CONFIG` on the Config tab, add an entry to `sites`: `name`, `reportSource`, `dayStartHour`, `lines` (see [report-config.md](report-config.md)). Click `Apply`.
 2. Create the flow, either way:
    - **No Node needed:** import `flows/vfc-site-hull.json` again, then change `SITE_NAME` in `1.1 SITE SETTINGS`, the tab name, the log flow name (`site.name` in the builder) and the cron of the schedule inject.
    - **Generated:** add `{ name: 'Nottingham', cron: '...' }` to `SITES` in `scripts/build-vfc-site-flows.js` and run `node scripts/build-vfc-site-flows.js`.

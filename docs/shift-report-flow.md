@@ -5,7 +5,7 @@
 | **What** | One VFC tab per site that writes three tables for the shift (management) report: `rpt_window`, `rpt_hour`, `rpt_event`. For every report line of the Config tab (B2 Line) it writes the line rows (phase 1) and the rows of its machines (phase 2). Both phases ran in the VFC for 14 and 15 Sep 2026 and were checked against the OEE app |
 | **Flow** | `flows/vfc-rpt-hull.json` (tab `Hull shift report`). Generator `scripts/build-vfc-rpt-flows.js`, code `scripts/vfc/q*.js` plus the `s*` and `d*` nodes of the Power BI daily flow, columns `scripts/lib-rpt-schemas.js` |
 | **Status** | Phases 1 and 2 done and checked (2026-10-19). Mock tests pass (`node scripts/test-vfc-rpt.js platform=legacy` and `platform=xcelerator`, 74 checks). `dryRun` is true by default. What is left: `docs/shift-report-flow.md` section "Open points and next steps" and the handover note `session_handover/shift-report-handover.md` (local, git-ignored) |
-| **Needs** | The Config tab, re-imported: sites have `dayStartLocal`, `timeZone`, `reportLineIds` and `reportExcludeNames` |
+| **Needs** | The Config tab, re-imported: sites have `dayStartLocal`, `timeZone`, `lines` (the report lines have `shiftReport: true`, see [report-config.md](report-config.md)) and `reportExcludeNames` |
 | **Design** | `prompt-response/shift-report-data-map.md` (3 tables, data lake layout, test results). For the Tableau developer: `node scripts/build-segun-package.js` makes the folder `session_handover/segun_package/` (git-ignored, real values): the three CSV exports, a one page `README.txt`, `data_dictionary.csv` and `report_map.csv` (which columns each report block needs), from `scripts/lib-shift-report-columns.js` |
 
 ## Tables and files
@@ -17,7 +17,7 @@ One file per table, site and production day, `<root>/shift_report/<table>/site=<
 | `rpt_event` | one stop | `event_kind` = `microstop`, `planned` (reason root in Config `plannedRoots`) or `unplanned`; reason, reason path, minutes, comment count, product and order of its hour, loss units. About 300 rows per line and day (machines will add about 1,500) |
 
 ## Settings
-- Config tab, per site: `reportExcludeNames` (names of machines to leave out, empty; the commented line `// '05 Antares'` shows how), `dayStartLocal` (whole hour from 2 to 23, local clock), `timeZone` (only `Europe/London` so far; any other value stops the flow with an error), `reportLineIds` (the lines of the report). `dayStartHour` stays for the UTC day of the Power BI and fact flows.
+- Config tab, per site: `reportExcludeNames` (names of machines to leave out, empty; the commented line `// '05 Antares'` shows how), `dayStartLocal` (whole hour from 2 to 23, local clock), `timeZone` (only `Europe/London` so far; any other value stops the flow with an error), `reportLineIds` (since 2026-10-20 built by Config from the lines with `shiftReport: true`; the lines of the report). `dayStartHour` stays for the UTC day of the Power BI and fact flows.
 - Tab node `1.1 SITE SETTINGS`: `SITE_NAME`, `DRY_RUN`, `REBUILD_DAYS`, `REPORT_FOLDER`, `FOLDER_PREFIX`.
 - Schedule: daily 08:00 UTC, builds the days that ended at least two hours before (`GRACE_HOURS` in `1.2`) and the `REBUILD_DAYS` days before. Backfill: edit the inject payload.
 

@@ -84,8 +84,13 @@ function requestLines(stats, platform) {
 // One more mask: product_type of pbi_machine_names. The old flows were taken
 // before 2026-10-13 (null), the new one carries the area on purpose (decision
 // of the user), which has nothing to do with the platform switch.
+// Also masked: the root folder. Since the general report configuration
+// (2026-10-20) the root is eu_report and the Insights Hub tables go to
+// candidate/sih/; the old flows wrote to mufti_test/.
 function noClock(text) {
   let out = String(text);
+  out = out.replace(/eu_report\/candidate\/sih\//g, 'mufti_test/');
+  out = out.replace(/eu_report\//g, 'mufti_test/');
   out = out.replace(/"loaded_at":[0-9]+/g, '"loaded_at":0');
   out = out.replace(/"product_type":(null|"[^"]*")/g, '"product_type":0');
   out = out.replace(/^"[0-9T:.-]+Z"/gm, '"time"');

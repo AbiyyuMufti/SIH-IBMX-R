@@ -10,7 +10,7 @@ import { makeMockFetch } from './lib-mock-ih.js';
 const read = (f) => JSON.parse(readFileSync(new URL('../flows/' + f, import.meta.url), 'utf8'));
 const config = read('vfc-config.json');
 const hull = read('vfc-site-hull.json');
-const PATH = 'mufti_test/logs/hull/log_2026-10.csv';
+const PATH = 'eu_report/logs/hull/log_2026-10.csv';
 
 // A small RFC 4180 reader: quoted fields, doubled quotes, any separator.
 function parseCsv(text, sep = ',') {

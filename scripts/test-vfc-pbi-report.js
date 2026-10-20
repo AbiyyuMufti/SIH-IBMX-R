@@ -15,7 +15,8 @@ const read = (f) => JSON.parse(readFileSync(new URL('../flows/' + f, import.meta
 const config = read('vfc-config.json');
 const flow = read('vfc-pbi-report.json');
 const REF = 'eu_report/reference';
-const OUT = 'eu_report/pbi_report/report';
+const OUT = 'eu_report/report';
+const CANDIDATE = 'eu_report/candidate/provideam';
 
 let failures = 0;
 const check = (ok, text) => {
@@ -250,7 +251,8 @@ const planLake = () => {
 const STEP2 = ['pbi_plan_opt', 'pbi_time_utilisation'];
 const PLAN = 'Write pbi_plan_opt parquet';
 const UTIL = 'Write pbi_time_utilisation parquet';
-const outPath = (table, site, month) => `${OUT}/${table}/site=${site}/${table}_${month}.parquet`;
+const outPath = (table, site, month, out = OUT) =>
+  `${out}/${table}/site=${site}/${table}_${month}_provideam.parquet`;
 
 // 8. Hull, September 2026
 stats = await run({ tables: STEP2, sites: ['Hull'], from: '2026-09', to: '2026-09' }, { lake: planLake() });
@@ -258,6 +260,20 @@ check(stats.errors.length === 0, 'plan: no error: ' + stats.errors.join(' | '));
 check(JSON.stringify(tableWrites(stats).sort()) === JSON.stringify([
   outPath('pbi_plan_opt', 'Hull', '2026-09'), outPath('pbi_time_utilisation', 'Hull', '2026-09')]),
   'plan: one file per table, site and month: ' + tableWrites(stats).join(', '));
+
+// 8b. A site whose reportSource is sih: the Provideam months go to the
+// candidate folder, nothing to report/.
+{
+  const sihConfig = config.map((n) => (n.type === 'function'
+    ? { ...n, func: n.func.replace("reportSource: 'provideam'", "reportSource: 'sih'") } : n));
+  const cand = await run({ tables: STEP2, sites: ['Hull'], from: '2026-09', to: '2026-09' },
+    { lake: planLake(), configNodes: sihConfig });
+  const files = cand.written.filter((p) => !p.includes('/logs/')).sort();
+  check(JSON.stringify(files) === JSON.stringify([
+    outPath('pbi_plan_opt', 'Hull', '2026-09', CANDIDATE),
+    outPath('pbi_time_utilisation', 'Hull', '2026-09', CANDIDATE)]),
+  'reportSource sih: the Provideam months of Hull go to candidate/provideam: ' + files.join(', '));
+}
 let plan = rowsOf(stats, PLAN);
 check(plan.length === 3, `plan rows 3 (4 Tonne, GT4 - Auto, Bosch Capsulator and the blank machine are left out): ${plan.length}`);
 const first = plan.find((r) => r.date === '2026-09-01' && r.part_name.startsWith('NFC'));

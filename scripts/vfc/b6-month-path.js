@@ -1,10 +1,11 @@
-// Sets the file path of one month in the data lake.
-// In: the output of the parquet node (msg.table, msg.site, msg.month kept).
-// Out: msg.path = <out>/<table>/site=<Site>/<table>_<YYYY-MM>.parquet. The name
-// is fixed, so a rerun replaces the month.
+// Sets the file path of one month: <out>/<table>/site=<Site>/<table>_
+// <YYYY-MM>_<source>.parquet, <out> = report or candidate/<source> (1.1).
+// In: the parquet node output (msg.table, msg.site, msg.month). Out: msg.path.
+// The name is fixed per source: a rerun replaces only this source's month.
 var cfg = flow.get('cfg');
 
-msg.path = cfg.outRoot + '/' + msg.table + '/site=' + msg.site + '/';
-msg.path += msg.table + '_' + msg.month + '.parquet';
+msg.path = cfg.siteOut[msg.site] + '/' + msg.table + '/site=' + msg.site;
+msg.path += '/' + msg.table + '_' + msg.month + '_' + cfg.source;
+msg.path += '.parquet';
 msg.filename = msg.path.split('/').pop();
 return msg;

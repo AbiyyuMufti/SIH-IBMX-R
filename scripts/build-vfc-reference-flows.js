@@ -13,7 +13,7 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { validateFlow } from './validate-flow.js';
 import {
   code, S, B, I, D, TS, makeBuilder, fn, http, linkInStep, end, split,
-  delay, join, addLogLanes, compactLanes
+  delay, join, addLogLanes, compactLanes, rawStep, debugStep
 } from './lib-flow-builder.js';
 
 const SCHEMAS = {
@@ -202,7 +202,7 @@ function buildConfigFlow() {
   const b = makeBuilder(20);
   b.comment(
     '[1] CONFIG',
-    'STAGE 1 - CONFIG. The shared settings of ALL flows live in node 1.1 CONFIG, the only node to edit: the platform (legacy or xcelerator, no default: set one), root folder, credentials, sites with their asset ids and production-day start, exclusions. From the platform it builds the token address and the API addresses that every request node uses. It stores them in global context (glob.get("cfg")). It runs on deploy and when you click Apply. After a change, click Apply, then run the flow you want to test.',
+    'STAGE 1 - CONFIG. The shared settings of ALL flows live in node 1.1 CONFIG, the only node to edit: the platform (legacy or xcelerator, no default: set one), root folder, credentials, sites (report source, production-day start, lines with their ids from stage 2), exclusions. From the platform it builds the token address and the API addresses that every request node uses. It stores them in global context (glob.get("cfg")). It runs on deploy and when you click Apply. After a change, click Apply, then run the flow you want to test.',
     1
   );
   const cfgId = b.id('cfg');
@@ -218,6 +218,40 @@ function buildConfigFlow() {
     id: cfgId, type: 'function', name: '1.1 CONFIG (edit here)', func: code('c1-config.js'),
     outputs: 1, language: 'javascript', noerr: 0, x: b.col(1), y: b.rowY(1), wires: [[]]
   });
+
+  // Stage 2 and 3: the asset list, to find the line ids for 1.1 CONFIG.
+  // Read calls only. Stage 1 is the comment above, so lanes start at 2.
+  b.nextStage();
+  b.lane(2, 'SIH ASSET LIST',
+    'click "List SIH assets" to see every Insights Hub line with its id, so you can fill the lines of 1.1 CONFIG. Uses the credentials and platform of 1.1 (click Apply first). Token request, OEE asset list, one message per asset (one per second, about a minute for 60 assets). Read calls only, nothing is written.',
+    [
+      rawStep('listBtn', {
+        type: 'inject', name: 'List SIH assets', topic: '', payload: '',
+        payloadType: 'date', repeat: '', repeatEnd: '0', endTime: '0', crontab: '',
+        offset: 'NaN', once: false, properties: '', timezone: 'UTC',
+        betweentimesunit: 'm', showNextExecution: false, powerMode: false
+      }),
+      fn('listStart', 'Start asset list', 'c2-list-start.js', ['next']),
+      fn('tokenFn', 'Build token request', 's2-token-request.js', ['next']),
+      http('tokenHttp', 'POST token'),
+      fn('assetsFn', 'Build asset list request', 'c2-assets-request.js', ['next']),
+      http('assetsHttp', 'GET OEE assets'),
+      fn('splitFn', 'Make one item per asset', 'c2-split-assets.js', ['next']),
+      split('split'),
+      delay('assetDelay', 'One asset per second'),
+      end('ASSET PATH')
+    ]);
+  b.lane(3, 'ASSET PATHS',
+    'one Asset Management call per asset (hierarchyPath: site, area, line), a join collects all assets, then 3.3 builds the list in the debug node ASSET LIST: problems (a Config line id not found, renamed in Insights Hub, or in another site), one line per Insights Hub line (path, auto or manual, id, number of machines, the report name if it is in Config) and, per site, a block to paste into the lines of 1.1 CONFIG (fill in report). Lines below Test Line (excludeAncestorNames) are left out.',
+    [
+      linkInStep('ASSET PATH'),
+      fn('assetFn', 'Build asset request', 's3-asset-request.js', ['next']),
+      http('assetHttp', 'GET asset (hierarchy)'),
+      fn('pathFn', 'Shape asset path', 'c3-asset-path.js', ['next']),
+      join('assetJoin', 'Collect assets'),
+      fn('listFn', 'Build asset list', 'c3-build-list.js', ['next']),
+      debugStep('listDebug', 'ASSET LIST', 'payload')
+    ]);
   b.nodes.unshift({
     id: b.TAB, type: 'tab', label: 'Config', disabled: false, allowCycles: false,
     info: 'Shared settings of the flows, stored in global context.'

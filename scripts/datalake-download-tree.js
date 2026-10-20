@@ -1,7 +1,7 @@
 // Downloads every file under a data lake folder (recursive) into downloads/<path>.
 // Read-only on the lake (list, signed download URL, GET). Existing local files of
 // the same size are skipped, so it can be run again after a new VFC run.
-// Usage: node scripts/datalake-download-tree.js eu_report/pbi_report/report/ [--max 200]
+// Usage: node scripts/datalake-download-tree.js eu_report/report/ [--max 200]
 //   [--out <local dir>]   (default downloads/)
 import { mkdirSync, writeFileSync, existsSync, statSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';

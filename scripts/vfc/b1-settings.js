@@ -2,16 +2,14 @@
 // In: msg.payload = the job {tables, sites, from, to}; all optional (months
 // YYYY-MM, default last month and this month). Out: msg.job, settings stored.
 
-// Folders in the data lake, without a leading slash.
-var IN_REFERENCE = 'eu_report/reference';
-var IN_SOURCE = 'eu_report/pbi_report/source';
-var OUT_ROOT = 'eu_report/pbi_report/report';
-// Sites that have files in the data lake.
-var ALL_SITES = [
-  'Hull',
-  'Nottingham',
-  'Weinheim'
-];
+// The source this flow builds. A site whose reportSource (1.1 CONFIG) is
+// this one writes to <root>/report, any other to <root>/candidate/<source>.
+var SOURCE = 'provideam';
+// Folders below the root folder of 1.1 CONFIG, without a leading slash.
+var IN_REFERENCE = 'reference';
+var IN_SOURCE = 'pbi_report/source';
+var OUT_LIVE = 'report';
+var OUT_CANDIDATE = 'candidate/' + SOURCE;
 var DRY_RUN = {
 __DRY_RUN__
 };
@@ -29,6 +27,10 @@ if (!shared) {
   node.error('global cfg is missing: deploy or run the Config tab first');
   return null;
 }
+// The sites of 1.1 CONFIG.
+var ALL_SITES = shared.sites.map(function (site) {
+  return site.name;
+});
 
 function fail(text) {
   node.status({
@@ -83,15 +85,23 @@ if (!/^\d{4}-\d{2}$/.test(from) || !/^\d{4}-\d{2}$/.test(to) || from > to) {
 
 var cfg = Object.assign({}, shared);
 cfg.dryRun = DRY_RUN;
-cfg.referenceFolder = IN_REFERENCE;
-cfg.sourceFolder = IN_SOURCE;
+cfg.referenceFolder = shared.root + '/' + IN_REFERENCE;
+cfg.sourceFolder = shared.root + '/' + IN_SOURCE;
 cfg.allSites = ALL_SITES;
-cfg.outRoot = OUT_ROOT;
+cfg.source = SOURCE;
+// The output folder of each site, from its reportSource.
+cfg.siteOut = {};
+shared.sites.forEach(function (site) {
+  var live = site.reportSource === SOURCE;
+  cfg.siteOut[site.name] = shared.root + '/' +
+    (live ? OUT_LIVE : OUT_CANDIDATE);
+});
 cfg.calendarStart = CALENDAR_START;
 cfg.calendarEnd = CALENDAR_END;
 cfg.paths = {};
 allTables.forEach(function (table) {
-  cfg.paths[table] = OUT_ROOT + '/' + table + '/' + table + '.parquet';
+  cfg.paths[table] = shared.root + '/' + OUT_LIVE + '/' + table + '/' +
+    table + '.parquet';
 });
 flow.set('cfg', cfg);
 

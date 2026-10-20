@@ -259,7 +259,7 @@ const delayNode = reportJson.find((x) => x.type === 'delay' &&
   x.name === 'One month per 5 s');
 check(delayNode && delayNode.nbRateUnits === '5',
 'flow: the daily loss months go 5 s apart (memory)');
-const outputs = ['eu_report/pbi_report/report', 'reports'];
+const outputs = ['eu_report/report', 'eu_report/candidate', 'eu_report/logs'];
 check(![src.path, refSub.path].some((p) =>
   outputs.some((o) => p.indexOf('/' + o + '/') === 0)),
 'flow: the watched folders do not contain the output folders (no loop)');
