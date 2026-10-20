@@ -6,7 +6,7 @@
 | **Root** | `eu_report` (one value, `root` in `1.1 CONFIG`). Every flow writes below it |
 | **Tableau reads** | `eu_report/report/<table>/`, the whole folder with its subfolders: one data source per table |
 | **Switch** | `reportSource` per site (`provideam` or `sih`), optionally per line. The source in use writes to `report/`, the other one to `candidate/<source>/` |
-| **Asset ids** | Button `List SIH assets` on the Config tab (stages 2 and 3): every Insights Hub line with its id and a block to paste into `lines` |
+| **Asset ids** | Button `List SIH assets` on the Config tab (stages 2 to 5): every Insights Hub line with its id, the report name from the site's Machine Names file, and a block to paste into `lines` |
 | **Status** | Step 1 of the plan (2026-10-20): built and tested offline (`node scripts/test-vfc-asset-list.js`, plus the flow tests), not run in the VFC yet |
 
 ## Folders in the data lake
@@ -46,17 +46,17 @@ eu_report/
 | `reportSource` (site) | `provideam` or `sih`: where the report rows of the site come from |
 | `lines[].id` | the asset id: the flows use only this |
 | `lines[].sih` | the name in Insights Hub, a label. The asset list warns when Insights Hub calls the id differently (renamed) |
-| `lines[].report` | the `MachineName` of the line in the report and in the machine names file (B2 Line is `B2 Auto` in Provideam). `?` is refused |
+| `lines[].report` | the `MachineName` of the line in the report and in the Machine Names file of the site (B2 Line is `B2 Auto` in Provideam). Required, `?` is refused. The asset list proposes it from the Machine Names file and reports a Config value that is not there |
 | `lines[].reportSource` | optional, overrides the site for this line (used from step 2) |
 | `lines[].shiftReport` | optional, `true` = the shift report flow builds this line |
 
 The Config node checks the lines when you click Apply (32 character id, no id twice, `sih` and `report` filled, known sources) and stores nothing when one is wrong (red status with the reason). It then adds two lists for the flows: `assetIds` (all lines of the site) and `reportLineIds` (the lines with `shiftReport`). Before 2026-10-20 these two lists were typed by hand.
 
 ## Asset list (button `List SIH assets`)
-Token, OEE asset list, one Asset Management call per asset (one per second, about a minute), then the debug node `ASSET LIST`:
-- `problems`: a Config id not found, a line renamed in Insights Hub, a line in another site, an asset call that failed.
-- `lines`: one text per line (OEE asset with no OEE asset above it): `site / area / line | auto or manual | id | n machines | in Config as <report>` or `not in Config`. Lines below `Test Line` are left out.
-- `paste`: per site, a block for the lines not in Config yet, with `report: '?'` to fill in.
+Token, OEE asset list, one Asset Management call per asset (one per second, about a minute), then for each site of Config the newest `.csv` of `<root>/reference/machine_names/site=<Site>/` (the same file the PBI report build reads), then the debug node `ASSET LIST`:
+- `problems`: a Config id not found, a line renamed in Insights Hub, a line in another site, an asset call that failed, a site without a Machine Names file, and a Config `report` that is not a `MachineName` of the site's Machine Names file.
+- `lines`: one text per line (OEE asset with no OEE asset above it): `site / area / line | auto or manual | id | n machines | in Config as <report>` or `not in Config, report <name or ?>`. Lines below `Test Line` are left out.
+- `paste`: per site, a block for the lines not in Config yet. `report` is the Machine Names entry with the same letters and digits as the Insights Hub name (case, spaces and dashes ignored: `n 1` = `N1`). With no such entry it is `'?'` (Config refuses it until you choose) and a comment line above gives the close names: the entries with the same first word (`B2 Line`: `B2 Auto`), or all names when the file has at most 12 (`L2`: `Line 2`, ...). A site that is not in Config (Mira, Tuzla) has no file read: `report: '?'`.
 
 Read calls only, nothing is written. Asset list of 2026-10-20 (xcelerator, script, GET only): 37 lines outside `Test Line` in Hull, Nottingham (N1, N5, S04), Weinheim (L2), Mira (16), Tuzla (6), Chartres (1) and STP (1). The ids are not in this repo: the committed Config holds only the two Hull lines.
 

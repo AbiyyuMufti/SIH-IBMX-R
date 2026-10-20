@@ -13,7 +13,7 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { validateFlow } from './validate-flow.js';
 import {
   code, S, B, I, D, TS, makeBuilder, fn, http, linkInStep, end, split,
-  delay, join, addLogLanes, compactLanes, rawStep, debugStep
+  delay, join, addLogLanes, compactLanes, rawStep, debugStep, readStep
 } from './lib-flow-builder.js';
 
 const SCHEMAS = {
@@ -242,14 +242,42 @@ function buildConfigFlow() {
       end('ASSET PATH')
     ]);
   b.lane(3, 'ASSET PATHS',
-    'one Asset Management call per asset (hierarchyPath: site, area, line), a join collects all assets, then 3.3 builds the list in the debug node ASSET LIST: problems (a Config line id not found, renamed in Insights Hub, or in another site), one line per Insights Hub line (path, auto or manual, id, number of machines, the report name if it is in Config) and, per site, a block to paste into the lines of 1.1 CONFIG (fill in report). Lines below Test Line (excludeAncestorNames) are left out.',
+    'one Asset Management call per asset (hierarchyPath: site, area, line), a join collects all assets, then the Machine Names check of stage 4 starts.',
     [
       linkInStep('ASSET PATH'),
       fn('assetFn', 'Build asset request', 's3-asset-request.js', ['next']),
       http('assetHttp', 'GET asset (hierarchy)'),
       fn('pathFn', 'Shape asset path', 'c3-asset-path.js', ['next']),
       join('assetJoin', 'Collect assets'),
-      fn('listFn', 'Build asset list', 'c3-build-list.js', ['next']),
+      fn('namesFn', 'Start Machine Names check', 'c3-names-start.js',
+        ['next']),
+      end('MACHINE NAMES')
+    ]);
+  b.lane(4, 'MACHINE NAMES',
+    'one message per site of 1.1 CONFIG (the assets travel along in msg.assets): the folder <root>/reference/machine_names/site=<Site>/ is listed, the newest .csv is read and parsed, and its MachineName values are kept. A site without a file gives a failed item (a problem in the list). Read calls only.',
+    [
+      linkInStep('MACHINE NAMES'),
+      split('namesSplit'),
+      fn('namesFolder', 'Set site folder', 'c4-names-folder.js', ['next']),
+      rawStep('namesList', {
+        type: 'list objects', name: 'List objects', subtenant: '', path: ''
+      }),
+      fn('namesPick', 'Pick the file', 'b3-pick-file.js',
+        ['next', 'NAMES ITEM']),
+      readStep('namesRead', 'Read Machine Names file'),
+      rawStep('namesCsv', {
+        type: 'csv', name: 'Parse CSV', sep: ',', hdrin: true, hdrout: '',
+        multi: 'mult', ret: '\\n', temp: 'parser csv'
+      }),
+      fn('namesRows', 'Take machine names', 'c4-site-names.js', ['next']),
+      end('NAMES ITEM')
+    ]);
+  b.lane(5, 'ASSET LIST',
+    'the join waits for the Machine Names of all sites, then it builds the list in the debug node ASSET LIST: problems (a Config line id not found, renamed in Insights Hub, in another site, or a Config report name that is not a MachineName of the Machine Names file of the site; a site without a Machine Names file), one line per Insights Hub line (path, auto or manual, id, number of machines, the report name) and, per site, a block to paste into the lines of 1.1 CONFIG with the report name found in the Machine Names file (same letters and digits), or report "?" with the close names (same first word, or all names of a site with at most 12) when none matches. Lines below Test Line (excludeAncestorNames) are left out.',
+    [
+      linkInStep('NAMES ITEM'),
+      join('namesJoin', 'Wait for all sites'),
+      fn('listFn', 'Build asset list', 'c5-build-list.js', ['next']),
       debugStep('listDebug', 'ASSET LIST', 'payload')
     ]);
   b.nodes.unshift({

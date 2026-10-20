@@ -78,7 +78,7 @@
     "id": "20cad.e78c6b",
     "type": "function",
     "name": "1.1 CONFIG (edit here)",
-    "func": "// CONFIG: the shared settings of ALL flows. Edit here only.\n// In: any message from an inject (on deploy, or the Apply button).\n// Out: nothing. The settings go to global context: glob.get('cfg').\nvar cfg = {\n  // Root folder in the data lake. Every flow writes below it:\n  // reference/, pbi_report/source/, report/, candidate/, logs/.\n  root: 'eu_report',\n  // Platform: 'legacy' = old Insights Hub (gateway.eu1.mindsphere.io),\n  // 'xcelerator' = new platform (api.eu1.siemens.app). No default: set one.\n  platform: 'SET_legacy_OR_xcelerator',\n  // Technical user. Fill in after import. Do not share the flow filled in.\n  // tenantName is used by legacy only, xcTenantId (10 digits) by xcelerator.\n  tenantName: 'reckitt',\n  xcTenantId: 'PUT_TENANT_ID_HERE',\n  clientId: 'PUT_CLIENT_ID_HERE',\n  clientSecret: 'PUT_CLIENT_SECRET_HERE',\n  // One entry per site of the report.\n  // reportSource: where the report rows of the site come from,\n  // 'provideam' (SharePoint files) or 'sih' (Insights Hub API). The other\n  // source writes to candidate/ for comparison.\n  // dayStartHour: first hour (UTC) of the production day (daily flow).\n  // dayStartLocal and timeZone: the local production day (shift report);\n  // only Europe/London is supported so far.\n  // lines: the Insights Hub lines of the site. Get id and sih from the\n  // asset list (stage 2 of this tab, button \"List SIH assets\").\n  //   id: the asset id (the flows only use this)\n  //   sih: the name in Insights Hub (a label, checked against the asset)\n  //   report: the MachineName of this line in the report and in the\n  //     machine names file of the site\n  //   reportSource: optional, overrides the site for this line\n  //   shiftReport: optional, the shift report flow builds the line if true\n  // reportExcludeNames: machines below a shift report line to leave out.\n  sites: [\n    {\n      name: 'Hull',\n      reportSource: 'provideam',\n      dayStartHour: 6,\n      dayStartLocal: 6,\n      timeZone: 'Europe/London',\n      lines: [\n        {\n          id: 'cf4565d7da1e4efcbc0ea6a4814b8eee',\n          sih: 'B2 Line',\n          report: 'B2 Auto',\n          shiftReport: true\n        },\n        {\n          id: 'bc08dae161124f1cb533199f556190b3',\n          sih: 'GT4',\n          report: 'GT4'\n        }\n      ],\n      reportExcludeNames: [\n        // '05 Antares'\n      ]\n    },\n    {\n      name: 'Nottingham',\n      reportSource: 'provideam',\n      lines: []\n    },\n    {\n      name: 'Weinheim',\n      reportSource: 'provideam',\n      lines: []\n    }\n  ],\n  // Skip any asset with one of these names.\n  excludeNames: [],\n  // Skip any asset below an asset with one of these names.\n  excludeAncestorNames: ['Test Line'],\n  // A stop is planned when the first part of its reason path is in this list.\n  plannedRoots: ['Planned Downtime', 'Planned Maintenance'],\n  // Reference flow: calendar events are read for this many days.\n  calendarWindowDays: 31\n};\n\n// Addresses of the platform. Every request node uses tokenUrl, oeeBase and\n// amBase from here, so one switch moves all flows. Do not edit below.\nvar XC_SUFFIX = '1000001700';\nvar SOURCES = ['provideam', 'sih'];\nvar problem = '';\nif (cfg.platform === 'legacy') {\n  var legacyHost = 'https://gateway.eu1.mindsphere.io/api/';\n  cfg.tokenUrl = 'https://' + cfg.tenantName + '.piam.eu1.mindsphere.io';\n  cfg.tokenUrl += '/oauth/token?grant_type=client_credentials';\n  cfg.tokenForm = false;\n  cfg.oeeBase = legacyHost + 'oee/v3';\n  cfg.amBase = legacyHost + 'assetmanagement/v3';\n} else if (cfg.platform === 'xcelerator') {\n  var xcHost = 'https://api.eu1.siemens.app/api/';\n  cfg.tokenUrl = 'https://' + cfg.xcTenantId;\n  cfg.tokenUrl += '.eu1.sws.siemens.com/oauth/token';\n  cfg.tokenForm = true;\n  cfg.oeeBase = xcHost + 'oee-' + XC_SUFFIX + '/v3';\n  cfg.amBase = xcHost + 'assetmanagement-' + XC_SUFFIX + '/v3';\n  if (!/^[0-9]{10}$/.test(cfg.xcTenantId)) {\n    problem = 'xcTenantId must be the 10-digit tenant ID';\n  }\n} else {\n  problem = 'platform must be legacy or xcelerator';\n}\n\n// Checks one line of a site. Returns a problem text or ''.\nfunction lineProblem(site, line, seen) {\n  var where = site.name + ' line ' + (line.sih || line.id);\n  if (!/^[0-9a-f]{32}$/.test(String(line.id))) {\n    return where + ': id must be the 32 character asset id';\n  }\n  if (seen[line.id]) {\n    return where + ': id is listed twice';\n  }\n  seen[line.id] = true;\n  if (!line.sih) {\n    return where + ': sih (the Insights Hub name) is missing';\n  }\n  // report defaults to sih; set it only when the names differ\n  if (!line.report) {\n    line.report = line.sih;\n  }\n  if (line.reportSource && SOURCES.indexOf(line.reportSource) === -1) {\n    return where + ': reportSource must be provideam or sih';\n  }\n  return '';\n}\n\n// Checks the sites and adds the lists the flows read: assetIds (all\n// lines) and reportLineIds (the shift report lines).\nvar seenIds = {};\ncfg.sites.forEach(function (site) {\n  if (problem) {\n    return;\n  }\n  if (SOURCES.indexOf(site.reportSource) === -1) {\n    problem = site.name + ': reportSource must be provideam or sih';\n    return;\n  }\n  site.lines = site.lines || [];\n  site.lines.forEach(function (line) {\n    if (!problem) {\n      problem = lineProblem(site, line, seenIds);\n    }\n  });\n  site.assetIds = site.lines.map(function (line) {\n    return line.id;\n  });\n  site.reportLineIds = site.lines.filter(function (line) {\n    return line.shiftReport === true;\n  }).map(function (line) {\n    return line.id;\n  });\n});\n\nif (problem) {\n  // Clear old settings so no flow runs on a setting from an earlier deploy.\n  glob.set('cfg', undefined);\n  node.status({\n    fill: 'red',\n    shape: 'ring',\n    text: problem\n  });\n  node.error('CONFIG not stored: ' + problem);\n  return null;\n}\nglob.set('cfg', cfg);\nnode.status({\n  fill: 'green',\n  shape: 'dot',\n  text: cfg.platform + ', ' + cfg.sites.length + ' site(s) stored'\n});\nreturn null;\n",
+    "func": "// CONFIG: the shared settings of ALL flows. Edit here only.\n// In: any message from an inject (on deploy, or the Apply button).\n// Out: nothing. The settings go to global context: glob.get('cfg').\nvar cfg = {\n  // Root folder in the data lake. Every flow writes below it:\n  // reference/, pbi_report/source/, report/, candidate/, logs/.\n  root: 'eu_report',\n  // Platform: 'legacy' = old Insights Hub (gateway.eu1.mindsphere.io),\n  // 'xcelerator' = new platform (api.eu1.siemens.app). No default: set one.\n  platform: 'SET_legacy_OR_xcelerator',\n  // Technical user. Fill in after import. Do not share the flow filled in.\n  // tenantName is used by legacy only, xcTenantId (10 digits) by xcelerator.\n  tenantName: 'reckitt',\n  xcTenantId: 'PUT_TENANT_ID_HERE',\n  clientId: 'PUT_CLIENT_ID_HERE',\n  clientSecret: 'PUT_CLIENT_SECRET_HERE',\n  // One entry per site of the report.\n  // reportSource: where the report rows of the site come from,\n  // 'provideam' (SharePoint files) or 'sih' (Insights Hub API). The other\n  // source writes to candidate/ for comparison.\n  // dayStartHour: first hour (UTC) of the production day (daily flow).\n  // dayStartLocal and timeZone: the local production day (shift report);\n  // only Europe/London is supported so far.\n  // lines: the Insights Hub lines of the site. Get id and sih from the\n  // asset list (stage 2 of this tab, button \"List SIH assets\").\n  //   id: the asset id (the flows only use this)\n  //   sih: the name in Insights Hub (a label, checked against the asset)\n  //   report: the MachineName of this line in the report and in the\n  //     machine names file of the site (the asset list checks it)\n  //   reportSource: optional, overrides the site for this line\n  //   shiftReport: optional, the shift report flow builds the line if true\n  // reportExcludeNames: machines below a shift report line to leave out.\n  sites: [\n    {\n      name: 'Hull',\n      reportSource: 'provideam',\n      dayStartHour: 6,\n      dayStartLocal: 6,\n      timeZone: 'Europe/London',\n      lines: [\n        {\n          id: 'cf4565d7da1e4efcbc0ea6a4814b8eee',\n          sih: 'B2 Line',\n          report: 'B2 Auto',\n          shiftReport: true\n        },\n        {\n          id: 'bc08dae161124f1cb533199f556190b3',\n          sih: 'GT4',\n          report: 'GT4'\n        }\n      ],\n      reportExcludeNames: [\n        // '05 Antares'\n      ]\n    },\n    {\n      name: 'Nottingham',\n      reportSource: 'provideam',\n      lines: []\n    },\n    {\n      name: 'Weinheim',\n      reportSource: 'provideam',\n      lines: []\n    }\n  ],\n  // Skip any asset with one of these names.\n  excludeNames: [],\n  // Skip any asset below an asset with one of these names.\n  excludeAncestorNames: ['Test Line'],\n  // A stop is planned when the first part of its reason path is in this list.\n  plannedRoots: ['Planned Downtime', 'Planned Maintenance'],\n  // Reference flow: calendar events are read for this many days.\n  calendarWindowDays: 31\n};\n\n// Addresses of the platform. Every request node uses tokenUrl, oeeBase and\n// amBase from here, so one switch moves all flows. Do not edit below.\nvar XC_SUFFIX = '1000001700';\nvar SOURCES = ['provideam', 'sih'];\nvar problem = '';\nif (cfg.platform === 'legacy') {\n  var legacyHost = 'https://gateway.eu1.mindsphere.io/api/';\n  cfg.tokenUrl = 'https://' + cfg.tenantName + '.piam.eu1.mindsphere.io';\n  cfg.tokenUrl += '/oauth/token?grant_type=client_credentials';\n  cfg.tokenForm = false;\n  cfg.oeeBase = legacyHost + 'oee/v3';\n  cfg.amBase = legacyHost + 'assetmanagement/v3';\n} else if (cfg.platform === 'xcelerator') {\n  var xcHost = 'https://api.eu1.siemens.app/api/';\n  cfg.tokenUrl = 'https://' + cfg.xcTenantId;\n  cfg.tokenUrl += '.eu1.sws.siemens.com/oauth/token';\n  cfg.tokenForm = true;\n  cfg.oeeBase = xcHost + 'oee-' + XC_SUFFIX + '/v3';\n  cfg.amBase = xcHost + 'assetmanagement-' + XC_SUFFIX + '/v3';\n  if (!/^[0-9]{10}$/.test(cfg.xcTenantId)) {\n    problem = 'xcTenantId must be the 10-digit tenant ID';\n  }\n} else {\n  problem = 'platform must be legacy or xcelerator';\n}\n\n// Checks one line of a site. Returns a problem text or ''.\nfunction lineProblem(site, line, seen) {\n  var where = site.name + ' line ' + (line.sih || line.id);\n  if (!/^[0-9a-f]{32}$/.test(String(line.id))) {\n    return where + ': id must be the 32 character asset id';\n  }\n  if (seen[line.id]) {\n    return where + ': id is listed twice';\n  }\n  seen[line.id] = true;\n  if (!line.sih) {\n    return where + ': sih (the Insights Hub name) is missing';\n  }\n  if (!line.report || line.report === '?') {\n    return where + ': report (the MachineName in the report) is missing';\n  }\n  if (line.reportSource && SOURCES.indexOf(line.reportSource) === -1) {\n    return where + ': reportSource must be provideam or sih';\n  }\n  return '';\n}\n\n// Checks the sites and adds the lists the flows read: assetIds (all\n// lines) and reportLineIds (the shift report lines).\nvar seenIds = {};\ncfg.sites.forEach(function (site) {\n  if (problem) {\n    return;\n  }\n  if (SOURCES.indexOf(site.reportSource) === -1) {\n    problem = site.name + ': reportSource must be provideam or sih';\n    return;\n  }\n  site.lines = site.lines || [];\n  site.lines.forEach(function (line) {\n    if (!problem) {\n      problem = lineProblem(site, line, seenIds);\n    }\n  });\n  site.assetIds = site.lines.map(function (line) {\n    return line.id;\n  });\n  site.reportLineIds = site.lines.filter(function (line) {\n    return line.shiftReport === true;\n  }).map(function (line) {\n    return line.id;\n  });\n});\n\nif (problem) {\n  // Clear old settings so no flow runs on a setting from an earlier deploy.\n  glob.set('cfg', undefined);\n  node.status({\n    fill: 'red',\n    shape: 'ring',\n    text: problem\n  });\n  node.error('CONFIG not stored: ' + problem);\n  return null;\n}\nglob.set('cfg', cfg);\nnode.status({\n  fill: 'green',\n  shape: 'dot',\n  text: cfg.platform + ', ' + cfg.sites.length + ' site(s) stored'\n});\nreturn null;\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
@@ -294,7 +294,7 @@
     "id": "3dcae.ff84e2",
     "type": "comment",
     "name": "[3] ASSET PATHS",
-    "info": "STAGE 3 - one Asset Management call per asset (hierarchyPath: site, area, line), a join collects all assets, then 3.3 builds the list in the debug node ASSET LIST: problems (a Config line id not found, renamed in Insights Hub, or in another site), one line per Insights Hub line (path, auto or manual, id, number of machines, the report name if it is in Config) and, per site, a block to paste into the lines of 1.1 CONFIG (fill in report). Lines below Test Line (excludeAncestorNames) are left out.",
+    "info": "STAGE 3 - one Asset Management call per asset (hierarchyPath: site, area, line), a join collects all assets, then the Machine Names check of stage 4 starts.",
     "x": 140,
     "y": 480,
     "wires": []
@@ -394,24 +394,278 @@
   },
   {
     "z": "1cecf.e45a39",
+    "id": "4b537.0ab491",
+    "type": "link out",
+    "name": "to MACHINE NAMES",
+    "mode": "link",
+    "links": [
+      "49648.091b78"
+    ],
+    "x": 1320,
+    "y": 560,
+    "wires": []
+  },
+  {
+    "z": "1cecf.e45a39",
     "id": "47759.07825f",
     "type": "function",
-    "name": "3.3 Build asset list",
-    "func": "// Builds the asset list for the debug node ASSET LIST and checks the lines\n// of 1.1 CONFIG against Insights Hub.\n// In: msg.payload = all assets from the join. Out: msg.payload = {problems,\n// lines, paste}: paste holds a block per site to copy into 1.1 CONFIG.\nvar cfg = flow.get('cfg');\nvar items = Array.isArray(msg.payload) ? msg.payload : [];\nvar byId = {};\nitems.forEach(function (item) {\n  byId[item.id] = item;\n});\n\n// The Config lines by id, with their site.\nvar inConfig = {};\ncfg.sites.forEach(function (site) {\n  (site.lines || []).forEach(function (line) {\n    inConfig[line.id] = {\n      site: site.name,\n      line: line\n    };\n  });\n});\n\nfunction isExcluded(item) {\n  if (cfg.excludeNames.indexOf(item.name) >= 0) {\n    return true;\n  }\n  return item.names.slice(0, -1).some(function (name) {\n    return cfg.excludeAncestorNames.indexOf(name) >= 0;\n  });\n}\n\n// A line is an OEE asset with no OEE asset above it; the OEE assets\n// below it are its machines.\nvar problems = [];\nvar lines = [];\nitems.forEach(function (item) {\n  if (item.failed) {\n    problems.push(item.name + ': ' + item.failed);\n    return;\n  }\n  var isMachine = item.ancestorIds.some(function (id) {\n    return Boolean(byId[id]);\n  });\n  if (isMachine || isExcluded(item)) {\n    return;\n  }\n  var machines = items.filter(function (other) {\n    return other.ancestorIds.indexOf(item.id) >= 0;\n  }).length;\n  lines.push({\n    site: item.names[2] || '?',\n    path: item.names.slice(2).join(' / '),\n    item: item,\n    machines: machines\n  });\n});\nlines.sort(function (a, b) {\n  return a.path.localeCompare(b.path);\n});\n\n// Config lines that are gone, renamed or in another site.\nObject.keys(inConfig).forEach(function (id) {\n  var entry = inConfig[id];\n  var where = entry.site + ' line ' + entry.line.sih;\n  var found = byId[id];\n  if (!found) {\n    problems.push(where + ': id not found in Insights Hub');\n    return;\n  }\n  if (found.name !== entry.line.sih) {\n    var text = where + ': Insights Hub now calls it \"' + found.name;\n    text += '\" (Config sih: \"' + entry.line.sih + '\")';\n    problems.push(text);\n  }\n  if (found.names[2] !== entry.site) {\n    problems.push(where + ': it is in site ' + found.names[2]);\n  }\n});\n\nvar out = [];\nvar paste = {};\nlines.forEach(function (entry) {\n  var item = entry.item;\n  var text = entry.path + ' | ' + (item.isManual ? 'manual' : 'auto');\n  text += ' | id ' + item.id + ' | ' + entry.machines + ' machines';\n  var known = inConfig[item.id];\n  if (known) {\n    text += ' | in Config as ' + known.line.report;\n    out.push(text);\n    return;\n  }\n  out.push(text + ' | not in Config');\n  var block = '{\\n';\n  block += \"  id: '\" + item.id + \"',\\n\";\n  block += \"  sih: '\" + item.name + \"',\\n\";\n  block += \"  report: '\" + item.name + \"',\\n\";\n  block += '},\\n';\n  paste[entry.site] = (paste[entry.site] || '') + block;\n});\n\nnode.status({\n  fill: problems.length ? 'yellow' : 'green',\n  shape: 'dot',\n  text: out.length + ' lines, ' + problems.length + ' problem(s)'\n});\nmsg.payload = {\n  problems: problems,\n  lines: out,\n  paste: paste\n};\nreturn msg;\n",
+    "name": "3.3 Start Machine Names check",
+    "func": "// Keeps the assets in the message and starts the Machine Names check.\n// In: msg.payload = all assets from the join. Out: msg.assets = the assets,\n// msg.payload = the site names of 1.1 CONFIG (split into one per site).\nvar cfg = flow.get('cfg');\n\nmsg.assets = Array.isArray(msg.payload) ? msg.payload : [];\nmsg.payload = cfg.sites.map(function (site) {\n  return site.name;\n});\nreturn msg;\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 1100,
+    "x": 1140,
     "y": 560,
     "wires": [
       [
-        "49648.091b78"
+        "4b537.0ab491"
       ]
     ]
   },
   {
     "z": "1cecf.e45a39",
+    "id": "4d426.0c4daa",
+    "type": "comment",
+    "name": "[4] MACHINE NAMES",
+    "info": "STAGE 4 - one message per site of 1.1 CONFIG (the assets travel along in msg.assets): the folder <root>/reference/machine_names/site=<Site>/ is listed, the newest .csv is read and parsed, and its MachineName values are kept. A site without a file gives a failed item (a problem in the list). Read calls only.",
+    "x": 140,
+    "y": 700,
+    "wires": []
+  },
+  {
+    "z": "1cecf.e45a39",
     "id": "49648.091b78",
+    "type": "link in",
+    "name": "MACHINE NAMES",
+    "links": [
+      "4b537.0ab491"
+    ],
+    "x": 60,
+    "y": 780,
+    "wires": [
+      [
+        "4f315.0de6c3"
+      ]
+    ]
+  },
+  {
+    "z": "1cecf.e45a39",
+    "id": "4f315.0de6c3",
+    "type": "split",
+    "name": "Split per item",
+    "splt": "\\n",
+    "spltType": "str",
+    "arraySplt": 1,
+    "arraySpltType": "len",
+    "stream": false,
+    "addname": "index",
+    "x": 180,
+    "y": 780,
+    "wires": [
+      [
+        "51204.0f7fdc"
+      ]
+    ]
+  },
+  {
+    "z": "1cecf.e45a39",
+    "id": "51204.0f7fdc",
+    "type": "function",
+    "name": "4.1 Set site folder",
+    "func": "// Sets the Machine Names folder of one site for the list objects node.\n// In: msg.payload = one site name (after the split). Out: msg.site, msg.what\n// and msg.path = <root>/reference/machine_names/site=<Site>/.\nvar TYPE_FOLDER = 'machine_names';\nvar cfg = flow.get('cfg');\n\nmsg.site = msg.payload;\nmsg.what = 'machine names';\nmsg.path = cfg.root + '/reference/' + TYPE_FOLDER;\nmsg.path += '/site=' + msg.site + '/';\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 380,
+    "y": 780,
+    "wires": [
+      [
+        "530f3.1118f5"
+      ]
+    ]
+  },
+  {
+    "z": "1cecf.e45a39",
+    "id": "530f3.1118f5",
+    "type": "list objects",
+    "name": "List objects",
+    "subtenant": "",
+    "path": "",
+    "x": 580,
+    "y": 780,
+    "wires": [
+      [
+        "54fe2.12b20e"
+      ]
+    ]
+  },
+  {
+    "z": "1cecf.e45a39",
+    "id": "5acaf.177d59",
+    "type": "link out",
+    "name": "to NAMES ITEM",
+    "mode": "link",
+    "links": [
+      "58dc0.15e440"
+    ],
+    "x": 920,
+    "y": 800,
+    "wires": []
+  },
+  {
+    "z": "1cecf.e45a39",
+    "id": "54fe2.12b20e",
+    "type": "function",
+    "name": "4.2 Pick the file",
+    "func": "// Picks the newest .csv of the folder list (list objects).\n// Out 1: msg.path for the read node, without data/ten=<tenant>/ or a leading\n// slash. Out 2: a failed item when the folder has no .csv.\nvar TENANT_PREFIX = /^\\/?(data\\/ten=[^\\/]+\\/)?/;\nvar items = Array.isArray(msg.payload) ? msg.payload : [];\nvar files = items.filter(function (item) {\n  return /\\.csv$/i.test(item.key);\n});\n\nif (!files.length) {\n  node.status({\n    fill: 'red',\n    shape: 'ring',\n    text: 'no csv file for ' + msg.site\n  });\n  msg.payload = {\n    name: msg.site,\n    failed: msg.what + ' ' + msg.site + ': no csv file in ' + msg.path,\n    skipped: null,\n    rows: []\n  };\n  return [null, msg];\n}\n\nfiles.sort(function (a, b) {\n  return String(b.lastModified).localeCompare(String(a.lastModified));\n});\nmsg.path = String(files[0].key).replace(TENANT_PREFIX, '');\nnode.status({\n  fill: 'green',\n  shape: 'dot',\n  text: msg.path.slice(-40)\n});\nreturn [msg, null];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 780,
+    "y": 780,
+    "wires": [
+      [
+        "56ed1.144b27"
+      ],
+      [
+        "5acaf.177d59"
+      ]
+    ]
+  },
+  {
+    "z": "1cecf.e45a39",
+    "id": "56ed1.144b27",
+    "type": "read object",
+    "name": "Read Machine Names file",
+    "path": "",
+    "mode": "object",
+    "x": 1000,
+    "y": 760,
+    "wires": [
+      [
+        "5cb9e.191672"
+      ]
+    ]
+  },
+  {
+    "z": "1cecf.e45a39",
+    "id": "5cb9e.191672",
+    "type": "csv",
+    "name": "Parse CSV",
+    "sep": ",",
+    "hdrin": true,
+    "hdrout": "",
+    "multi": "mult",
+    "ret": "\\n",
+    "temp": "parser csv",
+    "x": 1200,
+    "y": 780,
+    "wires": [
+      [
+        "5ea8d.1aaf8b"
+      ]
+    ]
+  },
+  {
+    "z": "1cecf.e45a39",
+    "id": "6097c.1c48a4",
+    "type": "link out",
+    "name": "to NAMES ITEM",
+    "mode": "link",
+    "links": [
+      "58dc0.15e440"
+    ],
+    "x": 1560,
+    "y": 780,
+    "wires": []
+  },
+  {
+    "z": "1cecf.e45a39",
+    "id": "5ea8d.1aaf8b",
+    "type": "function",
+    "name": "4.3 Take machine names",
+    "func": "// Takes the MachineName values of one site's Machine Names file.\n// In: msg.payload = the parsed rows (MachineName, Dept, ...). Out:\n// msg.payload = an item {name, failed, names} for the join.\nvar rows = Array.isArray(msg.payload) ? msg.payload : [];\nvar item = {\n  name: msg.site,\n  failed: null,\n  names: []\n};\n\nif (!rows.length || rows[0].MachineName === undefined) {\n  item.failed = 'machine names ' + msg.site + ': no MachineName column';\n}\nrows.forEach(function (row) {\n  var name = String(row.MachineName || '').trim();\n  if (name && item.names.indexOf(name) === -1) {\n    item.names.push(name);\n  }\n});\nmsg.payload = item;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 1400,
+    "y": 780,
+    "wires": [
+      [
+        "6097c.1c48a4"
+      ]
+    ]
+  },
+  {
+    "z": "1cecf.e45a39",
+    "id": "6286b.1de1bd",
+    "type": "comment",
+    "name": "[5] ASSET LIST",
+    "info": "STAGE 5 - the join waits for the Machine Names of all sites, then it builds the list in the debug node ASSET LIST: problems (a Config line id not found, renamed in Insights Hub, in another site, or a Config report name that is not a MachineName of the Machine Names file of the site; a site without a Machine Names file), one line per Insights Hub line (path, auto or manual, id, number of machines, the report name) and, per site, a block to paste into the lines of 1.1 CONFIG with the report name found in the Machine Names file (same letters and digits), or report \"?\" with the close names (same first word, or all names of a site with at most 12) when none matches. Lines below Test Line (excludeAncestorNames) are left out.",
+    "x": 120,
+    "y": 920,
+    "wires": []
+  },
+  {
+    "z": "1cecf.e45a39",
+    "id": "58dc0.15e440",
+    "type": "link in",
+    "name": "NAMES ITEM",
+    "links": [
+      "5acaf.177d59",
+      "6097c.1c48a4"
+    ],
+    "x": 60,
+    "y": 1000,
+    "wires": [
+      [
+        "6475a.1f7ad6"
+      ]
+    ]
+  },
+  {
+    "z": "1cecf.e45a39",
+    "id": "6475a.1f7ad6",
+    "type": "join",
+    "name": "Wait for all sites",
+    "mode": "auto",
+    "build": "array",
+    "property": "payload",
+    "propertyType": "msg",
+    "key": "topic",
+    "joiner": "\\n",
+    "joinerType": "str",
+    "accumulate": false,
+    "timeout": "",
+    "count": "",
+    "x": 200,
+    "y": 1000,
+    "wires": [
+      [
+        "66649.2113ef"
+      ]
+    ]
+  },
+  {
+    "z": "1cecf.e45a39",
+    "id": "66649.2113ef",
+    "type": "function",
+    "name": "5.1 Build asset list",
+    "func": "// Builds the asset list for the debug node ASSET LIST and checks the lines\n// of 1.1 CONFIG against Insights Hub and the Machine Names files.\n// In: msg.assets = all assets, msg.payload = one item per site {name,\n// failed, names}. Out: msg.payload = {problems, lines, paste}.\nvar cfg = flow.get('cfg');\nvar items = Array.isArray(msg.assets) ? msg.assets : [];\nvar sites = Array.isArray(msg.payload) ? msg.payload : [];\nvar problems = [];\nvar byId = {};\nitems.forEach(function (item) {\n  byId[item.id] = item;\n});\n\n// The MachineName values of each site's Machine Names file.\nvar namesBySite = {};\nsites.forEach(function (site) {\n  if (site.failed) {\n    problems.push(site.failed);\n    return;\n  }\n  namesBySite[site.name] = site.names || [];\n});\n\n// The Config lines by id, with their site.\nvar inConfig = {};\ncfg.sites.forEach(function (site) {\n  (site.lines || []).forEach(function (line) {\n    inConfig[line.id] = {\n      site: site.name,\n      line: line\n    };\n  });\n});\n\nfunction isExcluded(item) {\n  if (cfg.excludeNames.indexOf(item.name) >= 0) {\n    return true;\n  }\n  return item.names.slice(0, -1).some(function (name) {\n    return cfg.excludeAncestorNames.indexOf(name) >= 0;\n  });\n}\n\n// Letters and digits only, lower case: \"B2  line\" and \"b2 Line\" match.\nfunction key(name) {\n  return String(name).toLowerCase().replace(/[^a-z0-9]/g, '');\n}\n\n// The Machine Names entry with the same letters and digits, else ''.\nfunction findReport(site, sihName) {\n  var hits = (namesBySite[site] || []).filter(function (name) {\n    return key(name) === key(sihName);\n  });\n  return hits.length ? hits[0] : '';\n}\n\n// Machine Names entries with the same first word (\"B2 Line\": \"B2 Auto\"),\n// else all names of a small file (\"L2\": \"Line 2\").\nvar ALL_NAMES_UP_TO = 12;\nfunction similar(site, sihName) {\n  var names = namesBySite[site] || [];\n  var first = key(String(sihName).split(' ')[0]);\n  var near = names.filter(function (name) {\n    return key(String(name).split(' ')[0]) === first;\n  });\n  if (!near.length && names.length <= ALL_NAMES_UP_TO) {\n    return names;\n  }\n  return near;\n}\n\n// A line is an OEE asset with no OEE asset above it; the OEE assets\n// below it are its machines.\nvar lines = [];\nitems.forEach(function (item) {\n  if (item.failed) {\n    problems.push(item.name + ': ' + item.failed);\n    return;\n  }\n  var isMachine = item.ancestorIds.some(function (id) {\n    return Boolean(byId[id]);\n  });\n  if (isMachine || isExcluded(item)) {\n    return;\n  }\n  var machines = items.filter(function (other) {\n    return other.ancestorIds.indexOf(item.id) >= 0;\n  }).length;\n  lines.push({\n    site: item.names[2] || '?',\n    path: item.names.slice(2).join(' / '),\n    item: item,\n    machines: machines\n  });\n});\nlines.sort(function (a, b) {\n  return a.path.localeCompare(b.path);\n});\n\n// Config lines that are gone, renamed, in another site, or whose report\n// name is not in the Machine Names file of the site.\nObject.keys(inConfig).forEach(function (id) {\n  var entry = inConfig[id];\n  var where = entry.site + ' line ' + entry.line.sih;\n  var names = namesBySite[entry.site];\n  if (names && names.indexOf(entry.line.report) === -1) {\n    var miss = where + ': report \"' + entry.line.report;\n    miss += '\" is not a MachineName in the Machine Names file';\n    problems.push(miss);\n  }\n  var found = byId[id];\n  if (!found) {\n    problems.push(where + ': id not found in Insights Hub');\n    return;\n  }\n  if (found.name !== entry.line.sih) {\n    var text = where + ': Insights Hub now calls it \"' + found.name;\n    text += '\" (Config sih: \"' + entry.line.sih + '\")';\n    problems.push(text);\n  }\n  if (found.names[2] !== entry.site) {\n    problems.push(where + ': it is in site ' + found.names[2]);\n  }\n});\n\n// One text per line; a paste block for the lines not in Config, with the\n// report name from the Machine Names file, or '?' and the close names.\nvar out = [];\nvar paste = {};\nlines.forEach(function (entry) {\n  var item = entry.item;\n  var text = entry.path + ' | ' + (item.isManual ? 'manual' : 'auto');\n  text += ' | id ' + item.id + ' | ' + entry.machines + ' machines';\n  var known = inConfig[item.id];\n  if (known) {\n    text += ' | in Config as ' + known.line.report;\n    out.push(text);\n    return;\n  }\n  var report = findReport(entry.site, item.name);\n  out.push(text + ' | not in Config, report ' + (report || '?'));\n  var block = '';\n  if (!report) {\n    var note = namesBySite[entry.site] ?\n      'not in Machine Names' :\n      'no Machine Names file read';\n    block += '// ' + item.name + ': ' + note;\n    var near = similar(entry.site, item.name);\n    if (near.length) {\n      block += ', close: ' + near.join(', ');\n    }\n    block += '\\n';\n  }\n  block += '{\\n';\n  block += \"  id: '\" + item.id + \"',\\n\";\n  block += \"  sih: '\" + item.name + \"',\\n\";\n  block += \"  report: '\" + (report || '?') + \"'\\n\";\n  block += '},\\n';\n  paste[entry.site] = (paste[entry.site] || '') + block;\n});\n\nnode.status({\n  fill: problems.length ? 'yellow' : 'green',\n  shape: 'dot',\n  text: out.length + ' lines, ' + problems.length + ' problem(s)'\n});\nmsg.payload = {\n  problems: problems,\n  lines: out,\n  paste: paste\n};\ndelete msg.assets;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 420,
+    "y": 1000,
+    "wires": [
+      [
+        "68538.22ad08"
+      ]
+    ]
+  },
+  {
+    "z": "1cecf.e45a39",
+    "id": "68538.22ad08",
     "type": "debug",
     "name": "ASSET LIST",
     "active": true,
@@ -420,8 +674,8 @@
     "tostatus": false,
     "complete": "payload",
     "targetType": "msg",
-    "x": 1300,
-    "y": 560,
+    "x": 620,
+    "y": 1000,
     "wires": []
   }
 ]

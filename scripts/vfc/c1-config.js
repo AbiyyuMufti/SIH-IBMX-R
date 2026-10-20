@@ -26,7 +26,7 @@ var cfg = {
   //   id: the asset id (the flows only use this)
   //   sih: the name in Insights Hub (a label, checked against the asset)
   //   report: the MachineName of this line in the report and in the
-  //     machine names file of the site
+  //     machine names file of the site (the asset list checks it)
   //   reportSource: optional, overrides the site for this line
   //   shiftReport: optional, the shift report flow builds the line if true
   // reportExcludeNames: machines below a shift report line to leave out.
@@ -114,9 +114,8 @@ function lineProblem(site, line, seen) {
   if (!line.sih) {
     return where + ': sih (the Insights Hub name) is missing';
   }
-  // report defaults to sih; set it only when the names differ
-  if (!line.report) {
-    line.report = line.sih;
+  if (!line.report || line.report === '?') {
+    return where + ': report (the MachineName in the report) is missing';
   }
   if (line.reportSource && SOURCES.indexOf(line.reportSource) === -1) {
     return where + ': reportSource must be provideam or sih';

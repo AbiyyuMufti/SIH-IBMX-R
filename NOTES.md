@@ -90,6 +90,11 @@ Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `sc
 - Data completeness (from `docs/powerbi-model-findings.md`): own product table (design to approve), shift naming check, machine key and product type values (user), reason tree columns, files from Reckitt.
 - eu_report (decided 2026-10-15): with your confirmation, upload `sharepoint/reference` to `eu_report/reference` (`node scripts/datalake-upload-tree.js`). Then build the 6 tables of `pbi_report` from `sharepoint/source` + `reference` (copy the load queries of the .pbit), staging local only. Decide how much history to download (only Aug, Sep, current month so far).
 
+
+## Report name checked against Machine Names (2026-10-20)
+- Tried: `report` optional, defaulting to the SIH name (commit fa0223c). Rejected by the user: a default hides a name that does not match the report rows. Reverted: `report` is required again.
+- Now: the asset list reads each Config site's Machine Names file (`<root>/reference/machine_names/site=<Site>/`, newest .csv) and proposes `report` from it (same letters and digits), else `?` with the close names; a Config `report` that is not a MachineName there is a problem. Test: `node scripts/test-vfc-asset-list.js`.
+
 ## VFC flow (fact_kpi, fact_loss) - in progress (2026-10-02)
 - Paul-Flow.json is available. Pattern: function builds msg.method/url/headers -> http request (method "use", ret "obj") -> function; parquet node (engine parquetjs, option write, multi, columns [{column,type}]) -> function sets msg.path -> write object (mode object).
 - Local run for production day 2026-09-30 done (scripts/test-vfc-local.js, logic in scripts/vfc-transform.js): B2 Line 24 kpi rows + 168 loss rows, GT4 24 + 1; SUM(total_time_ms) = 24.000 h for both. Data depth: B2 Line and GT4 start 2026-08-31 (scripts/test-vfc-depth.js, has asset IDs, not for commit).
