@@ -1,7 +1,7 @@
-// Builds the machine rows of one site from its Machine Names file.
+// Builds the machine lookup of one site from its Machine Names file.
 // In: msg.payload = the parsed rows (MachineName, Dept, Area, Product Type).
-// Out: msg.payload = an item {name, failed, skipped, rows} for the join.
-// The rules are those of the load queries of the report (Machine Names H, N).
+// Stores flow context machines_<Site>: MachineName -> Dept, Area, Product
+// Type. Out 2: a failed item. The rules are those of the report queries.
 var RULES = {
   Hull: {
     dropNames: [
@@ -24,17 +24,12 @@ var RULES = {
 
 var site = msg.site;
 var rule = RULES[site] || {};
-var item = {
-  name: site,
-  failed: null,
-  skipped: null,
-  rows: []
-};
 var rows = Array.isArray(msg.payload) ? msg.payload : [];
 if (!rows.length || rows[0].MachineName === undefined) {
-  item.failed = 'machine names ' + site + ': no MachineName column or rows';
-  msg.payload = item;
-  return msg;
+  msg.payload = {
+    failed: 'machine names ' + site + ': no MachineName column or rows'
+  };
+  return [null, msg];
 }
 
 function text(value) {
@@ -45,7 +40,10 @@ function allowed(list, value) {
   return !list || list.indexOf(value) !== -1;
 }
 
-var dropped = 0;
+// A machine left out by the rules has no entry: its rows get empty Dept,
+// Area and Product Type, as in the report.
+var lookup = {};
+var kept = 0;
 rows.forEach(function (row) {
   var name = text(row.MachineName);
   var dept = text(row.Dept);
@@ -55,21 +53,20 @@ rows.forEach(function (row) {
     !allowed(rule.keepDepts, dept) ||
     !allowed(rule.keepAreas, area);
   if (drop) {
-    dropped++;
     return;
   }
-  item.rows.push({
-    'MachineName': name,
+  lookup[name] = {
     'Dept': dept,
     'Area': area,
-    'Product Type': text(row['Product Type']),
-    'SiteName': site,
-    'Unique Machine Name': name + '-' + site,
-    'loaded_at': msg.loadedAt
-  });
+    'Product Type': text(row['Product Type'])
+  };
+  kept++;
 });
-if (dropped) {
-  item.skipped = site + ': ' + dropped + ' row(s) left out by the report rules';
-}
-msg.payload = item;
-return msg;
+flow.set('machines_' + site, lookup);
+node.status({
+  fill: 'green',
+  shape: 'dot',
+  text: site + ': ' + kept + ' machines'
+});
+msg.payload = site;
+return [msg, null];

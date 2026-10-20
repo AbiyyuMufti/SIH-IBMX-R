@@ -7,18 +7,18 @@ var REFERENCE_WAIT_S = 300;
 // Months before the current month that a reference change rebuilds.
 var REFERENCE_MONTHS_BACK = 3;
 var MONTH_TABLES = [
-  'pbi_plan_opt',
-  'pbi_time_utilisation',
-  'pbi_daily_losses'
+  'Plan_OPT_EU',
+  'Time_Utilisation_EU',
+  'Daily_Losses_EU'
 ];
 var TABLES_OF = {
   plan_opt: MONTH_TABLES,
-  line_losses: ['pbi_daily_losses'],
-  volume_loss_correction: ['pbi_daily_losses'],
-  machine_names: ['pbi_machine_names'],
-  shift_naming: ['pbi_shift_naming'].concat(MONTH_TABLES),
+  line_losses: ['Daily_Losses_EU'],
+  volume_loss_correction: ['Daily_Losses_EU'],
+  machine_names: MONTH_TABLES,
+  shift_naming: MONTH_TABLES,
   glidepaths: MONTH_TABLES,
-  equipment_coding: ['pbi_daily_losses']
+  equipment_coding: ['Daily_Losses_EU']
 };
 
 var pending = flow.get('pending') || {};

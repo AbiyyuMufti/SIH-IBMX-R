@@ -7,7 +7,7 @@
 | **Tableau reads** | `eu_report/report/<table>/`, the whole folder with its subfolders: one data source per table |
 | **Switch** | `reportSource` per site (`provideam` or `sih`), optionally per line. The source in use writes to `report/`, the other one to `candidate/<source>/` |
 | **Asset ids** | Button `List SIH assets` on the Config tab (stages 2 to 5): every Insights Hub line with its id, the report name from the site's Machine Names file, and a block to paste into `lines` |
-| **Status** | Step 1 of the plan (2026-10-20): built and tested offline (`node scripts/test-vfc-asset-list.js`, plus the flow tests), not run in the VFC yet |
+| **Status** | Step 1 (Config, asset list) checked in the VFC by the user on 2026-10-20. Step 2 (the three Tableau tables, split by line source) built and tested offline, not run in the VFC yet |
 
 ## Folders in the data lake
 ```
@@ -19,7 +19,7 @@ eu_report/
   shift_report/<table>/site=<Site>/...        the shift report tables
   logs/<flow>/log_<YYYY-MM>.csv
 ```
-- The file name ends with the source (`_provideam`, `_sih`). Each flow replaces only its own files, so two sources never overwrite each other. Planned for step 2: when a line of a site comes from SIH and the rest from Provideam, both files of the month sit in the same folder and each holds only its own machines.
+- The file name ends with the source (`_provideam`, `_sih`). Each flow replaces only its own files, so two sources never overwrite each other. When a line of a site comes from SIH and the rest from Provideam, both files of the month sit in the same `report/` folder and each holds only its own machines (Provideam side built in step 2; the SIH side comes with step 4).
 - The subscribe nodes of the `PBI report listener` tab have the folders `/eu_report/pbi_report/source/` and `/eu_report/reference/` as node properties (they cannot read Config). If the root changes, change them too.
 
 ## Sites and lines in `1.1 CONFIG`
@@ -47,7 +47,7 @@ eu_report/
 | `lines[].id` | the asset id: the flows use only this |
 | `lines[].sih` | the name in Insights Hub, a label. The asset list warns when Insights Hub calls the id differently (renamed) |
 | `lines[].report` | the `MachineName` of the line in the report and in the Machine Names file of the site (B2 Line is `B2 Auto` in Provideam). Required, `?` is refused. The asset list proposes it from the Machine Names file and reports a Config value that is not there |
-| `lines[].reportSource` | optional, overrides the site for this line (used from step 2) |
+| `lines[].reportSource` | optional, overrides the site for this line: the rows whose `MachineName` is this line's `report` name follow it |
 | `lines[].shiftReport` | optional, `true` = the shift report flow builds this line |
 
 The Config node checks the lines when you click Apply (32 character id, no id twice, `sih` and `report` filled, known sources) and stores nothing when one is wrong (red status with the reason). It then adds two lists for the flows: `assetIds` (all lines of the site) and `reportLineIds` (the lines with `shiftReport`). Before 2026-10-20 these two lists were typed by hand.
@@ -60,17 +60,21 @@ Token, OEE asset list, one Asset Management call per asset (one per second, abou
 
 Read calls only, nothing is written. Asset list of 2026-10-20 (xcelerator, script, GET only): 37 lines outside `Test Line` in Hull, Nottingham (N1, N5, S04), Weinheim (L2), Mira (16), Tuzla (6), Chartres (1) and STP (1). The ids are not in this repo: the committed Config holds only the two Hull lines.
 
-## Which flow writes where (after step 1)
+## Which flow writes where (after step 2)
 | Flow | Writes |
 |---|---|
-| `PBI report build` (Provideam) | month tables to `report/` when the site's `reportSource` is `provideam`, else to `candidate/provideam/`; machine names, shift naming, calendar to `report/<table>/` (these three go away in step 2) |
+| `PBI report build` (Provideam) | `Plan_OPT_EU`, `Time_Utilisation_EU`, `Daily_Losses_EU` with `Data Source` = Provideam: the rows of a line on `provideam` (line, else site) to `report/`, the others to `candidate/provideam/` |
 | `Hull Power BI daily` (SIH) | always `candidate/sih/` (its tables do not have the report columns yet; step 4) |
 | `Hull shift report` | `shift_report/` |
 | `Power BI reference` | `<root>/<table>/`: to retire (the machine names come from the reference files, the calendar is dropped) |
 
 ## Plan
-1. Config and folders (this page). Done offline.
-2. The three report tables with the columns of the Tableau extracts (`Plan_OPT_EU`, `Daily_Losses_EU`, `Time_Utilisation_EU`, plus `Dept`, `Area`, `Product Type`, `Data Source`), the machine names and shift naming as lookups only, no calendar; split of the rows by line source.
+1. Config and folders (this page). Done, checked in the VFC.
+2. The three report tables with the columns of the Tableau extracts (`Plan_OPT_EU`, `Daily_Losses_EU`, `Time_Utilisation_EU`, plus `Dept`, `Area`, `Product Type`, `Data Source`), the machine names and shift naming as lookups only, no calendar; split of the rows by line source. Built offline 2026-10-20 ([pbi-report-build.md](pbi-report-build.md) "Step 6").
 3. Run in the VFC, check against Segun's files.
 4. The SIH flow on the same three tables, one tab for all sites.
 5. Switch sites or lines when the SIH rows match.
+
+## Old files in the lake (not deleted)
+- `eu_report/pbi_report/report/pbi_*`: the backfill and runs before 2026-10-20 (old table names and paths).
+- `eu_report/pbi_plan_opt/`, `eu_report/pbi_time_utilisation/`, `eu_report/pbi_daily_losses/` (site=Hull, daily files): written on 2026-10-20 by the old Hull Power BI daily tab (pre-step-1 code with the new root). Gone after the step 1 version of that tab is imported (it writes to `candidate/sih/`).

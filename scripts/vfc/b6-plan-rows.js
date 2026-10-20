@@ -262,10 +262,10 @@ node.status({
   shape: 'dot',
   text: site + ' ' + msg.month + ': ' + planRows.length + ' plan rows'
 });
-var utilMsg = tableMsg('pbi_time_utilisation', utilRows);
+var utilMsg = tableMsg('Time_Utilisation_EU', utilRows);
 return [
-  wants('pbi_plan_opt') ? tableMsg('pbi_plan_opt', planRows) : null,
-  wants('pbi_time_utilisation') ? utilMsg : null,
+  wants('Plan_OPT_EU') ? tableMsg('Plan_OPT_EU', planRows) : null,
+  wants('Time_Utilisation_EU') ? utilMsg : null,
   {
     topic: 'log',
     payload: msg.day + ' [' + msg.mode + '] CHECK ' + text

@@ -1,9 +1,9 @@
 // Builds flows/vfc-pbi-report.json, the VFC tab "PBI report build": it builds
-// the pbi_* tables of eu_report/pbi_report/report from the CSV files in the
-// data lake (eu_report/reference and eu_report/pbi_report/source).
-// Step 1: pbi_machine_names, pbi_shift_naming, pbi_calendar.
-// Step 2: pbi_plan_opt and pbi_time_utilisation, one file per site and month.
-// Step 3: pbi_daily_losses, one file per site and month.
+// the three Tableau tables Plan_OPT_EU, Time_Utilisation_EU and
+// Daily_Losses_EU from the Provideam CSV files in the data lake
+// (<root>/reference and <root>/pbi_report/source), one file per site and
+// month, to <root>/report or, for a line on another source,
+// <root>/candidate/provideam (docs/report-config.md).
 // Usage: node scripts/build-vfc-pbi-report-flow.js
 // Function code: scripts/vfc/b*.js (this flow), r5/r6/p1 (shared with the
 // reference flow). Do not edit the JSON. No loops, left to right, one lane
@@ -11,44 +11,28 @@
 import { writeFileSync, mkdirSync, existsSync, readFileSync } from 'node:fs';
 import { validateFlow } from './validate-flow.js';
 import {
-  code, makeBuilder, fn, linkInStep, end, split, join, delay, readStep,
+  code, makeBuilder, fn, linkInStep, end, split, delay, readStep,
   rawStep,
   addLogLanes, applyLayout, compactLanes, measureSpacing
 } from './lib-flow-builder.js';
-import { shiftSchema, calendarSchema } from './lib-pbi-schemas.js';
 import {
-  reportMachineSchema, reportPlanSchema, reportUtilSchema, reportLossSchema
+  reportPlanSchema, reportUtilSchema, reportLossSchema
 } from './lib-pbi-report-schemas.js';
-import { S } from './lib-flow-builder.js';
 
-const TABLES = [
-  'pbi_machine_names', 'pbi_shift_naming', 'pbi_calendar',
-  'pbi_plan_opt', 'pbi_time_utilisation', 'pbi_daily_losses'
-];
+const TABLES = ['Plan_OPT_EU', 'Time_Utilisation_EU', 'Daily_Losses_EU'];
 const FILE = 'vfc-pbi-report.json';
 
-// Parquet, path and write object: the end of a table lane.
-const tableEnd = (table, schema) => [
-  { t: 'parquet', key: `${table}_pq`, table, schema },
-  fn(`${table}_path`, `Set ${table} path`, 'r6-set-path.js', ['next'],
-    { __TABLE__: table }),
-  { t: 'write', key: `${table}_write`, table }
-];
-
-// Parquet, month path (site and month of the message) and write object.
+// The end of a table lane: machine columns, split by source, decide (one
+// message per folder), parquet, month path and write object.
 const monthEnd = (table, schema) => [
+  fn(`${table}_cols`, 'Add machine columns', 'b8-machine-columns.js',
+    ['next']),
+  fn(`${table}_split`, 'Split by source', 'b8-split-source.js', ['next']),
+  fn(`${table}_decide`, `Decide ${table}`, 'r5-decide.js', ['next', 'LOG'],
+    { __TABLE__: table }),
   { t: 'parquet', key: `${table}_pq`, table, schema },
   fn(`${table}_path`, `Set ${table} month path`, 'b6-month-path.js', ['next']),
   { t: 'write', key: `${table}_write`, table }
-];
-
-// Collect, decide, then the table end.
-const refEnd = (table, schema, extra = []) => [
-  fn(`${table}_collect`, `Collect ${table}`, 'r5-collect.js', ['next']),
-  ...extra,
-  fn(`${table}_decide`, `Decide ${table}`, 'r5-decide.js', ['next', 'LOG'],
-    { __TABLE__: table }),
-  ...tableEnd(table, schema)
 ];
 
 // The VFC nodes without a helper in lib-flow-builder.js.
@@ -70,13 +54,13 @@ function buildFlow() {
   const stage1 = b.nextStage();
   comment(
     `[${stage1}] TRIGGER & TASK SETTINGS`,
-    `STAGE ${stage1} - TRIGGER AND TASK SETTINGS. Builds the Power BI tables of eu_report/pbi_report/report from the CSV files in the data lake. Tables: pbi_machine_names (Machine Names files, filters of the report queries), pbi_shift_naming (the distinct shifts), pbi_calendar (generated), pbi_plan_opt and pbi_time_utilisation (the month files of the sites, with Glidepaths targets and shift names). The inject payload is the job: {"tables": [...], "sites": [...], "from": "YYYY-MM", "to": "YYYY-MM"}; a missing list means all, missing months mean last month and this month. Nothing is written while the table is true in DRY_RUN of 1.1.`,
+    `STAGE ${stage1} - TRIGGER AND TASK SETTINGS. Builds the three Tableau tables Plan_OPT_EU, Time_Utilisation_EU and Daily_Losses_EU from the Provideam CSV files in the data lake, one file per site and month, with Dept, Area and Product Type from the Machine Names file of the site and Data Source = Provideam. The rows of a line whose source in 1.1 CONFIG is Provideam go to <root>/report (what Tableau reads), the rows of a line on another source to <root>/candidate/provideam. The inject payload is the job: {"tables": [...], "sites": [...], "from": "YYYY-MM", "to": "YYYY-MM"}; a missing list means all, missing months mean last month and this month. Nothing is written while the table is true in DRY_RUN of 1.1.`,
     r
   );
   add({
     id: b.newId(), type: 'inject', name: 'Run (edit payload)', topic: '',
-    payload: '{"tables":["pbi_plan_opt","pbi_time_utilisation"],' +
-      '"sites":["Hull"],"from":"2026-09","to":"2026-10"}',
+    payload: '{"tables":["Plan_OPT_EU","Time_Utilisation_EU",' +
+      '"Daily_Losses_EU"],"sites":["Hull"],"from":"2026-09","to":"2026-10"}',
     payloadType: 'json', repeat: '', repeatEnd: '0', endTime: '0',
     crontab: '', offset: 'NaN', once: false, properties: '',
     timezone: 'UTC', betweentimesunit: 'm', showNextExecution: false,
@@ -107,65 +91,12 @@ function buildFlow() {
   });
   add({
     id: id('startFn'), type: 'function', name: '1.2 Start jobs',
-    func: code('b2-start-jobs.js'), outputs: 4, language: 'javascript',
+    func: code('b2-start-jobs.js'), outputs: 1, language: 'javascript',
     noerr: 0, x: col(2), y: rowY(r),
-    wires: [
-      [linkOut('MACHINES', col(3), rowY(r) - 60)],
-      [linkOut('SHIFTS', col(3), rowY(r) - 20)],
-      [linkOut('CALENDAR', col(3), rowY(r) + 20)],
-      [linkOut('SITE', col(3), rowY(r) + 60)]
-    ]
+    wires: [[linkOut('SITE', col(3), rowY(r))]]
   });
   r++;
 
-  lane(r++, 'MACHINE NAMES: FILES',
-    'one message per site: the folder eu_report/reference/machine_names/site=<Site>/ is listed, the newest .csv file is read and parsed (header row, one message with all rows), and the rows of the site are built with the filters of the report queries (Hull: no "GT4 - Auto", Dept Dries Pack or Liquids Pack; Nottingham: Area SD Packing or Strepsils Packing; Weinheim: all). A site without a file gives a failed item: then nothing is written for the table.',
-    [
-      linkInStep('MACHINES'),
-      split('mnSplit'),
-      fn('mnFolder', 'Set site folder', 'b3-site-folder.js', ['next']),
-      listNode('mnList'),
-      fn('mnPick', 'Pick the file', 'b3-pick-file.js', ['next', 'MN ITEM']),
-      readStep('mnRead', 'Read Machine Names file'),
-      csvNode('mnCsv'),
-      fn('mnRows', 'Build machine rows', 'b4-machine-rows.js', ['next']),
-      end('MN ITEM')
-    ]);
-  lane(r++, 'pbi_machine_names',
-    'the join waits for the items of all sites, collect puts the rows in one list, decide writes nothing when a site failed or in dry-run mode, then parquet, path and write object. Unique Machine Name = machine name + "-" + site, as in the report. One file for all sites.',
-    [
-      linkInStep('MN ITEM'),
-      join('mnJoin', 'Wait for all sites'),
-      ...refEnd('pbi_machine_names', reportMachineSchema)
-    ]);
-  lane(r++, 'SHIFT NAMES: FILE',
-    'the folder eu_report/reference/shift_naming/site=All/ is listed, the newest .csv file (Shift Patterns Provideam EU, columns ShiftName and Shift) is read and parsed, one row per line.',
-    [
-      linkInStep('SHIFTS'),
-      fn('snFolder', 'Set shift folder', 'b3-shift-folder.js', ['next']),
-      listNode('snList'),
-      fn('snPick', 'Pick the file', 'b3-pick-file.js', ['next', 'SN ITEM']),
-      readStep('snRead', 'Read Shift Patterns file'),
-      csvNode('snCsv'),
-      fn('snRows', 'Build shift rows', 'b4-shift-rows.js', ['next']),
-      end('SN ITEM')
-    ]);
-  lane(r++, 'pbi_shift_naming',
-    'collect, keep every shift once (the report takes the distinct Shift values: Afternoon, Blue, Day, Gold, Green, Night, Red), decide, parquet, path, write object.',
-    [
-      linkInStep('SN ITEM'),
-      ...refEnd('pbi_shift_naming', shiftSchema, [
-        fn('snDistinct', 'Keep distinct shifts', 'm5-distinct.js', ['next'])
-      ])
-    ]);
-  lane(r++, 'pbi_calendar',
-    'generated, no file: one row per date from CALENDAR_START to CALENDAR_END in 1.1 (2011-01-01 to 2050-12-31 as in the report, 14610 rows), Monday week start, week number as DAX WEEKNUM(date, 2). Dates are text YYYY-MM-DD.',
-    [
-      linkInStep('CALENDAR'),
-      fn('calFn', 'Build calendar rows', 'p1-build-calendar.js',
-        ['next', 'LOG']),
-      ...tableEnd('pbi_calendar', calendarSchema)
-    ]);
   lane(r++, 'SITE SETUP: GLIDEPATHS',
     'one message per site (plan OPT, time utilisation and daily losses share this setup): the folder eu_report/reference/glidepaths/site=<Site>/ is listed, the newest .csv is read and parsed, and the target lookup of the site is stored in flow context: machine-site and month (01/MM/YYYY) give the OEE target (bucket "% OEE"), the PDT target ("Planned Downtime (Total)") and the UPDT target ("Unplanned Downtime (Total)"), as the three target queries of the report do after the unpivot. A site without a file stops here and the log says so.',
     [
@@ -179,6 +110,21 @@ function buildFlow() {
       readStep('plGlideRead', 'Read Glidepaths file'),
       csvNode('plGlideCsv'),
       fn('plTargets', 'Build target lookup', 'b5-target-lookup.js',
+        ['next', 'PLAN FAILED']),
+      end('SITE MACHINES')
+    ]);
+  lane(r++, 'SITE SETUP: MACHINE NAMES',
+    'the Machine Names file of the site (<root>/reference/machine_names/site=<Site>/, newest .csv) is listed, read and parsed, and the lookup MachineName to Dept, Area and Product Type is stored in flow context, with the filters of the report queries (Hull: no "GT4 - Auto", Dept Dries Pack or Liquids Pack; Nottingham: Area SD Packing or Strepsils Packing; Weinheim: all). A machine left out has empty Dept, Area and Product Type in the tables, as in the report. A site without a file stops here and the log says so.',
+    [
+      linkInStep('SITE MACHINES'),
+      fn('mnFolder', 'Set machine names folder', 'b3-site-folder.js',
+        ['next']),
+      listNode('mnList'),
+      fn('mnPick', 'Pick the file', 'b3-pick-file.js',
+        ['next', 'PLAN FAILED']),
+      readStep('mnRead', 'Read Machine Names file'),
+      csvNode('mnCsv'),
+      fn('mnLookup', 'Build machine lookup', 'b5-machine-lookup.js',
         ['next', 'PLAN FAILED']),
       end('PLAN SHIFTS')
     ]);
@@ -211,7 +157,7 @@ function buildFlow() {
       end('PLAN FILE')
     ]);
   lane(r++, 'PLAN OPT: ROWS',
-    'one month of one site: the file is read and parsed, then pbi_plan_opt rows (machine and area rules of the site, shift name from the Shift Patterns file, minutes without seconds, Unique Machine Name, Product Key, the three targets of the month) and pbi_time_utilisation rows (own machine rules, sum per machine and day, minutes with seconds) are built. Out 3 is a check line: rows read, kept, left out, shifts without a mapping, machines without a target.',
+    'one month of one site: the file is read and parsed, then Plan_OPT_EU rows (machine and area rules of the site, shift name from the Shift Patterns file, minutes without seconds, Unique Machine Name, Product Key, the three targets of the month) and Time_Utilisation_EU rows (own machine rules, sum per machine and day, minutes with seconds) are built. Out 3 is a check line: rows read, kept, left out, shifts without a mapping, machines without a target.',
     [
       linkInStep('PLAN FILE'),
       fn('plMonthFile', 'Set month file', 'b5-month-file.js', ['next']),
@@ -220,22 +166,17 @@ function buildFlow() {
       fn('plRows', 'Build plan rows', 'b6-plan-rows.js',
         ['PLAN TABLE', 'UTIL TABLE', 'LOG'], {}, true)
     ]);
-  lane(r++, 'pbi_plan_opt',
-    'decide (nothing is written in dry-run mode or for an empty month), then parquet, the month path eu_report/pbi_report/report/pbi_plan_opt/site=<Site>/pbi_plan_opt_<YYYY-MM>.parquet and write object. A rerun replaces the month.',
+  lane(r++, 'Plan_OPT_EU',
+    'Dept, Area, Product Type from the machine lookup of the site and Data Source = Provideam are added, the rows are split by the source of their line in 1.1 CONFIG (a line on Provideam: <root>/report, any other: <root>/candidate/provideam, one message per folder), then decide (nothing is written in dry-run mode or for an empty month), parquet, the month path <folder>/Plan_OPT_EU/site=<Site>/Plan_OPT_EU_<YYYY-MM>_provideam.parquet and write object. A rerun replaces the month.',
     [
       linkInStep('PLAN TABLE'),
-      fn('pbi_plan_opt_decide', 'Decide pbi_plan_opt', 'r5-decide.js',
-        ['next', 'LOG'], { __TABLE__: 'pbi_plan_opt' }),
-      ...monthEnd('pbi_plan_opt', reportPlanSchema)
+      ...monthEnd('Plan_OPT_EU', reportPlanSchema)
     ]);
-  lane(r++, 'pbi_time_utilisation',
-    'the same for pbi_time_utilisation: one row per machine and day, total, planned and OEE time summed in minutes, All Time 1440.',
+  lane(r++, 'Time_Utilisation_EU',
+    'the same for Time_Utilisation_EU: one row per machine and day, total, planned and OEE time summed in minutes, All Time 1440.',
     [
       linkInStep('UTIL TABLE'),
-      fn('pbi_time_utilisation_decide', 'Decide pbi_time_utilisation',
-        'r5-decide.js', ['next', 'LOG'],
-        { __TABLE__: 'pbi_time_utilisation' }),
-      ...monthEnd('pbi_time_utilisation', reportUtilSchema)
+      ...monthEnd('Time_Utilisation_EU', reportUtilSchema)
     ]);
   lane(r++, 'LOSSES: EQUIPMENT',
     'daily losses only: the Equipment Coding file of the site (eu_report/reference/equipment_coding/site=<Site>/) is read and the lookup "machine + loss description" to equipment is stored in flow context (an empty equipment is "Unclassed", as in the report queries). Weinheim has no Merged Unique Identifier column: the key is built from machine and description.',
@@ -310,31 +251,24 @@ function buildFlow() {
       fn('lsRows', 'Build loss rows', 'b7-loss-rows.js',
         ['LOSS TABLE', 'LOG'], {}, true)
     ]);
-  lane(r++, 'pbi_daily_losses',
-    'decide (nothing is written in dry-run mode or for an empty month), then parquet, the month path eu_report/pbi_report/report/pbi_daily_losses/site=<Site>/pbi_daily_losses_<YYYY-MM>.parquet and write object. A rerun replaces the month.',
+  lane(r++, 'Daily_Losses_EU',
+    'the same for Daily_Losses_EU: machine columns, split by source, decide, parquet, the month path <folder>/Daily_Losses_EU/site=<Site>/Daily_Losses_EU_<YYYY-MM>_provideam.parquet and write object.',
     [
       linkInStep('LOSS TABLE'),
-      fn('pbi_daily_losses_decide', 'Decide pbi_daily_losses', 'r5-decide.js',
-        ['next', 'LOG'], { __TABLE__: 'pbi_daily_losses' }),
-      ...monthEnd('pbi_daily_losses', reportLossSchema)
+      ...monthEnd('Daily_Losses_EU', reportLossSchema)
     ]);
   lane(r++, 'SITE SETUP: FAILED',
-    'a Glidepaths, Shift Patterns or Equipment Coding file that is missing or empty: one log line, nothing is built for that site.',
+    'a Glidepaths, Machine Names, Shift Patterns or Equipment Coding file that is missing or empty: one log line, nothing is built for that site.',
     [
       linkInStep('PLAN FAILED'),
       fn('plFailed', 'Describe failure', 'b5-pick-failed.js', ['LOG'])
     ]);
   addLogLanes(b, r, 'pbi-report', true);
 
-  // The calendar node reads the dry-run switch of its own table.
-  const calendar = b.nodes.find((n) => n.id === id('calFn'));
-  calendar.func = calendar.func.replace(
-    'if (cfg.dryRun) {', 'if (cfg.dryRun.pbi_calendar) {');
-
   b.nodes.unshift({
     id: b.TAB, type: 'tab', label: 'PBI report build',
     disabled: false, allowCycles: false,
-    info: 'Builds the pbi_* tables of eu_report/pbi_report/report from the CSV files in the data lake (machine names, shift names, calendar, plan OPT, time utilisation). No API calls. Needs the Config tab.'
+    info: 'Builds Plan_OPT_EU, Time_Utilisation_EU and Daily_Losses_EU (the Tableau tables) from the Provideam CSV files in the data lake, to <root>/report or <root>/candidate/provideam by the source of each line in Config. No API calls. Needs the Config tab.'
   });
   return b.nodes;
 }

@@ -1,4 +1,4 @@
-// Builds the pbi_daily_losses rows of one site and month with the steps of
+// Builds the Daily_Losses_EU rows of one site and month with the steps of
 // the report queries (Daily Line Losses H, N, W and Daily Losses Provideam).
 // In: msg.payload = parsed line loss file; flow context vc_, cap_, equip_,
 // targets_, shiftMap. Out 1: the table message, out 2: a check log line.
@@ -301,7 +301,7 @@ rows.forEach(function (row) {
       'Date': dayNumber(start.slice(0, 10)),
       'Time': timeOfDay(start.slice(11, 19)),
       'MachineName': machine,
-      'PartDesc': part,
+      'PartName': part,
       'Shift Time': shift,
       'ShiftName': shift,
       'OEELossLvl3Group': group,
@@ -311,7 +311,7 @@ rows.forEach(function (row) {
       'SiteName': site,
       'Unique Machine Name': unique,
       'Breakdown Types': breakdownTypes,
-      'ShiftStartDate.1': dayNumber(day),
+      'ShiftStartDate': dayNumber(day),
       'Comment': asText(row.Comment) === '' ? null : asText(row.Comment),
       'Product Key': unique + ' ' + part,
       'Volume Key': volumeKey,
@@ -350,7 +350,7 @@ node.status({
 });
 return [
   {
-    table: 'pbi_daily_losses',
+    table: 'Daily_Losses_EU',
     rows: out,
     failed: [],
     skipped: [],

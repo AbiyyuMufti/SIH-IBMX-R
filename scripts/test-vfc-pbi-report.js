@@ -1,13 +1,12 @@
-// Offline test of flows/vfc-pbi-report.json (step 1: machine names, shift
-// names, calendar; step 2: plan OPT and time utilisation; step 3: daily losses). The data lake is a map in memory with small CSV files.
+// Offline test of flows/vfc-pbi-report.json: Plan_OPT_EU, Time_Utilisation_EU
+// and Daily_Losses_EU with the machine columns, the split by line source.
+// The data lake is a map in memory with small CSV files.
 // Usage: node scripts/test-vfc-pbi-report.js platform=xcelerator
-//   node scripts/test-vfc-pbi-report.js platform=xcelerator real out=<file>
 //   node scripts/test-vfc-pbi-report.js platform=xcelerator real plan dir=<dir>
 //   (plan: also the real plan OPT month files, writes plan.json and util.json)
 //   node scripts/test-vfc-pbi-report.js platform=xcelerator real loss from=2026-08 to=2026-09 dir=<dir>
 //   (loss: the real daily losses of those months, writes loss.json)
-//   real: reads the real files of sharepoint/reference (local, git-ignored)
-//   and writes the machine rows to <file> for a comparison with the report.
+//   real: reads the real files of sharepoint/ (local, git-ignored)
 import { readFileSync, readdirSync, writeFileSync, existsSync } from 'node:fs';
 import { runFlow, testPlatform } from './lib-vfc-runner.js';
 
@@ -71,28 +70,24 @@ const rawRowsOf = (stats, name) => (stats.parquetPayloads[name] || []).flat();
 const dayText = (n) => (n === null ? null : new Date(n * 86400000).toISOString().slice(0, 10));
 const timeText = (ms) => (ms === null ? null : new Date(ms).toISOString().slice(11, 19));
 const RENAME = {
-  'Write pbi_machine_names parquet': {
-    MachineName: 'machine_name', Dept: 'dept', Area: 'area', 'Product Type': 'product_type',
-    SiteName: 'site_name', 'Unique Machine Name': 'unique_machine_name'
-  },
-  'Write pbi_plan_opt parquet': {
+  'Write Plan_OPT_EU parquet': {
     Date: ['date', dayText], AreaName: 'area_name', MachineName: 'machine_name', ShiftName: 'shift_name',
     PartName: 'part_name', 'Good Parts': 'good_parts', Capacity: 'capacity', 'Total Time': 'total_time',
     'Planned OpT': 'planned_opt', 'OEE Time': 'oee_time', 'Downtime Units': 'downtime_units',
     SiteName: 'site_name', 'Unique Machine Name': 'unique_machine_name', 'Product Key': 'product_key',
     'UPDT Target': 'updt_target', 'PDT Target': 'pdt_target', 'OEE Target': 'oee_target'
   },
-  'Write pbi_time_utilisation parquet': {
+  'Write Time_Utilisation_EU parquet': {
     Date: ['date', dayText], MachineName: 'machine_name', 'OEE Time Total': 'oee_time_total',
     'Total Time Total': 'total_time_total', 'Planned OPT Total': 'planned_opt_total',
     SiteName: 'site_name', 'Unique Machine Name': 'unique_machine_name', 'All Time': 'all_time'
   },
-  'Write pbi_daily_losses parquet': {
-    Date: ['date', dayText], Time: ['time', timeText], MachineName: 'machine_name', PartDesc: 'part_name',
+  'Write Daily_Losses_EU parquet': {
+    Date: ['date', dayText], Time: ['time', timeText], MachineName: 'machine_name', PartName: 'part_name',
     ShiftName: 'shift_name', OEELossLvl3Group: 'loss_lvl3_group', OEELossLvl3SubGroup: 'loss_lvl3_sub_group',
     OEELossLvl3Desc: 'loss_lvl3_desc', Duration: ['duration', (ms) => (ms === null ? null : Math.floor(ms / 60000))],
     SiteName: 'site_name', 'Unique Machine Name': 'unique_machine_name', 'Breakdown Types': 'breakdown_types',
-    'ShiftStartDate.1': ['shift_start_date', dayText], Comment: 'comment', 'Product Key': 'product_key',
+    ShiftStartDate: ['shift_start_date', dayText], Comment: 'comment', 'Product Key': 'product_key',
     'Volume Key': 'volume_key', 'Loss Units': 'loss_units', Equipment: 'equipment',
     'Loss Target Key': 'loss_target_key', Value: ['value', (v) => (v === null ? null : Number(v))],
     'Volume Total': 'volume_total', 'Loss Final Level': 'loss_final_level'
@@ -115,83 +110,14 @@ const rowsOf = (stats, name) => {
 };
 const logText = (stats) => stats.logs.map(String).join('\n');
 
-// 1. everything, write mode
-const STEP1 = ['pbi_machine_names', 'pbi_shift_naming', 'pbi_calendar'];
-let stats = await run({ tables: STEP1 });
-check(stats.errors.length === 0, 'no error: ' + stats.errors.join(' | '));
-check(JSON.stringify(tableWrites(stats).sort()) === JSON.stringify([
-  `${OUT}/pbi_calendar/pbi_calendar.parquet`,
-  `${OUT}/pbi_machine_names/pbi_machine_names.parquet`,
-  `${OUT}/pbi_shift_naming/pbi_shift_naming.parquet`
-]), 'three files written at the planned paths: ' + tableWrites(stats).join(', '));
-const machines = rowsOf(stats, 'Write pbi_machine_names parquet');
-const byKey = Object.fromEntries(machines.map((m) => [m.unique_machine_name, m]));
-check(machines.length === 5, `machine rows 5 (Hull 2, Nottingham 2, Weinheim 1): ${machines.length}`);
-check(!byKey['GT4 - Auto-Hull'] && !byKey['Old Mixer-Hull'], 'Hull: GT4 - Auto and the Processing dept are left out');
-check(!byKey['Fette 10-Nottingham'] && byKey['S06-Nottingham'], 'Nottingham: only the packing areas');
-check(byKey['Line 4, new-Weinheim'] && byKey['Line 4, new-Weinheim'].dept === 'Packing', 'Weinheim: all rows, a quoted comma survives');
-check(byKey['B2 Auto-Hull'].site_name === 'Hull' && byKey['B2 Auto-Hull'].area === 'Liquids' &&
-  byKey['B2 Auto-Hull'].product_type === 'Bottles', 'machine row columns');
-const shifts = rowsOf(stats, 'Write pbi_shift_naming parquet').map((s) => s.shift).sort();
-check(JSON.stringify(shifts) === JSON.stringify(['Blue', 'Day', 'Night']), 'shift names distinct: ' + shifts.join(','));
-const calendar = rowsOf(stats, 'Write pbi_calendar parquet');
-check(calendar.length === 14610 && calendar[0].date === '2011-01-01' &&
-  calendar[calendar.length - 1].date === '2050-12-31', `calendar 14610 rows from 2011-01-01 to 2050-12-31: ${calendar.length}`);
-const mon = calendar.find((c) => c.date === '2026-10-15');
-check(mon.week_start === '2026-10-12' && mon.week_number === 42 && mon.month === 'October',
-  'calendar columns for 2026-10-15 (Thursday): week starts 2026-10-12, week 42');
-// WEEKNUM(date, 2): week 1 holds 1 January, so a late December day can be 53
-const week = (d) => calendar.find((c) => c.date === d).week_number;
-check(week('2011-01-01') === 1 && week('2011-01-03') === 2 && week('2024-12-30') === 53 &&
-  week('2025-01-01') === 1 && week('2050-12-31') === 53,
-  'week number like DAX WEEKNUM(date, 2): 2011-01-01 week 1, 2024-12-30 week 53, 2025-01-01 week 1');
-check(machines.every((m) => Number.isInteger(m.loaded_at)), 'loaded_at is a timestamp number');
-
-// 2. dry run: nothing written, the log says why
-stats = await run({ tables: STEP1 }, { write: false });
-check(tableWrites(stats).length === 0, 'dry run: no table file written');
-check((logText(stats).match(/DRY RUN/g) || []).length >= 3, 'dry run: a DRY RUN log line per table');
-
-// 3. parameters: one table, one site
-stats = await run({ tables: ['pbi_shift_naming'] });
-check(JSON.stringify(tableWrites(stats)) === JSON.stringify([`${OUT}/pbi_shift_naming/pbi_shift_naming.parquet`]),
-  'job with one table writes only that table');
-stats = await run({ tables: ['pbi_machine_names'], sites: ['Hull'] });
-const hull = rowsOf(stats, 'Write pbi_machine_names parquet');
-check(hull.length === 5, 'machine names always cover all sites (one file), whatever the sites of the job: ' + hull.length);
-
-// 4. a site without a file: nothing written for that table, others fine
-const lake = makeLake();
-lake.delete(`${REF}/machine_names/site=Weinheim/Wein_MachineNames.csv`);
-stats = await run({ tables: STEP1 }, { lake });
-check(!tableWrites(stats).some((p) => p.includes('pbi_machine_names')), 'missing site file: machine names not written');
-check(/FAILED, NOTHING WRITTEN[^\n]*Weinheim/.test(logText(stats)), 'missing site file: the log names the site');
-check(tableWrites(stats).length === 2, 'missing site file: the other two tables are still written');
-
-// 5. the newest of two files is read
-const two = makeLake();
-two.set(`${REF}/shift_naming/site=All/Old Patterns.csv`, 'ShiftName,Shift\nX,Purple\n');
-stats = await run({ tables: ['pbi_shift_naming'] }, {
-  lake: two,
-  lakeTimes: {
-    [`${REF}/shift_naming/site=All/Old Patterns.csv`]: '2025-01-01T00:00:00.000Z',
-    [`${REF}/shift_naming/site=All/Shift Patterns.csv`]: '2026-10-01T00:00:00.000Z'
-  }
-});
-check(JSON.stringify(rowsOf(stats, 'Write pbi_shift_naming parquet').map((s) => s.shift).sort()) ===
-  JSON.stringify(['Blue', 'Day', 'Night']), 'two files: the newest one is read');
-
-// 5b. the list node gives the key with the tenant folder in front
-stats = await run({ tables: ['pbi_machine_names'] }, { listKeyPrefix: 'data/ten=reckitt/' });
-check(rowsOf(stats, 'Write pbi_machine_names parquet').length === 5,
-  'keys with data/ten=<tenant>/ in front are read (prefix removed)');
-stats = await run({ tables: ['pbi_machine_names'] }, { listKeyPrefix: '/' });
-check(rowsOf(stats, 'Write pbi_machine_names parquet').length === 5,
-  'keys with a leading slash are read');
-
-// 6. an unknown table is refused before anything runs
-stats = await run({ tables: ['pbi_nothing'] });
-check(tableWrites(stats).length === 0 && stats.errors.some((e) => /unknown/.test(e)), 'unknown table name: error, nothing written');
+let stats;
+// 6. an unknown table is refused before anything runs (the reference tables
+// pbi_machine_names, pbi_shift_naming and pbi_calendar are gone)
+for (const table of ['pbi_nothing', 'pbi_machine_names', 'pbi_calendar']) {
+  stats = await run({ tables: [table] });
+  check(tableWrites(stats).length === 0 && stats.errors.some((e) => /unknown/.test(e)),
+    `unknown table ${table}: error, nothing written`);
+}
 
 // ---- step 2: plan OPT and time utilisation (synthetic month files) ----
 const SRC = 'eu_report/pbi_report/source';
@@ -248,9 +174,9 @@ const planLake = () => {
   ].join('\n'));
   return lake;
 };
-const STEP2 = ['pbi_plan_opt', 'pbi_time_utilisation'];
-const PLAN = 'Write pbi_plan_opt parquet';
-const UTIL = 'Write pbi_time_utilisation parquet';
+const STEP2 = ['Plan_OPT_EU', 'Time_Utilisation_EU'];
+const PLAN = 'Write Plan_OPT_EU parquet';
+const UTIL = 'Write Time_Utilisation_EU parquet';
 const outPath = (table, site, month, out = OUT) =>
   `${out}/${table}/site=${site}/${table}_${month}_provideam.parquet`;
 
@@ -258,7 +184,7 @@ const outPath = (table, site, month, out = OUT) =>
 stats = await run({ tables: STEP2, sites: ['Hull'], from: '2026-09', to: '2026-09' }, { lake: planLake() });
 check(stats.errors.length === 0, 'plan: no error: ' + stats.errors.join(' | '));
 check(JSON.stringify(tableWrites(stats).sort()) === JSON.stringify([
-  outPath('pbi_plan_opt', 'Hull', '2026-09'), outPath('pbi_time_utilisation', 'Hull', '2026-09')]),
+  outPath('Plan_OPT_EU', 'Hull', '2026-09'), outPath('Time_Utilisation_EU', 'Hull', '2026-09')]),
   'plan: one file per table, site and month: ' + tableWrites(stats).join(', '));
 
 // 8b. A site whose reportSource is sih: the Provideam months go to the
@@ -270,8 +196,8 @@ check(JSON.stringify(tableWrites(stats).sort()) === JSON.stringify([
     { lake: planLake(), configNodes: sihConfig });
   const files = cand.written.filter((p) => !p.includes('/logs/')).sort();
   check(JSON.stringify(files) === JSON.stringify([
-    outPath('pbi_plan_opt', 'Hull', '2026-09', CANDIDATE),
-    outPath('pbi_time_utilisation', 'Hull', '2026-09', CANDIDATE)]),
+    outPath('Plan_OPT_EU', 'Hull', '2026-09', CANDIDATE),
+    outPath('Time_Utilisation_EU', 'Hull', '2026-09', CANDIDATE)]),
   'reportSource sih: the Provideam months of Hull go to candidate/provideam: ' + files.join(', '));
 }
 let plan = rowsOf(stats, PLAN);
@@ -303,8 +229,8 @@ check(u1.all_time === 1440 && u1.unique_machine_name === 'B2 Auto-Hull', 'time u
 // 9. months of the job: a missing month is skipped, an existing one is built
 stats = await run({ tables: STEP2, sites: ['Hull'], from: '2026-08', to: '2026-10' }, { lake: planLake() });
 check(JSON.stringify(tableWrites(stats).sort()) === JSON.stringify([
-  outPath('pbi_plan_opt', 'Hull', '2026-09'), outPath('pbi_plan_opt', 'Hull', '2026-10'),
-  outPath('pbi_time_utilisation', 'Hull', '2026-09'), outPath('pbi_time_utilisation', 'Hull', '2026-10')]),
+  outPath('Plan_OPT_EU', 'Hull', '2026-09'), outPath('Plan_OPT_EU', 'Hull', '2026-10'),
+  outPath('Time_Utilisation_EU', 'Hull', '2026-09'), outPath('Time_Utilisation_EU', 'Hull', '2026-10')]),
   'months: 2026-09 and 2026-10 built, 2026-08 has no file');
 check(/no plan_opt file for 2026-08, skipped/.test(logText(stats)), 'months: the missing month is logged');
 const oct = rowsOf(stats, PLAN).find((r) => r.date === '2026-10-03');
@@ -331,9 +257,9 @@ check(/FAILED, NOTHING WRITTEN: glidepaths Nottingham/.test(logText(stats)), 'no
 
 // 12. dry run and one table
 stats = await run({ tables: STEP2, sites: ['Hull'], from: '2026-09', to: '2026-09' }, { lake: planLake(), write: false });
-check(tableWrites(stats).length === 0 && /DRY RUN: pbi_plan_opt 3 rows/.test(logText(stats)), 'plan dry run: nothing written, rows counted in the log');
-stats = await run({ tables: ['pbi_time_utilisation'], sites: ['Hull'], from: '2026-09', to: '2026-09' }, { lake: planLake() });
-check(JSON.stringify(tableWrites(stats)) === JSON.stringify([outPath('pbi_time_utilisation', 'Hull', '2026-09')]),
+check(tableWrites(stats).length === 0 && /DRY RUN: Plan_OPT_EU 3 rows/.test(logText(stats)), 'plan dry run: nothing written, rows counted in the log');
+stats = await run({ tables: ['Time_Utilisation_EU'], sites: ['Hull'], from: '2026-09', to: '2026-09' }, { lake: planLake() });
+check(JSON.stringify(tableWrites(stats)) === JSON.stringify([outPath('Time_Utilisation_EU', 'Hull', '2026-09')]),
   'job with one table writes only that table');
 stats = await run({ tables: STEP2, sites: ['Hull'], from: '2026-09', to: '2026-09' }, { lake: planLake(), listKeyPrefix: 'data/ten=reckitt/' });
 check(tableWrites(stats).length === 2, 'plan: keys with the tenant folder are read');
@@ -410,12 +336,12 @@ const lossLake = () => {
   ].join('\n'));
   return lake;
 };
-const LOSS = 'Write pbi_daily_losses parquet';
-const lossJob = (sites) => ({ tables: ['pbi_daily_losses'], sites, from: '2026-09', to: '2026-09' });
+const LOSS = 'Write Daily_Losses_EU parquet';
+const lossJob = (sites) => ({ tables: ['Daily_Losses_EU'], sites, from: '2026-09', to: '2026-09' });
 
 stats = await run(lossJob(['Hull']), { lake: lossLake() });
 check(stats.errors.length === 0, 'losses: no error: ' + stats.errors.join(' | '));
-check(JSON.stringify(tableWrites(stats)) === JSON.stringify([outPath('pbi_daily_losses', 'Hull', '2026-09')]),
+check(JSON.stringify(tableWrites(stats)) === JSON.stringify([outPath('Daily_Losses_EU', 'Hull', '2026-09')]),
   'losses: one file per site and month: ' + tableWrites(stats).join(', '));
 let loss = rowsOf(stats, LOSS);
 check(loss.length === 5, `losses: 5 rows (duplicate start, Micro Stoppage, B1 - Auto and 4 Tonne are left out; the duplicate equipment key doubles one row): ${loss.length}`);
@@ -477,41 +403,37 @@ stats = await run(lossJob(['Hull', 'Weinheim']), { lake: noEq });
 check(tableWrites(stats).length === 1 && /FAILED, NOTHING WRITTEN: equipment_coding Hull/.test(logText(stats)),
   'losses: no equipment file for a site: that site is skipped and logged, the other is built');
 stats = await run(lossJob(['Hull']), { lake: lossLake(), write: false });
-check(tableWrites(stats).length === 0 && /DRY RUN: pbi_daily_losses 5 rows/.test(logText(stats)), 'losses dry run: nothing written');
-stats = await run({ tables: ['pbi_plan_opt', 'pbi_daily_losses'], sites: ['Hull'], from: '2026-09', to: '2026-09' }, { lake: lossLake() });
+check(tableWrites(stats).length === 0 && /DRY RUN: Daily_Losses_EU 5 rows/.test(logText(stats)), 'losses dry run: nothing written');
+stats = await run({ tables: ['Plan_OPT_EU', 'Daily_Losses_EU'], sites: ['Hull'], from: '2026-09', to: '2026-09' }, { lake: lossLake() });
 check(tableWrites(stats).length === 2, 'plan OPT and losses in one job: both written (the shared setup is run once per site)');
 
-// ---- 13. the column names and types of the Tableau workbook (WIP5) ----
-// Names and order of the four data sources of "EU Daily OEE Report - WIP5",
-// then our own extra columns. The three columns the diagram marks as not
-// needed (Merged, ShiftName - Copy, Volume Key.1) are left out.
+// ---- 13. the column names and types of the Tableau data sources ----
+// Names and order of the extracts Plan_OPT_EU, Time_Utilisation_EU and
+// Daily_Losses_EU (with Dept, Area, Product Type), then Data Source and our
+// own extra columns. Merged, ShiftName - Copy, Volume Key.1 are left out.
 const TABLEAU = {
-  'Write pbi_machine_names parquet': [
-    ['MachineName', 'UTF8'], ['Dept', 'UTF8'], ['Area', 'UTF8'], ['Product Type', 'UTF8'],
-    ['SiteName', 'UTF8'], ['Unique Machine Name', 'UTF8'], ['loaded_at', 'TIMESTAMP_MILLIS']
-  ],
   [PLAN]: [
     ['Date', 'DATE'], ['AreaName', 'UTF8'], ['MachineName', 'UTF8'], ['ShiftName', 'UTF8'],
     ['PartName', 'UTF8'], ['Good Parts', 'INT64'], ['Capacity', 'DOUBLE'], ['Total Time', 'INT64'],
     ['Planned OpT', 'INT64'], ['OEE Time', 'INT64'], ['Downtime Units', 'DOUBLE'], ['SiteName', 'UTF8'],
     ['Unique Machine Name', 'UTF8'], ['Product Key', 'UTF8'], ['UPDT Target', 'DOUBLE'],
-    ['PDT Target', 'DOUBLE'], ['OEE Target', 'DOUBLE'], ['source_hours', 'INT64'],
+    ['PDT Target', 'DOUBLE'], ['OEE Target', 'DOUBLE'], ['Dept', 'UTF8'], ['Area', 'UTF8'], ['Product Type', 'UTF8'], ['Data Source', 'UTF8'], ['source_hours', 'INT64'],
     ['loaded_at', 'TIMESTAMP_MILLIS']
   ],
   [UTIL]: [
     ['Date', 'DATE'], ['MachineName', 'UTF8'], ['OEE Time Total', 'DOUBLE'], ['Total Time Total', 'DOUBLE'],
     ['Planned OPT Total', 'DOUBLE'], ['SiteName', 'UTF8'], ['Unique Machine Name', 'UTF8'],
-    ['All Time', 'INT64'], ['loaded_at', 'TIMESTAMP_MILLIS']
+    ['All Time', 'INT64'], ['Dept', 'UTF8'], ['Area', 'UTF8'], ['Product Type', 'UTF8'], ['Data Source', 'UTF8'], ['loaded_at', 'TIMESTAMP_MILLIS']
   ],
   [LOSS]: [
-    ['Date', 'DATE'], ['Time', 'TIMESTAMP_MILLIS'], ['MachineName', 'UTF8'], ['PartDesc', 'UTF8'],
+    ['Date', 'DATE'], ['Time', 'TIMESTAMP_MILLIS'], ['MachineName', 'UTF8'], ['PartName', 'UTF8'],
     ['Shift Time', 'UTF8'], ['ShiftName', 'UTF8'], ['OEELossLvl3Group', 'UTF8'],
     ['OEELossLvl3SubGroup', 'UTF8'], ['OEELossLvl3Desc', 'UTF8'], ['Duration', 'TIMESTAMP_MILLIS'],
     ['SiteName', 'UTF8'], ['Unique Machine Name', 'UTF8'], ['Breakdown Types', 'UTF8'],
-    ['ShiftStartDate.1', 'DATE'], ['Comment', 'UTF8'], ['Product Key', 'UTF8'], ['Volume Key', 'UTF8'],
+    ['ShiftStartDate', 'DATE'], ['Comment', 'UTF8'], ['Product Key', 'UTF8'], ['Volume Key', 'UTF8'],
     ['Loss Units', 'DOUBLE'], ['Time in Mins', 'DOUBLE'], ['Equipment Loss Key', 'UTF8'],
     ['Equipment', 'UTF8'], ['Lvl 3 Loss Name', 'UTF8'], ['Loss Target Key', 'UTF8'], ['Value', 'UTF8'],
-    ['Volume Total', 'DOUBLE'], ['Loss Final Level', 'UTF8'], ['target', 'DOUBLE'], ['batch_id', 'UTF8'],
+    ['Volume Total', 'DOUBLE'], ['Loss Final Level', 'UTF8'], ['Dept', 'UTF8'], ['Area', 'UTF8'], ['Product Type', 'UTF8'], ['Data Source', 'UTF8'], ['target', 'DOUBLE'], ['batch_id', 'UTF8'],
     ['comment_count', 'INT64'], ['loaded_at', 'TIMESTAMP_MILLIS']
   ]
 };
@@ -522,9 +444,9 @@ Object.entries(TABLEAU).forEach(([node, expected]) => {
 });
 const dropped = ['Merged', 'ShiftName - Copy', 'Volume Key.1'];
 check(!flow.some((n) => n.type === 'parquet' && (n.columns || []).some((c) => dropped.includes(c.column))),
-  'the three columns marked not needed are not written');
+  'Merged, ShiftName - Copy and Volume Key.1 are not written');
 
-stats = await run({ tables: ['pbi_machine_names', ...STEP2, 'pbi_daily_losses'], sites: ['Hull'], from: '2026-09', to: '2026-09' },
+stats = await run({ tables: [...STEP2, 'Daily_Losses_EU'], sites: ['Hull'], from: '2026-09', to: '2026-09' },
   { lake: lossLake() });
 check(stats.errors.length === 0, 'tableau names: no error: ' + stats.errors.join(' | '));
 Object.keys(TABLEAU).forEach((node) => {
@@ -537,37 +459,66 @@ const planRaw = rawRowsOf(stats, PLAN).find((r) => r.PartName.startsWith('NFC') 
 check(planRaw['Total Time'] === 600 && planRaw['Good Parts'] === 1500 && planRaw['Planned OpT'] === 570,
   'tableau plan row: Date is a day number (20697 = 2026-09-01), whole-number columns');
 const lossRaw = rawRowsOf(stats, LOSS).find((r) => r.OEELossLvl3Desc === 'Capper');
-check(lossRaw.Date === 20697 && lossRaw['ShiftStartDate.1'] === 20697 && lossRaw.Time === 29700000,
-  'tableau loss row: Date and ShiftStartDate.1 are day numbers, Time is the ms of the day (08:15:00)');
+check(lossRaw.Date === 20697 && lossRaw.ShiftStartDate === 20697 && lossRaw.Time === 29700000,
+  'tableau loss row: Date and ShiftStartDate are day numbers, Time is the ms of the day (08:15:00)');
 check(lossRaw.Duration === 1845000 && lossRaw['Time in Mins'] === 30.75,
   'tableau loss row: Duration and Time in Mins keep the seconds (00:30:45)');
 check(lossRaw['Shift Time'] === 'Day' && lossRaw.ShiftName === 'Day' && lossRaw['Equipment Loss Key'] === 'B2 Auto Capper' &&
   lossRaw['Lvl 3 Loss Name'] === 'Capper' && lossRaw['Loss Final Level'] === 'Capper' && lossRaw.Value === '2.0',
   'tableau loss row: Shift Time, Equipment Loss Key, Lvl 3 Loss Name, Value as text with a decimal point (2.0)');
 
-// 7. real files (optional)
-if (process.argv.includes('real')) {
-  const dir = new URL('../sharepoint/reference/', import.meta.url);
-  const realLake = new Map();
-  if (existsSync(dir)) {
-    for (const type of ['machine_names', 'shift_naming']) {
-      for (const site of readdirSync(new URL(`${type}/`, dir))) {
-        for (const f of readdirSync(new URL(`${type}/${site}/`, dir))) {
-          realLake.set(`${REF}/${type}/${site}/${f}`, readFileSync(new URL(`${type}/${site}/${f}`, dir), 'utf8'));
-        }
-      }
-    }
-    stats = await run({ tables: ['pbi_machine_names', 'pbi_shift_naming'] }, { lake: realLake });
-    const real = rowsOf(stats, 'Write pbi_machine_names parquet');
-    const perSite = {};
-    real.forEach((m) => { perSite[m.site_name] = (perSite[m.site_name] || 0) + 1; });
-    console.log('real machine rows per site:', JSON.stringify(perSite),
-      '| shifts:', JSON.stringify(rowsOf(stats, 'Write pbi_shift_naming parquet').map((s) => s.shift).sort()));
-    const out = process.argv.find((a) => a.startsWith('out='));
-    if (out) writeFileSync(out.slice(4), JSON.stringify(real));
-  } else {
-    console.log('no local sharepoint/reference folder: real check skipped');
-  }
+// ---- 14. machine columns and the split by line source ----
+const HULL_MN = `${REF}/machine_names/site=Hull/Hull_MachineNames.csv`;
+const PLAN_JOB = { tables: ['Plan_OPT_EU'], sites: ['Hull'], from: '2026-09', to: '2026-09' };
+stats = await run(PLAN_JOB, { lake: planLake() });
+let raw = rawRowsOf(stats, PLAN);
+check(raw.length === 3 && raw.every((r) => r.Dept === 'Liquids Pack' && r.Area === 'Liquids' &&
+  r['Product Type'] === 'Bottles' && r['Data Source'] === 'Provideam'),
+'machine columns: Dept, Area, Product Type from the Machine Names file, Data Source Provideam');
+{
+  const lake = planLake();
+  lake.set(HULL_MN, 'MachineName,Dept,Area,Product Type\nGT4,Dries Pack,Dries,Blisters\n');
+  stats = await run(PLAN_JOB, { lake });
+  raw = rawRowsOf(stats, PLAN);
+  check(raw.length === 3 && raw.every((r) => r.Dept === null && r['Product Type'] === null) &&
+    /not in Machine Names[^\n]*B2 Auto/.test(logText(stats)),
+  'machine columns: a machine not in the file gets empty columns and a log note');
+}
+{
+  const lake = planLake();
+  lake.delete(HULL_MN);
+  stats = await run(PLAN_JOB, { lake });
+  check(tableWrites(stats).length === 0 && /no csv file in eu_report\/reference\/machine_names\/site=Hull/.test(logText(stats)),
+    'no Machine Names file: nothing for the site, the log names the folder');
+}
+{
+  const lake = planLake();
+  const old = `${REF}/machine_names/site=Hull/Old.csv`;
+  lake.set(old, 'MachineName,Dept,Area,Product Type\nB2 Auto,Liquids Pack,Old,Old\n');
+  stats = await run(PLAN_JOB, {
+    lake, lakeTimes: { [old]: '2025-01-01T00:00:00.000Z', [HULL_MN]: '2026-10-01T00:00:00.000Z' }
+  });
+  check(rawRowsOf(stats, PLAN).every((r) => r.Area === 'Liquids'), 'two Machine Names files: the newest one is read');
+}
+stats = await run(PLAN_JOB, { lake: planLake(), listKeyPrefix: '/' });
+check(tableWrites(stats).length === 1, 'keys with a leading slash are read');
+{
+  // B2 line switched to sih in Config, GT4 stays on the site source.
+  const lake = planLake();
+  const file = `${SRC}/plan_opt/site=Hull/plan_opt_2026-09.csv`;
+  lake.set(file, lake.get(file) + planRow('Hull', '2026-09-01', 'Hull Dries', 'GT4', 'FriDay', 'X', 5, '1.00',
+    '08:00:00', '08:00:00', '08:00:00', '0.00') + '\n');
+  const mixed = config.map((n) => (n.type === 'function'
+    ? { ...n, func: n.func.replace("report: 'B2 Auto',", "report: 'B2 Auto',\n reportSource: 'sih',") } : n));
+  stats = await run(PLAN_JOB, { lake, configNodes: mixed });
+  const files = stats.written.filter((p) => !p.includes('/logs/')).sort();
+  check(JSON.stringify(files) === JSON.stringify([
+    outPath('Plan_OPT_EU', 'Hull', '2026-09', CANDIDATE), outPath('Plan_OPT_EU', 'Hull', '2026-09')]),
+  'line on sih: two files of the month, report/ and candidate/provideam: ' + files.join(', '));
+  const parts = stats.parquetPayloads[PLAN].map((rows) => rows.map((r) => r.MachineName).join());
+  check(JSON.stringify(parts.sort()) === JSON.stringify(['B2 Auto,B2 Auto,B2 Auto', 'GT4']),
+    'line on sih: the B2 Auto rows go to candidate, GT4 stays in report');
+  check(/to eu_report\/candidate\/provideam: B2 Auto/.test(logText(stats)), 'line on sih: the log names the moved line');
 }
 
 // 7b. real plan OPT and time utilisation (optional): `real plan dir=<dir>`
@@ -585,6 +536,7 @@ if (process.argv.includes('real') && process.argv.includes('plan')) {
   };
   load('reference', 'glidepaths');
   load('reference', 'shift_naming');
+  load('reference', 'machine_names');
   load('source', 'plan_opt');
   const real = await run({ tables: STEP2, from: '2024-12', to: '2026-10' }, { lake });
   console.log('real run: errors', real.errors.length, '| files', tableWrites(real).length);
@@ -624,16 +576,17 @@ if (process.argv.includes('real') && process.argv.includes('loss')) {
   };
   load('reference', 'glidepaths');
   load('reference', 'shift_naming');
+  load('reference', 'machine_names');
   load('reference', 'equipment_coding');
   for (const type of ['plan_opt', 'line_losses', 'volume_loss_correction']) {
     load('source', type, true);
   }
-  const real = await run({ tables: ['pbi_daily_losses'], sites, from, to }, { lake });
+  const real = await run({ tables: ['Daily_Losses_EU'], sites, from, to }, { lake });
   console.log('real loss run: errors', real.errors.length, '| files', tableWrites(real).length);
   real.logs.forEach((l) => console.log('  ', String(l).slice(0, 420)));
   const outDir = process.argv.find((a) => a.startsWith('dir='));
   if (outDir) {
-    writeFileSync(`${outDir.slice(4)}/loss.json`, JSON.stringify(rawRowsOf(real, 'Write pbi_daily_losses parquet')));
+    writeFileSync(`${outDir.slice(4)}/loss.json`, JSON.stringify(rawRowsOf(real, 'Write Daily_Losses_EU parquet')));
   }
 }
 

@@ -2,8 +2,9 @@
 // In: msg.payload = the job {tables, sites, from, to}; all optional (months
 // YYYY-MM, default last month and this month). Out: msg.job, settings stored.
 
-// The source this flow builds. A site whose reportSource (1.1 CONFIG) is
-// this one writes to <root>/report, any other to <root>/candidate/<source>.
+// The source this flow builds. A line whose source (1.1 CONFIG: line
+// reportSource, else site reportSource) is this one writes to <root>/report,
+// any other to <root>/candidate/<source>.
 var SOURCE = 'provideam';
 // Folders below the root folder of 1.1 CONFIG, without a leading slash.
 var IN_REFERENCE = 'reference';
@@ -13,9 +14,6 @@ var OUT_CANDIDATE = 'candidate/' + SOURCE;
 var DRY_RUN = {
 __DRY_RUN__
 };
-// First and last date of the calendar table (the report uses 2011 to 2050).
-var CALENDAR_START = '2011-01-01';
-var CALENDAR_END = '2050-12-31';
 
 var shared = glob.get('cfg');
 if (!shared) {
@@ -87,22 +85,9 @@ var cfg = Object.assign({}, shared);
 cfg.dryRun = DRY_RUN;
 cfg.referenceFolder = shared.root + '/' + IN_REFERENCE;
 cfg.sourceFolder = shared.root + '/' + IN_SOURCE;
-cfg.allSites = ALL_SITES;
 cfg.source = SOURCE;
-// The output folder of each site, from its reportSource.
-cfg.siteOut = {};
-shared.sites.forEach(function (site) {
-  var live = site.reportSource === SOURCE;
-  cfg.siteOut[site.name] = shared.root + '/' +
-    (live ? OUT_LIVE : OUT_CANDIDATE);
-});
-cfg.calendarStart = CALENDAR_START;
-cfg.calendarEnd = CALENDAR_END;
-cfg.paths = {};
-allTables.forEach(function (table) {
-  cfg.paths[table] = shared.root + '/' + OUT_LIVE + '/' + table + '/' +
-    table + '.parquet';
-});
+cfg.liveFolder = shared.root + '/' + OUT_LIVE;
+cfg.candidateFolder = shared.root + '/' + OUT_CANDIDATE;
 flow.set('cfg', cfg);
 
 msg.job = {

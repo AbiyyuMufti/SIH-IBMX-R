@@ -10,6 +10,9 @@ if (msg.skipped.length) {
 }
 var sizes = TABLE + ' ' + rows.length + ' rows from ' +
   msg.itemCount + ' item(s)';
+if (msg.out) {
+  sizes += ' to ' + msg.out;
+}
 
 function logOnly(text) {
   var line = {

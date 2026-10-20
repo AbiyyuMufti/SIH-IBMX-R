@@ -166,9 +166,9 @@ const out = run('w3-release.js', {}, ctx);
 const jobs = globalCtx.get('jobQueue').slice();
 const find = (test) => jobs.filter(test);
 const monthTables = [
-  'pbi_plan_opt',
-  'pbi_time_utilisation',
-  'pbi_daily_losses'
+  'Plan_OPT_EU',
+  'Time_Utilisation_EU',
+  'Daily_Losses_EU'
 ];
 
 check(find((j) => j.sites && j.sites[0] === 'Hull' && j.from === '2026-07' &&
@@ -178,7 +178,7 @@ check(find((j) => j.sites && j.sites[0] === 'Hull' && j.from === '2026-10' &&
   j.to === '2026-10' && j.tables.length === 3).length === 1,
 'release: Hull 2026-10 is a separate job (a month is missing between)');
 check(find((j) => j.from === '2026-05' &&
-  j.tables.join() === 'pbi_daily_losses').length === 1,
+  j.tables.join() === 'Daily_Losses_EU').length === 1,
 'release: a line_losses file alone only rebuilds the daily losses');
 check(find((j) => j.sites && j.sites[0] === 'Nottingham').length === 0,
 'release: an entry younger than 120 s waits');
@@ -191,12 +191,12 @@ const glide = find((j) => j.sites && j.sites[0] === 'Hull' &&
   j.tables.length === 3 && j.to === thisMonth && j.from < j.to);
 check(glide.length === 1,
 'release: a Glidepaths change rebuilds the months back to this month');
-const shift = find((j) => j.tables.indexOf('pbi_shift_naming') !== -1);
-check(shift.length === 1 && !shift[0].sites && shift[0].tables.length === 4,
-'release: the shift names file (site All) rebuilds all sites, no site list');
-const names = find((j) => j.tables.join() === 'pbi_machine_names');
-check(names.length === 1 && !names[0].from,
-'release: machine names is a job with no months');
+// shift names (site All) and machine names (here site All too) rebuild the
+// three month tables of all sites, the months back to this month
+const allSites = find((j) => !j.sites && j.tables.join() === monthTables.join() &&
+  j.to === thisMonth && j.from < j.to);
+check(allSites.length === 2,
+'release: shift names and machine names rebuild the month tables of all sites');
 check(out[0].length === jobs.length && /listener/.test(out[0][0].payload),
 'release: one log line per job');
 const again = run('w3-release.js', {}, ctx);
