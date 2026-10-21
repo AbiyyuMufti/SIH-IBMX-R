@@ -16,6 +16,7 @@ import {
 import { validateFlow } from './validate-flow.js';
 import {
   code, makeBuilder, fn, http, linkInStep, end, split, delay, join,
+  kpiPartsSteps,
   addLogLanes, applyLayout, compactLanes, measureSpacing
 } from './lib-flow-builder.js';
 import { windowSchema, hourSchema, eventSchema } from './lib-rpt-schemas.js';
@@ -113,6 +114,16 @@ function buildFlow(site, index) {
       fn('kpiReqFn', 'Build KPI request', 's3-kpi-request.js',
         ['next', 'JOIN']),
       http('kpiHttp', 'POST evaluateKPIs'),
+      fn('kpiSizeFn', 'Check day size', 'd9-kpi-size.js',
+        ['KPI CHECK', 'KPI PARTS'])
+    ]);
+  lane(r++, 'KPI PARTS',
+    'the day evaluateKPIs call answered HTTP 413 (Request Entity Too Large: too many status changes for one call). The same KPIs are asked again hour by hour (one call per hour of the day window, one per second), a join waits for all hours and the answers are merged into one day answer (the hourly groups of every KPI, the same shape as the day call), which goes on to the check node of the day call. If an hourly call fails too, the day fails (no half days) and the log says "also on 1 h windows". The asset note in the log says "KPIs in n hourly parts".',
+    kpiPartsSteps('KPI', 'KPI CHECK'));
+  lane(r++, 'KPI CHECK',
+    'the day answer of evaluateKPIs (from the day call or merged from the hourly parts) is checked, then pivoted to one entry per hour. A failed call ends at the join (link "to JOIN").',
+    [
+      linkInStep('KPI CHECK'),
       fn('kpiCheckFn', 'Check KPI response', 's3-check-kpi.js',
         ['next', 'JOIN']),
       fn('pivotFn', 'Pivot KPI results', 's3-pivot-kpi.js', ['next']),
@@ -153,6 +164,16 @@ function buildFlow(site, index) {
       fn('valKpiFn', 'Build value KPI request', 'd7-value-request.js',
         ['next']),
       http('valKpiHttp', 'POST evaluateKPIs (one value)'),
+      fn('valSizeFn', 'Check day size', 'd9-kpi-size.js',
+        ['VALUE CHECK', 'VALUE PARTS'])
+    ]);
+  lane(r++, 'VALUE PARTS',
+    'the same hourly fallback for the evaluateKPIs call of one product or order that answered 413: hour by hour, joined, merged, then on to the collect node of the value calls. A separate lane from the day KPIs: one shared lane would make a loop.',
+    kpiPartsSteps('VALUE', 'VALUE CHECK'));
+  lane(r++, 'VALUE CHECK',
+    'the answer of one product or order call (from the call or merged from the hourly parts): its hours with parts are kept until every value of the asset is in (flow context valueRuns). A failed call fails the day (link "to JOIN").',
+    [
+      linkInStep('VALUE CHECK'),
       fn('valCollectFn', 'Collect value hours', 'd7-collect.js',
         ['next', 'JOIN']),
       end('ASSIGN')

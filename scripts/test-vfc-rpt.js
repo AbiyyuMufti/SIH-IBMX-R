@@ -130,6 +130,34 @@ for (const scenario of ['token-fail', 'list-fail', 'empty']) {
   const s = await runFlow(flow, base({ fetchImpl: makeMockFetch(scenario) }));
   check(Object.keys(s.parquetRows).length === 0, `${scenario}: nothing written`);
 }
+// ---- evaluateKPIs 413 on the day window: hourly fallback ----
+{
+  const masked = (s) => JSON.stringify(s.parquetPayloads).replace(/"loaded_at":\d+/g, '"loaded_at":0');
+  const kpiCalls = (s) => s.requests.filter((q) => q.url.endsWith('/evaluateKPIs'));
+  const hourly = (s) => kpiCalls(s).filter((q) => {
+    const sc = JSON.parse(q.body).scope;
+    return Date.parse(sc.to) - Date.parse(sc.from) === 3600000;
+  });
+  const normal = await runFlow(flow, base({ fetchImpl: makeMockFetch('ok') }));
+  const big = await runFlow(flow, base({ fetchImpl: makeMockFetch('kpi-413-day') }));
+  check(big.errors.length === 0 && masked(big) === masked(normal),
+    '413 on the day: the hourly parts give the same rows as a normal day');
+  check(hourly(big).length === 24 && /KPIs in 24 hourly parts \(413 on the day\)/.test(big.logs.map(String).join('\n')),
+    '413 on the day: 24 hourly calls, the log says so');
+  const normalP = await runFlow(flow, base({ fetchImpl: makeMockFetch('products') }));
+  const bigP = await runFlow(flow, base({ fetchImpl: makeMockFetch('value-413-day') }));
+  check(bigP.errors.length === 0 && masked(bigP) === masked(normalP),
+    '413 on a product call: the hourly parts give the same rows');
+  check(hourly(bigP).length === 24 && hourly(bigP).every((q) => /"PRODUCT","value":\["1002"\]/.test(q.body)),
+    '413 on a product call: 24 hourly calls filtered on that product');
+  const still = await runFlow(flow, base({ fetchImpl: makeMockFetch('kpi-413') }));
+  check(Object.keys(still.parquetRows).length === 0 &&
+    /FAILED, NOTHING WRITTEN: .*HTTP 413: also on 1 h windows/.test(still.logs.map(String).join('\n')),
+    '413 on the hourly calls too: nothing written, the log says "also on 1 h windows"');
+  check(hourly(normal).length === 0 && kpiCalls(normal).length === kpiCalls(await runFlow(flow, base({ fetchImpl: makeMockFetch('ok') }))).length,
+    'a normal day makes no hourly call');
+}
+
 const plain = await runFlow(flow, base());
 check(plain.errors.length === 0 && rowsOf(plain, 'rpt_hour').length > 0, 'a day without products still writes the tables');
 

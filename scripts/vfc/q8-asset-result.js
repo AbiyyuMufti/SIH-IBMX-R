@@ -9,6 +9,9 @@ var note = name + ': ' + msg.windowRows.length + ' windows, ' +
 if (msg.droppedStops) {
   note += ', ' + msg.droppedStops + ' stops outside the day ignored';
 }
+if (msg.kpiHourParts) {
+  note += ', KPIs in ' + msg.kpiHourParts + ' hourly parts (413 on the day)';
+}
 
 msg.payload = {
   assetId: msg.asset.id,

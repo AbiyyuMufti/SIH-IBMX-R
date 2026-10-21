@@ -17,6 +17,9 @@
 //   machines-big  the machines data with 1800 stops per asset (size test)
 //   segments-fail, children-fail   (the machines data; M1 segments answer
 //                 500, or the machine list of A1 answers 500)
+//   kpi-413-day   A1: the day evaluateKPIs call answers 413, a call of one
+//                 hour answers the hours of that window (as the day would)
+//   value-413-day the products data; the same for the call of product 1002
 // Every other scenario has no product and no order (empty filterValues).
 export const SCENARIOS = [
   'ok',
@@ -38,7 +41,9 @@ export const SCENARIOS = [
   'values-fail',
   'products-fail',
   'value-kpi-fail',
-  'no-collection'
+  'no-collection',
+  'kpi-413-day',
+  'value-413-day'
 ];
 
 // Scenarios of the shift report flow (test-vfc-rpt.js only).
@@ -50,6 +55,7 @@ const PRODUCT_SCENARIOS = [
   'products-fail',
   'value-kpi-fail',
   'no-collection',
+  'value-413-day',
   ...MACHINE_SCENARIOS
 ];
 
@@ -228,6 +234,9 @@ function eventsFor(calendarId) {
 }
 
 export function makeMockFetch(scenario = 'ok') {
+  // Start of the day window of a day call that answered 413 (per asset and
+  // value): the hourly calls answer their slice of that day.
+  const dayStarts = {};
   const reply = (status, body) => ({
     status,
     text: async () => (body === undefined ? '' : JSON.stringify(body))
@@ -302,6 +311,23 @@ export function makeMockFetch(scenario = 'ok') {
       if (asset === ASSETS.A6) return reply(200, { productUnit: 'pcs', results: [] });
       const filter = Object.fromEntries((body.scope.filter || []).map((f) => [f.key, f.value]));
       const value = (filter.PRODUCT || [])[0] || (filter.ORDER || [])[0];
+      const big = asset === ASSETS.A1 && ((scenario === 'kpi-413-day' && !value) ||
+        (scenario === 'value-413-day' && value === '1002'));
+      if (big) {
+        const from = Date.parse(body.scope.from);
+        const to = Date.parse(body.scope.to);
+        const key = asset.id + '|' + (value || '');
+        if (to - from > HOUR) {
+          dayStarts[key] = body.scope.from;
+          return reply(413, { errors: [{ code: 'tooManyStatusChanges', message: 'Too many status changes (12345)' }] });
+        }
+        const day = kpiBody(asset, scenario, dayStarts[key]);
+        if (value) restrictTo(day, value);
+        day.results.forEach((r) => {
+          r.groups = r.groups.filter((g) => Date.parse(g.time) >= from && Date.parse(g.time) < to);
+        });
+        return reply(200, day);
+      }
       if (value) {
         if (scenario === 'value-kpi-fail' && asset === ASSETS.A1 && value === '1002') return reply(500, { error: 'boom' });
         return reply(200, restrictTo(kpiBody(asset, scenario, body.scope.from), value));

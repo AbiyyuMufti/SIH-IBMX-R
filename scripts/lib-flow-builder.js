@@ -218,6 +218,19 @@ export const readStep = (key, name) => ({ t: 'read', key, name });
 export const waitStep = (key, name, seconds, stack = false, dy = 0) => ({
   t: 'wait', key, name, seconds, stack, dy
 });
+// The hourly fallback of a day evaluateKPIs call that answered 413: one call
+// per hour of the day window, joined and merged into one day answer that goes
+// to the lane "back" (the check node of the day call).
+export const kpiPartsSteps = (prefix, back) => [
+  linkInStep(`${prefix} PARTS`),
+  fn(`${prefix}PartsFn`, 'Build hour requests', 'd9-kpi-parts.js', ['next']),
+  delay(`${prefix}PartsDelay`, 'One hour per second'),
+  http(`${prefix}PartsHttp`, 'POST evaluateKPIs (one hour)'),
+  fn(`${prefix}PackFn`, 'Pack hour answer', 'd9-kpi-pack.js', ['next']),
+  join(`${prefix}PartsJoin`, 'Wait for all hours'),
+  fn(`${prefix}MergeFn`, 'Merge hour answers', 'd9-kpi-merge.js', ['next']),
+  end(back)
+];
 export const joinTimeout = (key, name, seconds) => ({ t: 'joinTimeout', key, name, seconds });
 export const debugStep = (key, name, complete, stack = false, dy = 0) => ({
   t: 'debug', key, name, complete, stack, dy

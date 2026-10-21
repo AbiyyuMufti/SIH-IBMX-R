@@ -1058,12 +1058,25 @@
     "z": "b6d0f.bee9f9",
     "id": "3c37a.2d2db6",
     "type": "link out",
-    "name": "to JOIN",
+    "name": "to KPI CHECK",
     "mode": "link",
     "links": [
-      "347be.26c952"
+      "3a48b.2b949d"
     ],
-    "x": 1300,
+    "x": 1280,
+    "y": 1420,
+    "wires": []
+  },
+  {
+    "z": "b6d0f.bee9f9",
+    "id": "40158.305fe8",
+    "type": "link out",
+    "name": "to KPI PARTS",
+    "mode": "link",
+    "links": [
+      "3e269.2ec6cf"
+    ],
+    "x": 1280,
     "y": 1460,
     "wires": []
   },
@@ -1071,8 +1084,8 @@
     "z": "b6d0f.bee9f9",
     "id": "3859c.29fb84",
     "type": "function",
-    "name": "7.3 Check KPI response",
-    "func": "// Checks the evaluateKPIs response of one asset.\n// In: the response. Out 1: the same message when it holds KPI results.\n// Out 2: the asset result for the join when the call failed, the asset\n// configuration is not finished or there is no data.\nvar name = msg.h.asset_name;\nvar body = msg.payload;\n\nfunction toJoin(note) {\n  msg.payload = {\n    assetId: msg.asset.id,\n    name: name,\n    failed: note.failed || null,\n    skipped: note.skipped || null,\n    kpiRows: [],\n    lossRows: []\n  };\n  return [null, msg];\n}\n\nvar notFinished = msg.statusCode === 400 &&\n  /configuration not finished/i.test(JSON.stringify(body));\nif (notFinished) {\n  return toJoin({ skipped: name + ' configuration not finished' });\n}\n// Short text of the API error (errors[0].message), else the raw body.\nfunction apiMessage(payload) {\n  var list = payload && (payload.errors ||\n    (payload.data && payload.data.errors));\n  if (list && list.length && list[0].message) {\n    return String(list[0].message);\n  }\n  return JSON.stringify(payload).slice(0, 200);\n}\n\nif (msg.statusCode !== 200 || !body || typeof body !== 'object') {\n  var why = msg.statusCode === 200 ? '' : ': ' + apiMessage(body);\n  return toJoin({\n    failed: name + ': evaluateKPIs failed, HTTP ' + msg.statusCode + why\n  });\n}\nif (!body.results || !body.results.length) {\n  return toJoin({ skipped: name + ' no data' });\n}\nreturn [msg, null];\n",
+    "name": "7.3 Check day size",
+    "func": "// Sends the answer of a day evaluateKPIs call on, or to the hourly parts.\n// In: the answer of the http request node. Out 1: the answer, to the check\n// node. Out 2: HTTP 413 (the day is too big for one call): to the hourly\n// parts, which ask the same KPIs hour by hour and merge them.\nif (msg.statusCode === 413) {\n  return [null, msg];\n}\nreturn [msg, null];\n",
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
@@ -1080,38 +1093,8 @@
     "y": 1440,
     "wires": [
       [
-        "3a48b.2b949d"
-      ],
-      [
         "3c37a.2d2db6"
-      ]
-    ]
-  },
-  {
-    "z": "b6d0f.bee9f9",
-    "id": "40158.305fe8",
-    "type": "link out",
-    "name": "to SHIFT",
-    "mode": "link",
-    "links": [
-      "3e269.2ec6cf"
-    ],
-    "x": 1540,
-    "y": 1440,
-    "wires": []
-  },
-  {
-    "z": "b6d0f.bee9f9",
-    "id": "3a48b.2b949d",
-    "type": "function",
-    "name": "7.4 Pivot KPI results",
-    "func": "// Pivots the evaluateKPIs response to one entry per hour.\n// In: the response (msg.payload.results, checked in node 3.3).\n// Out: msg.hours = [{time, values}] oldest hour first, msg.kpiMeta and\n// msg.unmapped (KPI names that have no column).\n\n// KPI name in Insights Hub -> column name in fact_kpi.\nvar KPI_COLUMNS = {\n  'Good parts': 'good_parts',\n  'Total parts': 'total_parts',\n  'Rejected parts': 'rejected_parts',\n  'Connected rejected parts': 'connected_rejected_parts',\n  'Manual rejected parts': 'manual_rejected_parts',\n  'Theoretical output': 'theoretical_output',\n  'Quality': 'quality',\n  'Performance': 'performance',\n  'Availability': 'availability',\n  'OEE': 'oee',\n  'TEEP': 'teep',\n  'Total time': 'total_time_ms',\n  'Planned stops': 'planned_stops_ms',\n  'Planned stop from shift plan': 'planned_stop_shift_plan_ms',\n  'Operational time': 'operational_time_ms',\n  'Net production time': 'net_production_time_ms',\n  'Net operational time': 'net_operational_time_ms',\n  'Used operational time': 'used_operational_time_ms',\n  'Availability losses': 'availability_losses_ms',\n  'Availability loss (occurrence)': 'availability_loss_count',\n  'Performance losses': 'performance_losses_ms',\n  'Quality losses': 'quality_losses_ms',\n  'MTTR': 'mttr_ms',\n  'MTBF': 'mtbf_ms',\n  'Downtime (duration)': 'downtime_ms',\n  'Downtimes (occurrence)': 'downtime_count',\n  'Micro stops (duration)': 'micro_stops_ms',\n  'Micro stops (occurrence)': 'micro_stops_count',\n  'Macro stops (duration)': 'macro_stops_ms',\n  'Macro stops (occurrence)': 'macro_stops_count'\n};\n// Columns that are rounded to whole numbers. All others keep their decimals.\nvar INT_COLUMNS = [\n  'total_time_ms',\n  'planned_stops_ms',\n  'planned_stop_shift_plan_ms',\n  'operational_time_ms',\n  'net_production_time_ms',\n  'availability_losses_ms',\n  'micro_stops_ms',\n  'micro_stops_count',\n  'macro_stops_ms'\n];\n// These columns come first in every row.\nvar RATIO_COLUMNS = [\n  'oee',\n  'teep',\n  'availability',\n  'performance',\n  'quality'\n];\n\nfunction numOrNull(v) {\n  if (v === null || v === undefined || v === '') {\n    return null;\n  }\n  var n = Number(v);\n  return isFinite(n) ? n : null;\n}\n\n// Collect the value of every KPI per hour.\nvar body = msg.payload;\nvar unmapped = [];\nvar byHour = {};\nvar times = [];\nbody.results.forEach(function (r) {\n  var col = KPI_COLUMNS[r.name];\n  if (!col) {\n    if (unmapped.indexOf(r.name) < 0) {\n      unmapped.push(r.name);\n    }\n    return;\n  }\n  (r.groups || []).forEach(function (g) {\n    if (!byHour[g.time]) {\n      byHour[g.time] = {};\n      times.push(g.time);\n    }\n    byHour[g.time][col] = numOrNull(g.value);\n  });\n});\n\n// One entry per hour with every column present (null when missing).\nmsg.hours = times.sort().map(function (t) {\n  var hour = byHour[t];\n  var values = {};\n  RATIO_COLUMNS.forEach(function (c) {\n    values[c] = hour[c] === undefined ? null : hour[c];\n  });\n  Object.keys(KPI_COLUMNS).forEach(function (k) {\n    var c = KPI_COLUMNS[k];\n    if (values.hasOwnProperty(c)) {\n      return;\n    }\n    var x = hour[c] === undefined ? null : hour[c];\n    var rounded = x !== null && INT_COLUMNS.indexOf(c) >= 0;\n    values[c] = rounded ? Math.round(x) : x;\n  });\n  return { time: t, values: values };\n});\n\nvar missing = null;\nif (body.missingMapping && body.missingMapping.length) {\n  missing = JSON.stringify(body.missingMapping);\n}\nmsg.kpiMeta = {\n  productUnit: body.productUnit || null,\n  missingMapping: missing\n};\nmsg.unmapped = unmapped;\ndelete msg.payload;\nreturn msg;\n",
-    "outputs": 1,
-    "language": "javascript",
-    "noerr": 0,
-    "x": 1380,
-    "y": 1420,
-    "wires": [
+      ],
       [
         "40158.305fe8"
       ]
@@ -1121,9 +1104,9 @@
     "z": "b6d0f.bee9f9",
     "id": "42047.31f901",
     "type": "comment",
-    "name": "[8] ASSET SHIFTS",
-    "info": "STAGE 8 - one asset. The shift of an hour comes from the calendar of the asset. 4.1 asks the OEE config for the calendar id and the product collection id, 4.2 asks the calendar events that cover the production day, 4.3 turns them into shift rules (freq, interval, start, until, duration). A failed call or an asset without a calendar fails the day (link \"to JOIN\").",
-    "x": 140,
+    "name": "[8] KPI PARTS",
+    "info": "STAGE 8 - the day evaluateKPIs call answered HTTP 413 (Request Entity Too Large: too many status changes for one call). The same KPIs are asked again hour by hour (one call per hour of the day window, one per second), a join waits for all hours and the answers are merged into one day answer (the hourly groups of every KPI, the same shape as the day call), which goes on to the check node of the day call. If an hourly call fails too, the day fails (no half days) and the log says \"also on 1 h windows\". The asset note in the log says \"KPIs in n hourly parts\".",
+    "x": 120,
     "y": 1580,
     "wires": []
   },
@@ -1131,7 +1114,7 @@
     "z": "b6d0f.bee9f9",
     "id": "3e269.2ec6cf",
     "type": "link in",
-    "name": "SHIFT",
+    "name": "KPI PARTS",
     "links": [
       "40158.305fe8"
     ],
@@ -1147,8 +1130,8 @@
     "z": "b6d0f.bee9f9",
     "id": "43f36.33921a",
     "type": "function",
-    "name": "8.1 Build config request",
-    "func": "// Builds the OEE config request of one asset (to get its calendar id).\n// In: msg.asset and msg.token, after the KPI steps. msg.hours is kept.\n// Out: msg.method, msg.url and msg.headers for the http request node.\nvar cfg = flow.get('cfg');\nmsg.method = 'GET';\nmsg.url = cfg.oeeBase + '/assets/' +\n  encodeURIComponent(msg.asset.id) + '/config';\nmsg.headers = {\n  'Authorization': 'Bearer ' + msg.token,\n  'Accept': 'application/json'\n};\ndelete msg.payload;\nreturn msg;\n",
+    "name": "8.1 Build hour requests",
+    "func": "// Splits a day evaluateKPIs call that answered 413 into hourly calls.\n// In: the 413 answer, msg.asset, msg.token, msg.dayFromMs, msg.dayToMs and\n// msg.job (a product or order call) or none (the day call). Out: one request\n// per hour of the day, all in one group (msg.parts) for the join.\nvar cfg = flow.get('cfg');\n// The length of one part. The day window is split into parts this long.\nvar PART_HOURS = 1;\nvar HOUR_MS = 3600000;\n\n// The filters of the original call: the product or order of msg.job (same\n// as the value KPI request), else the plain day call.\nfunction filters() {\n  if (!msg.job) {\n    return [{ key: 'PRODUCT', value: [] }];\n  }\n  function filterFor(key) {\n    return {\n      key: key,\n      value: msg.job.key === key ? [msg.job.value] : []\n    };\n  }\n  return [\n    filterFor('PRODUCT'),\n    filterFor('ORDER'),\n    { key: 'SHIFT', value: [] }\n  ];\n}\n\nvar windows = [];\nfor (var t = msg.dayFromMs; t < msg.dayToMs; t += PART_HOURS * HOUR_MS) {\n  windows.push([t, Math.min(t + PART_HOURS * HOUR_MS, msg.dayToMs)]);\n}\n\n// The day join of the flow uses msg.parts too: keep it aside.\nmsg.dayParts = msg.parts;\nvar group = msg.asset.id + '|' + msg.day + '|' + Date.now() + '|';\ngroup += Math.floor(Math.random() * 1000000);\ndelete msg.payload;\nvar out = windows.map(function (w, index) {\n  var copy = JSON.parse(JSON.stringify(msg));\n  copy.method = 'POST';\n  copy.url = cfg.oeeBase + '/expressions/evaluateKPIs';\n  copy.headers = {\n    'Authorization': 'Bearer ' + msg.token,\n    'Content-Type': 'application/json',\n    'Accept': 'application/json'\n  };\n  copy.payload = {\n    assetId: msg.asset.id,\n    scope: {\n      from: new Date(w[0]).toISOString(),\n      to: new Date(w[1]).toISOString(),\n      filter: filters(),\n      recursive: false,\n      groupedByDateTime: true\n    }\n  };\n  copy.parts = {\n    id: group,\n    index: index,\n    count: windows.length,\n    type: 'array'\n  };\n  return copy;\n});\nnode.status({\n  fill: 'yellow',\n  shape: 'dot',\n  text: msg.asset.name + ': 413, ' + out.length + ' hourly parts'\n});\nreturn [out];\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
@@ -1163,15 +1146,19 @@
   {
     "z": "b6d0f.bee9f9",
     "id": "45e25.352b33",
-    "type": "http request",
-    "name": "GET asset config",
-    "method": "use",
-    "ret": "obj",
-    "url": "",
-    "timeout": "",
-    "mindspherePath": "",
-    "useMindsphereAuth": false,
-    "isAdmin": false,
+    "type": "delay",
+    "name": "One hour per second",
+    "pauseType": "rate",
+    "timeout": "1",
+    "timeoutUnits": "seconds",
+    "rate": "1",
+    "nbRateUnits": "1",
+    "rateUnits": "second",
+    "randomFirst": "1",
+    "randomLast": "1",
+    "randomUnits": "seconds",
+    "drop": false,
+    "powerMode": false,
     "x": 460,
     "y": 1660,
     "wires": [
@@ -1182,42 +1169,9 @@
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "4baf2.39f67e",
-    "type": "link out",
-    "name": "to JOIN",
-    "mode": "link",
-    "links": [
-      "347be.26c952"
-    ],
-    "x": 920,
-    "y": 1680,
-    "wires": []
-  },
-  {
-    "z": "b6d0f.bee9f9",
     "id": "47d14.36c44c",
-    "type": "function",
-    "name": "8.2 Build calendar events request",
-    "func": "// Saves the calendar and product collection ids, builds the events request.\n// In: the OEE config response. Out 1: the calendarEvents request. Out 2:\n// the asset result for the join when the config call failed or the asset\n// has no calendar (no half days).\nvar cfg = flow.get('cfg');\nvar DAY_MS = 86400000;\nvar HOUR_MS = 3600000;\nvar name = msg.h.asset_name;\n\nfunction toJoin(text) {\n  msg.payload = {\n    assetId: msg.asset.id,\n    name: name,\n    failed: text,\n    skipped: null,\n    planRows: [],\n    utilRows: [],\n    lossRows: []\n  };\n  delete msg.hours;\n  delete msg.kpiMeta;\n  return [null, msg];\n}\n\nvar config = msg.payload || {};\nif (msg.statusCode !== 200) {\n  return toJoin(name + ': asset config failed, HTTP ' + msg.statusCode);\n}\nif (!config.calendarId) {\n  return toJoin(name + ': asset has no calendar id');\n}\n\n// The events that cover the production day D (D start hour to D+1).\nvar from = Date.parse(msg.day + 'T00:00:00.000Z') + cfg.dayStartHour * HOUR_MS;\nvar to = from + DAY_MS;\n// The shift report sets the exact window of the day (local day start).\nif (msg.dayFromMs !== undefined) {\n  from = msg.dayFromMs;\n  to = msg.dayToMs;\n}\nmsg.calendarId = config.calendarId;\nmsg.productCollectionId = config.productCollectionId || null;\nmsg.method = 'GET';\nmsg.url = cfg.oeeBase + '/calendars/' +\n  encodeURIComponent(config.calendarId) + '/calendarEvents' +\n  '?from=' + new Date(from).toISOString() +\n  '&to=' + new Date(to).toISOString();\nmsg.headers = {\n  'Authorization': 'Bearer ' + msg.token,\n  'Accept': 'application/json'\n};\ndelete msg.payload;\nreturn [msg, null];\n",
-    "outputs": 2,
-    "language": "javascript",
-    "noerr": 0,
-    "x": 720,
-    "y": 1660,
-    "wires": [
-      [
-        "49c03.385d65"
-      ],
-      [
-        "4baf2.39f67e"
-      ]
-    ]
-  },
-  {
-    "z": "b6d0f.bee9f9",
-    "id": "49c03.385d65",
     "type": "http request",
-    "name": "GET calendar events",
+    "name": "POST evaluateKPIs (one hour)",
     "method": "use",
     "ret": "obj",
     "url": "",
@@ -1225,8 +1179,48 @@
     "mindspherePath": "",
     "useMindsphereAuth": false,
     "isAdmin": false,
-    "x": 1000,
-    "y": 1640,
+    "x": 720,
+    "y": 1660,
+    "wires": [
+      [
+        "49c03.385d65"
+      ]
+    ]
+  },
+  {
+    "z": "b6d0f.bee9f9",
+    "id": "49c03.385d65",
+    "type": "function",
+    "name": "8.2 Pack hour answer",
+    "func": "// Packs the answer of one hourly evaluateKPIs call with its status code, so\n// the join that follows keeps both.\n// In: the answer of the http request node. Out: msg.payload = {statusCode,\n// body}.\nmsg.payload = {\n  statusCode: msg.statusCode,\n  body: msg.payload\n};\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 980,
+    "y": 1660,
+    "wires": [
+      [
+        "4baf2.39f67e"
+      ]
+    ]
+  },
+  {
+    "z": "b6d0f.bee9f9",
+    "id": "4baf2.39f67e",
+    "type": "join",
+    "name": "Wait for all hours",
+    "mode": "auto",
+    "build": "array",
+    "property": "payload",
+    "propertyType": "msg",
+    "key": "topic",
+    "joiner": "\\n",
+    "joinerType": "str",
+    "accumulate": false,
+    "timeout": "",
+    "count": "",
+    "x": 1200,
+    "y": 1660,
     "wires": [
       [
         "4d9e1.3b8f97"
@@ -1235,45 +1229,56 @@
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "517bf.3ec1c9",
+    "id": "4f8d0.3d28b0",
     "type": "link out",
-    "name": "to PRODUCTS",
+    "name": "to KPI CHECK",
     "mode": "link",
     "links": [
-      "4f8d0.3d28b0"
+      "3a48b.2b949d"
     ],
-    "x": 1400,
-    "y": 1640,
-    "wires": []
-  },
-  {
-    "z": "b6d0f.bee9f9",
-    "id": "536ae.405ae2",
-    "type": "link out",
-    "name": "to JOIN",
-    "mode": "link",
-    "links": [
-      "347be.26c952"
-    ],
-    "x": 1400,
-    "y": 1680,
+    "x": 1600,
+    "y": 1660,
     "wires": []
   },
   {
     "z": "b6d0f.bee9f9",
     "id": "4d9e1.3b8f97",
     "type": "function",
-    "name": "8.3 Build shift rules",
-    "func": "// Turns the calendar events into shift rules.\n// In: the calendarEvents response. Out 1: msg.shiftRules = [{name, freq,\n// interval, start, until, duration}] (epoch ms, null when open ended).\n// Out 2: the asset result for the join when the call failed.\nvar name = msg.h.asset_name;\nvar events = msg.payload && msg.payload.calendarEvents;\n\nif (msg.statusCode !== 200 || !Array.isArray(events)) {\n  msg.payload = {\n    assetId: msg.asset.id,\n    name: name,\n    failed: name + ': calendar events failed, HTTP ' + msg.statusCode,\n    skipped: null,\n    planRows: [],\n    utilRows: [],\n    lossRows: []\n  };\n  delete msg.hours;\n  delete msg.kpiMeta;\n  return [null, msg];\n}\n\n// Date text to epoch ms, null when missing or not a date.\nfunction toMs(text) {\n  var ms = Date.parse(text);\n  return isNaN(ms) ? null : ms;\n}\n\n// An event without a recurrence object gets freq null and never matches.\nmsg.shiftRules = events.map(function (e) {\n  var rule = e.rrule;\n  if (!rule || typeof rule !== 'object') {\n    rule = {};\n  }\n  return {\n    name: e.name || null,\n    freq: rule.freq || null,\n    interval: rule.interval || null,\n    start: toMs(rule.dtstart),\n    until: toMs(rule.until),\n    duration: Math.round(Number(e.duration))\n  };\n});\ndelete msg.payload;\nreturn [msg, null];\n",
-    "outputs": 2,
+    "name": "8.3 Merge hour answers",
+    "func": "// Merges the hourly evaluateKPIs answers into one answer of the whole day,\n// the same shape as the day call (results with their hourly groups).\n// In: msg.payload = [{statusCode, body}] in hour order (join). Out: the day\n// answer with msg.statusCode, to the same check node as the day call.\nvar parts = Array.isArray(msg.payload) ? msg.payload : [];\n\n// Short text of the API error (errors[0].message), else the raw body.\nfunction apiMessage(body) {\n  var list = body && (body.errors || (body.data && body.data.errors));\n  if (list && list.length && list[0].message) {\n    return String(list[0].message);\n  }\n  return JSON.stringify(body).slice(0, 200);\n}\n\n// The day join of the flow gets its msg.parts back.\nif (msg.dayParts === undefined) {\n  delete msg.parts;\n} else {\n  msg.parts = msg.dayParts;\n}\ndelete msg.dayParts;\n\nvar bad = parts.filter(function (p) {\n  return !p || p.statusCode !== 200 || !p.body || typeof p.body !== 'object';\n})[0];\nif (bad || !parts.length) {\n  msg.statusCode = bad ? bad.statusCode : 413;\n  var text = 'also on 1 h windows: ';\n  text += bad ? apiMessage(bad.body) : 'no hourly answer';\n  msg.payload = {\n    errors: [\n      {\n        message: text\n      }\n    ]\n  };\n  return msg;\n}\n\n// Step 1: the groups of every KPI, in the order the hours came.\nvar byName = {};\nvar order = [];\nparts.forEach(function (p) {\n  (p.body.results || []).forEach(function (r) {\n    if (!byName[r.name]) {\n      byName[r.name] = {\n        name: r.name,\n        groups: []\n      };\n      order.push(r.name);\n    }\n    byName[r.name].groups = byName[r.name].groups.concat(r.groups || []);\n  });\n});\n\n// Step 2: the day answer. Unit and missing mappings of the first hour.\nvar first = parts[0].body;\nvar body = {\n  productUnit: first.productUnit,\n  results: order.map(function (name) {\n    return byName[name];\n  })\n};\nif (first.missingMapping) {\n  body.missingMapping = first.missingMapping;\n}\nmsg.statusCode = 200;\nmsg.payload = body;\nif (!msg.job) {\n  msg.kpiHourParts = parts.length;\n}\nreturn msg;\n",
+    "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 1240,
+    "x": 1440,
     "y": 1660,
     "wires": [
       [
-        "517bf.3ec1c9"
-      ],
+        "4f8d0.3d28b0"
+      ]
+    ]
+  },
+  {
+    "z": "b6d0f.bee9f9",
+    "id": "517bf.3ec1c9",
+    "type": "comment",
+    "name": "[9] KPI CHECK",
+    "info": "STAGE 9 - the day answer of evaluateKPIs (from the day call or merged from the hourly parts) is checked, then pivoted to one entry per hour. A failed call ends at the join (link \"to JOIN\").",
+    "x": 120,
+    "y": 1800,
+    "wires": []
+  },
+  {
+    "z": "b6d0f.bee9f9",
+    "id": "3a48b.2b949d",
+    "type": "link in",
+    "name": "KPI CHECK",
+    "links": [
+      "3c37a.2d2db6",
+      "4f8d0.3d28b0"
+    ],
+    "x": 60,
+    "y": 1880,
+    "wires": [
       [
         "536ae.405ae2"
       ]
@@ -1281,25 +1286,32 @@
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "5559d.41f3fb",
-    "type": "comment",
-    "name": "[9] ASSET PRODUCTS",
-    "info": "STAGE 9 - one asset. 5.1 asks filterValues for the products and orders of the production day (the lists behind the Product and Order dropdowns of the OEE app). 5.2 checks the answer and asks the product list (name, code, description, design speed) of the product collection of the asset. A day without any product or order goes straight to \"to ASSIGN\"; an asset without a product collection goes on without master data (\"to VALUES\"). A failed call fails the day (link \"to JOIN\").",
-    "x": 140,
-    "y": 1800,
+    "id": "5748c.438d14",
+    "type": "link out",
+    "name": "to JOIN",
+    "mode": "link",
+    "links": [
+      "347be.26c952"
+    ],
+    "x": 380,
+    "y": 1900,
     "wires": []
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "4f8d0.3d28b0",
-    "type": "link in",
-    "name": "PRODUCTS",
-    "links": [
-      "517bf.3ec1c9"
-    ],
-    "x": 60,
+    "id": "536ae.405ae2",
+    "type": "function",
+    "name": "9.1 Check KPI response",
+    "func": "// Checks the evaluateKPIs response of one asset.\n// In: the response. Out 1: the same message when it holds KPI results.\n// Out 2: the asset result for the join when the call failed, the asset\n// configuration is not finished or there is no data.\nvar name = msg.h.asset_name;\nvar body = msg.payload;\n\nfunction toJoin(note) {\n  msg.payload = {\n    assetId: msg.asset.id,\n    name: name,\n    failed: note.failed || null,\n    skipped: note.skipped || null,\n    kpiRows: [],\n    lossRows: []\n  };\n  return [null, msg];\n}\n\nvar notFinished = msg.statusCode === 400 &&\n  /configuration not finished/i.test(JSON.stringify(body));\nif (notFinished) {\n  return toJoin({ skipped: name + ' configuration not finished' });\n}\n// Short text of the API error (errors[0].message), else the raw body.\nfunction apiMessage(payload) {\n  var list = payload && (payload.errors ||\n    (payload.data && payload.data.errors));\n  if (list && list.length && list[0].message) {\n    return String(list[0].message);\n  }\n  return JSON.stringify(payload).slice(0, 200);\n}\n\nif (msg.statusCode !== 200 || !body || typeof body !== 'object') {\n  var why = msg.statusCode === 200 ? '' : ': ' + apiMessage(body);\n  return toJoin({\n    failed: name + ': evaluateKPIs failed, HTTP ' + msg.statusCode + why\n  });\n}\nif (!body.results || !body.results.length) {\n  return toJoin({ skipped: name + ' no data' });\n}\nreturn [msg, null];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 220,
     "y": 1880,
     "wires": [
+      [
+        "5559d.41f3fb"
+      ],
       [
         "5748c.438d14"
       ]
@@ -1307,35 +1319,28 @@
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "5748c.438d14",
-    "type": "function",
-    "name": "9.1 Build filter values request",
-    "func": "// Builds the filterValues request: the products and orders of the day.\n// In: msg.asset, msg.token and msg.day after the shift steps.\n// Out: msg.method, msg.url and msg.headers for the http request node.\nvar cfg = flow.get('cfg');\nvar DAY_MS = 86400000;\nvar HOUR_MS = 3600000;\n\n// A production day D runs from D start hour to D+1 start hour (UTC).\nvar from = Date.parse(msg.day + 'T00:00:00.000Z') + cfg.dayStartHour * HOUR_MS;\nvar to = from + DAY_MS;\n// The shift report sets the exact window of the day (local day start).\nif (msg.dayFromMs !== undefined) {\n  from = msg.dayFromMs;\n  to = msg.dayToMs;\n}\nvar url = cfg.oeeBase + '/assets/';\nurl += encodeURIComponent(msg.asset.id) + '/filterValues';\nurl += '?from=' + new Date(from).toISOString();\nurl += '&to=' + new Date(to).toISOString();\n\nmsg.method = 'GET';\nmsg.url = url;\nmsg.headers = {\n  'Authorization': 'Bearer ' + msg.token,\n  'Accept': 'application/json'\n};\ndelete msg.payload;\nreturn msg;\n",
-    "outputs": 1,
-    "language": "javascript",
-    "noerr": 0,
-    "x": 240,
+    "id": "5b26a.46bf46",
+    "type": "link out",
+    "name": "to SHIFT",
+    "mode": "link",
+    "links": [
+      "5937b.45262d"
+    ],
+    "x": 620,
     "y": 1880,
-    "wires": [
-      [
-        "5937b.45262d"
-      ]
-    ]
+    "wires": []
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "5937b.45262d",
-    "type": "http request",
-    "name": "GET filter values",
-    "method": "use",
-    "ret": "obj",
-    "url": "",
-    "timeout": "",
-    "mindspherePath": "",
-    "useMindsphereAuth": false,
-    "isAdmin": false,
-    "x": 500,
-    "y": 1880,
+    "id": "5559d.41f3fb",
+    "type": "function",
+    "name": "9.2 Pivot KPI results",
+    "func": "// Pivots the evaluateKPIs response to one entry per hour.\n// In: the response (msg.payload.results, checked in node 3.3).\n// Out: msg.hours = [{time, values}] oldest hour first, msg.kpiMeta and\n// msg.unmapped (KPI names that have no column).\n\n// KPI name in Insights Hub -> column name in fact_kpi.\nvar KPI_COLUMNS = {\n  'Good parts': 'good_parts',\n  'Total parts': 'total_parts',\n  'Rejected parts': 'rejected_parts',\n  'Connected rejected parts': 'connected_rejected_parts',\n  'Manual rejected parts': 'manual_rejected_parts',\n  'Theoretical output': 'theoretical_output',\n  'Quality': 'quality',\n  'Performance': 'performance',\n  'Availability': 'availability',\n  'OEE': 'oee',\n  'TEEP': 'teep',\n  'Total time': 'total_time_ms',\n  'Planned stops': 'planned_stops_ms',\n  'Planned stop from shift plan': 'planned_stop_shift_plan_ms',\n  'Operational time': 'operational_time_ms',\n  'Net production time': 'net_production_time_ms',\n  'Net operational time': 'net_operational_time_ms',\n  'Used operational time': 'used_operational_time_ms',\n  'Availability losses': 'availability_losses_ms',\n  'Availability loss (occurrence)': 'availability_loss_count',\n  'Performance losses': 'performance_losses_ms',\n  'Quality losses': 'quality_losses_ms',\n  'MTTR': 'mttr_ms',\n  'MTBF': 'mtbf_ms',\n  'Downtime (duration)': 'downtime_ms',\n  'Downtimes (occurrence)': 'downtime_count',\n  'Micro stops (duration)': 'micro_stops_ms',\n  'Micro stops (occurrence)': 'micro_stops_count',\n  'Macro stops (duration)': 'macro_stops_ms',\n  'Macro stops (occurrence)': 'macro_stops_count'\n};\n// Columns that are rounded to whole numbers. All others keep their decimals.\nvar INT_COLUMNS = [\n  'total_time_ms',\n  'planned_stops_ms',\n  'planned_stop_shift_plan_ms',\n  'operational_time_ms',\n  'net_production_time_ms',\n  'availability_losses_ms',\n  'micro_stops_ms',\n  'micro_stops_count',\n  'macro_stops_ms'\n];\n// These columns come first in every row.\nvar RATIO_COLUMNS = [\n  'oee',\n  'teep',\n  'availability',\n  'performance',\n  'quality'\n];\n\nfunction numOrNull(v) {\n  if (v === null || v === undefined || v === '') {\n    return null;\n  }\n  var n = Number(v);\n  return isFinite(n) ? n : null;\n}\n\n// Collect the value of every KPI per hour.\nvar body = msg.payload;\nvar unmapped = [];\nvar byHour = {};\nvar times = [];\nbody.results.forEach(function (r) {\n  var col = KPI_COLUMNS[r.name];\n  if (!col) {\n    if (unmapped.indexOf(r.name) < 0) {\n      unmapped.push(r.name);\n    }\n    return;\n  }\n  (r.groups || []).forEach(function (g) {\n    if (!byHour[g.time]) {\n      byHour[g.time] = {};\n      times.push(g.time);\n    }\n    byHour[g.time][col] = numOrNull(g.value);\n  });\n});\n\n// One entry per hour with every column present (null when missing).\nmsg.hours = times.sort().map(function (t) {\n  var hour = byHour[t];\n  var values = {};\n  RATIO_COLUMNS.forEach(function (c) {\n    values[c] = hour[c] === undefined ? null : hour[c];\n  });\n  Object.keys(KPI_COLUMNS).forEach(function (k) {\n    var c = KPI_COLUMNS[k];\n    if (values.hasOwnProperty(c)) {\n      return;\n    }\n    var x = hour[c] === undefined ? null : hour[c];\n    var rounded = x !== null && INT_COLUMNS.indexOf(c) >= 0;\n    values[c] = rounded ? Math.round(x) : x;\n  });\n  return { time: t, values: values };\n});\n\nvar missing = null;\nif (body.missingMapping && body.missingMapping.length) {\n  missing = JSON.stringify(body.missingMapping);\n}\nmsg.kpiMeta = {\n  productUnit: body.productUnit || null,\n  missingMapping: missing\n};\nmsg.unmapped = unmapped;\ndelete msg.payload;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 460,
+    "y": 1860,
     "wires": [
       [
         "5b26a.46bf46"
@@ -1344,29 +1349,66 @@
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "60f37.4b8a91",
-    "type": "link out",
-    "name": "to VALUES",
-    "mode": "link",
-    "links": [
-      "5f048.49f178"
-    ],
-    "x": 940,
-    "y": 1860,
+    "id": "5d159.48585f",
+    "type": "comment",
+    "name": "[10] ASSET SHIFTS",
+    "info": "STAGE 10 - one asset. The shift of an hour comes from the calendar of the asset. 4.1 asks the OEE config for the calendar id and the product collection id, 4.2 asks the calendar events that cover the production day, 4.3 turns them into shift rules (freq, interval, start, until, duration). A failed call or an asset without a calendar fails the day (link \"to JOIN\").",
+    "x": 140,
+    "y": 2020,
     "wires": []
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "64d15.4ebcc3",
-    "type": "link out",
-    "name": "to ASSIGN",
-    "mode": "link",
+    "id": "5937b.45262d",
+    "type": "link in",
+    "name": "SHIFT",
     "links": [
-      "62e26.4d23aa"
+      "5b26a.46bf46"
     ],
-    "x": 940,
-    "y": 1900,
-    "wires": []
+    "x": 60,
+    "y": 2100,
+    "wires": [
+      [
+        "5f048.49f178"
+      ]
+    ]
+  },
+  {
+    "z": "b6d0f.bee9f9",
+    "id": "5f048.49f178",
+    "type": "function",
+    "name": "10.1 Build config request",
+    "func": "// Builds the OEE config request of one asset (to get its calendar id).\n// In: msg.asset and msg.token, after the KPI steps. msg.hours is kept.\n// Out: msg.method, msg.url and msg.headers for the http request node.\nvar cfg = flow.get('cfg');\nmsg.method = 'GET';\nmsg.url = cfg.oeeBase + '/assets/' +\n  encodeURIComponent(msg.asset.id) + '/config';\nmsg.headers = {\n  'Authorization': 'Bearer ' + msg.token,\n  'Accept': 'application/json'\n};\ndelete msg.payload;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 220,
+    "y": 2100,
+    "wires": [
+      [
+        "60f37.4b8a91"
+      ]
+    ]
+  },
+  {
+    "z": "b6d0f.bee9f9",
+    "id": "60f37.4b8a91",
+    "type": "http request",
+    "name": "GET asset config",
+    "method": "use",
+    "ret": "obj",
+    "url": "",
+    "timeout": "",
+    "mindspherePath": "",
+    "useMindsphereAuth": false,
+    "isAdmin": false,
+    "x": 460,
+    "y": 2100,
+    "wires": [
+      [
+        "62e26.4d23aa"
+      ]
+    ]
   },
   {
     "z": "b6d0f.bee9f9",
@@ -1377,28 +1419,22 @@
     "links": [
       "347be.26c952"
     ],
-    "x": 940,
-    "y": 1940,
+    "x": 920,
+    "y": 2120,
     "wires": []
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "5b26a.46bf46",
+    "id": "62e26.4d23aa",
     "type": "function",
-    "name": "9.2 Build product list request",
-    "func": "// Reads the filterValues answer and asks for the product list.\n// In: the filterValues response. Out 1: the product list request. Out 2:\n// no product collection, go on. Out 3: no product or order that day.\n// Out 4: the asset result for the join when the call failed.\nvar cfg = flow.get('cfg');\nvar name = msg.h.asset_name;\n// More values than this in one day fail the asset (one KPI call each).\nvar MAX_VALUES = 30;\n\nfunction toJoin(text) {\n  msg.payload = {\n    assetId: msg.asset.id,\n    name: name,\n    failed: text,\n    skipped: null,\n    planRows: [],\n    utilRows: [],\n    lossRows: []\n  };\n  delete msg.hours;\n  delete msg.kpiMeta;\n  delete msg.shiftRules;\n  return [null, null, null, msg];\n}\n\n// The values of one filter key, text only, every value once.\nfunction valuesOf(list, key) {\n  var found = list.filter(function (f) {\n    return f.key === key;\n  })[0];\n  var seen = [];\n  ((found && found.value) || []).forEach(function (v) {\n    var text = String(v);\n    if (text !== '' && seen.indexOf(text) < 0) {\n      seen.push(text);\n    }\n  });\n  return seen;\n}\n\nvar body = msg.payload;\nif (msg.statusCode !== 200 || !body || typeof body !== 'object') {\n  return toJoin(name + ': filterValues failed, HTTP ' + msg.statusCode);\n}\nvar list = body.filterValues || [];\nvar products = valuesOf(list, 'product');\nvar orders = valuesOf(list, 'order');\nif (products.length > MAX_VALUES || orders.length > MAX_VALUES) {\n  return toJoin(name + ': more than ' + MAX_VALUES + ' products or orders');\n}\nmsg.values = {\n  products: products,\n  orders: orders\n};\ndelete msg.payload;\nif (!products.length && !orders.length) {\n  return [null, null, msg, null];\n}\nif (!msg.productCollectionId) {\n  msg.productsCalled = false;\n  return [null, msg, null, null];\n}\n\nmsg.productsCalled = true;\nvar url = cfg.oeeBase + '/productCollections/';\nurl += encodeURIComponent(msg.productCollectionId) + '/products';\nmsg.method = 'GET';\nmsg.url = url;\nmsg.headers = {\n  'Authorization': 'Bearer ' + msg.token,\n  'Accept': 'application/json'\n};\nreturn [msg, null, null, null];\n",
-    "outputs": 4,
+    "name": "10.2 Build calendar events request",
+    "func": "// Saves the calendar and product collection ids, builds the events request.\n// In: the OEE config response. Out 1: the calendarEvents request. Out 2:\n// the asset result for the join when the config call failed or the asset\n// has no calendar (no half days).\nvar cfg = flow.get('cfg');\nvar DAY_MS = 86400000;\nvar HOUR_MS = 3600000;\nvar name = msg.h.asset_name;\n\nfunction toJoin(text) {\n  msg.payload = {\n    assetId: msg.asset.id,\n    name: name,\n    failed: text,\n    skipped: null,\n    planRows: [],\n    utilRows: [],\n    lossRows: []\n  };\n  delete msg.hours;\n  delete msg.kpiMeta;\n  return [null, msg];\n}\n\nvar config = msg.payload || {};\nif (msg.statusCode !== 200) {\n  return toJoin(name + ': asset config failed, HTTP ' + msg.statusCode);\n}\nif (!config.calendarId) {\n  return toJoin(name + ': asset has no calendar id');\n}\n\n// The events that cover the production day D (D start hour to D+1).\nvar from = Date.parse(msg.day + 'T00:00:00.000Z') + cfg.dayStartHour * HOUR_MS;\nvar to = from + DAY_MS;\n// The shift report sets the exact window of the day (local day start).\nif (msg.dayFromMs !== undefined) {\n  from = msg.dayFromMs;\n  to = msg.dayToMs;\n}\nmsg.calendarId = config.calendarId;\nmsg.productCollectionId = config.productCollectionId || null;\nmsg.method = 'GET';\nmsg.url = cfg.oeeBase + '/calendars/' +\n  encodeURIComponent(config.calendarId) + '/calendarEvents' +\n  '?from=' + new Date(from).toISOString() +\n  '&to=' + new Date(to).toISOString();\nmsg.headers = {\n  'Authorization': 'Bearer ' + msg.token,\n  'Accept': 'application/json'\n};\ndelete msg.payload;\nreturn [msg, null];\n",
+    "outputs": 2,
     "language": "javascript",
     "noerr": 0,
-    "x": 760,
-    "y": 1880,
+    "x": 720,
+    "y": 2100,
     "wires": [
-      [
-        "5d159.48585f"
-      ],
-      [
-        "60f37.4b8a91"
-      ],
       [
         "64d15.4ebcc3"
       ],
@@ -1409,20 +1445,214 @@
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "68af3.51eef5",
+    "id": "64d15.4ebcc3",
+    "type": "http request",
+    "name": "GET calendar events",
+    "method": "use",
+    "ret": "obj",
+    "url": "",
+    "timeout": "",
+    "mindspherePath": "",
+    "useMindsphereAuth": false,
+    "isAdmin": false,
+    "x": 1000,
+    "y": 2080,
+    "wires": [
+      [
+        "68af3.51eef5"
+      ]
+    ]
+  },
+  {
+    "z": "b6d0f.bee9f9",
+    "id": "6c8d1.552127",
     "type": "link out",
-    "name": "to VALUES",
+    "name": "to PRODUCTS",
     "mode": "link",
     "links": [
-      "5f048.49f178"
+      "6a9e2.53880e"
     ],
-    "x": 1160,
-    "y": 1880,
+    "x": 1400,
+    "y": 2080,
     "wires": []
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "5d159.48585f",
+    "id": "6e7c0.56ba40",
+    "type": "link out",
+    "name": "to JOIN",
+    "mode": "link",
+    "links": [
+      "347be.26c952"
+    ],
+    "x": 1400,
+    "y": 2120,
+    "wires": []
+  },
+  {
+    "z": "b6d0f.bee9f9",
+    "id": "68af3.51eef5",
+    "type": "function",
+    "name": "10.3 Build shift rules",
+    "func": "// Turns the calendar events into shift rules.\n// In: the calendarEvents response. Out 1: msg.shiftRules = [{name, freq,\n// interval, start, until, duration}] (epoch ms, null when open ended).\n// Out 2: the asset result for the join when the call failed.\nvar name = msg.h.asset_name;\nvar events = msg.payload && msg.payload.calendarEvents;\n\nif (msg.statusCode !== 200 || !Array.isArray(events)) {\n  msg.payload = {\n    assetId: msg.asset.id,\n    name: name,\n    failed: name + ': calendar events failed, HTTP ' + msg.statusCode,\n    skipped: null,\n    planRows: [],\n    utilRows: [],\n    lossRows: []\n  };\n  delete msg.hours;\n  delete msg.kpiMeta;\n  return [null, msg];\n}\n\n// Date text to epoch ms, null when missing or not a date.\nfunction toMs(text) {\n  var ms = Date.parse(text);\n  return isNaN(ms) ? null : ms;\n}\n\n// An event without a recurrence object gets freq null and never matches.\nmsg.shiftRules = events.map(function (e) {\n  var rule = e.rrule;\n  if (!rule || typeof rule !== 'object') {\n    rule = {};\n  }\n  return {\n    name: e.name || null,\n    freq: rule.freq || null,\n    interval: rule.interval || null,\n    start: toMs(rule.dtstart),\n    until: toMs(rule.until),\n    duration: Math.round(Number(e.duration))\n  };\n});\ndelete msg.payload;\nreturn [msg, null];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 1240,
+    "y": 2100,
+    "wires": [
+      [
+        "6c8d1.552127"
+      ],
+      [
+        "6e7c0.56ba40"
+      ]
+    ]
+  },
+  {
+    "z": "b6d0f.bee9f9",
+    "id": "706af.585359",
+    "type": "comment",
+    "name": "[11] ASSET PRODUCTS",
+    "info": "STAGE 11 - one asset. 5.1 asks filterValues for the products and orders of the production day (the lists behind the Product and Order dropdowns of the OEE app). 5.2 checks the answer and asks the product list (name, code, description, design speed) of the product collection of the asset. A day without any product or order goes straight to \"to ASSIGN\"; an asset without a product collection goes on without master data (\"to VALUES\"). A failed call fails the day (link \"to JOIN\").",
+    "x": 140,
+    "y": 2240,
+    "wires": []
+  },
+  {
+    "z": "b6d0f.bee9f9",
+    "id": "6a9e2.53880e",
+    "type": "link in",
+    "name": "PRODUCTS",
+    "links": [
+      "6c8d1.552127"
+    ],
+    "x": 60,
+    "y": 2320,
+    "wires": [
+      [
+        "7259e.59ec72"
+      ]
+    ]
+  },
+  {
+    "z": "b6d0f.bee9f9",
+    "id": "7259e.59ec72",
+    "type": "function",
+    "name": "11.1 Build filter values request",
+    "func": "// Builds the filterValues request: the products and orders of the day.\n// In: msg.asset, msg.token and msg.day after the shift steps.\n// Out: msg.method, msg.url and msg.headers for the http request node.\nvar cfg = flow.get('cfg');\nvar DAY_MS = 86400000;\nvar HOUR_MS = 3600000;\n\n// A production day D runs from D start hour to D+1 start hour (UTC).\nvar from = Date.parse(msg.day + 'T00:00:00.000Z') + cfg.dayStartHour * HOUR_MS;\nvar to = from + DAY_MS;\n// The shift report sets the exact window of the day (local day start).\nif (msg.dayFromMs !== undefined) {\n  from = msg.dayFromMs;\n  to = msg.dayToMs;\n}\nvar url = cfg.oeeBase + '/assets/';\nurl += encodeURIComponent(msg.asset.id) + '/filterValues';\nurl += '?from=' + new Date(from).toISOString();\nurl += '&to=' + new Date(to).toISOString();\n\nmsg.method = 'GET';\nmsg.url = url;\nmsg.headers = {\n  'Authorization': 'Bearer ' + msg.token,\n  'Accept': 'application/json'\n};\ndelete msg.payload;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 260,
+    "y": 2320,
+    "wires": [
+      [
+        "7448d.5b858b"
+      ]
+    ]
+  },
+  {
+    "z": "b6d0f.bee9f9",
+    "id": "7448d.5b858b",
+    "type": "http request",
+    "name": "GET filter values",
+    "method": "use",
+    "ret": "obj",
+    "url": "",
+    "timeout": "",
+    "mindspherePath": "",
+    "useMindsphereAuth": false,
+    "isAdmin": false,
+    "x": 520,
+    "y": 2320,
+    "wires": [
+      [
+        "7637c.5d1ea4"
+      ]
+    ]
+  },
+  {
+    "z": "b6d0f.bee9f9",
+    "id": "7c049.61e9ef",
+    "type": "link out",
+    "name": "to VALUES",
+    "mode": "link",
+    "links": [
+      "7a15a.6050d6"
+    ],
+    "x": 960,
+    "y": 2300,
+    "wires": []
+  },
+  {
+    "z": "b6d0f.bee9f9",
+    "id": "7fe27.651c21",
+    "type": "link out",
+    "name": "to ASSIGN",
+    "mode": "link",
+    "links": [
+      "7df38.638308"
+    ],
+    "x": 960,
+    "y": 2340,
+    "wires": []
+  },
+  {
+    "z": "b6d0f.bee9f9",
+    "id": "81d16.66b53a",
+    "type": "link out",
+    "name": "to JOIN",
+    "mode": "link",
+    "links": [
+      "347be.26c952"
+    ],
+    "x": 960,
+    "y": 2380,
+    "wires": []
+  },
+  {
+    "z": "b6d0f.bee9f9",
+    "id": "7637c.5d1ea4",
+    "type": "function",
+    "name": "11.2 Build product list request",
+    "func": "// Reads the filterValues answer and asks for the product list.\n// In: the filterValues response. Out 1: the product list request. Out 2:\n// no product collection, go on. Out 3: no product or order that day.\n// Out 4: the asset result for the join when the call failed.\nvar cfg = flow.get('cfg');\nvar name = msg.h.asset_name;\n// More values than this in one day fail the asset (one KPI call each).\nvar MAX_VALUES = 30;\n\nfunction toJoin(text) {\n  msg.payload = {\n    assetId: msg.asset.id,\n    name: name,\n    failed: text,\n    skipped: null,\n    planRows: [],\n    utilRows: [],\n    lossRows: []\n  };\n  delete msg.hours;\n  delete msg.kpiMeta;\n  delete msg.shiftRules;\n  return [null, null, null, msg];\n}\n\n// The values of one filter key, text only, every value once.\nfunction valuesOf(list, key) {\n  var found = list.filter(function (f) {\n    return f.key === key;\n  })[0];\n  var seen = [];\n  ((found && found.value) || []).forEach(function (v) {\n    var text = String(v);\n    if (text !== '' && seen.indexOf(text) < 0) {\n      seen.push(text);\n    }\n  });\n  return seen;\n}\n\nvar body = msg.payload;\nif (msg.statusCode !== 200 || !body || typeof body !== 'object') {\n  return toJoin(name + ': filterValues failed, HTTP ' + msg.statusCode);\n}\nvar list = body.filterValues || [];\nvar products = valuesOf(list, 'product');\nvar orders = valuesOf(list, 'order');\nif (products.length > MAX_VALUES || orders.length > MAX_VALUES) {\n  return toJoin(name + ': more than ' + MAX_VALUES + ' products or orders');\n}\nmsg.values = {\n  products: products,\n  orders: orders\n};\ndelete msg.payload;\nif (!products.length && !orders.length) {\n  return [null, null, msg, null];\n}\nif (!msg.productCollectionId) {\n  msg.productsCalled = false;\n  return [null, msg, null, null];\n}\n\nmsg.productsCalled = true;\nvar url = cfg.oeeBase + '/productCollections/';\nurl += encodeURIComponent(msg.productCollectionId) + '/products';\nmsg.method = 'GET';\nmsg.url = url;\nmsg.headers = {\n  'Authorization': 'Bearer ' + msg.token,\n  'Accept': 'application/json'\n};\nreturn [msg, null, null, null];\n",
+    "outputs": 4,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 780,
+    "y": 2320,
+    "wires": [
+      [
+        "7826b.5eb7bd"
+      ],
+      [
+        "7c049.61e9ef"
+      ],
+      [
+        "7fe27.651c21"
+      ],
+      [
+        "81d16.66b53a"
+      ]
+    ]
+  },
+  {
+    "z": "b6d0f.bee9f9",
+    "id": "83c05.684e53",
+    "type": "link out",
+    "name": "to VALUES",
+    "mode": "link",
+    "links": [
+      "7a15a.6050d6"
+    ],
+    "x": 1180,
+    "y": 2320,
+    "wires": []
+  },
+  {
+    "z": "b6d0f.bee9f9",
+    "id": "7826b.5eb7bd",
     "type": "http request",
     "name": "GET product list",
     "method": "use",
@@ -1432,57 +1662,57 @@
     "mindspherePath": "",
     "useMindsphereAuth": false,
     "isAdmin": false,
-    "x": 1020,
-    "y": 1820,
+    "x": 1040,
+    "y": 2260,
     "wires": [
       [
-        "68af3.51eef5"
+        "83c05.684e53"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "6a9e2.53880e",
+    "id": "85af4.69e76c",
     "type": "comment",
-    "name": "[10] VALUE KPIs",
-    "info": "STAGE 10 - one asset. 6.1 keeps the master data of the products of the day and sends ONE MESSAGE PER PRODUCT AND PER ORDER (one per second). 6.2 builds the evaluateKPIs POST (read-style, hourly) filtered on that product or order. 6.3 keeps the hours that have parts and waits until every value of the asset is in (the state is kept in flow context under valueRuns, so no second split is needed). A failed call fails the day (link \"to JOIN\").",
+    "name": "[12] VALUE KPIs",
+    "info": "STAGE 12 - one asset. 6.1 keeps the master data of the products of the day and sends ONE MESSAGE PER PRODUCT AND PER ORDER (one per second). 6.2 builds the evaluateKPIs POST (read-style, hourly) filtered on that product or order. 6.3 keeps the hours that have parts and waits until every value of the asset is in (the state is kept in flow context under valueRuns, so no second split is needed). A failed call fails the day (link \"to JOIN\").",
     "x": 140,
-    "y": 2020,
+    "y": 2460,
     "wires": []
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "5f048.49f178",
+    "id": "7a15a.6050d6",
     "type": "link in",
     "name": "VALUES",
     "links": [
-      "60f37.4b8a91",
-      "68af3.51eef5"
+      "7c049.61e9ef",
+      "83c05.684e53"
     ],
     "x": 60,
-    "y": 2100,
+    "y": 2540,
     "wires": [
       [
-        "6c8d1.552127"
+        "879e3.6b8085"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "706af.585359",
+    "id": "8b7c1.6eb2b7",
     "type": "link out",
     "name": "to ASSIGN",
     "mode": "link",
     "links": [
-      "62e26.4d23aa"
+      "7df38.638308"
     ],
     "x": 380,
-    "y": 2100,
+    "y": 2540,
     "wires": []
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "7259e.59ec72",
+    "id": "8d6b0.704bd0",
     "type": "link out",
     "name": "to JOIN",
     "mode": "link",
@@ -1490,35 +1720,35 @@
       "347be.26c952"
     ],
     "x": 380,
-    "y": 2140,
+    "y": 2580,
     "wires": []
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "6c8d1.552127",
+    "id": "879e3.6b8085",
     "type": "function",
-    "name": "10.1 Build value messages",
+    "name": "12.1 Build value messages",
     "func": "// Keeps the products of the day and sends one message per product and\n// per order. In: the product list response (or none). Out 1: one message\n// per value. Out 2: nothing to ask. Out 3: asset result for the join.\nvar STALE_MS = 21600000;\nvar MIN_PER = {\n  SECOND: 60,\n  MINUTE: 1,\n  HOUR: 1 / 60,\n  DAY: 1 / 1440\n};\nvar name = msg.h.asset_name;\n\nfunction toJoin(text) {\n  msg.payload = {\n    assetId: msg.asset.id,\n    name: name,\n    failed: text,\n    skipped: null,\n    planRows: [],\n    utilRows: [],\n    lossRows: []\n  };\n  delete msg.hours;\n  delete msg.kpiMeta;\n  delete msg.shiftRules;\n  return [null, null, msg];\n}\n\n// Parts per minute of a product, null when the interval is not known.\nfunction perMinute(p) {\n  var factor = MIN_PER[String(p.designSpeedInterval).toUpperCase()];\n  var value = Number(p.designSpeedValue);\n  if (factor === undefined || !isFinite(value) || p.designSpeedValue === null) {\n    return null;\n  }\n  return value * factor;\n}\n\n// Step 1: keep the master data of the products that ran that day.\nvar wanted = msg.values.products;\nmsg.productList = [];\nif (msg.productsCalled) {\n  var body = msg.payload;\n  if (msg.statusCode !== 200 || !body || typeof body !== 'object') {\n    return toJoin(name + ': product list failed, HTTP ' + msg.statusCode);\n  }\n  var all = Array.isArray(body) ? body : body.products || [];\n  all.forEach(function (p) {\n    if (wanted.indexOf(String(p.name)) < 0) {\n      return;\n    }\n    msg.productList.push({\n      name: String(p.name),\n      code: p.code ? String(p.code) : null,\n      description: p.description ? String(p.description) : null,\n      perMinute: perMinute(p)\n    });\n  });\n}\ndelete msg.payload;\ndelete msg.productsCalled;\n\n// Step 2: one job per product and per order.\nvar jobs = [];\nmsg.values.products.forEach(function (v) {\n  jobs.push({ key: 'PRODUCT', value: v });\n});\nmsg.values.orders.forEach(function (v) {\n  jobs.push({ key: 'ORDER', value: v });\n});\nif (!jobs.length) {\n  return [null, msg, null];\n}\n\n// Step 3: forget runs that never finished, then clone one message per job.\nvar now = Date.now();\nvar runs = flow.get('valueRuns') || {};\nObject.keys(runs).forEach(function (k) {\n  if (now - runs[k].created > STALE_MS) {\n    delete runs[k];\n  }\n});\nflow.set('valueRuns', runs);\nvar run = msg.asset.id + '|' + msg.day + '|' + now + '|';\nrun += Math.floor(Math.random() * 1000000);\nvar out = jobs.map(function (job) {\n  var copy = JSON.parse(JSON.stringify(msg));\n  copy.job = job;\n  copy.jobRun = run;\n  copy.jobCount = jobs.length;\n  return copy;\n});\nreturn [out, null, null];\n",
     "outputs": 3,
     "language": "javascript",
     "noerr": 0,
     "x": 220,
-    "y": 2100,
+    "y": 2540,
     "wires": [
       [
-        "6e7c0.56ba40"
+        "898d2.6d199e"
       ],
       [
-        "706af.585359"
+        "8b7c1.6eb2b7"
       ],
       [
-        "7259e.59ec72"
+        "8d6b0.704bd0"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "6e7c0.56ba40",
+    "id": "898d2.6d199e",
     "type": "delay",
     "name": "One value per second",
     "pauseType": "rate",
@@ -1533,33 +1763,33 @@
     "drop": false,
     "powerMode": false,
     "x": 460,
-    "y": 2060,
+    "y": 2500,
     "wires": [
       [
-        "7448d.5b858b"
+        "8f59f.71e4e9"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "7448d.5b858b",
+    "id": "8f59f.71e4e9",
     "type": "function",
-    "name": "10.2 Build value KPI request",
+    "name": "12.2 Build value KPI request",
     "func": "// Builds the evaluateKPIs request of ONE product or order of the day.\n// In: msg.job = {key: PRODUCT or ORDER, value}, msg.asset, msg.day.\n// Out: the same POST as 3.2, filtered on that value, hourly.\nvar cfg = flow.get('cfg');\nvar DAY_MS = 86400000;\nvar HOUR_MS = 3600000;\nvar from = Date.parse(msg.day + 'T00:00:00.000Z') + cfg.dayStartHour * HOUR_MS;\nvar to = from + DAY_MS;\n// The shift report sets the exact window of the day (local day start).\nif (msg.dayFromMs !== undefined) {\n  from = msg.dayFromMs;\n  to = msg.dayToMs;\n}\n\nfunction filterFor(key) {\n  return { key: key, value: msg.job.key === key ? [msg.job.value] : [] };\n}\n\nmsg.method = 'POST';\nmsg.url = cfg.oeeBase + '/expressions/evaluateKPIs';\nmsg.headers = {\n  'Authorization': 'Bearer ' + msg.token,\n  'Content-Type': 'application/json',\n  'Accept': 'application/json'\n};\nmsg.payload = {\n  assetId: msg.asset.id,\n  scope: {\n    from: new Date(from).toISOString(),\n    to: new Date(to).toISOString(),\n    filter: [\n      filterFor('PRODUCT'),\n      filterFor('ORDER'),\n      { key: 'SHIFT', value: [] }\n    ],\n    recursive: false,\n    groupedByDateTime: true\n  }\n};\nreturn msg;\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
     "x": 720,
-    "y": 2100,
+    "y": 2540,
     "wires": [
       [
-        "7637c.5d1ea4"
+        "9148e.737e02"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "7637c.5d1ea4",
+    "id": "9148e.737e02",
     "type": "http request",
     "name": "POST evaluateKPIs (one value)",
     "method": "use",
@@ -1570,180 +1800,410 @@
     "useMindsphereAuth": false,
     "isAdmin": false,
     "x": 1000,
-    "y": 2100,
+    "y": 2540,
     "wires": [
       [
-        "7826b.5eb7bd"
+        "9337d.75171b"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "7a15a.6050d6",
+    "id": "9715b.78494d",
     "type": "link out",
-    "name": "to ASSIGN",
+    "name": "to VALUE CHECK",
     "mode": "link",
     "links": [
-      "62e26.4d23aa"
+      "9526c.76b034"
     ],
-    "x": 1440,
-    "y": 2080,
+    "x": 1400,
+    "y": 2520,
     "wires": []
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "7c049.61e9ef",
+    "id": "9af39.7b7b7f",
+    "type": "link out",
+    "name": "to VALUE PARTS",
+    "mode": "link",
+    "links": [
+      "9904a.79e266"
+    ],
+    "x": 1400,
+    "y": 2560,
+    "wires": []
+  },
+  {
+    "z": "b6d0f.bee9f9",
+    "id": "9337d.75171b",
+    "type": "function",
+    "name": "12.3 Check day size",
+    "func": "// Sends the answer of a day evaluateKPIs call on, or to the hourly parts.\n// In: the answer of the http request node. Out 1: the answer, to the check\n// node. Out 2: HTTP 413 (the day is too big for one call): to the hourly\n// parts, which ask the same KPIs hour by hour and merge them.\nif (msg.statusCode === 413) {\n  return [null, msg];\n}\nreturn [msg, null];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 1260,
+    "y": 2540,
+    "wires": [
+      [
+        "9715b.78494d"
+      ],
+      [
+        "9af39.7b7b7f"
+      ]
+    ]
+  },
+  {
+    "z": "b6d0f.bee9f9",
+    "id": "9ce28.7d1498",
+    "type": "comment",
+    "name": "[13] VALUE PARTS",
+    "info": "STAGE 13 - the same hourly fallback for the evaluateKPIs call of one product or order that answered 413: hour by hour, joined, merged, then on to the collect node of the value calls. A separate lane from the day KPIs: one shared lane would make a loop.",
+    "x": 140,
+    "y": 2680,
+    "wires": []
+  },
+  {
+    "z": "b6d0f.bee9f9",
+    "id": "9904a.79e266",
+    "type": "link in",
+    "name": "VALUE PARTS",
+    "links": [
+      "9af39.7b7b7f"
+    ],
+    "x": 60,
+    "y": 2760,
+    "wires": [
+      [
+        "9ed17.7eadb1"
+      ]
+    ]
+  },
+  {
+    "z": "b6d0f.bee9f9",
+    "id": "9ed17.7eadb1",
+    "type": "function",
+    "name": "13.1 Build hour requests",
+    "func": "// Splits a day evaluateKPIs call that answered 413 into hourly calls.\n// In: the 413 answer, msg.asset, msg.token, msg.dayFromMs, msg.dayToMs and\n// msg.job (a product or order call) or none (the day call). Out: one request\n// per hour of the day, all in one group (msg.parts) for the join.\nvar cfg = flow.get('cfg');\n// The length of one part. The day window is split into parts this long.\nvar PART_HOURS = 1;\nvar HOUR_MS = 3600000;\n\n// The filters of the original call: the product or order of msg.job (same\n// as the value KPI request), else the plain day call.\nfunction filters() {\n  if (!msg.job) {\n    return [{ key: 'PRODUCT', value: [] }];\n  }\n  function filterFor(key) {\n    return {\n      key: key,\n      value: msg.job.key === key ? [msg.job.value] : []\n    };\n  }\n  return [\n    filterFor('PRODUCT'),\n    filterFor('ORDER'),\n    { key: 'SHIFT', value: [] }\n  ];\n}\n\nvar windows = [];\nfor (var t = msg.dayFromMs; t < msg.dayToMs; t += PART_HOURS * HOUR_MS) {\n  windows.push([t, Math.min(t + PART_HOURS * HOUR_MS, msg.dayToMs)]);\n}\n\n// The day join of the flow uses msg.parts too: keep it aside.\nmsg.dayParts = msg.parts;\nvar group = msg.asset.id + '|' + msg.day + '|' + Date.now() + '|';\ngroup += Math.floor(Math.random() * 1000000);\ndelete msg.payload;\nvar out = windows.map(function (w, index) {\n  var copy = JSON.parse(JSON.stringify(msg));\n  copy.method = 'POST';\n  copy.url = cfg.oeeBase + '/expressions/evaluateKPIs';\n  copy.headers = {\n    'Authorization': 'Bearer ' + msg.token,\n    'Content-Type': 'application/json',\n    'Accept': 'application/json'\n  };\n  copy.payload = {\n    assetId: msg.asset.id,\n    scope: {\n      from: new Date(w[0]).toISOString(),\n      to: new Date(w[1]).toISOString(),\n      filter: filters(),\n      recursive: false,\n      groupedByDateTime: true\n    }\n  };\n  copy.parts = {\n    id: group,\n    index: index,\n    count: windows.length,\n    type: 'array'\n  };\n  return copy;\n});\nnode.status({\n  fill: 'yellow',\n  shape: 'dot',\n  text: msg.asset.name + ': 413, ' + out.length + ' hourly parts'\n});\nreturn [out];\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 220,
+    "y": 2760,
+    "wires": [
+      [
+        "a0c06.8046ca"
+      ]
+    ]
+  },
+  {
+    "z": "b6d0f.bee9f9",
+    "id": "a0c06.8046ca",
+    "type": "delay",
+    "name": "One hour per second",
+    "pauseType": "rate",
+    "timeout": "1",
+    "timeoutUnits": "seconds",
+    "rate": "1",
+    "nbRateUnits": "1",
+    "rateUnits": "second",
+    "randomFirst": "1",
+    "randomLast": "1",
+    "randomUnits": "seconds",
+    "drop": false,
+    "powerMode": false,
+    "x": 460,
+    "y": 2760,
+    "wires": [
+      [
+        "a2af5.81dfe3"
+      ]
+    ]
+  },
+  {
+    "z": "b6d0f.bee9f9",
+    "id": "a2af5.81dfe3",
+    "type": "http request",
+    "name": "POST evaluateKPIs (one hour)",
+    "method": "use",
+    "ret": "obj",
+    "url": "",
+    "timeout": "",
+    "mindspherePath": "",
+    "useMindsphereAuth": false,
+    "isAdmin": false,
+    "x": 720,
+    "y": 2760,
+    "wires": [
+      [
+        "a49e4.8378fc"
+      ]
+    ]
+  },
+  {
+    "z": "b6d0f.bee9f9",
+    "id": "a49e4.8378fc",
+    "type": "function",
+    "name": "13.2 Pack hour answer",
+    "func": "// Packs the answer of one hourly evaluateKPIs call with its status code, so\n// the join that follows keeps both.\n// In: the answer of the http request node. Out: msg.payload = {statusCode,\n// body}.\nmsg.payload = {\n  statusCode: msg.statusCode,\n  body: msg.payload\n};\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 980,
+    "y": 2760,
+    "wires": [
+      [
+        "a68d3.851215"
+      ]
+    ]
+  },
+  {
+    "z": "b6d0f.bee9f9",
+    "id": "a68d3.851215",
+    "type": "join",
+    "name": "Wait for all hours",
+    "mode": "auto",
+    "build": "array",
+    "property": "payload",
+    "propertyType": "msg",
+    "key": "topic",
+    "joiner": "\\n",
+    "joinerType": "str",
+    "accumulate": false,
+    "timeout": "",
+    "count": "",
+    "x": 1220,
+    "y": 2760,
+    "wires": [
+      [
+        "a87c2.86ab2e"
+      ]
+    ]
+  },
+  {
+    "z": "b6d0f.bee9f9",
+    "id": "aa6b1.884447",
+    "type": "link out",
+    "name": "to VALUE CHECK",
+    "mode": "link",
+    "links": [
+      "9526c.76b034"
+    ],
+    "x": 1620,
+    "y": 2760,
+    "wires": []
+  },
+  {
+    "z": "b6d0f.bee9f9",
+    "id": "a87c2.86ab2e",
+    "type": "function",
+    "name": "13.3 Merge hour answers",
+    "func": "// Merges the hourly evaluateKPIs answers into one answer of the whole day,\n// the same shape as the day call (results with their hourly groups).\n// In: msg.payload = [{statusCode, body}] in hour order (join). Out: the day\n// answer with msg.statusCode, to the same check node as the day call.\nvar parts = Array.isArray(msg.payload) ? msg.payload : [];\n\n// Short text of the API error (errors[0].message), else the raw body.\nfunction apiMessage(body) {\n  var list = body && (body.errors || (body.data && body.data.errors));\n  if (list && list.length && list[0].message) {\n    return String(list[0].message);\n  }\n  return JSON.stringify(body).slice(0, 200);\n}\n\n// The day join of the flow gets its msg.parts back.\nif (msg.dayParts === undefined) {\n  delete msg.parts;\n} else {\n  msg.parts = msg.dayParts;\n}\ndelete msg.dayParts;\n\nvar bad = parts.filter(function (p) {\n  return !p || p.statusCode !== 200 || !p.body || typeof p.body !== 'object';\n})[0];\nif (bad || !parts.length) {\n  msg.statusCode = bad ? bad.statusCode : 413;\n  var text = 'also on 1 h windows: ';\n  text += bad ? apiMessage(bad.body) : 'no hourly answer';\n  msg.payload = {\n    errors: [\n      {\n        message: text\n      }\n    ]\n  };\n  return msg;\n}\n\n// Step 1: the groups of every KPI, in the order the hours came.\nvar byName = {};\nvar order = [];\nparts.forEach(function (p) {\n  (p.body.results || []).forEach(function (r) {\n    if (!byName[r.name]) {\n      byName[r.name] = {\n        name: r.name,\n        groups: []\n      };\n      order.push(r.name);\n    }\n    byName[r.name].groups = byName[r.name].groups.concat(r.groups || []);\n  });\n});\n\n// Step 2: the day answer. Unit and missing mappings of the first hour.\nvar first = parts[0].body;\nvar body = {\n  productUnit: first.productUnit,\n  results: order.map(function (name) {\n    return byName[name];\n  })\n};\nif (first.missingMapping) {\n  body.missingMapping = first.missingMapping;\n}\nmsg.statusCode = 200;\nmsg.payload = body;\nif (!msg.job) {\n  msg.kpiHourParts = parts.length;\n}\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 1460,
+    "y": 2760,
+    "wires": [
+      [
+        "aa6b1.884447"
+      ]
+    ]
+  },
+  {
+    "z": "b6d0f.bee9f9",
+    "id": "ac5a0.89dd60",
+    "type": "comment",
+    "name": "[14] VALUE CHECK",
+    "info": "STAGE 14 - the answer of one product or order call (from the call or merged from the hourly parts): its hours with parts are kept until every value of the asset is in (flow context valueRuns). A failed call fails the day (link \"to JOIN\").",
+    "x": 140,
+    "y": 2900,
+    "wires": []
+  },
+  {
+    "z": "b6d0f.bee9f9",
+    "id": "9526c.76b034",
+    "type": "link in",
+    "name": "VALUE CHECK",
+    "links": [
+      "9715b.78494d",
+      "aa6b1.884447"
+    ],
+    "x": 60,
+    "y": 2980,
+    "wires": [
+      [
+        "ae48f.8b7679"
+      ]
+    ]
+  },
+  {
+    "z": "b6d0f.bee9f9",
+    "id": "b037e.8d0f92",
+    "type": "link out",
+    "name": "to ASSIGN",
+    "mode": "link",
+    "links": [
+      "7df38.638308"
+    ],
+    "x": 380,
+    "y": 2960,
+    "wires": []
+  },
+  {
+    "z": "b6d0f.bee9f9",
+    "id": "b226d.8ea8ab",
     "type": "link out",
     "name": "to JOIN",
     "mode": "link",
     "links": [
       "347be.26c952"
     ],
-    "x": 1440,
-    "y": 2120,
+    "x": 380,
+    "y": 3000,
     "wires": []
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "7826b.5eb7bd",
+    "id": "ae48f.8b7679",
     "type": "function",
-    "name": "10.3 Collect value hours",
+    "name": "14.1 Collect value hours",
     "func": "// Collects the hours of every product and order of one asset and day.\n// In: one filtered evaluateKPIs response (msg.job, msg.jobRun, jobCount).\n// Out 1: when all are in, the asset message with msg.valueHours. Out 2:\n// the asset result for the join when one of the calls failed.\nvar name = msg.h.asset_name;\nvar runs = flow.get('valueRuns') || {};\nvar run = runs[msg.jobRun];\nif (!run) {\n  run = {\n    created: Date.now(),\n    done: 0,\n    failed: [],\n    hours: { PRODUCT: {}, ORDER: {} }\n  };\n  runs[msg.jobRun] = run;\n}\nrun.done += 1;\n\n// An hour belongs to the value when it has parts (total, else good).\nfunction partsOf(results) {\n  var wanted = ['Total parts', 'Good parts'];\n  var found = null;\n  wanted.forEach(function (n) {\n    (results || []).forEach(function (r) {\n      if (r.name === n && !found) {\n        found = r;\n      }\n    });\n  });\n  return found;\n}\n\nvar label = msg.job.key + ' ' + msg.job.value;\nvar body = msg.payload;\nif (msg.statusCode !== 200 || !body || typeof body !== 'object') {\n  run.failed.push(label + ' HTTP ' + msg.statusCode);\n} else {\n  var parts = partsOf(body.results);\n  var hours = [];\n  ((parts && parts.groups) || []).forEach(function (g) {\n    if (Number(g.value) > 0) {\n      hours.push(Date.parse(g.time));\n    }\n  });\n  run.hours[msg.job.key][msg.job.value] = hours;\n}\n\nif (run.done < msg.jobCount) {\n  flow.set('valueRuns', runs);\n  return null;\n}\ndelete runs[msg.jobRun];\nflow.set('valueRuns', runs);\ndelete msg.job;\ndelete msg.jobRun;\ndelete msg.jobCount;\ndelete msg.payload;\nif (run.failed.length) {\n  msg.payload = {\n    assetId: msg.asset.id,\n    name: name,\n    failed: name + ': value KPIs failed, ' + run.failed[0],\n    skipped: null,\n    planRows: [],\n    utilRows: [],\n    lossRows: []\n  };\n  delete msg.hours;\n  delete msg.kpiMeta;\n  delete msg.shiftRules;\n  return [null, msg];\n}\nmsg.valueHours = run.hours;\nreturn [msg, null];\n",
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
-    "x": 1280,
-    "y": 2100,
+    "x": 220,
+    "y": 2980,
     "wires": [
       [
-        "7a15a.6050d6"
+        "b037e.8d0f92"
       ],
       [
-        "7c049.61e9ef"
+        "b226d.8ea8ab"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "7df38.638308",
+    "id": "b415c.9041c4",
     "type": "comment",
-    "name": "[11] ASSIGN & PLAN",
-    "info": "STAGE 11 - one asset. 7.1 gives every hour its product and order: the value that has parts in that hour; an hour without parts takes the value of the hour before it (the first hours take the next value). 7.2 groups the hourly KPIs per shift AND product and builds the pbi_plan_opt rows (total time = total minus shift plan stop, planned OpT = operational time, OEE time = used operational time, all in minutes; capacity = design speed per minute x planned OpT; downtime units = design speed per minute x downtime minutes; part name = product description, else name; product key = product code) and the pbi_time_utilisation row. An hour outside every shift gets shift_name null.",
+    "name": "[15] ASSIGN & PLAN",
+    "info": "STAGE 15 - one asset. 7.1 gives every hour its product and order: the value that has parts in that hour; an hour without parts takes the value of the hour before it (the first hours take the next value). 7.2 groups the hourly KPIs per shift AND product and builds the pbi_plan_opt rows (total time = total minus shift plan stop, planned OpT = operational time, OEE time = used operational time, all in minutes; capacity = design speed per minute x planned OpT; downtime units = design speed per minute x downtime minutes; part name = product description, else name; product key = product code) and the pbi_time_utilisation row. An hour outside every shift gets shift_name null.",
     "x": 140,
-    "y": 2240,
+    "y": 3120,
     "wires": []
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "62e26.4d23aa",
+    "id": "7df38.638308",
     "type": "link in",
     "name": "ASSIGN",
     "links": [
-      "64d15.4ebcc3",
-      "706af.585359",
-      "7a15a.6050d6"
+      "7fe27.651c21",
+      "8b7c1.6eb2b7",
+      "b037e.8d0f92"
     ],
     "x": 60,
-    "y": 2320,
+    "y": 3200,
     "wires": [
       [
-        "7fe27.651c21"
+        "b604b.91dadd"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "7fe27.651c21",
+    "id": "b604b.91dadd",
     "type": "function",
-    "name": "11.1 Assign hours to products",
+    "name": "15.1 Assign hours to products",
     "func": "// Gives every hour of the day a product and an order.\n// In: msg.hours, msg.valueHours, msg.productList (absent when no values).\n// Out: hour.product and hour.order on every hour, and msg.hourInfo (hour\n// start in ms -> product and order) for the stop rows.\nvar valueHours = msg.valueHours || { PRODUCT: {}, ORDER: {} };\nvar master = msg.productList || [];\n\n// The value (a product name or an order) that has parts in this hour.\nfunction valueAt(kind, ms) {\n  var names = Object.keys(valueHours[kind]);\n  var found = null;\n  names.forEach(function (n) {\n    if (found === null && valueHours[kind][n].indexOf(ms) >= 0) {\n      found = n;\n    }\n  });\n  return found;\n}\n\n// An hour without parts takes the value of the hour before it. Hours\n// before the first value take the first value that follows.\nfunction fill(list) {\n  var last = null;\n  list.forEach(function (item, i) {\n    if (item === null) {\n      list[i] = last;\n    } else {\n      last = item;\n    }\n  });\n  var next = null;\n  for (var i = list.length - 1; i >= 0; i--) {\n    if (list[i] === null) {\n      list[i] = next;\n    } else {\n      next = list[i];\n    }\n  }\n  return list;\n}\n\n// Part name: the description when there is one, else the name. The key is\n// the product code, else the name.\nfunction productOf(productName) {\n  if (productName === null) {\n    return null;\n  }\n  var record = master.filter(function (p) {\n    return p.name === productName;\n  })[0];\n  var rec = record || {};\n  return {\n    part_name: rec.description || productName,\n    product_key: rec.code || productName,\n    per_minute: rec.perMinute === undefined ? null : rec.perMinute\n  };\n}\n\nvar times = msg.hours.map(function (h) {\n  return Date.parse(h.time);\n});\nvar products = fill(times.map(function (ms) {\n  return valueAt('PRODUCT', ms);\n}));\nvar orders = fill(times.map(function (ms) {\n  return valueAt('ORDER', ms);\n}));\n\nmsg.hourInfo = {};\nmsg.hours.forEach(function (hour, i) {\n  hour.product = productOf(products[i]);\n  hour.order = orders[i];\n  msg.hourInfo[String(times[i])] = {\n    product: hour.product,\n    order: hour.order\n  };\n});\ndelete msg.valueHours;\ndelete msg.productList;\ndelete msg.values;\nreturn msg;\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
     "x": 240,
-    "y": 2320,
+    "y": 3200,
     "wires": [
       [
-        "81d16.66b53a"
+        "b7f3a.9373f6"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "85af4.69e76c",
+    "id": "bbd18.96a628",
     "type": "link out",
     "name": "to STOPS",
     "mode": "link",
     "links": [
-      "83c05.684e53"
+      "b9e29.950d0f"
     ],
     "x": 640,
-    "y": 2320,
+    "y": 3200,
     "wires": []
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "81d16.66b53a",
+    "id": "b7f3a.9373f6",
     "type": "function",
-    "name": "11.2 Build plan rows",
+    "name": "15.2 Build plan rows",
     "func": "// Builds the Power BI rows of one asset and day from the hourly KPIs:\n// pbi_plan_opt (per shift and product), pbi_time_utilisation (per day).\n// In: msg.hours (with hour.product), msg.shiftRules, msg.h.\n// Out: msg.planRows, msg.utilRows.\nvar MIN_MS = 60000;\nvar DAY_MS = 86400000;\nvar HOUR_MS = 3600000;\nvar MINUTES_PER_DAY = 1440;\nvar cfg = flow.get('cfg') || {};\nvar loadedAt = msg.loadedAt || Date.now();\n\n// The shift of an instant: the event whose recurrence covers it, else null.\n// The calendar rules hold local wall clock times: compare the local time.\nfunction shiftOf(instant) {\n  var ms = instant + offsetHours(instant) * HOUR_MS;\n  var found = null;\n  msg.shiftRules.forEach(function (rule) {\n    if (found) {\n      return;\n    }\n    var days = 0;\n    if (rule.freq === 'DAILY') {\n      days = 1;\n    } else if (rule.freq === 'WEEKLY') {\n      days = 7;\n    }\n    var until = rule.until === null ? Infinity : rule.until;\n    if (!days || rule.start === null || ms < rule.start || ms > until) {\n      return;\n    }\n    var step = days * rule.interval * DAY_MS;\n    var occurrence = rule.start + Math.floor((ms - rule.start) / step) * step;\n    if (ms < occurrence + rule.duration) {\n      found = rule.name;\n    }\n  });\n  return found;\n}\n\n// Last Sunday of the month at 01:00 UTC. The month is 0-based.\nfunction lastSundayUtc(year, monthIndex) {\n  var d = new Date(Date.UTC(year, monthIndex + 1, 0, 1, 0, 0));\n  d.setUTCDate(d.getUTCDate() - d.getUTCDay());\n  return d.getTime();\n}\n\n// UTC offset of the site in hours: the standard offset of its time zone\n// plus one hour in EU summer time (from 1.1 CONFIG, via flow context cfg).\nfunction offsetHours(ms) {\n  var year = new Date(ms).getUTCFullYear();\n  var summer = !!cfg.euSummer && ms >= lastSundayUtc(year, 2) &&\n    ms < lastSundayUtc(year, 9);\n  return (cfg.utcHours || 0) + (summer ? 1 : 0);\n}\n\n// Adds a value to a sum. A sum with no value at all stays null.\nfunction addTo(sum, key, value) {\n  if (value === null || value === undefined) {\n    return;\n  }\n  sum[key] = (sum[key] || 0) + value;\n}\n\nfunction minutes(ms) {\n  return ms === null || ms === undefined ? null : ms / MIN_MS;\n}\n\nfunction sumOrNull(sum, key) {\n  return sum[key] === undefined ? null : sum[key];\n}\n\nvar groups = {};\nvar order = [];\nmsg.hours.forEach(function (hour) {\n  var shift = shiftOf(Date.parse(hour.time));\n  var product = hour.product || null;\n  var key = String(shift) + '|' + String(product && product.product_key);\n  var g = groups[key];\n  if (!g) {\n    g = {\n      shift: shift,\n      product: product,\n      sum: {},\n      hours: 0\n    };\n    groups[key] = g;\n    order.push(key);\n  }\n  var v = hour.values;\n  g.hours += 1;\n  addTo(g.sum, 'good', v.good_parts);\n  var planned = v.planned_stop_shift_plan_ms;\n  if (v.total_time_ms !== null && planned !== null) {\n    addTo(g.sum, 'total', minutes(v.total_time_ms - planned));\n  }\n  addTo(g.sum, 'opt', minutes(v.operational_time_ms));\n  addTo(g.sum, 'oee', minutes(v.used_operational_time_ms));\n  addTo(g.sum, 'down', minutes(v.downtime_ms));\n});\n\n// Parts that fit in a time at the design speed. Null without a speed.\nfunction unitsOf(g, minutesKey) {\n  var perMinute = g.product && g.product.per_minute;\n  var time = g.sum[minutesKey];\n  if (perMinute === null || perMinute === undefined || time === undefined) {\n    return null;\n  }\n  return perMinute * time;\n}\n\nvar daySum = {};\nmsg.planRows = order.map(function (key) {\n  var g = groups[key];\n  addTo(daySum, 'total', g.sum.total);\n  addTo(daySum, 'opt', g.sum.opt);\n  addTo(daySum, 'oee', g.sum.oee);\n  return {\n    site_name: msg.h.site,\n    area_name: msg.h.area,\n    machine_name: msg.h.asset_name,\n    unique_machine_name: msg.asset.id,\n    date: msg.day,\n    shift_name: g.shift,\n    part_name: g.product ? g.product.part_name : null,\n    product_key: g.product ? g.product.product_key : null,\n    good_parts: sumOrNull(g.sum, 'good'),\n    capacity: unitsOf(g, 'opt'),\n    downtime_units: unitsOf(g, 'down'),\n    total_time: sumOrNull(g.sum, 'total'),\n    planned_opt: sumOrNull(g.sum, 'opt'),\n    oee_time: sumOrNull(g.sum, 'oee'),\n    oee_target: null,\n    pdt_target: null,\n    updt_target: null,\n    source_hours: g.hours,\n    loaded_at: loadedAt\n  };\n});\n\nmsg.utilRows = [];\nif (order.length) {\n  msg.utilRows.push({\n    site_name: msg.h.site,\n    machine_name: msg.h.asset_name,\n    unique_machine_name: msg.asset.id,\n    date: msg.day,\n    total_time_total: sumOrNull(daySum, 'total'),\n    planned_opt_total: sumOrNull(daySum, 'opt'),\n    oee_time_total: sumOrNull(daySum, 'oee'),\n    all_time: MINUTES_PER_DAY,\n    loaded_at: loadedAt\n  });\n}\ndelete msg.hours;\ndelete msg.kpiMeta;\nreturn msg;\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
     "x": 500,
-    "y": 2320,
+    "y": 3200,
     "wires": [
       [
-        "85af4.69e76c"
+        "bbd18.96a628"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "879e3.6b8085",
+    "id": "bdc07.983f41",
     "type": "comment",
-    "name": "[12] ASSET STOPS",
-    "info": "STAGE 12 - one asset. 8.1 downtimeReasons GET (size 5000, one page), 8.2 checks the response, 8.3 builds the pbi_daily_losses rows (one per stop that starts inside the production day: local date and time, shift, duration in minutes, loss group, sub group, equipment; product, part name and batch id (= order) of the hour of the stop; loss units = design speed per minute x duration), 8.4 builds the result of the asset and sends it to the join.",
+    "name": "[16] ASSET STOPS",
+    "info": "STAGE 16 - one asset. 8.1 downtimeReasons GET (size 5000, one page), 8.2 checks the response, 8.3 builds the pbi_daily_losses rows (one per stop that starts inside the production day: local date and time, shift, duration in minutes, loss group, sub group, equipment; product, part name and batch id (= order) of the hour of the stop; loss units = design speed per minute x duration), 8.4 builds the result of the asset and sends it to the join.",
     "x": 140,
-    "y": 2460,
+    "y": 3340,
     "wires": []
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "83c05.684e53",
+    "id": "b9e29.950d0f",
     "type": "link in",
     "name": "STOPS",
     "links": [
-      "85af4.69e76c"
+      "bbd18.96a628"
     ],
     "x": 60,
-    "y": 2540,
+    "y": 3420,
     "wires": [
       [
-        "898d2.6d199e"
+        "bfaf6.99d85a"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "898d2.6d199e",
+    "id": "bfaf6.99d85a",
     "type": "function",
-    "name": "12.1 Build stops request",
+    "name": "16.1 Build stops request",
     "func": "// Builds the downtimeReasons request for one asset and one production day.\n// In: msg.kpiRows (already built). Out: msg.method, msg.url and msg.headers\n// for the http request node.\nvar cfg = flow.get('cfg');\nvar DAY_MS = 86400000;\nvar HOUR_MS = 3600000;\n// One page of 5000 holds every stop of a day (tested: 423 stops with\n// size 1000). More than one page makes the day fail in node 4.2.\nvar PAGE_SIZE = 5000;\n\n// A production day D runs from D start hour to D+1 start hour (UTC).\nvar from = Date.parse(msg.day + 'T00:00:00.000Z') + cfg.dayStartHour * HOUR_MS;\nvar to = from + DAY_MS;\n// The shift report sets the exact window of the day (local day start).\nif (msg.dayFromMs !== undefined) {\n  from = msg.dayFromMs;\n  to = msg.dayToMs;\n}\nvar fromIso = new Date(from).toISOString();\nvar toIso = new Date(to).toISOString();\nvar query = '?from=' + encodeURIComponent(fromIso) +\n  '&to=' + encodeURIComponent(toIso) +\n  '&size=' + PAGE_SIZE + '&page=0';\nmsg.method = 'GET';\nmsg.url = cfg.oeeBase + '/assets/' +\n  encodeURIComponent(msg.asset.id) + '/downtimeReasons' + query;\nmsg.headers = {\n  'Authorization': 'Bearer ' + msg.token,\n  'Accept': 'application/json'\n};\nreturn msg;\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
     "x": 220,
-    "y": 2540,
+    "y": 3420,
     "wires": [
       [
-        "8b7c1.6eb2b7"
+        "c19e5.9b7173"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "8b7c1.6eb2b7",
+    "id": "c19e5.9b7173",
     "type": "http request",
     "name": "GET downtimeReasons",
     "method": "use",
@@ -1754,16 +2214,16 @@
     "useMindsphereAuth": false,
     "isAdmin": false,
     "x": 460,
-    "y": 2540,
+    "y": 3420,
     "wires": [
       [
-        "8d6b0.704bd0"
+        "c38d4.9d0a8c"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "9148e.737e02",
+    "id": "c76b2.a03cbe",
     "type": "link out",
     "name": "to JOIN",
     "mode": "link",
@@ -1771,49 +2231,49 @@
       "347be.26c952"
     ],
     "x": 860,
-    "y": 2560,
+    "y": 3440,
     "wires": []
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "8d6b0.704bd0",
+    "id": "c38d4.9d0a8c",
     "type": "function",
-    "name": "12.2 Check stops response",
+    "name": "16.2 Check stops response",
     "func": "// Checks the downtimeReasons response of one asset.\n// In: the response. Out 1: msg.stops = the list of stops.\n// Out 2: the asset result for the join when the call failed or has more\n// than one page. The KPI rows of the asset are dropped then (no half days).\nvar name = msg.h.asset_name;\n\nfunction failedResult(text) {\n  msg.payload = {\n    assetId: msg.asset.id,\n    name: name,\n    failed: text,\n    skipped: null,\n    kpiRows: [],\n    lossRows: [],\n    unmapped: msg.unmapped\n  };\n  delete msg.kpiRows;\n  delete msg.unmapped;\n  return [null, msg];\n}\n\nvar body = msg.payload;\n// Short text of the API error (errors[0].message), else the raw body.\nfunction apiMessage(payload) {\n  var list = payload && (payload.errors ||\n    (payload.data && payload.data.errors));\n  if (list && list.length && list[0].message) {\n    return String(list[0].message);\n  }\n  return JSON.stringify(payload).slice(0, 200);\n}\n\nif (msg.statusCode !== 200 || !body || typeof body !== 'object') {\n  var why = msg.statusCode === 200 ? '' : ': ' + apiMessage(body);\n  return failedResult(\n    name + ': downtimeReasons failed, HTTP ' + msg.statusCode + why\n  );\n}\nif (body.page && body.page.totalPages > 1) {\n  return failedResult(\n    name + ': downtimeReasons has more than one page (' +\n      body.page.totalElements + ' rows), raise PAGE_SIZE in node 4.1'\n  );\n}\n\nmsg.stops = (body._embedded && body._embedded.downtimeReasons) || [];\ndelete msg.payload;\nreturn [msg, null];\n",
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
     "x": 700,
-    "y": 2540,
+    "y": 3420,
     "wires": [
       [
-        "8f59f.71e4e9"
+        "c57c3.9ea3a5"
       ],
       [
-        "9148e.737e02"
+        "c76b2.a03cbe"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "8f59f.71e4e9",
+    "id": "c57c3.9ea3a5",
     "type": "function",
-    "name": "12.3 Build loss rows",
+    "name": "16.3 Build loss rows",
     "func": "// Builds the pbi_daily_losses rows of one asset: one row per stop.\n// In: msg.stops, msg.shiftRules, msg.hourInfo, msg.h. Out: msg.lossRows and\n// msg.droppedStops. Product and order come from the hour of the stop.\n// Targets and volume total have no data yet and are null.\nvar MIN_MS = 60000;\nvar DAY_MS = 86400000;\nvar HOUR_MS = 3600000;\nvar cfg = flow.get('cfg');\n// The reason a stop gets when nobody chose one.\nvar DEFAULT_REASON = 'Unplanned Downtime';\nvar BREAKDOWN_CATEGORY = 'Breakdown';\nvar loadedAt = msg.loadedAt || Date.now();\n// The production day: the window of the day message (local day start,\n// 23 to 25 hours), else dayStartHour UTC to the same hour the next day.\nvar midnight = Date.parse(msg.day + 'T00:00:00.000Z');\nvar fromMs = msg.dayFromMs || midnight + cfg.dayStartHour * HOUR_MS;\nvar toMs = msg.dayToMs || fromMs + DAY_MS;\nvar month = msg.day.slice(0, 7);\n\n// The shift of an instant: the event whose recurrence covers it, else null.\n// The calendar rules hold local wall clock times: compare the local time.\nfunction shiftOf(instant) {\n  var ms = instant + offsetHours(instant) * HOUR_MS;\n  var found = null;\n  msg.shiftRules.forEach(function (rule) {\n    if (found) {\n      return;\n    }\n    var days = 0;\n    if (rule.freq === 'DAILY') {\n      days = 1;\n    } else if (rule.freq === 'WEEKLY') {\n      days = 7;\n    }\n    var until = rule.until === null ? Infinity : rule.until;\n    if (!days || rule.start === null || ms < rule.start || ms > until) {\n      return;\n    }\n    var step = days * rule.interval * DAY_MS;\n    var occurrence = rule.start + Math.floor((ms - rule.start) / step) * step;\n    if (ms < occurrence + rule.duration) {\n      found = rule.name;\n    }\n  });\n  return found;\n}\n\n// Last Sunday of the month at 01:00 UTC. The month is 0-based.\nfunction lastSundayUtc(year, monthIndex) {\n  var d = new Date(Date.UTC(year, monthIndex + 1, 0, 1, 0, 0));\n  d.setUTCDate(d.getUTCDate() - d.getUTCDay());\n  return d.getTime();\n}\n\n// UTC offset of the site in hours: the standard offset of its time zone\n// plus one hour in EU summer time (from 1.1 CONFIG, via flow context cfg).\nfunction offsetHours(ms) {\n  var year = new Date(ms).getUTCFullYear();\n  var summer = !!cfg.euSummer && ms >= lastSundayUtc(year, 2) &&\n    ms < lastSundayUtc(year, 9);\n  return (cfg.utcHours || 0) + (summer ? 1 : 0);\n}\n\nfunction numOrNull(v) {\n  if (v === null || v === undefined || v === '') {\n    return null;\n  }\n  var n = Number(v);\n  return isFinite(n) ? n : null;\n}\n\nfunction lossGroup(category, reason) {\n  if (cfg.plannedRoots.indexOf(category) >= 0) {\n    return 'Planned Loss';\n  }\n  if (reason === DEFAULT_REASON) {\n    return 'Not Logged';\n  }\n  return 'Unplanned Loss';\n}\n\n// Only stops that start inside the production day are kept.\nvar hourInfo = msg.hourInfo || {};\nvar lossRows = [];\nvar dropped = 0;\nmsg.stops.forEach(function (r) {\n  var start = Date.parse(r.from);\n  if (!(start >= fromMs && start < toMs)) {\n    dropped++;\n    return;\n  }\n  var parts = r.reasonFullPath ? String(r.reasonFullPath).split(' / ') : [];\n  var category = parts.length > 1 ? parts[0] : null;\n  var subgroup = parts.length > 2 ? parts[1] : null;\n  var localMs = start + offsetHours(start) * HOUR_MS;\n  var localIso = new Date(localMs).toISOString();\n  var duration = numOrNull(r.duration);\n  var minutes = duration === null ? null : Math.round(duration) / MIN_MS;\n  var info = hourInfo[String(Math.floor(start / HOUR_MS) * HOUR_MS)] || {};\n  var product = info.product || {};\n  var perMinute = product.per_minute;\n  var units = null;\n  if (minutes !== null && perMinute !== null && perMinute !== undefined) {\n    units = minutes * perMinute;\n  }\n  lossRows.push({\n    site_name: msg.h.site,\n    machine_name: msg.h.asset_name,\n    unique_machine_name: msg.asset.id,\n    date: localIso.slice(0, 10),\n    time: localIso.slice(11, 19),\n    shift_start_date: msg.day,\n    shift_name: shiftOf(start),\n    duration: minutes,\n    loss_units: units,\n    loss_lvl3_group: lossGroup(category, r.reason || null),\n    loss_lvl3_sub_group: category,\n    loss_lvl3_desc: r.reason || null,\n    loss_final_level: r.reason || null,\n    equipment: subgroup,\n    breakdown_types: category === BREAKDOWN_CATEGORY ? subgroup : null,\n    batch_id: info.order || null,\n    comment_count: numOrNull(r.commentCount),\n    part_name: product.part_name || null,\n    product_key: product.product_key || null,\n    loss_target_key: msg.h.line + '|' + category + '|' + localIso.slice(0, 7),\n    value: null,\n    target: null,\n    volume_key: msg.h.line + '|' + localIso.slice(0, 7),\n    volume_total: null,\n    loaded_at: loadedAt\n  });\n});\n\nmsg.lossRows = lossRows;\nmsg.droppedStops = dropped;\ndelete msg.stops;\ndelete msg.hourInfo;\nreturn msg;\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
     "x": 940,
-    "y": 2520,
+    "y": 3400,
     "wires": [
       [
-        "9337d.75171b"
+        "c95a1.a1d5d7"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "9526c.76b034",
+    "id": "cb490.a36ef0",
     "type": "link out",
     "name": "to JOIN",
     "mode": "link",
@@ -1821,34 +2281,34 @@
       "347be.26c952"
     ],
     "x": 1340,
-    "y": 2540,
+    "y": 3420,
     "wires": []
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "9337d.75171b",
+    "id": "c95a1.a1d5d7",
     "type": "function",
-    "name": "12.4 Build asset result",
-    "func": "// Builds the result of one asset and hands it to the join.\n// In: msg.planRows, utilRows, lossRows, droppedStops and unmapped.\n// Out: msg.payload = {assetId, name, failed, skipped, planRows, utilRows,\n// lossRows, unmapped, outside, note}. The note is one line for the day log.\nvar name = msg.h.asset_name;\n\nvar total = msg.utilRows.reduce(function (sum, x) {\n  return sum + (x.total_time_total || 0);\n}, 0);\nvar note = name + ': ' + msg.planRows.length + ' plan rows, ' +\n  msg.lossRows.length + ' stops, sum total_time ' +\n  (total / 60).toFixed(2) + ' h';\nif (msg.droppedStops) {\n  note += ', ' + msg.droppedStops + ' stops outside the day ignored';\n}\n\nmsg.payload = {\n  assetId: msg.asset.id,\n  name: name,\n  failed: null,\n  skipped: null,\n  planRows: msg.planRows,\n  utilRows: msg.utilRows,\n  lossRows: msg.lossRows,\n  unmapped: msg.unmapped,\n  outside: msg.droppedStops,\n  note: note\n};\ndelete msg.planRows;\ndelete msg.utilRows;\ndelete msg.lossRows;\ndelete msg.droppedStops;\ndelete msg.unmapped;\ndelete msg.shiftRules;\nreturn msg;\n",
+    "name": "16.4 Build asset result",
+    "func": "// Builds the result of one asset and hands it to the join.\n// In: msg.planRows, utilRows, lossRows, droppedStops and unmapped.\n// Out: msg.payload = {assetId, name, failed, skipped, planRows, utilRows,\n// lossRows, unmapped, outside, note}. The note is one line for the day log.\nvar name = msg.h.asset_name;\n\nvar total = msg.utilRows.reduce(function (sum, x) {\n  return sum + (x.total_time_total || 0);\n}, 0);\nvar note = name + ': ' + msg.planRows.length + ' plan rows, ' +\n  msg.lossRows.length + ' stops, sum total_time ' +\n  (total / 60).toFixed(2) + ' h';\nif (msg.droppedStops) {\n  note += ', ' + msg.droppedStops + ' stops outside the day ignored';\n}\nif (msg.kpiHourParts) {\n  note += ', KPIs in ' + msg.kpiHourParts + ' hourly parts (413 on the day)';\n}\n\nmsg.payload = {\n  assetId: msg.asset.id,\n  name: name,\n  failed: null,\n  skipped: null,\n  planRows: msg.planRows,\n  utilRows: msg.utilRows,\n  lossRows: msg.lossRows,\n  unmapped: msg.unmapped,\n  outside: msg.droppedStops,\n  note: note\n};\ndelete msg.planRows;\ndelete msg.utilRows;\ndelete msg.lossRows;\ndelete msg.droppedStops;\ndelete msg.unmapped;\ndelete msg.shiftRules;\nreturn msg;\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
     "x": 1180,
-    "y": 2540,
+    "y": 3420,
     "wires": [
       [
-        "9526c.76b034"
+        "cb490.a36ef0"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "9715b.78494d",
+    "id": "cd37f.a50809",
     "type": "comment",
-    "name": "[13] JOIN & BUILD TABLES",
-    "info": "STAGE 13 - the join waits for all assets of the day. Collect the results, then turn them into the report columns: MachineName = the report name of the CONFIG line, Unique Machine Name = MachineName-Site, targets and loss targets from Glidepaths, Dept, Area, Product Type from Machine Names, shift kept or mapped, an empty sub group is Not Logged, an empty equipment Unclassed, Data Source = SIH; the rows are grouped by folder (line source sih: report, else candidate/sih). Decide writes NOTHING if any asset failed (no half days) and nothing in dry-run mode. Then one message per table and folder: output 1 = Plan_OPT_EU, 2 = Time_Utilisation_EU, 3 = Daily_Losses_EU, 4 = log.",
+    "name": "[17] JOIN & BUILD TABLES",
+    "info": "STAGE 17 - the join waits for all assets of the day. Collect the results, then turn them into the report columns: MachineName = the report name of the CONFIG line, Unique Machine Name = MachineName-Site, targets and loss targets from Glidepaths, Dept, Area, Product Type from Machine Names, shift kept or mapped, an empty sub group is Not Logged, an empty equipment Unclassed, Data Source = SIH; the rows are grouped by folder (line source sih: report, else candidate/sih). Decide writes NOTHING if any asset failed (no half days) and nothing in dry-run mode. Then one message per table and folder: output 1 = Plan_OPT_EU, 2 = Time_Utilisation_EU, 3 = Daily_Losses_EU, 4 = log.",
     "x": 160,
-    "y": 2680,
+    "y": 3560,
     "wires": []
   },
   {
@@ -1858,26 +2318,26 @@
     "name": "JOIN",
     "links": [
       "366ad.28626b",
-      "3c37a.2d2db6",
-      "4baf2.39f67e",
-      "536ae.405ae2",
+      "5748c.438d14",
       "66c04.5055dc",
-      "7259e.59ec72",
-      "7c049.61e9ef",
-      "9148e.737e02",
-      "9526c.76b034"
+      "6e7c0.56ba40",
+      "81d16.66b53a",
+      "8d6b0.704bd0",
+      "b226d.8ea8ab",
+      "c76b2.a03cbe",
+      "cb490.a36ef0"
     ],
     "x": 60,
-    "y": 2760,
+    "y": 3640,
     "wires": [
       [
-        "9904a.79e266"
+        "cf26e.a6a122"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "9904a.79e266",
+    "id": "cf26e.a6a122",
     "type": "join",
     "name": "Wait for all assets of the day",
     "mode": "auto",
@@ -1891,50 +2351,50 @@
     "timeout": "",
     "count": "",
     "x": 240,
-    "y": 2760,
+    "y": 3640,
     "wires": [
       [
-        "9af39.7b7b7f"
+        "d115d.a83a3b"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "9af39.7b7b7f",
+    "id": "d115d.a83a3b",
     "type": "function",
-    "name": "13.1 Collect results",
+    "name": "17.1 Collect results",
     "func": "// Collects the asset results that the join delivered.\n// In: msg.payload = array of asset results. Out: msg.planRows, msg.utilRows,\n// msg.lossRows and msg.summary = {failed, notes, skipped, unmapped}.\nvar results = Array.isArray(msg.payload) ? msg.payload : [msg.payload];\nvar failed = [];\nvar notes = [];\nvar skipped = (msg.planSkipped || []).slice();\nvar unmapped = [];\nvar planRows = [];\nvar utilRows = [];\nvar lossRows = [];\n\nresults.forEach(function (r) {\n  if (!r) {\n    return;\n  }\n  if (r.failed) {\n    failed.push(r.failed);\n  }\n  if (r.skipped) {\n    skipped.push(r.skipped);\n  }\n  if (r.note) {\n    notes.push(r.note);\n  }\n  (r.unmapped || []).forEach(function (u) {\n    if (unmapped.indexOf(u) < 0) {\n      unmapped.push(u);\n    }\n  });\n  planRows = planRows.concat(r.planRows || []);\n  utilRows = utilRows.concat(r.utilRows || []);\n  lossRows = lossRows.concat(r.lossRows || []);\n});\n\nmsg.summary = {\n  failed: failed,\n  notes: notes,\n  skipped: skipped,\n  unmapped: unmapped\n};\nmsg.planRows = planRows;\nmsg.utilRows = utilRows;\nmsg.lossRows = lossRows;\ndelete msg.payload;\ndelete msg.planSkipped;\nreturn msg;\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
     "x": 500,
-    "y": 2760,
+    "y": 3640,
     "wires": [
       [
-        "9ce28.7d1498"
+        "d304c.a9d354"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "9ce28.7d1498",
+    "id": "d304c.a9d354",
     "type": "function",
-    "name": "13.2 Build report columns",
+    "name": "17.2 Build report columns",
     "func": "// Turns the SIH rows of the day into the report columns of Plan_OPT_EU,\n// Time_Utilisation_EU and Daily_Losses_EU. In: msg.planRows, utilRows,\n// lossRows; flow context targets_, machines_, shiftMap. Out: msg.tables =\n// {table: [{out: folder, rows}]} and notes in msg.summary.notes.\nvar DATA_SOURCE = 'SIH';\n// Shift names of the report: a SIH shift with one of these names is kept.\nvar REPORT_SHIFTS = [\n  'Red',\n  'Green',\n  'Gold',\n  'Blue',\n  'Day',\n  'Night',\n  'Afternoon'\n];\n// The sub group of a stop without a category, as in the report.\nvar NO_SUB_GROUP = 'Not Logged';\nvar NO_EQUIPMENT = 'Unclassed';\n\nvar cfg = flow.get('cfg');\nvar site = cfg.site;\nvar targets = flow.get('targets_' + site) || {};\nvar machines = flow.get('machines_' + site) || {};\nvar shiftMap = flow.get('shiftMap') || {};\nvar lineById = {};\ncfg.lines.forEach(function (line) {\n  lineById[line.id] = line;\n});\nvar noLine = {};\nvar noShift = {};\nvar noMachine = {};\n\n// Days since 1970-01-01 of a date text YYYY-MM-DD (a DATE column value).\nfunction dayNumber(text) {\n  var y = Number(text.slice(0, 4));\n  var m = Number(text.slice(5, 7));\n  var d = Number(text.slice(8, 10));\n  return Date.UTC(y, m - 1, d) / 86400000;\n}\n\n// Milliseconds of the day of a time text HH:MM:SS (on 1970-01-01).\nfunction timeOfDay(text) {\n  var parts = /^(\\d{2}):(\\d{2}):(\\d{2})/.exec(String(text));\n  if (!parts) {\n    return null;\n  }\n  var secs = Number(parts[1]) * 3600 + Number(parts[2]) * 60;\n  return (secs + Number(parts[3])) * 1000;\n}\n\nfunction whole(value) {\n  return value === null || value === undefined ? null : Math.floor(value);\n}\n\nfunction rounded(value) {\n  return value === null || value === undefined ? null : Math.round(value);\n}\n\n// The target as text with a decimal point, like the report (15.0, 3.9).\nfunction valueText(number) {\n  if (number === null) {\n    return null;\n  }\n  return Number.isInteger(number) ? number + '.0' : String(number);\n}\n\n// The report machine of an asset: its Config line, else the SIH name.\nfunction machineOf(row) {\n  var line = lineById[row.unique_machine_name];\n  if (!line) {\n    noLine[row.machine_name] = true;\n  }\n  var name = line ? line.report : row.machine_name;\n  var source = line && line.reportSource ? line.reportSource :\n    cfg.siteSource;\n  return {\n    name: name,\n    unique: name + '-' + site,\n    out: source === cfg.source ? cfg.liveFolder : cfg.candidateFolder\n  };\n}\n\nfunction shiftOf(name) {\n  if (name === null || name === undefined) {\n    return null;\n  }\n  if (REPORT_SHIFTS.indexOf(name) !== -1) {\n    return name;\n  }\n  if (shiftMap.hasOwnProperty(name)) {\n    return shiftMap[name];\n  }\n  noShift[name] = true;\n  return name;\n}\n\n// Dept, Area, Product Type of the machine and the source.\nfunction addMachine(row, name) {\n  var info = machines[name];\n  if (!info) {\n    noMachine[name] = true;\n  }\n  row['Dept'] = info ? info.Dept : null;\n  row['Area'] = info ? info.Area : null;\n  row['Product Type'] = info ? info['Product Type'] : null;\n  row['Data Source'] = DATA_SOURCE;\n  return row;\n}\n\nfunction monthText(day) {\n  return '01/' + day.slice(5, 7) + '/' + day.slice(0, 4);\n}\n\n// Rows grouped by output folder: [{out, rows}].\nfunction byFolder(list) {\n  var groups = {};\n  var order = [];\n  list.forEach(function (item) {\n    if (!groups[item.out]) {\n      groups[item.out] = [];\n      order.push(item.out);\n    }\n    groups[item.out].push(item.row);\n  });\n  return order.map(function (out) {\n    return {\n      out: out,\n      rows: groups[out]\n    };\n  });\n}\n\nvar capacity = {};\nvar plan = msg.planRows.map(function (r) {\n  var m = machineOf(r);\n  var target = (targets[m.unique] || {})[monthText(r.date)] || {};\n  var part = r.part_name;\n  if (r.capacity !== null) {\n    capacity[m.name] = (capacity[m.name] || 0) + r.capacity;\n  }\n  var row = {\n    'Date': dayNumber(r.date),\n    'AreaName': null,\n    'MachineName': m.name,\n    'ShiftName': shiftOf(r.shift_name),\n    'PartName': part,\n    'Good Parts': rounded(r.good_parts),\n    'Capacity': r.capacity,\n    'Total Time': whole(r.total_time),\n    'Planned OpT': whole(r.planned_opt),\n    'OEE Time': whole(r.oee_time),\n    'Downtime Units': r.downtime_units,\n    'SiteName': site,\n    'Unique Machine Name': m.unique,\n    'Product Key': m.unique + ' ' + (part || ''),\n    'UPDT Target': target.updt === undefined ? null : target.updt,\n    'PDT Target': target.pdt === undefined ? null : target.pdt,\n    'OEE Target': target.oee === undefined ? null : target.oee\n  };\n  addMachine(row, m.name);\n  row['source_hours'] = r.source_hours;\n  row['loaded_at'] = r.loaded_at;\n  return {\n    out: m.out,\n    row: row\n  };\n});\n\nvar util = msg.utilRows.map(function (r) {\n  var m = machineOf(r);\n  var row = {\n    'Date': dayNumber(r.date),\n    'MachineName': m.name,\n    'OEE Time Total': r.oee_time_total,\n    'Total Time Total': r.total_time_total,\n    'Planned OPT Total': r.planned_opt_total,\n    'SiteName': site,\n    'Unique Machine Name': m.unique,\n    'All Time': r.all_time\n  };\n  addMachine(row, m.name);\n  row['loaded_at'] = r.loaded_at;\n  return {\n    out: m.out,\n    row: row\n  };\n});\n\nvar loss = msg.lossRows.map(function (r) {\n  var m = machineOf(r);\n  var sub = r.loss_lvl3_sub_group || NO_SUB_GROUP;\n  var group = r.loss_lvl3_group;\n  var desc = r.loss_lvl3_desc;\n  var day = r.shift_start_date;\n  var daily = day.slice(8, 10) + '/' + day.slice(5, 7) + '/' +\n    day.slice(0, 4);\n  var month = monthText(day);\n  var target = (targets[m.unique] || {})[month];\n  var value = target && target.b && target.b[sub] !== undefined ?\n    target.b[sub] : null;\n  var part = r.part_name;\n  var shift = shiftOf(r.shift_name);\n  var ms = r.duration === null ? null : Math.round(r.duration * 60000);\n  var volumeKey = daily + ' ' + m.name + ' ' + group + ' ' + sub + ' ' +\n    desc;\n  var row = {\n    'Date': dayNumber(r.date),\n    'Time': timeOfDay(r.time),\n    'MachineName': m.name,\n    'PartName': part,\n    'Shift Time': shift,\n    'ShiftName': shift,\n    'OEELossLvl3Group': group,\n    'OEELossLvl3SubGroup': sub,\n    'OEELossLvl3Desc': desc,\n    'Duration': ms,\n    'SiteName': site,\n    'Unique Machine Name': m.unique,\n    'Breakdown Types': r.breakdown_types,\n    'ShiftStartDate': dayNumber(day),\n    'Comment': null,\n    'Product Key': m.unique + ' ' + (part || ''),\n    'Volume Key': volumeKey,\n    'Loss Units': r.loss_units,\n    'Time in Mins': r.duration,\n    'Equipment Loss Key': m.name + ' ' + desc,\n    'Equipment': r.equipment || NO_EQUIPMENT,\n    'Lvl 3 Loss Name': desc,\n    'Loss Target Key': m.unique + ' ' + sub + ' ' + month,\n    'Value': valueText(value),\n    'Volume Total': capacity.hasOwnProperty(m.name) ?\n      capacity[m.name] : null,\n    'Loss Final Level': desc\n  };\n  addMachine(row, m.name);\n  row['target'] = value === null ? null : value / 100;\n  row['batch_id'] = r.batch_id;\n  row['comment_count'] = r.comment_count;\n  row['loaded_at'] = r.loaded_at;\n  return {\n    out: m.out,\n    row: row\n  };\n});\n\nmsg.tables = {\n  Plan_OPT_EU: byFolder(plan),\n  Time_Utilisation_EU: byFolder(util),\n  Daily_Losses_EU: byFolder(loss)\n};\nvar notes = [];\nif (Object.keys(noLine).length) {\n  notes.push('not a CONFIG line (SIH name kept): ' +\n    Object.keys(noLine).join(' / '));\n}\nif (Object.keys(noShift).length) {\n  notes.push('shift not in the report (SIH name kept): ' +\n    Object.keys(noShift).join(' / '));\n}\nif (Object.keys(noMachine).length) {\n  notes.push('not in Machine Names (no Dept, Area, Product Type): ' +\n    Object.keys(noMachine).join(' / '));\n}\nmsg.summary.notes = msg.summary.notes.concat(notes);\ndelete msg.planRows;\ndelete msg.utilRows;\ndelete msg.lossRows;\nreturn msg;\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
     "x": 740,
-    "y": 2760,
+    "y": 3640,
     "wires": [
       [
-        "9ed17.7eadb1"
+        "d4f3b.ab6c6d"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "a2af5.81dfe3",
+    "id": "d8d19.ae9e9f",
     "type": "link out",
     "name": "to LOG",
     "mode": "link",
@@ -1942,71 +2402,71 @@
       "0fc01.086c77"
     ],
     "x": 1120,
-    "y": 2780,
+    "y": 3660,
     "wires": []
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "9ed17.7eadb1",
+    "id": "d4f3b.ab6c6d",
     "type": "function",
-    "name": "13.3 Decide day",
+    "name": "17.3 Decide day",
     "func": "// Decides what happens with the day.\n// In: msg.tables {table: [{out, rows}]} and msg.summary. Out 1: the message\n// goes on to the table messages (write). Out 2: a log line (failed, nothing\n// to write, dry run). Any failed asset means nothing is written for the day.\nvar cfg = flow.get('cfg');\nvar day = msg.day;\nvar summary = msg.summary;\nvar notes = summary.notes.join(' | ');\nvar counts = {};\nvar sizes = Object.keys(msg.tables).map(function (table) {\n  var parts = msg.tables[table].map(function (group) {\n    return group.rows.length + ' rows to ' + group.out;\n  });\n  counts[table] = msg.tables[table].reduce(function (sum, group) {\n    return sum + group.rows.length;\n  }, 0);\n  return table + ' ' + (parts.length ? parts.join(', ') : '0 rows');\n}).join(', ');\nvar empty = !counts.Plan_OPT_EU && !counts.Daily_Losses_EU;\n\n// Text added to the end of every log line.\nvar tail = '';\nif (summary.skipped.length) {\n  tail += ' | skipped: ' + summary.skipped.join('; ');\n}\nif (summary.unmapped.length) {\n  tail += ' | KPI without column: ' + summary.unmapped.join(', ');\n}\n\nfunction logOnly(text) {\n  var line = { topic: 'log', payload: day + ' [' + msg.mode + '] ' + text };\n  return [null, line];\n}\n\nif (summary.failed.length) {\n  node.status({\n    fill: 'red',\n    shape: 'ring',\n    text: day + ' FAILED, nothing written'\n  });\n  return logOnly(\n    'FAILED, NOTHING WRITTEN: ' + summary.failed.join(' | ') + tail\n  );\n}\nif (empty) {\n  node.status({\n    fill: 'grey',\n    shape: 'ring',\n    text: day + ' nothing to write'\n  });\n  return logOnly(notes + ' | NOTHING TO WRITE' + tail);\n}\nif (cfg.dryRun) {\n  node.status({\n    fill: 'yellow',\n    shape: 'dot',\n    text: day + ' dry run ' + counts.Plan_OPT_EU + '/' +\n      counts.Daily_Losses_EU\n  });\n  return logOnly(notes + ' | DRY RUN: ' + sizes + tail);\n}\n\nmsg.writeNote = notes + ' | WRITING ' + sizes + tail;\nreturn [msg, null];\n",
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
     "x": 980,
-    "y": 2760,
+    "y": 3640,
     "wires": [
       [
-        "a0c06.8046ca"
+        "d6e2a.ad0586"
       ],
       [
-        "a2af5.81dfe3"
+        "d8d19.ae9e9f"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "a68d3.851215",
+    "id": "dcaf7.b1d0d1",
     "type": "link out",
     "name": "to WRITE Plan_OPT_EU",
     "mode": "link",
     "links": [
-      "a49e4.8378fc"
+      "dac08.b037b8"
     ],
     "x": 1380,
-    "y": 2680,
+    "y": 3560,
     "wires": []
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "aa6b1.884447",
+    "id": "e08d5.b50303",
     "type": "link out",
     "name": "to WRITE Time_Utilisation_EU",
     "mode": "link",
     "links": [
-      "a87c2.86ab2e"
+      "de9e6.b369ea"
     ],
     "x": 1380,
-    "y": 2720,
+    "y": 3600,
     "wires": []
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "ae48f.8b7679",
+    "id": "e46b3.b83535",
     "type": "link out",
     "name": "to WRITE Daily_Losses_EU",
     "mode": "link",
     "links": [
-      "ac5a0.89dd60"
+      "e27c4.b69c1c"
     ],
     "x": 1380,
-    "y": 2760,
+    "y": 3640,
     "wires": []
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "b037e.8d0f92",
+    "id": "e65a2.b9ce4e",
     "type": "link out",
     "name": "to LOG",
     "mode": "link",
@@ -2014,64 +2474,64 @@
       "0fc01.086c77"
     ],
     "x": 1380,
-    "y": 2800,
+    "y": 3680,
     "wires": []
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "a0c06.8046ca",
+    "id": "d6e2a.ad0586",
     "type": "function",
-    "name": "13.4 Build table messages",
+    "name": "17.4 Build table messages",
     "func": "// Builds one message per table and output folder for the parquet nodes.\n// In: msg.tables {table: [{out, rows}]} and msg.writeNote. Out 1:\n// Plan_OPT_EU, out 2: Time_Utilisation_EU, out 3: Daily_Losses_EU (each a\n// list, one message per folder), out 4: log line. No rows: no message.\nvar day = msg.day;\n\nfunction table(name) {\n  return msg.tables[name].filter(function (group) {\n    return group.rows.length > 0;\n  }).map(function (group) {\n    return {\n      topic: name,\n      day: day,\n      out: group.out,\n      payload: group.rows\n    };\n  });\n}\n\nnode.status({\n  fill: 'green',\n  shape: 'dot',\n  text: day + ' written'\n});\nvar line = {\n  topic: 'log',\n  payload: day + ' [' + msg.mode + '] ' + msg.writeNote\n};\nreturn [\n  table('Plan_OPT_EU'),\n  table('Time_Utilisation_EU'),\n  table('Daily_Losses_EU'),\n  line\n];\n",
     "outputs": 4,
     "language": "javascript",
     "noerr": 0,
     "x": 1220,
-    "y": 2740,
+    "y": 3620,
     "wires": [
       [
-        "a68d3.851215"
+        "dcaf7.b1d0d1"
       ],
       [
-        "aa6b1.884447"
+        "e08d5.b50303"
       ],
       [
-        "ae48f.8b7679"
+        "e46b3.b83535"
       ],
       [
-        "b037e.8d0f92"
+        "e65a2.b9ce4e"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "b226d.8ea8ab",
+    "id": "e8491.bb6767",
     "type": "comment",
-    "name": "[14] WRITE Plan_OPT_EU",
-    "info": "STAGE 14 - parquet node, path and write object for Plan_OPT_EU (machine x production day x shift x product), one message per folder. The path is <folder>/Plan_OPT_EU/site=<Site>/Plan_OPT_EU_<production day>_sih.parquet, the same on every rerun, so a rerun replaces the day. The columns and types are those of the PBI report build (DATE as a day number, times of day on 1970-01-01).",
+    "name": "[18] WRITE Plan_OPT_EU",
+    "info": "STAGE 18 - parquet node, path and write object for Plan_OPT_EU (machine x production day x shift x product), one message per folder. The path is <folder>/Plan_OPT_EU/site=<Site>/Plan_OPT_EU_<production day>_sih.parquet, the same on every rerun, so a rerun replaces the day. The columns and types are those of the PBI report build (DATE as a day number, times of day on 1970-01-01).",
     "x": 160,
-    "y": 2900,
+    "y": 3780,
     "wires": []
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "a49e4.8378fc",
+    "id": "dac08.b037b8",
     "type": "link in",
     "name": "WRITE Plan_OPT_EU",
     "links": [
-      "a68d3.851215"
+      "dcaf7.b1d0d1"
     ],
     "x": 60,
-    "y": 2980,
+    "y": 3860,
     "wires": [
       [
-        "b415c.9041c4"
+        "ea380.bd0080"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "b415c.9041c4",
+    "id": "ea380.bd0080",
     "type": "parquet",
     "name": "Write Plan_OPT_EU parquet",
     "option": "write",
@@ -2175,70 +2635,70 @@
     "outputPtyType": "msg",
     "engine": "parquetjs",
     "x": 220,
-    "y": 2980,
+    "y": 3860,
     "wires": [
       [
-        "b604b.91dadd"
+        "ec26f.be9999"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "b604b.91dadd",
+    "id": "ec26f.be9999",
     "type": "function",
-    "name": "14.1 Set Plan_OPT_EU path",
+    "name": "18.1 Set Plan_OPT_EU path",
     "func": "// Sets the file path of one table and production day: <out>/<table>/\n// site=<Site>/<table>_<YYYY-MM-DD>_<source>.parquet. In: the parquet node\n// output (msg.out, topic = table, day). Out: msg.path and msg.filename.\n// The name is fixed per source and day: a rerun replaces only this file.\nvar cfg = flow.get('cfg');\n\nmsg.path = msg.out + '/' + msg.topic + '/site=' + cfg.site;\nmsg.path += '/' + msg.topic + '_' + msg.day + '_' + cfg.source;\nmsg.path += '.parquet';\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
     "x": 480,
-    "y": 2980,
+    "y": 3860,
     "wires": [
       [
-        "b7f3a.9373f6"
+        "ee15e.c032b2"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "b7f3a.9373f6",
+    "id": "ee15e.c032b2",
     "type": "write object",
     "name": "Plan_OPT_EU to data lake",
     "path": "",
     "mode": "object",
     "x": 740,
-    "y": 2980,
+    "y": 3860,
     "wires": []
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "b9e29.950d0f",
+    "id": "f004d.c1cbcb",
     "type": "comment",
-    "name": "[15] WRITE Time_Utilisation_EU",
-    "info": "STAGE 15 - parquet node, path and write object for Time_Utilisation_EU (machine x production day), one message per folder. The path is <folder>/Time_Utilisation_EU/site=<Site>/Time_Utilisation_EU_<production day>_sih.parquet, the same on every rerun, so a rerun replaces the day. The columns and types are those of the PBI report build (DATE as a day number, times of day on 1970-01-01).",
+    "name": "[19] WRITE Time_Utilisation_EU",
+    "info": "STAGE 19 - parquet node, path and write object for Time_Utilisation_EU (machine x production day), one message per folder. The path is <folder>/Time_Utilisation_EU/site=<Site>/Time_Utilisation_EU_<production day>_sih.parquet, the same on every rerun, so a rerun replaces the day. The columns and types are those of the PBI report build (DATE as a day number, times of day on 1970-01-01).",
     "x": 180,
-    "y": 3120,
+    "y": 4000,
     "wires": []
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "a87c2.86ab2e",
+    "id": "de9e6.b369ea",
     "type": "link in",
     "name": "WRITE Time_Utilisation_EU",
     "links": [
-      "aa6b1.884447"
+      "e08d5.b50303"
     ],
     "x": 60,
-    "y": 3200,
+    "y": 4080,
     "wires": [
       [
-        "bbd18.96a628"
+        "f1f3c.c364e4"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "bbd18.96a628",
+    "id": "f1f3c.c364e4",
     "type": "parquet",
     "name": "Write Time_Utilisation_EU parquet",
     "option": "write",
@@ -2302,70 +2762,70 @@
     "outputPtyType": "msg",
     "engine": "parquetjs",
     "x": 260,
-    "y": 3200,
+    "y": 4080,
     "wires": [
       [
-        "bdc07.983f41"
+        "f3e2b.c4fdfd"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "bdc07.983f41",
+    "id": "f3e2b.c4fdfd",
     "type": "function",
-    "name": "15.1 Set Time_Utilisation_EU path",
+    "name": "19.1 Set Time_Utilisation_EU path",
     "func": "// Sets the file path of one table and production day: <out>/<table>/\n// site=<Site>/<table>_<YYYY-MM-DD>_<source>.parquet. In: the parquet node\n// output (msg.out, topic = table, day). Out: msg.path and msg.filename.\n// The name is fixed per source and day: a rerun replaces only this file.\nvar cfg = flow.get('cfg');\n\nmsg.path = msg.out + '/' + msg.topic + '/site=' + cfg.site;\nmsg.path += '/' + msg.topic + '_' + msg.day + '_' + cfg.source;\nmsg.path += '.parquet';\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
     "x": 580,
-    "y": 3200,
+    "y": 4080,
     "wires": [
       [
-        "bfaf6.99d85a"
+        "f5d1a.c69716"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "bfaf6.99d85a",
+    "id": "f5d1a.c69716",
     "type": "write object",
     "name": "Time_Utilisation_EU to data lake",
     "path": "",
     "mode": "object",
     "x": 900,
-    "y": 3200,
+    "y": 4080,
     "wires": []
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "c19e5.9b7173",
+    "id": "f7c09.c8302f",
     "type": "comment",
-    "name": "[16] WRITE Daily_Losses_EU",
-    "info": "STAGE 16 - parquet node, path and write object for Daily_Losses_EU (one row per stop), one message per folder. The path is <folder>/Daily_Losses_EU/site=<Site>/Daily_Losses_EU_<production day>_sih.parquet, the same on every rerun, so a rerun replaces the day. The columns and types are those of the PBI report build (DATE as a day number, times of day on 1970-01-01).",
+    "name": "[20] WRITE Daily_Losses_EU",
+    "info": "STAGE 20 - parquet node, path and write object for Daily_Losses_EU (one row per stop), one message per folder. The path is <folder>/Daily_Losses_EU/site=<Site>/Daily_Losses_EU_<production day>_sih.parquet, the same on every rerun, so a rerun replaces the day. The columns and types are those of the PBI report build (DATE as a day number, times of day on 1970-01-01).",
     "x": 160,
-    "y": 3340,
+    "y": 4220,
     "wires": []
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "ac5a0.89dd60",
+    "id": "e27c4.b69c1c",
     "type": "link in",
     "name": "WRITE Daily_Losses_EU",
     "links": [
-      "ae48f.8b7679"
+      "e46b3.b83535"
     ],
     "x": 60,
-    "y": 3420,
+    "y": 4300,
     "wires": [
       [
-        "c38d4.9d0a8c"
+        "f9af8.c9c948"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "c38d4.9d0a8c",
+    "id": "f9af8.c9c948",
     "type": "parquet",
     "name": "Write Daily_Losses_EU parquet",
     "option": "write",
@@ -2513,69 +2973,69 @@
     "outputPtyType": "msg",
     "engine": "parquetjs",
     "x": 240,
-    "y": 3420,
+    "y": 4300,
     "wires": [
       [
-        "c57c3.9ea3a5"
+        "fb9e7.cb6261"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "c57c3.9ea3a5",
+    "id": "fb9e7.cb6261",
     "type": "function",
-    "name": "16.1 Set Daily_Losses_EU path",
+    "name": "20.1 Set Daily_Losses_EU path",
     "func": "// Sets the file path of one table and production day: <out>/<table>/\n// site=<Site>/<table>_<YYYY-MM-DD>_<source>.parquet. In: the parquet node\n// output (msg.out, topic = table, day). Out: msg.path and msg.filename.\n// The name is fixed per source and day: a rerun replaces only this file.\nvar cfg = flow.get('cfg');\n\nmsg.path = msg.out + '/' + msg.topic + '/site=' + cfg.site;\nmsg.path += '/' + msg.topic + '_' + msg.day + '_' + cfg.source;\nmsg.path += '.parquet';\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
     "x": 520,
-    "y": 3420,
+    "y": 4300,
     "wires": [
       [
-        "c76b2.a03cbe"
+        "fd8d6.ccfb7a"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "c76b2.a03cbe",
+    "id": "fd8d6.ccfb7a",
     "type": "write object",
     "name": "Daily_Losses_EU to data lake",
     "path": "",
     "mode": "object",
     "x": 800,
-    "y": 3420,
+    "y": 4300,
     "wires": []
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "c95a1.a1d5d7",
+    "id": "ff7c5.ce9493",
     "type": "comment",
-    "name": "[17] ERRORS",
-    "info": "STAGE 17 - a catch node takes every error raised by a node of this tab and turns it into a log line with the name of the node and the message of the API (for example the limit message of evaluateKPIs). Errors of the log nodes themselves are not logged again.",
+    "name": "[21] ERRORS",
+    "info": "STAGE 21 - a catch node takes every error raised by a node of this tab and turns it into a log line with the name of the node and the message of the API (for example the limit message of evaluateKPIs). Errors of the log nodes themselves are not logged again.",
     "x": 120,
-    "y": 3560,
+    "y": 4440,
     "wires": []
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "cd37f.a50809",
+    "id": "035a3.d1c6c5",
     "type": "catch",
     "name": "Catch errors",
     "scope": null,
     "uncaught": false,
     "x": 120,
-    "y": 3640,
+    "y": 4520,
     "wires": [
       [
-        "cb490.a36ef0"
+        "016b4.d02dac"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "cf26e.a6a122",
+    "id": "05492.d35fde",
     "type": "link out",
     "name": "to LOG",
     "mode": "link",
@@ -2583,34 +3043,34 @@
       "0fc01.086c77"
     ],
     "x": 460,
-    "y": 3640,
+    "y": 4520,
     "wires": []
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "cb490.a36ef0",
+    "id": "016b4.d02dac",
     "type": "function",
-    "name": "17.1 Describe error",
+    "name": "21.1 Describe error",
     "func": "// Turns an error caught by the catch node into a log line.\n// In: the message of a catch node (msg.error).\n// Out: a log line for the shared log. Errors of the log nodes themselves\n// are dropped (no log loop).\nvar err = msg.error || {};\nvar source = (err.source && err.source.name) || 'unknown node';\n\nfunction textOf(value) {\n  if (value === undefined || value === null) {\n    return '';\n  }\n  if (typeof value === 'string') {\n    return value;\n  }\n  return JSON.stringify(value);\n}\n\n// Takes the API message out of an error body when there is one.\nfunction apiMessage(value) {\n  var body = value;\n  if (typeof value === 'string') {\n    try {\n      body = JSON.parse(value);\n    } catch (e) {\n      return value;\n    }\n  }\n  var data = body && body.data;\n  var list = (data && data.errors) || (body && body.errors);\n  if (list && list.length && list[0].message) {\n    return list[0].message;\n  }\n  return textOf(value);\n}\n\nif (msg.logBatch) {\n  node.status({\n    fill: 'red',\n    shape: 'ring',\n    text: 'log write failed'\n  });\n  return null;\n}\n\nvar text = '';\nif (msg.day) {\n  text += msg.day + ' [' + msg.mode + '] ';\n}\ntext += 'ERROR in ' + source + ': ' + apiMessage(err.message);\nreturn {\n  topic: 'log',\n  payload: text,\n  level: 'error',\n  source: source\n};\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
     "x": 320,
-    "y": 3640,
+    "y": 4520,
     "wires": [
       [
-        "cf26e.a6a122"
+        "05492.d35fde"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "d115d.a83a3b",
+    "id": "07381.d4f8f7",
     "type": "comment",
-    "name": "[18] LOG",
-    "info": "STAGE 18 - every log line arrives here through the link \"to LOG\". 1 turns a line into a row (time, flow, site, production day, level) and shows it in the debug sidebar. The join collects the rows for 30 s, the delay lets one batch pass every 10 s so two writes do not overlap, 3 sets the file of the month and the read node loads the old file. A read of a file that does not exist answers nothing (only a warning), so the same batch also goes through a 10 s wait to the append step. The log is written whatever the dry-run switch says.",
+    "name": "[22] LOG",
+    "info": "STAGE 22 - every log line arrives here through the link \"to LOG\". 1 turns a line into a row (time, flow, site, production day, level) and shows it in the debug sidebar. The join collects the rows for 30 s, the delay lets one batch pass every 10 s so two writes do not overlap, 3 sets the file of the month and the read node loads the old file. A read of a file that does not exist answers nothing (only a warning), so the same batch also goes through a 10 s wait to the append step. The log is written whatever the dry-run switch says.",
     "x": 100,
-    "y": 3780,
+    "y": 4660,
     "wires": []
   },
   {
@@ -2622,39 +3082,39 @@
       "11af0.0a0590",
       "1d48a.139c26",
       "23157.186771",
-      "a2af5.81dfe3",
-      "b037e.8d0f92",
-      "cf26e.a6a122"
+      "d8d19.ae9e9f",
+      "e65a2.b9ce4e",
+      "05492.d35fde"
     ],
     "x": 60,
-    "y": 3860,
+    "y": 4740,
     "wires": [
       [
-        "d304c.a9d354"
+        "09270.d69210"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "d304c.a9d354",
+    "id": "09270.d69210",
     "type": "function",
-    "name": "18.1 Format log line",
+    "name": "22.1 Format log line",
     "func": "// Turns one log message into a row for the log file.\n// In: msg.payload = log text (optional msg.level and msg.source).\n// Out: msg.payload = the row, msg.line = the text for the debug node.\nvar FLOW_NAME = 'sih-hull';\nvar cfg = flow.get('cfg') || {};\nvar text = String(msg.payload);\n\nvar seq = (flow.get('logSeq') || 0) + 1;\nflow.set('logSeq', seq);\n\n// Most lines start with the production day and the mode: \"2026-09-01 [x] \".\nvar day = '';\nvar mode = '';\nvar message = text;\nvar parts = /^(\\d{4}-\\d{2}-\\d{2}) \\[([^\\]]*)\\] ([\\s\\S]*)$/.exec(text);\nif (parts) {\n  day = parts[1];\n  mode = parts[2];\n  message = parts[3];\n}\n\nvar level = msg.level;\nif (!level) {\n  if (/FAILED/.test(message)) {\n    level = 'failed';\n  } else if (/NOTHING TO WRITE/.test(message)) {\n    level = 'warn';\n  } else {\n    level = 'info';\n  }\n}\n\nmsg.line = text;\nmsg.payload = {\n  ts_utc: new Date().toISOString(),\n  seq: seq,\n  flow: FLOW_NAME,\n  site: cfg.site || 'all',\n  production_day: day,\n  mode: mode,\n  level: level,\n  source: msg.source || 'flow',\n  message: message\n};\nreturn msg;\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
     "x": 200,
-    "y": 3860,
+    "y": 4740,
     "wires": [
       [
-        "d4f3b.ab6c6d",
-        "d6e2a.ad0586"
+        "0b15f.d82b29",
+        "0d04e.d9c442"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "d4f3b.ab6c6d",
+    "id": "0b15f.d82b29",
     "type": "join",
     "name": "Collect log lines",
     "mode": "custom",
@@ -2674,16 +3134,16 @@
     "reduceInitType": "",
     "reduceFixup": "",
     "x": 420,
-    "y": 3840,
+    "y": 4720,
     "wires": [
       [
-        "d8d19.ae9e9f"
+        "0ef3d.db5d5b"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "d6e2a.ad0586",
+    "id": "0d04e.d9c442",
     "type": "debug",
     "name": "Run log",
     "active": true,
@@ -2693,12 +3153,12 @@
     "complete": "line",
     "targetType": "msg",
     "x": 380,
-    "y": 3880,
+    "y": 4760,
     "wires": []
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "d8d19.ae9e9f",
+    "id": "0ef3d.db5d5b",
     "type": "delay",
     "name": "One log batch per 10 s",
     "pauseType": "rate",
@@ -2713,75 +3173,75 @@
     "drop": false,
     "powerMode": false,
     "x": 640,
-    "y": 3860,
+    "y": 4740,
     "wires": [
       [
-        "dac08.b037b8"
+        "10e2c.dcf674"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "dac08.b037b8",
+    "id": "10e2c.dcf674",
     "type": "function",
-    "name": "18.2 Build log write",
+    "name": "22.2 Build log write",
     "func": "// Prepares the write of one batch of log rows (the read node runs next).\n// In: msg.payload = array of log rows from the join node.\n// Out: msg.path = file of the month, msg.logRows, msg.logBatchId, no payload.\n// msg.logBatch keeps errors of the log nodes themselves out of the log.\nvar FLOW_NAME = 'sih-hull';\nvar cfg = flow.get('cfg') || {};\nvar root = cfg.root || 'logs_without_root';\nvar rows = msg.payload;\nvar month = rows[0].ts_utc.slice(0, 7);\n\nvar batchNo = (flow.get('logBatchNo') || 0) + 1;\nflow.set('logBatchNo', batchNo);\n\nmsg.logRows = rows;\nmsg.path = root + '/logs/' + FLOW_NAME + '/log_' + month + '.csv';\nmsg.logBatch = true;\nmsg.logBatchId = rows[0].ts_utc + '#' + batchNo;\ndelete msg.payload;\nreturn msg;\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
     "x": 880,
-    "y": 3860,
+    "y": 4740,
     "wires": [
       [
-        "dcaf7.b1d0d1",
-        "de9e6.b369ea"
+        "12d1b.de8f8d",
+        "14c0a.e028a6"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "e27c4.b69c1c",
+    "id": "189e8.e35ad8",
     "type": "link out",
     "name": "to APPEND",
     "mode": "link",
     "links": [
-      "e08d5.b50303"
+      "16af9.e1c1bf"
     ],
     "x": 1240,
-    "y": 3860,
+    "y": 4740,
     "wires": []
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "dcaf7.b1d0d1",
+    "id": "12d1b.de8f8d",
     "type": "read object",
     "name": "Read log file",
     "path": "",
     "mode": "object",
     "x": 1080,
-    "y": 3840,
+    "y": 4720,
     "wires": [
       [
-        "e27c4.b69c1c"
+        "189e8.e35ad8"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "e46b3.b83535",
+    "id": "1a8d7.e4f3f1",
     "type": "link out",
     "name": "to APPEND",
     "mode": "link",
     "links": [
-      "e08d5.b50303"
+      "16af9.e1c1bf"
     ],
     "x": 1240,
-    "y": 3940,
+    "y": 4820,
     "wires": []
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "de9e6.b369ea",
+    "id": "14c0a.e028a6",
     "type": "delay",
     "name": "Wait for read 10 s",
     "pauseType": "delay",
@@ -2796,66 +3256,66 @@
     "drop": false,
     "powerMode": false,
     "x": 1100,
-    "y": 3880,
+    "y": 4760,
     "wires": [
       [
-        "e46b3.b83535"
+        "1a8d7.e4f3f1"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "e65a2.b9ce4e",
+    "id": "1c7c6.e68d0a",
     "type": "comment",
-    "name": "[19] LOG WRITE",
-    "info": "STAGE 19 - adds the rows of the batch to the old file and writes the whole file back (the data lake has no append). Columns: ts_utc, seq, flow, site, production_day, mode, level, source, message. Every field is quoted, line breaks become a space. The batch arrives twice (read answer and the wait) and is written once. If the read gives no answer for a file this flow wrote before, a new file with a time stamp is written, so the history is never replaced.",
+    "name": "[23] LOG WRITE",
+    "info": "STAGE 23 - adds the rows of the batch to the old file and writes the whole file back (the data lake has no append). Columns: ts_utc, seq, flow, site, production_day, mode, level, source, message. Every field is quoted, line breaks become a space. The batch arrives twice (read answer and the wait) and is written once. If the read gives no answer for a file this flow wrote before, a new file with a time stamp is written, so the history is never replaced.",
     "x": 120,
-    "y": 4000,
+    "y": 4880,
     "wires": []
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "e08d5.b50303",
+    "id": "16af9.e1c1bf",
     "type": "link in",
     "name": "APPEND",
     "links": [
-      "e27c4.b69c1c",
-      "e46b3.b83535"
+      "189e8.e35ad8",
+      "1a8d7.e4f3f1"
     ],
     "x": 60,
-    "y": 4080,
+    "y": 4960,
     "wires": [
       [
-        "e8491.bb6767"
+        "1e6b5.e82623"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "e8491.bb6767",
+    "id": "1e6b5.e82623",
     "type": "function",
-    "name": "19.1 Append log rows",
+    "name": "23.1 Append log rows",
     "func": "// Adds the rows of one batch to the log file of the month.\n// In: msg.payload = the old file (read answered) or nothing (no answer).\n// Out: msg.payload = the whole new file, the data lake has no append.\n// The same batch can arrive twice (read answer, then the wait): once only.\nvar SEPARATOR = ',';\nvar KEEP_IDS = 50;\nvar COLUMNS = [\n  'ts_utc',\n  'seq',\n  'flow',\n  'site',\n  'production_day',\n  'mode',\n  'level',\n  'source',\n  'message'\n];\n\n// Quotes inside a field are doubled, line breaks become a space.\nfunction quote(value) {\n  var text = (value === undefined || value === null) ? '' : String(value);\n  text = text.replace(/\"/g, '\"\"').replace(/[\\r\\n]+/g, ' ');\n  return '\"' + text + '\"';\n}\n\nfunction lineOf(row) {\n  return COLUMNS.map(function (name) {\n    return quote(row[name]);\n  }).join(SEPARATOR);\n}\n\n// The read node gives text, or a serialised buffer.\nfunction decode(payload) {\n  if (typeof payload === 'string') {\n    return payload;\n  }\n  if (payload && payload.type === 'Buffer' && payload.data) {\n    var bin = '';\n    payload.data.forEach(function (byte) {\n      bin += String.fromCharCode(byte);\n    });\n    try {\n      return decodeURIComponent(escape(bin));\n    } catch (e) {\n      return bin;\n    }\n  }\n  return null;\n}\n\nvar rows = msg.logRows.slice();\nrows.sort(function (a, b) {\n  if (a.ts_utc !== b.ts_utc) {\n    return a.ts_utc < b.ts_utc ? -1 : 1;\n  }\n  return a.seq - b.seq;\n});\n\nvar done = flow.get('logDone') || [];\nvar known = flow.get('logKnown') || [];\nif (done.indexOf(msg.logBatchId) >= 0) {\n  return null;\n}\n\nvar path = msg.path;\nvar old = '';\nvar problem = '';\nif (msg.payload === undefined || msg.payload === null) {\n  if (known.indexOf(path) >= 0) {\n    problem = 'read gave no answer for a file written before';\n  }\n} else {\n  old = decode(msg.payload);\n  if (old === null) {\n    old = '';\n    problem = 'old file is not text';\n  }\n}\nif (problem) {\n  // Never replace the old file: write a new one with a time stamp.\n  var stamp = new Date().toISOString().replace(/[-:.TZ]/g, '');\n  path = path.replace(/\\.csv$/, '_' + stamp + '.csv');\n  rows.push({\n    ts_utc: new Date().toISOString(),\n    seq: 0,\n    flow: rows[0].flow,\n    site: rows[0].site,\n    production_day: '',\n    mode: '',\n    level: 'error',\n    source: 'log',\n    message: problem + ', wrote ' + path\n  });\n} else if (known.indexOf(path) < 0) {\n  known.push(path);\n  flow.set('logKnown', known);\n}\n\nvar lines = [];\nif (!old) {\n  lines.push(COLUMNS.map(quote).join(SEPARATOR));\n} else if (old.slice(-1) !== '\\n') {\n  old += '\\n';\n}\nrows.forEach(function (row) {\n  lines.push(lineOf(row));\n});\n\ndone.push(msg.logBatchId);\nflow.set('logDone', done.slice(-KEEP_IDS));\n\nmsg.payload = old + lines.join('\\n') + '\\n';\nmsg.path = path;\ndelete msg.logRows;\nreturn msg;\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
     "x": 200,
-    "y": 4080,
+    "y": 4960,
     "wires": [
       [
-        "ea380.bd0080"
+        "205a4.e9bf3c"
       ]
     ]
   },
   {
     "z": "b6d0f.bee9f9",
-    "id": "ea380.bd0080",
+    "id": "205a4.e9bf3c",
     "type": "write object",
     "name": "Log to data lake",
     "path": "",
     "mode": "object",
     "x": 420,
-    "y": 4080,
+    "y": 4960,
     "wires": []
   }
 ]

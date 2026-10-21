@@ -47,6 +47,9 @@ The tab was run for 14 and 15 Sep with write on (files in `reports/shift_report/
 | Orders | The line has none; `05 Antares` and `07 Palletiser` carry the same two orders |
 | Event kinds | All `unplanned`: no planned reason occurred that day (planned stops are untested) |
 
+## Heavy days (413)
+Since 2026-10-21 an evaluateKPIs call that answers 413 on the day window is asked again hour by hour and merged (day KPIs and product / order KPIs). Rule, log lines and proof: [sih-report-daily.md](sih-report-daily.md) "evaluateKPIs 413 on heavy days". Time segments and stops over 5,000 rows are not covered yet.
+
 ## Open points and next steps
 Decisions for the user:
 1. **Stop that starts before the window.** Cut it at the window start (its minutes inside the window count) instead of dropping it. Recommended: cut. Then the events add up to the KPI downtime per day and per shift. Change in `scripts/vfc/q8-event-rows.js` (and its mock test).
