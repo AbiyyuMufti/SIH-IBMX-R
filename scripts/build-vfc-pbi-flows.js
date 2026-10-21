@@ -15,16 +15,20 @@ import {
 import { validateFlow } from './validate-flow.js';
 import {
   code, makeBuilder, fn, http, linkInStep, end, split, delay, join,
-  addLogLanes, applyLayout, compactLanes, measureSpacing
+  readStep, listNode, csvNode, addLogLanes, applyLayout, compactLanes, measureSpacing
 } from './lib-flow-builder.js';
 import {
   planSchema, utilSchema, lossSchema, machineSchema, shiftSchema,
   calendarSchema
 } from './lib-pbi-schemas.js';
+import {
+  reportPlanSchema, reportUtilSchema, reportLossSchema
+} from './lib-pbi-report-schemas.js';
 
-// One entry per site. cron = the daily schedule (UTC), one hour after the
-// production day ends, so the day is complete.
-const SITES = [{ name: 'Hull', cron: '0 7 * * *' }];
+// One SIH report daily tab per site. The hour it runs is sihRunHourUtc of
+// the site in 1.1 CONFIG (an hourly tick checks it).
+const SITES = [{ name: 'Hull' }];
+const TICK = '7 * * * *';
 
 // Parquet, path and write object: the end of a table lane.
 const tableEnd = (table, schema, pathFile) => [
@@ -51,7 +55,7 @@ function buildDailyFlow(site, index) {
   const stage1 = b.nextStage();
   comment(
     `[${stage1}] TRIGGERS & SITE SETTINGS`,
-    `STAGE ${stage1} - TRIGGERS AND SITE SETTINGS. Site ${site.name}. Writes the three DAILY Power BI tables straight from the Insights Hub API: pbi_plan_opt (machine x production day x shift), pbi_time_utilisation (machine x day) and pbi_daily_losses (one row per stop). There are no fact files in between. Schedule: daily, builds yesterday and the days before it (REBUILD_DAYS in 1.1). Backfill: edit the inject payload {"start":"YYYY-MM-DD","end":"YYYY-MM-DD"} (production days) and click the button. Both go through 1.1 SITE SETTINGS, the only node of this flow to edit: site name, dry-run switch, rebuild days, folder prefix. The shared settings (credentials, root folder, asset ids, production-day start, planned reason roots) come from the Config tab through global context. dryRun is true by default: set it to false to write files. 1.2 sends ONE MESSAGE PER DAY; the delay node starts one day every 5 s.`,
+    `STAGE ${stage1} - TRIGGERS AND SITE SETTINGS. Site ${site.name}. Writes the three Tableau tables Plan_OPT_EU (machine x production day x shift x product), Time_Utilisation_EU (machine x day) and Daily_Losses_EU (one row per stop) straight from the Insights Hub API, one file per production day, with Data Source = SIH. The rows of a CONFIG line on source sih go to <root>/report (what Tableau reads), the others to <root>/candidate/sih. Schedule: a tick every hour; 1.1 goes on only in the hour sihRunHourUtc of the site in 1.1 CONFIG (no hour: backfill only), then builds yesterday and the days before it (REBUILD_DAYS). Backfill: edit the inject payload {"start":"YYYY-MM-DD","end":"YYYY-MM-DD"} (production days) and click the button. 1.1 SITE SETTINGS is the only node to edit: site name, dry-run switch, rebuild days. The shared settings (credentials, root folder, lines, production-day start) come from the Config tab. dryRun is true by default. Then the site setup (Glidepaths, Machine Names, Shift Patterns from <root>/reference) and ONE MESSAGE PER DAY, one day every 5 s.`,
     r
   );
   const inject = (name, dy, extra) => add({
@@ -61,8 +65,8 @@ function buildDailyFlow(site, index) {
     powerMode: false, x: col(0), y: rowY(r) + dy, wires: [[id('settings')]],
     ...extra
   });
-  inject(`Schedule ${site.cron}`, -40, {
-    payload: '', payloadType: 'date', crontab: site.cron
+  inject('Tick every hour', -40, {
+    payload: '', payloadType: 'date', crontab: TICK
   });
   inject('Backfill (edit payload)', 40, {
     payload: '{"start":"2026-09-01","end":"2026-09-03"}',
@@ -73,21 +77,62 @@ function buildDailyFlow(site, index) {
     name: '1.1 SITE SETTINGS (edit here)',
     func: code('d1-settings.js').replace('__SITE__', site.name),
     outputs: 1, language: 'javascript', noerr: 0, x: col(1), y: rowY(r),
-    wires: [[id('daysFn')]]
-  });
-  add({
-    id: id('daysFn'), type: 'function', name: '1.2 Build day list',
-    func: code('s1-build-days.js'), outputs: 1, language: 'javascript',
-    noerr: 0, x: col(2), y: rowY(r), wires: [[id('dayDelay')]]
-  });
-  add({
-    id: id('dayDelay'), type: 'delay', name: 'One day per 5 s',
-    pauseType: 'rate', timeout: '5', timeoutUnits: 'seconds', rate: '1',
-    nbRateUnits: '5', rateUnits: 'second', randomFirst: '1', randomLast: '5',
-    randomUnits: 'seconds', drop: false, powerMode: false, x: col(3),
-    y: rowY(r), wires: [[linkOut('DAY', col(4), rowY(r))]]
+    wires: [[linkOut('SETUP', col(2), rowY(r))]]
   });
   r++;
+
+  lane(r++, 'SITE SETUP: GLIDEPATHS',
+    'the Glidepaths file of the site (<root>/reference/glidepaths/site=<Site>/, newest .csv) is listed, read and parsed, and the target lookup is stored in flow context: machine-site and month give the OEE, PDT and UPDT targets and the loss targets per sub group (the same node as the PBI report build). A missing file stops the run and the log says so.',
+    [
+      linkInStep('SETUP'),
+      fn('glFolder', 'Set glidepaths folder', 'b5-glide-folder.js', ['next']),
+      listNode('glList'),
+      fn('glPick', 'Pick the file', 'b3-pick-file.js',
+        ['next', 'SETUP FAILED']),
+      readStep('glRead', 'Read Glidepaths file'),
+      csvNode('glCsv'),
+      fn('glTargets', 'Build target lookup', 'b5-target-lookup.js',
+        ['next', 'SETUP FAILED']),
+      end('SETUP MACHINES')
+    ]);
+  lane(r++, 'SITE SETUP: MACHINE NAMES',
+    'the Machine Names file of the site (<root>/reference/machine_names/site=<Site>/) gives Dept, Area and Product Type per MachineName (the report name of a CONFIG line). Unlike the PBI report build, the report filters of the site are not applied: the CONFIG lines choose the machines.',
+    [
+      linkInStep('SETUP MACHINES'),
+      fn('mnFolder', 'Set machine names folder', 'b3-site-folder.js',
+        ['next']),
+      listNode('mnList'),
+      fn('mnPick', 'Pick the file', 'b3-pick-file.js',
+        ['next', 'SETUP FAILED']),
+      readStep('mnRead', 'Read Machine Names file'),
+      csvNode('mnCsv'),
+      fn('mnLookup', 'Build machine lookup', 'b5-machine-lookup.js',
+        ['next', 'SETUP FAILED']),
+      end('SETUP SHIFTS')
+    ]);
+  lane(r++, 'SITE SETUP: SHIFT PATTERNS',
+    'the Shift Patterns file (<root>/reference/shift_naming/site=All/) maps a raw shift name to the report shift; a SIH shift that already has a report name (Red, Green, Gold, Blue, Day, Night, Afternoon) is kept as it is. Then the day list: one message per production day, one every 5 s.',
+    [
+      linkInStep('SETUP SHIFTS'),
+      fn('shFolder', 'Set shift folder', 'b5-plan-shift-folder.js', ['next']),
+      listNode('shList'),
+      fn('shPick', 'Pick the file', 'b3-pick-file.js',
+        ['next', 'SETUP FAILED']),
+      readStep('shRead', 'Read Shift Patterns file'),
+      csvNode('shCsv'),
+      fn('shLookup', 'Build shift lookup', 'b5-shift-lookup.js',
+        ['next', 'SETUP FAILED']),
+      fn('startDays', 'Start the day list', 'd2-start-days.js', ['next']),
+      fn('daysFn', 'Build day list', 's1-build-days.js', ['next']),
+      delay('dayDelay', 'One day per 5 s', 5),
+      end('DAY')
+    ]);
+  lane(r++, 'SETUP FAILED',
+    'a reference file that is missing or empty: one log line, nothing is built in this run.',
+    [
+      linkInStep('SETUP FAILED'),
+      fn('setupFailed', 'Describe failure', 'b5-pick-failed.js', ['LOG'])
+    ]);
 
   lane(r++, 'DAY SETUP',
     'one message per day: token request, OEE asset list, choose the assets, one message per asset (one per second). Function nodes cannot use fetch in the VFC, so every call is an http request node: the function before it sets msg.method, msg.url and msg.headers. A failure goes to the LOG and nothing is written for that day.',
@@ -178,36 +223,39 @@ function buildDailyFlow(site, index) {
       end('JOIN')
     ]);
   lane(r++, 'JOIN & BUILD TABLES',
-    'the join waits for all assets of the day. 9.1 collects the results, 9.2 decides: it writes NOTHING if any asset failed (no half days) and nothing in dry-run mode, 9.3 builds one message per table. Output 1 of 9.3 = pbi_plan_opt, 2 = pbi_time_utilisation, 3 = pbi_daily_losses, 4 = log.',
+    'the join waits for all assets of the day. Collect the results, then turn them into the report columns: MachineName = the report name of the CONFIG line, Unique Machine Name = MachineName-Site, targets and loss targets from Glidepaths, Dept, Area, Product Type from Machine Names, shift kept or mapped, an empty sub group is Not Logged, an empty equipment Unclassed, Data Source = SIH; the rows are grouped by folder (line source sih: report, else candidate/sih). Decide writes NOTHING if any asset failed (no half days) and nothing in dry-run mode. Then one message per table and folder: output 1 = Plan_OPT_EU, 2 = Time_Utilisation_EU, 3 = Daily_Losses_EU, 4 = log.',
     [
       linkInStep('JOIN'),
       join('dayJoin', 'Wait for all assets of the day'),
       fn('collectFn', 'Collect results', 'd6-collect.js', ['next']),
+      fn('reportFn', 'Build report columns', 'd8-report-rows.js', ['next']),
       fn('decideFn', 'Decide day', 'd6-decide.js', ['next', 'LOG']),
       fn('tablesFn', 'Build table messages', 'd6-table-messages.js',
         [
-          'WRITE pbi_plan_opt',
-          'WRITE pbi_time_utilisation',
-          'WRITE pbi_daily_losses',
+          'WRITE Plan_OPT_EU',
+          'WRITE Time_Utilisation_EU',
+          'WRITE Daily_Losses_EU',
           'LOG'
         ], {}, true)
     ]);
   const writes = [
-    ['pbi_plan_opt', planSchema, 'Plan OPT EU: machine x production day x shift'],
-    ['pbi_time_utilisation', utilSchema, 'Time Utilisation EU: machine x day'],
-    ['pbi_daily_losses', lossSchema, 'Daily Losses EU: one row per stop']
+    ['Plan_OPT_EU', reportPlanSchema,
+      'machine x production day x shift x product'],
+    ['Time_Utilisation_EU', reportUtilSchema, 'machine x production day'],
+    ['Daily_Losses_EU', reportLossSchema, 'one row per stop']
   ];
   writes.forEach(([table, schema, what]) => {
     lane(r++, `WRITE ${table}`,
-      `parquet node, path and write object for ${table} (${what}). The path is <root>/${table}/<site folder>/${table}_<production day>.parquet, the same on every rerun, so a rerun replaces the day. Types: UTF8 (STRING), INT64, DOUBLE, TIMESTAMP_MILLIS. Dates are text YYYY-MM-DD.`,
-      [linkInStep(`WRITE ${table}`), ...tableEnd(table, schema, 's6-set-path.js')]);
+      `parquet node, path and write object for ${table} (${what}), one message per folder. The path is <folder>/${table}/site=<Site>/${table}_<production day>_sih.parquet, the same on every rerun, so a rerun replaces the day. The columns and types are those of the PBI report build (DATE as a day number, times of day on 1970-01-01).`,
+      [linkInStep(`WRITE ${table}`),
+        ...tableEnd(table, schema, 'd8-day-path.js')]);
   });
-  addLogLanes(b, r, `pbi-${site.name.toLowerCase()}`);
+  addLogLanes(b, r, `sih-${site.name.toLowerCase()}`);
 
   b.nodes.unshift({
-    id: b.TAB, type: 'tab', label: `${site.name} Power BI daily`,
+    id: b.TAB, type: 'tab', label: `${site.name} SIH report daily`,
     disabled: false, allowCycles: false,
-    info: `Writes the three daily Power BI tables of site ${site.name} straight from the Insights Hub API. Read calls only. Needs the Config tab.`
+    info: `Writes Plan_OPT_EU, Time_Utilisation_EU and Daily_Losses_EU of site ${site.name} (Data Source SIH) straight from the Insights Hub API, one file per production day. Read calls only. Needs the Config tab.`
   });
   return b.nodes;
 }

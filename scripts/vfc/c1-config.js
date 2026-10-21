@@ -19,6 +19,8 @@ var cfg = {
   // 'provideam' (SharePoint files) or 'sih' (Insights Hub API). The other
   // source writes to candidate/ for comparison.
   // dayStartHour: first hour (UTC) of the production day (daily flow).
+  // sihRunHourUtc: optional, the hour (UTC, 0 to 23) the SIH report daily
+  // tab of the site runs; without it the tab runs only by its backfill.
   // dayStartLocal and timeZone: the local production day (shift report);
   // only Europe/London is supported so far.
   // lines: the Insights Hub lines of the site. Get id and sih from the
@@ -35,6 +37,7 @@ var cfg = {
       name: 'Hull',
       reportSource: 'provideam',
       dayStartHour: 6,
+      sihRunHourUtc: 7,
       dayStartLocal: 6,
       timeZone: 'Europe/London',
       lines: [
@@ -132,6 +135,12 @@ cfg.sites.forEach(function (site) {
   }
   if (SOURCES.indexOf(site.reportSource) === -1) {
     problem = site.name + ': reportSource must be provideam or sih';
+    return;
+  }
+  var hour = site.sihRunHourUtc;
+  var hourOk = Number.isInteger(hour) && hour >= 0 && hour <= 23;
+  if (hour !== undefined && !hourOk) {
+    problem = site.name + ': sihRunHourUtc must be a whole hour 0 to 23';
     return;
   }
   site.lines = site.lines || [];

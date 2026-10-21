@@ -47,6 +47,7 @@ eu_report/
 | `lines[].id` | the asset id: the flows use only this |
 | `lines[].sih` | the name in Insights Hub, a label. The asset list warns when Insights Hub calls the id differently (renamed) |
 | `lines[].report` | the `MachineName` of the line in the report and in the Machine Names file of the site (B2 Line is `B2 Auto` in Provideam). Required, `?` is refused. The asset list proposes it from the Machine Names file and reports a Config value that is not there |
+| `sihRunHourUtc` | optional, the hour (UTC) the SIH report daily tab of the site runs; without it only the backfill button runs it |
 | `lines[].reportSource` | optional, overrides the site for this line: the rows whose `MachineName` is this line's `report` name follow it |
 | `lines[].shiftReport` | optional, `true` = the shift report flow builds this line |
 
@@ -60,11 +61,11 @@ Token, OEE asset list, one Asset Management call per asset (one per second, abou
 
 Read calls only, nothing is written. Asset list of 2026-10-20 (xcelerator, script, GET only): 37 lines outside `Test Line` in Hull, Nottingham (N1, N5, S04), Weinheim (L2), Mira (16), Tuzla (6), Chartres (1) and STP (1). The ids are not in this repo: the committed Config holds only the two Hull lines.
 
-## Which flow writes where (after step 2)
+## Which flow writes where (after step 4)
 | Flow | Writes |
 |---|---|
 | `PBI report build` (Provideam) | `Plan_OPT_EU`, `Time_Utilisation_EU`, `Daily_Losses_EU` with `Data Source` = Provideam: the rows of a line on `provideam` (line, else site) to `report/`, the others to `candidate/provideam/` |
-| `Hull Power BI daily` (SIH) | always `candidate/sih/` (its tables do not have the report columns yet; step 4) |
+| `Hull SIH report daily` (SIH, was `Hull Power BI daily`) | `Plan_OPT_EU`, `Time_Utilisation_EU`, `Daily_Losses_EU` per production day with `Data Source` = SIH: the rows of a line on `sih` (line, else site) to `report/`, the others to `candidate/sih/` ([sih-report-daily.md](sih-report-daily.md)) |
 | `Hull shift report` | `shift_report/` |
 | `Power BI reference` | `<root>/<table>/`: to retire (the machine names come from the reference files, the calendar is dropped) |
 
@@ -72,7 +73,7 @@ Read calls only, nothing is written. Asset list of 2026-10-20 (xcelerator, scrip
 1. Config and folders (this page). Done, checked in the VFC.
 2. The three report tables with the columns of the Tableau extracts (`Plan_OPT_EU`, `Daily_Losses_EU`, `Time_Utilisation_EU`, plus `Dept`, `Area`, `Product Type`, `Data Source`), the machine names and shift naming as lookups only, no calendar; split of the rows by line source. Built offline 2026-10-20 ([pbi-report-build.md](pbi-report-build.md) "Step 6").
 3. Run in the VFC, check against Segun's files.
-4. The SIH flow on the same three tables, one tab for all sites.
+4. The SIH flow on the same three tables. Built offline 2026-10-21 as one tab per site (the API nodes read one site's settings from flow context; one tab per site avoids changing them), run hour per site in Config (`sihRunHourUtc`), Hull only for now ([sih-report-daily.md](sih-report-daily.md)).
 5. Switch sites or lines when the SIH rows match.
 
 ## Old files in the lake (not deleted)

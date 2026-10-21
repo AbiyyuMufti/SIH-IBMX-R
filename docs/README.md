@@ -31,6 +31,7 @@
 | [powerbi-tables.md](powerbi-tables.md) | The flow that rebuilds the Power BI tables from our own tables, and which node makes which table | Mock only |
 | [pbi-report-build.md](pbi-report-build.md) | The flow that builds the six pbi_* tables from the CSV files in the data lake (reference and normalized month files): jobs, rules taken from the report queries, checks against the report | Steps 1 to 3 built; step 1 ran in the VFC, 2 and 3 offline |
 | [pbi-report-testing.md](pbi-report-testing.md) | How to test the whole flow in the VFC (order, expected log lines), how to check the written files, what to send back, notes for remote work | Written 2026-10-15 |
+| [sih-report-daily.md](sih-report-daily.md) | SIH report daily tab: Plan_OPT_EU, Time_Utilisation_EU, Daily_Losses_EU per production day from the API, report columns, run hour per site, and the known SIH / Provideam differences | Mock only |
 | [powerbi-direct.md](powerbi-direct.md) | Two flows that write the Power BI tables straight from the API (daily per site, reference for all sites). Replaces the two-step chain | Mock only |
 | [powerbi-model-findings.md](powerbi-model-findings.md) | What the existing EU Power BI report expects: keys, relationships, measures, decisions, open points; how to re-read its files with `scripts/helper-pbit-outline.js` | Findings (2026-10-13) |
 | [powerbi-diagrams.md](powerbi-diagrams.md) | The draw.io map of every Power BI table: columns, examples, our column and the difference (empty, assumption, partly filled); how to refresh it | Built 2026-10-13 |

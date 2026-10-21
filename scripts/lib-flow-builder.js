@@ -224,6 +224,16 @@ export const debugStep = (key, name, complete, stack = false, dy = 0) => ({
 });
 export const pqRead = (key, name) => ({ t: 'pqread', key, name });
 export const rawStep = (key, node) => ({ t: 'raw', key, node });
+// The list objects node of the data lake (path from msg.path).
+export const listNode = (key) => rawStep(key, {
+  type: 'list objects', name: 'List objects', subtenant: '', path: ''
+});
+// Same settings as the csv node the user tested: header row, one message
+// with the array of all rows (multi: mult).
+export const csvNode = (key) => rawStep(key, {
+  type: 'csv', name: 'Parse CSV', sep: ',', hdrin: true, hdrout: '',
+  multi: 'mult', ret: '\\n', temp: 'parser csv'
+});
 export const writeStep = (key, name) => ({ t: 'write', key, name });
 
 // The three log lanes every flow tab ends with. Errors caught anywhere in

@@ -1,15 +1,22 @@
 // Decides what happens with the day.
-// In: msg.planRows, utilRows, lossRows and summary. Out 1: the message goes
-// on to node 6.3 (write). Out 2: a log line (failed, nothing to write, dry
-// run). Any failed asset means nothing is written for the day.
+// In: msg.tables {table: [{out, rows}]} and msg.summary. Out 1: the message
+// goes on to the table messages (write). Out 2: a log line (failed, nothing
+// to write, dry run). Any failed asset means nothing is written for the day.
 var cfg = flow.get('cfg');
 var day = msg.day;
 var summary = msg.summary;
 var notes = summary.notes.join(' | ');
-var sizes = 'pbi_plan_opt ' + msg.planRows.length + ' rows, ' +
-  'pbi_time_utilisation ' + msg.utilRows.length + ' rows, ' +
-  'pbi_daily_losses ' + msg.lossRows.length + ' rows';
-var empty = !msg.planRows.length && !msg.lossRows.length;
+var counts = {};
+var sizes = Object.keys(msg.tables).map(function (table) {
+  var parts = msg.tables[table].map(function (group) {
+    return group.rows.length + ' rows to ' + group.out;
+  });
+  counts[table] = msg.tables[table].reduce(function (sum, group) {
+    return sum + group.rows.length;
+  }, 0);
+  return table + ' ' + (parts.length ? parts.join(', ') : '0 rows');
+}).join(', ');
+var empty = !counts.Plan_OPT_EU && !counts.Daily_Losses_EU;
 
 // Text added to the end of every log line.
 var tail = '';
@@ -47,7 +54,8 @@ if (cfg.dryRun) {
   node.status({
     fill: 'yellow',
     shape: 'dot',
-    text: day + ' dry run ' + msg.planRows.length + '/' + msg.lossRows.length
+    text: day + ' dry run ' + counts.Plan_OPT_EU + '/' +
+      counts.Daily_Losses_EU
   });
   return logOnly(notes + ' | DRY RUN: ' + sizes + tail);
 }

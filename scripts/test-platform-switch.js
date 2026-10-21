@@ -40,7 +40,11 @@ const flows = [
   { file: 'vfc-reference-tables.json', scenarios: [
     'ok', 'ref-config-fail', 'ref-detail-fail', 'token-fail'
   ] },
-  { file: 'vfc-pbi-daily-hull.json', scenarios: [
+  // Since 2026-10-21 (SIH report daily) the tables of this tab have the
+  // report columns: only the API calls and errors are compared, the new run
+  // gets the reference files of its site setup. Its rows are proven by
+  // scripts/test-vfc-sih-report.js.
+  { file: 'vfc-pbi-daily-hull.json', callsOnly: true, scenarios: [
     'ok', 'products', 'products-fail', 'values-fail', 'value-kpi-fail',
     'no-collection', 'token-fail', 'kpi-fail'
   ] },
@@ -48,6 +52,16 @@ const flows = [
     'ok', 'ref-config-fail', 'ref-detail-fail', 'token-fail'
   ] }
 ];
+
+// The reference files the site setup of the SIH report daily tab reads.
+const referenceLake = () => new Map([
+  ['eu_report/reference/glidepaths/site=Hull/G.csv',
+    'Site Name,Line,OEE Bucket,01/09/2026\nHull,X,% OEE,1\n'],
+  ['eu_report/reference/machine_names/site=Hull/M.csv',
+    'MachineName,Dept,Area,Product Type\nX,D,A,P\n'],
+  ['eu_report/reference/shift_naming/site=All/S.csv',
+    'ShiftName,Shift\nMonDay,Day\n']
+]);
 
 let failures = 0;
 const check = (ok, text) => {
@@ -103,11 +117,15 @@ function lakeLines(stats) {
 
 const same = (a, b) => noClock(JSON.stringify(a)) === noClock(JSON.stringify(b));
 
-async function compare(label, oldStats, newStats, platform) {
+async function compare(label, oldStats, newStats, platform, callsOnly) {
   check(
     same(requestLines(oldStats, 'legacy'), requestLines(newStats, platform)),
     `${label}: same requests (${oldStats.requests.length})`
   );
+  if (callsOnly) {
+    check(same(oldStats.errors, newStats.errors), `${label}: same errors`);
+    return;
+  }
   check(same(oldStats.logs, newStats.logs), `${label}: same logs`);
   check(same(oldStats.errors, newStats.errors), `${label}: same errors`);
   check(
@@ -137,9 +155,12 @@ for (const flow of flows) {
       const label = `${flow.file} ${scenario} [${platform}]`;
       const newStats = await runFlow(
         newNodes,
-        options(newConfig, makeMockFetch, scenario, { platform })
+        options(newConfig, makeMockFetch, scenario, {
+          platform,
+          lake: flow.callsOnly ? referenceLake() : new Map()
+        })
       );
-      await compare(label, oldStats, newStats, platform);
+      await compare(label, oldStats, newStats, platform, flow.callsOnly);
       // On xcelerator every request must use the new host and the suffix.
       if (platform === 'xcelerator') {
         const api = newStats.requests.filter((r) => !/oauth/.test(r.url));

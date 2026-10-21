@@ -1,28 +1,34 @@
-// Builds one message per table for the parquet nodes.
-// In: msg.planRows, msg.utilRows, msg.lossRows and msg.writeNote.
-// Out 1: pbi_plan_opt. Out 2: pbi_time_utilisation. Out 3: pbi_daily_losses.
-// Out 4: log line. A table without rows sends nothing.
+// Builds one message per table and output folder for the parquet nodes.
+// In: msg.tables {table: [{out, rows}]} and msg.writeNote. Out 1:
+// Plan_OPT_EU, out 2: Time_Utilisation_EU, out 3: Daily_Losses_EU (each a
+// list, one message per folder), out 4: log line. No rows: no message.
 var day = msg.day;
 
-function table(name, rows) {
-  if (!rows.length) {
-    return null;
-  }
-  return { topic: name, day: day, payload: rows };
+function table(name) {
+  return msg.tables[name].filter(function (group) {
+    return group.rows.length > 0;
+  }).map(function (group) {
+    return {
+      topic: name,
+      day: day,
+      out: group.out,
+      payload: group.rows
+    };
+  });
 }
 
 node.status({
   fill: 'green',
   shape: 'dot',
-  text: day + ' ' + msg.planRows.length + '/' + msg.lossRows.length
+  text: day + ' written'
 });
 var line = {
   topic: 'log',
   payload: day + ' [' + msg.mode + '] ' + msg.writeNote
 };
 return [
-  table('pbi_plan_opt', msg.planRows),
-  table('pbi_time_utilisation', msg.utilRows),
-  table('pbi_daily_losses', msg.lossRows),
+  table('Plan_OPT_EU'),
+  table('Time_Utilisation_EU'),
+  table('Daily_Losses_EU'),
   line
 ];

@@ -1,7 +1,7 @@
-// Builds the machine lookup of one site from its Machine Names file.
-// In: msg.payload = the parsed rows (MachineName, Dept, Area, Product Type).
-// Stores flow context machines_<Site>: MachineName -> Dept, Area, Product
-// Type. Out 2: a failed item. The rules are those of the report queries.
+// Machine lookup of one site from its Machine Names file. In: msg.payload =
+// parsed rows; stores flow context machines_<Site>: MachineName -> Dept,
+// Area, Product Type. Out 2: a failed item. Report filters per site, skipped
+// with msg.allMachines (SIH flow: its Config lines choose the machines).
 var RULES = {
   Hull: {
     dropNames: [
@@ -23,7 +23,7 @@ var RULES = {
 };
 
 var site = msg.site;
-var rule = RULES[site] || {};
+var rule = msg.allMachines ? {} : RULES[site] || {};
 var rows = Array.isArray(msg.payload) ? msg.payload : [];
 if (!rows.length || rows[0].MachineName === undefined) {
   msg.payload = {

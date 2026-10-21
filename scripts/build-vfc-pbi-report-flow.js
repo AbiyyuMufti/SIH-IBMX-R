@@ -12,7 +12,7 @@ import { writeFileSync, mkdirSync, existsSync, readFileSync } from 'node:fs';
 import { validateFlow } from './validate-flow.js';
 import {
   code, makeBuilder, fn, linkInStep, end, split, delay, readStep,
-  rawStep,
+  listNode, csvNode,
   addLogLanes, applyLayout, compactLanes, measureSpacing
 } from './lib-flow-builder.js';
 import {
@@ -34,17 +34,6 @@ const monthEnd = (table, schema) => [
   fn(`${table}_path`, `Set ${table} month path`, 'b6-month-path.js', ['next']),
   { t: 'write', key: `${table}_write`, table }
 ];
-
-// The VFC nodes without a helper in lib-flow-builder.js.
-const listNode = (key) => rawStep(key, {
-  type: 'list objects', name: 'List objects', subtenant: '', path: ''
-});
-// Same settings as the csv node the user tested: header row, one message
-// with the array of all rows (multi: mult).
-const csvNode = (key) => rawStep(key, {
-  type: 'csv', name: 'Parse CSV', sep: ',', hdrin: true, hdrout: '',
-  multi: 'mult', ret: '\\n', temp: 'parser csv'
-});
 
 function buildFlow() {
   const b = makeBuilder(330);

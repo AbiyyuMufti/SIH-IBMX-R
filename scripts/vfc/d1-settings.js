@@ -1,45 +1,51 @@
-// SITE SETTINGS: the settings of this flow only (site name, dry run).
-// In: any message from an inject node. Out: the same message.
-// It reads the site from the Config tab (global context), copies the
-// shared settings into flow context and builds the three file paths.
+// SITE SETTINGS of the SIH report daily tab (site name, dry run).
+// In: the hourly tick (runs only in the hour sihRunHourUtc of the site in
+// 1.1 CONFIG) or the backfill {start, end}. Out: msg.payload = the site name
+// for the site setup, msg.trigger = the payload of the inject.
 var SITE_NAME = '__SITE__';
 // true = log row counts, write NO files. false = write the tables.
 var DRY_RUN = true;
 // Schedule: yesterday plus this many days before it.
 var REBUILD_DAYS = 2;
-// Folder prefix of the site folder: pbi_plan_opt/<prefix><site>/...
-var FOLDER_PREFIX = 'site=';
+// The source this tab builds. A line whose source (1.1 CONFIG: line
+// reportSource, else site reportSource) is this one writes to <root>/report,
+// any other to <root>/candidate/<source>.
+var SOURCE = 'sih';
 
-var shared = glob.get('cfg');
-if (!shared) {
+function stop(text) {
   node.status({
     fill: 'red',
     shape: 'ring',
-    text: 'CONFIG not run'
+    text: text
   });
-  node.error('global cfg is missing: deploy or run the Config tab first');
+  node.error(text);
   return null;
+}
+
+var shared = glob.get('cfg');
+if (!shared) {
+  return stop('global cfg is missing: deploy or run the Config tab first');
 }
 var matches = shared.sites.filter(function (s) {
   return s.name === SITE_NAME;
 });
 if (!matches.length) {
-  node.status({
-    fill: 'red',
-    shape: 'ring',
-    text: 'site not in CONFIG'
-  });
-  node.error('site "' + SITE_NAME + '" is not in the CONFIG sites list');
-  return null;
+  return stop('site "' + SITE_NAME + '" is not in the CONFIG sites list');
 }
 var site = matches[0];
 if (!site.assetIds.length) {
+  return stop('site "' + SITE_NAME + '" has no lines in CONFIG');
+}
+
+var p = msg.payload;
+var backfill = !!(p && typeof p === 'object' && p.start && p.end);
+var hour = new Date().getUTCHours();
+if (!backfill && site.sihRunHourUtc !== hour) {
   node.status({
-    fill: 'red',
+    fill: 'grey',
     shape: 'ring',
-    text: 'no assets'
+    text: 'not due (runs at ' + site.sihRunHourUtc + ':00 UTC)'
   });
-  node.error('site "' + SITE_NAME + '" has no assetIds in CONFIG');
   return null;
 }
 
@@ -47,21 +53,14 @@ var cfg = Object.assign({}, shared);
 cfg.site = site.name;
 cfg.dayStartHour = site.dayStartHour;
 cfg.assetIds = site.assetIds;
+cfg.lines = site.lines;
+cfg.siteSource = site.reportSource;
 cfg.dryRun = DRY_RUN;
 cfg.rebuildDays = REBUILD_DAYS;
-var folder = FOLDER_PREFIX + site.name;
-// shortcut: always candidate/sih, as these tables do not have the report
-// columns yet; use the site's reportSource once they do (step 4).
-var base = shared.root + '/candidate/sih/';
-// YYYY-MM-DD becomes the production day.
-cfg.paths = {
-  pbi_plan_opt: base + 'pbi_plan_opt/' + folder +
-    '/pbi_plan_opt_YYYY-MM-DD.parquet',
-  pbi_time_utilisation: base + 'pbi_time_utilisation/' + folder +
-    '/pbi_time_utilisation_YYYY-MM-DD.parquet',
-  pbi_daily_losses: base + 'pbi_daily_losses/' + folder +
-    '/pbi_daily_losses_YYYY-MM-DD.parquet'
-};
+cfg.source = SOURCE;
+cfg.referenceFolder = shared.root + '/reference';
+cfg.liveFolder = shared.root + '/report';
+cfg.candidateFolder = shared.root + '/candidate/' + SOURCE;
 flow.set('cfg', cfg);
 
 node.status({
@@ -69,4 +68,9 @@ node.status({
   shape: 'dot',
   text: SITE_NAME + (DRY_RUN ? ' DRY RUN' : ' WRITE MODE')
 });
+msg.trigger = p;
+msg.payload = site.name;
+msg.allMachines = true;
+msg.day = new Date().toISOString().slice(0, 10);
+msg.mode = backfill ? 'backfill' : 'schedule';
 return msg;

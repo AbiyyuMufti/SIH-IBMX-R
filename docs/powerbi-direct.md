@@ -5,6 +5,7 @@
 | **What** | Two VFC tabs that write the Power BI shaped tables directly from Insights Hub. No `fact_*` or `dim_*` files in between, no parquet read nodes |
 | **Why** | The tab view (Power BI side) needs the Power BI format as its data source. The two-step way (facts first, then a conversion flow) is replaced by this one step |
 | **Flows** | `flows/vfc-pbi-daily-hull.json` (tab `Hull Power BI daily`) and `flows/vfc-pbi-reference.json` (tab `Power BI reference`). Generator `scripts/build-vfc-pbi-flows.js`, code `scripts/vfc/d*.js` (daily) and `m*.js` (reference), column lists `scripts/lib-pbi-schemas.js` |
+| **Since 2026-10-21** | The daily flow writes the three Tableau tables with the report columns: see [sih-report-daily.md](sih-report-daily.md). Steps 2 to 8 below (the API part) are unchanged; the table names, paths and step 1, 9 and 10 below are history |
 | **Status** | Mock tests pass (`node scripts/test-vfc-pbi-direct.js`): same rows as the old chain on a day without products; product and order tested on the mock. Not run in the VFC yet. `dryRun` is true by default |
 | **Needs** | The Config tab (`flows/vfc-config.json`). Since 2026-10-20 the assets are the `lines` of the site and the daily tables go to `<root>/candidate/sih/` (they do not have the report columns yet), see [report-config.md](report-config.md) |
 | **Old flows** | `vfc-site-hull.json`, `vfc-reference-tables.json`, `vfc-powerbi-tables.json` stay in the repo. They are not needed any more for Power BI; disable them when the new ones run (they would call the same API a second time) |
