@@ -8,6 +8,12 @@ if (!queue.length) {
 
 var job = queue.shift();
 glob.set('jobQueue', queue);
+var status = glob.get('runStatus_pbi-listener') || {};
+status.flow = 'pbi-listener';
+status.state = 'listening';
+status.lastBeatAt = new Date().toISOString();
+status.queuedJobs = queue.length;
+glob.set('runStatus_pbi-listener', status);
 node.status({
   fill: 'green',
   shape: 'dot',

@@ -184,6 +184,321 @@ check(
   'pruned status remains below the 2 MB VFC context limit'
 );
 
+const route = vmFunction('m1-route.js', {});
+for (const [view, output] of [
+  ['', 0],
+  ['status', 1],
+  ['history', 2]
+]) {
+  const request = {
+    req: {
+      params: view ? { view } : {}
+    }
+  };
+  const routed = route(flow, node, request, Buffer, Promise, glob);
+  check(routed[output] === request, `monitor route selects ${view || 'page'}`);
+}
+const unknownRoute = {
+  req: {
+    params: {
+      view: 'unknown'
+    }
+  }
+};
+const unknownResult = route(
+  flow,
+  node,
+  unknownRoute,
+  Buffer,
+  Promise,
+  glob
+);
+check(
+  unknownResult[3] === unknownRoute && unknownRoute.statusCode === 404,
+  'unknown monitor route returns 404 JSON'
+);
+
+const statusFn = vmFunction('m2-status-json.js', {});
+const staleAt = new Date(Date.now() - 31 * 60 * 1000).toISOString();
+globalData['runStatus_sih-hull'] = {
+  flow: 'sih-hull',
+  startedAt: staleAt,
+  lastBeatAt: staleAt,
+  days: {
+    [day]: {
+      state: 'running',
+      step: 'ASSET KPIs'
+    }
+  }
+};
+const statusMessage = {};
+statusFn(flow, node, statusMessage, Buffer, Promise, glob);
+check(
+  statusMessage.statusCode === 200 &&
+    statusMessage.payload.flows['sih-hull'].state === 'STUCK' &&
+    statusMessage.payload.flows['sih-hull'].days[day].state === 'STUCK',
+  'status JSON marks an inactive running day as STUCK'
+);
+check(
+  globalData['runStatus_sih-hull'].days[day].state === 'running',
+  'STUCK is derived without mutating global status'
+);
+globalData['runStatus_sih-hull'].lastBeatAt = new Date().toISOString();
+statusFn(flow, node, statusMessage, Buffer, Promise, glob);
+check(
+  statusMessage.payload.flows['sih-hull'].state === 'running' &&
+    statusMessage.payload.flows['sih-hull'].stuck === false,
+  'recent status remains running and is not STUCK'
+);
+globalData.cfg = {
+  platform: 'legacy',
+  sites: [
+    {
+      name: 'Hull'
+    }
+  ],
+  clientSecret: 'not returned'
+};
+statusFn(flow, node, statusMessage, Buffer, Promise, glob);
+check(
+  statusMessage.payload.flows.config.state === 'ready' &&
+    statusMessage.payload.flows.config.sites === 1 &&
+    !('clientSecret' in statusMessage.payload.flows.config),
+  'Config status is derived without exposing credentials'
+);
+
+const historyRequest = vmFunction('m3-history-request.js', {});
+globalData.cfg = {
+  root: 'eu_report'
+};
+const goodHistory = {
+  req: {
+    query: {
+      flow: 'sih-hull',
+      month: '2026-10'
+    }
+  }
+};
+const goodHistoryResult = historyRequest(
+  flow,
+  node,
+  goodHistory,
+  Buffer,
+  Promise,
+  glob
+);
+check(
+  goodHistoryResult[0] === goodHistory &&
+    goodHistory.path === 'eu_report/logs/sih-hull/',
+  'valid history request lists only the selected flow folder'
+);
+for (const query of [
+  { flow: 'other', month: '2026-10' },
+  { flow: 'sih-hull', month: '2026-13' }
+]) {
+  const invalid = {
+    req: {
+      query
+    }
+  };
+  const result = historyRequest(flow, node, invalid, Buffer, Promise, glob);
+  check(
+    result[1] === invalid && invalid.statusCode === 400,
+    'invalid history flow or month returns 400'
+  );
+}
+globalData.cfg = undefined;
+const noConfig = {
+  req: {
+    query: {
+      flow: 'sih-hull',
+      month: '2026-10'
+    }
+  }
+};
+historyRequest(flow, node, noConfig, Buffer, Promise, glob);
+check(
+  noConfig.statusCode === 503,
+  'history request reports missing Config as 503'
+);
+globalData.cfg = {
+  root: 'eu_report'
+};
+
+const pickHistory = vmFunction('m4-pick-history.js', {});
+const historyList = {
+  payload: [
+    {
+      key: 'eu_report/logs/sih-hull/log_2026-10.csv'
+    }
+  ],
+  historyName: 'log_2026-10.csv',
+  historyFlow: 'sih-hull',
+  historyMonth: '2026-10'
+};
+const picked = pickHistory(flow, node, historyList, Buffer, Promise, glob);
+check(
+  picked[0] === historyList &&
+    historyList.path === 'eu_report/logs/sih-hull/log_2026-10.csv',
+  'history list chooses the exact requested month file'
+);
+const missingHistory = {
+  payload: [],
+  historyName: 'log_2026-10.csv',
+  historyFlow: 'sih-hull',
+  historyMonth: '2026-10'
+};
+const missingResult = pickHistory(
+  flow,
+  node,
+  missingHistory,
+  Buffer,
+  Promise,
+  glob
+);
+check(
+  missingResult[1] === missingHistory &&
+    missingHistory.statusCode === 404,
+  'missing monthly history returns 404 before read-object'
+);
+
+const historyRows = [
+  '"ts_utc","seq","flow","site","production_day","mode","level",' +
+    '"source","message"'
+];
+for (let i = 1; i <= 205; i++) {
+  const message = i === 205 ? 'line, with "quote"' : `line ${i}`;
+  const escaped = message.replace(/"/g, '""');
+  historyRows.push(
+    `"2026-10-01T00:00:00.000Z","${i}","sih-hull","Hull",` +
+    `"2026-10-01","backfill","info","flow","${escaped}"`
+  );
+}
+const historyJson = vmFunction('m5-history-json.js', {});
+const historyMessage = {
+  payload: historyRows.join('\r\n'),
+  historyFlow: 'sih-hull',
+  historyMonth: '2026-10'
+};
+historyJson(flow, node, historyMessage, Buffer, Promise, glob);
+check(
+  historyMessage.statusCode === 200 &&
+    historyMessage.payload.count === 205 &&
+    historyMessage.payload.rows.length === 200 &&
+    historyMessage.payload.truncated === 5,
+  'history JSON caps output to the newest 200 parsed rows'
+);
+check(
+  historyMessage.payload.rows[199].message === 'line, with "quote"',
+  'history CSV parser preserves quoted commas and quotes'
+);
+
+const pageMessage = {};
+vmFunction('m6-monitor-page.js', {})(
+  flow,
+  node,
+  pageMessage,
+  Buffer,
+  Promise,
+  glob
+);
+check(
+  pageMessage.statusCode === 200 &&
+    pageMessage.headers['content-type'].indexOf('text/html') === 0 &&
+    pageMessage.payload.indexOf('url("status")') !== -1 &&
+    pageMessage.payload.indexOf('url("history",params)') !== -1,
+  'monitor page includes polling and history endpoints'
+);
+
+const listenerData = {};
+const listenerFlow = {
+  get: (key) => listenerData[key],
+  set: (key, value) => {
+    listenerData[key] = value;
+  }
+};
+globalData.jobQueue = [];
+const collect = vmFunction('w2-collect.js', {});
+collect(
+  listenerFlow,
+  node,
+  {
+    event: {
+      kind: 'source',
+      type: 'plan_opt',
+      site: 'Hull',
+      month: '2026-09'
+    }
+  },
+  Buffer,
+  Promise,
+  glob
+);
+check(
+  globalData['runStatus_pbi-listener'].state === 'listening' &&
+    globalData['runStatus_pbi-listener'].pendingEntries === 1,
+  'listener status records pending file events'
+);
+listenerData.pending = {
+  'source|Hull|2026-09': {
+    kind: 'source',
+    site: 'Hull',
+    month: '2026-09',
+    type: 'plan_opt',
+    types: {
+      plan_opt: true
+    },
+    first: Date.now() - 121000,
+    events: 1
+  }
+};
+const release = vmFunction('w3-release.js', {});
+release(listenerFlow, node, {}, Buffer, Promise, glob);
+check(
+  globalData['runStatus_pbi-listener'].queuedJobs === 1 &&
+    globalData['runStatus_pbi-listener'].lastQueuedJob.from === '2026-09',
+  'listener status records released job count and range'
+);
+const takeJob = vmFunction('w6-take-job.js', {});
+takeJob(listenerFlow, node, {}, Buffer, Promise, glob);
+check(
+  globalData['runStatus_pbi-listener'].queuedJobs === 0,
+  'listener status updates when a queued job is taken'
+);
+
+globalData['runStatus_pbi-report'] = {
+  state: 'running'
+};
+const notePbiLog = vmFunction('w4-note-log.js', {});
+notePbiLog(
+  flow,
+  node,
+  {
+    line: 'sample log line',
+    payload: {
+      level: 'failed',
+      message: 'sample failure'
+    }
+  },
+  Buffer,
+  Promise,
+  glob
+);
+check(
+  globalData['runStatus_pbi-report'].state === 'failed' &&
+    globalData['runStatus_pbi-report'].lastLog === 'sample failure',
+  'PBI log checkpoint records failure without retaining full rows'
+);
+globalData['lastLog'] = Date.now() - 31000;
+globalData.done = false;
+const checkQuiet = vmFunction('w5-check-quiet.js', {});
+checkQuiet(flow, node, {}, Buffer, Promise, glob);
+check(
+  globalData['runStatus_pbi-report'].state === 'failed' &&
+    globalData['runStatus_pbi-report'].finishedAt,
+  'quiet listener checkpoint preserves a PBI failure outcome'
+);
+
 function mask(value) {
   return JSON.stringify(value)
     .replace(/"loaded_at":\d+/g, '"loaded_at":0')
@@ -254,6 +569,46 @@ for (const [file, kind] of flows) {
   }
 }
 
+const pbiFile = 'vfc-pbi-report.json';
+const oldPbiFlow = readBaseline(pbiFile);
+const newPbiFlow = read(pbiFile);
+const pbiOptions = {
+  startDay: day,
+  startPayload: {
+    tables: [],
+    sites: [],
+    from: '2026-09',
+    to: '2026-09'
+  },
+  write: true,
+  configNodes: config,
+  platform,
+  lake: new Map(),
+  clientId: 'x',
+  clientSecret: 'y',
+  fetchImpl: async () => {
+    throw new Error('PBI report build must not call Insights Hub');
+  }
+};
+const oldPbiResult = await runFlow(oldPbiFlow, pbiOptions);
+const newPbiResult = await runFlow(newPbiFlow, pbiOptions);
+for (const field of [
+  'requests',
+  'parquetPayloads',
+  'written',
+  'logs',
+  'errors'
+]) {
+  check(
+    mask(oldPbiResult[field]) === mask(newPbiResult[field]),
+    `PBI build/${field}: behavior unchanged`
+  );
+}
+check(
+  newPbiResult.globalContext['runStatus_pbi-report'] &&
+    newPbiResult.globalContext['runStatus_pbi-report'].state === 'running',
+  'PBI build records a compact live job status'
+);
 if (failures) {
   console.error(`${failures} check(s) failed`);
   process.exitCode = 1;
