@@ -177,7 +177,8 @@ if loss is not None and rep is not None:
         x = df.copy()
         x["d"] = x["Date"].astype(str).str[:10]
         t = pd.to_datetime(x["Time"])
-        x["t"] = (t.dt.hour * 3600 + t.dt.minute * 60 + t.dt.second + t.dt.microsecond / 1e6).round()
+        # the extract cuts every start to the minute; some source files have seconds
+        x["t"] = t.dt.hour * 60 + t.dt.minute
         x["dl"] = x["OEELossLvl3Desc"].str.lower()
         x["el"] = x["Equipment"].fillna("")
         return x
@@ -205,7 +206,8 @@ if loss is not None and rep is not None:
         a, b = both[c + "_o"], both[c + "_r"]
         line.append(f"{c} {(((a == b) | (a.isna() & b.isna())).mean()):.2%}")
     say("  equal: " + "; ".join(line))
-    for c, tol in [("Loss Units", 0.01), ("Time in Mins", 0.02), ("Volume Total", 0.01)]:
+    # the extract rounds Loss Units and Volume Total to whole units
+    for c, tol in [("Loss Units", 0.99), ("Time in Mins", 0.02), ("Volume Total", 0.99)]:
         if c + "_r" not in both:
             continue
         a, b = both[c + "_o"], both[c + "_r"]
