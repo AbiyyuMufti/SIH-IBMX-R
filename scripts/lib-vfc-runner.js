@@ -346,5 +346,6 @@ export async function runFlow(nodes, options) {
       }
     }
   }
+  stats.globalContext = globalData;
   return stats;
 }
