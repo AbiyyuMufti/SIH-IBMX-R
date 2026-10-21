@@ -3,6 +3,7 @@
 // Out: msg.hourRows. Minutes are KPI milliseconds divided by 60000.
 var MIN_MS = 60000;
 var HOUR_MS = 3600000;
+var cfg = flow.get('cfg') || {};
 var loadedAt = msg.loadedAt || Date.now();
 
 // Last Sunday of the month at 01:00 UTC. The month is 0-based.
@@ -12,11 +13,13 @@ function lastSundayUtc(year, monthIndex) {
   return d.getTime();
 }
 
-// Europe/London offset in hours (UK sites only).
-function londonOffsetHours(ms) {
+// UTC offset of the site in hours: the standard offset of its time zone
+// plus one hour in EU summer time (from 1.1 CONFIG, via flow context cfg).
+function offsetHours(ms) {
   var year = new Date(ms).getUTCFullYear();
-  var inBst = ms >= lastSundayUtc(year, 2) && ms < lastSundayUtc(year, 9);
-  return inBst ? 1 : 0;
+  var summer = !!cfg.euSummer && ms >= lastSundayUtc(year, 2) &&
+    ms < lastSundayUtc(year, 9);
+  return (cfg.utcHours || 0) + (summer ? 1 : 0);
 }
 
 function minutes(ms) {
@@ -34,7 +37,7 @@ var line = msg.h.line || msg.h.asset_name;
 var level = msg.h.machine ? 'machine' : 'line';
 msg.hourRows = msg.hours.map(function (hour) {
   var v = hour.values;
-  var local = new Date(hour.ms + londonOffsetHours(hour.ms) * HOUR_MS);
+  var local = new Date(hour.ms + offsetHours(hour.ms) * HOUR_MS);
   var localIso = local.toISOString();
   var product = hour.product || {};
   var operational = minutes(v.operational_time_ms);

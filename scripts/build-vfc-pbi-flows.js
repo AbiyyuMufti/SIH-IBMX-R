@@ -25,8 +25,8 @@ import {
   reportPlanSchema, reportUtilSchema, reportLossSchema
 } from './lib-pbi-report-schemas.js';
 
-// One SIH report daily tab per site. The hour it runs is sihRunHourUtc of
-// the site in 1.1 CONFIG (an hourly tick checks it).
+// One SIH report daily tab per site. The hour it runs is runHourLocal of
+// the site in 1.1 CONFIG, local clock (an hourly tick checks it).
 const SITES = [{ name: 'Hull' }];
 const TICK = '7 * * * *';
 
@@ -55,7 +55,7 @@ function buildDailyFlow(site, index) {
   const stage1 = b.nextStage();
   comment(
     `[${stage1}] TRIGGERS & SITE SETTINGS`,
-    `STAGE ${stage1} - TRIGGERS AND SITE SETTINGS. Site ${site.name}. Writes the three Tableau tables Plan_OPT_EU (machine x production day x shift x product), Time_Utilisation_EU (machine x day) and Daily_Losses_EU (one row per stop) straight from the Insights Hub API, one file per production day, with Data Source = SIH. The rows of a CONFIG line on source sih go to <root>/report (what Tableau reads), the others to <root>/candidate/sih. Schedule: a tick every hour; 1.1 goes on only in the hour sihRunHourUtc of the site in 1.1 CONFIG (no hour: backfill only), then builds yesterday and the days before it (REBUILD_DAYS). Backfill: edit the inject payload {"start":"YYYY-MM-DD","end":"YYYY-MM-DD"} (production days) and click the button. 1.1 SITE SETTINGS is the only node to edit: site name, dry-run switch, rebuild days. The shared settings (credentials, root folder, lines, production-day start) come from the Config tab. dryRun is true by default. Then the site setup (Glidepaths, Machine Names, Shift Patterns from <root>/reference) and ONE MESSAGE PER DAY, one day every 5 s.`,
+    `STAGE ${stage1} - TRIGGERS AND SITE SETTINGS. Site ${site.name}. Writes the three Tableau tables Plan_OPT_EU (machine x production day x shift x product), Time_Utilisation_EU (machine x day) and Daily_Losses_EU (one row per stop) straight from the Insights Hub API, one file per production day, with Data Source = SIH. The rows of a CONFIG line on source sih go to <root>/report (what Tableau reads), the others to <root>/candidate/sih. Schedule: a tick every hour; 1.1 goes on only in the local hour runHourLocal of the site in 1.1 CONFIG (the same local time in summer and winter; no hour: backfill only), then builds the production days that have ended and the days before them (REBUILD_DAYS). The production day starts at dayStartLocal o'clock local time (timeZone of the site), so it is 23, 24 or 25 hours long. Backfill: edit the inject payload {"start":"YYYY-MM-DD","end":"YYYY-MM-DD"} (production days) and click the button. 1.1 SITE SETTINGS is the only node to edit: site name, dry-run switch, rebuild days. The shared settings (credentials, root folder, lines, production-day start) come from the Config tab. dryRun is true by default. Then the site setup (Glidepaths, Machine Names, Shift Patterns from <root>/reference) and ONE MESSAGE PER DAY, one day every 5 s.`,
     r
   );
   const inject = (name, dy, extra) => add({
@@ -123,7 +123,7 @@ function buildDailyFlow(site, index) {
       fn('shLookup', 'Build shift lookup', 'b5-shift-lookup.js',
         ['next', 'SETUP FAILED']),
       fn('startDays', 'Start the day list', 'd2-start-days.js', ['next']),
-      fn('daysFn', 'Build day list', 's1-build-days.js', ['next']),
+      fn('daysFn', 'Build day list', 'q1-build-days.js', ['next']),
       delay('dayDelay', 'One day per 5 s', 5),
       end('DAY')
     ]);

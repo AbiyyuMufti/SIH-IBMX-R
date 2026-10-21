@@ -10,14 +10,17 @@ var cfg = flow.get('cfg');
 var DEFAULT_REASON = 'Unplanned Downtime';
 var BREAKDOWN_CATEGORY = 'Breakdown';
 var loadedAt = msg.loadedAt || Date.now();
-// A production day D runs from D dayStartHour UTC to D+1 dayStartHour.
+// The production day: the window of the day message (local day start,
+// 23 to 25 hours), else dayStartHour UTC to the same hour the next day.
 var midnight = Date.parse(msg.day + 'T00:00:00.000Z');
-var fromMs = midnight + cfg.dayStartHour * HOUR_MS;
-var toMs = fromMs + DAY_MS;
+var fromMs = msg.dayFromMs || midnight + cfg.dayStartHour * HOUR_MS;
+var toMs = msg.dayToMs || fromMs + DAY_MS;
 var month = msg.day.slice(0, 7);
 
 // The shift of an instant: the event whose recurrence covers it, else null.
-function shiftOf(ms) {
+// The calendar rules hold local wall clock times: compare the local time.
+function shiftOf(instant) {
+  var ms = instant + offsetHours(instant) * HOUR_MS;
   var found = null;
   msg.shiftRules.forEach(function (rule) {
     if (found) {
@@ -49,11 +52,13 @@ function lastSundayUtc(year, monthIndex) {
   return d.getTime();
 }
 
-// Europe/London offset in hours (UK sites only).
-function londonOffsetHours(ms) {
+// UTC offset of the site in hours: the standard offset of its time zone
+// plus one hour in EU summer time (from 1.1 CONFIG, via flow context cfg).
+function offsetHours(ms) {
   var year = new Date(ms).getUTCFullYear();
-  var inBst = ms >= lastSundayUtc(year, 2) && ms < lastSundayUtc(year, 9);
-  return inBst ? 1 : 0;
+  var summer = !!cfg.euSummer && ms >= lastSundayUtc(year, 2) &&
+    ms < lastSundayUtc(year, 9);
+  return (cfg.utcHours || 0) + (summer ? 1 : 0);
 }
 
 function numOrNull(v) {
@@ -87,7 +92,7 @@ msg.stops.forEach(function (r) {
   var parts = r.reasonFullPath ? String(r.reasonFullPath).split(' / ') : [];
   var category = parts.length > 1 ? parts[0] : null;
   var subgroup = parts.length > 2 ? parts[1] : null;
-  var localMs = start + londonOffsetHours(start) * HOUR_MS;
+  var localMs = start + offsetHours(start) * HOUR_MS;
   var localIso = new Date(localMs).toISOString();
   var duration = numOrNull(r.duration);
   var minutes = duration === null ? null : Math.round(duration) / MIN_MS;

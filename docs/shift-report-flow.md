@@ -17,9 +17,9 @@ One file per table, site and production day, `<root>/shift_report/<table>/site=<
 | `rpt_event` | one stop | `event_kind` = `microstop`, `planned` (reason root in Config `plannedRoots`) or `unplanned`; reason, reason path, minutes, comment count, product and order of its hour, loss units. About 300 rows per line and day (machines will add about 1,500) |
 
 ## Settings
-- Config tab, per site: `reportExcludeNames` (names of machines to leave out, empty; the commented line `// '05 Antares'` shows how), `dayStartLocal` (whole hour from 2 to 23, local clock), `timeZone` (only `Europe/London` so far; any other value stops the flow with an error), `reportLineIds` (since 2026-10-20 built by Config from the lines with `shiftReport: true`; the lines of the report). `dayStartHour` stays for the UTC day of the Power BI and fact flows.
+- Config tab, per site: `reportExcludeNames` (names of machines to leave out, empty; the commented line `// '05 Antares'` shows how), `dayStartLocal` (whole hour from 4 to 23, local clock), `timeZone` (one of `TIME_ZONES` in Config: the EU zones and Europe/Istanbul; another value is refused by Config), `runHourLocal` (the local hour the tab runs), `reportLineIds` (since 2026-10-20 built by Config from the lines with `shiftReport: true`; the lines of the report). `dayStartHour` stays for the UTC day of the Power BI and fact flows.
 - Tab node `1.1 SITE SETTINGS`: `SITE_NAME`, `DRY_RUN`, `REBUILD_DAYS`, `REPORT_FOLDER`, `FOLDER_PREFIX`.
-- Schedule: daily 08:00 UTC, builds the days that ended at least two hours before (`GRACE_HOURS` in `1.2`) and the `REBUILD_DAYS` days before. Backfill: edit the inject payload.
+- Schedule (since 2026-10-21): a tick every hour at minute 17; node 1.1 goes on only when the local hour of the site is `runHourLocal` (Hull: 6), so the run is at the same local time all year. It builds the days that have ended (`GRACE_HOURS` 0 in `1.2`) and the `REBUILD_DAYS` days before. Before: daily 08:00 UTC with a grace of 2 hours. See [sih-report-daily.md](sih-report-daily.md) "Local time". Backfill: edit the inject payload.
 
 ## Phase 2: the machines of a line
 - **Found automatically.** For every report line the flow asks Asset Management for its children (`GET /assets?filter={"parentId":...}`, tested on B2 Line: 7 children) and keeps those that are configured OEE assets (from the OEE asset list of the same run). A machine added to the line comes in at the next run. Nothing is listed in Config except the exclusions (`reportExcludeNames`). The machine rows have `asset_level` = `machine`, and `line_id` and `line_name` of the line.
@@ -59,7 +59,7 @@ To build or test:
 - `rpt_counter` (filler reject counters; needs a time series address `tsBase` in Config, sparse and cumulative counters, see the data map).
 - GT4 (manual asset: product, order, stops and segments differ; `timeModelCategoryDistribution` is refused for manual assets).
 - Probe tests not done: changeover exactness (`node scripts/test-shift-report.js 2026-10-08 steps=D`) and a day with planned stops.
-- Backfill about 30 days for the trend, then the schedule (08:00 UTC) live. Runtime of a long backfill not measured.
+- Backfill about 30 days for the trend, then the schedule (`runHourLocal`, local clock) live. Runtime of a long backfill not measured.
 - Tableau: how it reads the `site=` folders, the report layout, PDF and email.
 
 ## First run in the VFC
@@ -83,7 +83,7 @@ Files downloaded with `node scripts/datalake-download-tree.js reports/shift_repo
 
 **Second run (2026-10-19, after the fixes, 14 and 15 Sep written again).** Two shift windows per day, 05:00 to 17:00 and 17:00 to 05:00 UTC (06:00 to 18:00 and 18:00 to 06:00 local), 12 hours each. Every shift window and the day window equal the OEE app for the same window, in all columns that were compared: parts, availability, performance, quality, OEE, theoretical output, downtime, performance loss, quality loss, net operational and used operational time (to 4 decimals, 15 Sep day window and both shifts, 14 Sep day shift). The good parts of the two shifts equal the Provideam file on 14 Sep (70,182 and 44,157) and for the day shift of 15 Sep (55,487); the night shift of 15 Sep is 44,625 in the app and ours against 44,325 in the file (the file is older or edited). Shift names: Gold and Green in the calendar, Blue in the Provideam file.
 
-**Decision (user, 2026-10-19):** the Power BI flows are not changed for the summer time shift yet: the Power BI tables are regional and it is not clear whether a time distinction is needed there.
+**Decision (user, 2026-10-19):** the Power BI flows are not changed for the summer time shift yet: the Power BI tables are regional and it is not clear whether a time distinction is needed there. **Replaced on 2026-10-21:** every site keeps the same local day and run time all year; the SIH report daily tab now uses the local day and local shifts too ([sih-report-daily.md](sih-report-daily.md) "Local time").
 
 **Found and fixed: loss times of a window.** The first version summed the hourly performance and quality losses, which differs from the app (performance loss 132.8 against 152.3 min on 15 Sep) because the formula is not linear. Now they are worked out from the window ratios as in the app.
 

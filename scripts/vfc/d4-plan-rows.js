@@ -4,11 +4,15 @@
 // Out: msg.planRows, msg.utilRows.
 var MIN_MS = 60000;
 var DAY_MS = 86400000;
+var HOUR_MS = 3600000;
 var MINUTES_PER_DAY = 1440;
+var cfg = flow.get('cfg') || {};
 var loadedAt = msg.loadedAt || Date.now();
 
 // The shift of an instant: the event whose recurrence covers it, else null.
-function shiftOf(ms) {
+// The calendar rules hold local wall clock times: compare the local time.
+function shiftOf(instant) {
+  var ms = instant + offsetHours(instant) * HOUR_MS;
   var found = null;
   msg.shiftRules.forEach(function (rule) {
     if (found) {
@@ -31,6 +35,22 @@ function shiftOf(ms) {
     }
   });
   return found;
+}
+
+// Last Sunday of the month at 01:00 UTC. The month is 0-based.
+function lastSundayUtc(year, monthIndex) {
+  var d = new Date(Date.UTC(year, monthIndex + 1, 0, 1, 0, 0));
+  d.setUTCDate(d.getUTCDate() - d.getUTCDay());
+  return d.getTime();
+}
+
+// UTC offset of the site in hours: the standard offset of its time zone
+// plus one hour in EU summer time (from 1.1 CONFIG, via flow context cfg).
+function offsetHours(ms) {
+  var year = new Date(ms).getUTCFullYear();
+  var summer = !!cfg.euSummer && ms >= lastSundayUtc(year, 2) &&
+    ms < lastSundayUtc(year, 9);
+  return (cfg.utcHours || 0) + (summer ? 1 : 0);
 }
 
 // Adds a value to a sum. A sum with no value at all stays null.

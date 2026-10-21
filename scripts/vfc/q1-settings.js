@@ -1,6 +1,6 @@
 // SITE SETTINGS of the shift report flow: site name, dry run, rebuild days.
-// In: any message from an inject node. Out: the same message.
-// It reads the site from the Config tab (global context), copies the
+// In: the hourly tick (goes on only in the local hour runHourLocal of the
+// site in 1.1 CONFIG) or the backfill. Out: the same message. Copies the
 // shared settings into flow context and builds the three table paths.
 var SITE_NAME = '__SITE__';
 // true = log row counts, write NO files. false = write the tables.
@@ -45,26 +45,48 @@ if (!site.reportLineIds || !site.reportLineIds.length) {
     'site "' + SITE_NAME + '" has no reportLineIds in CONFIG'
   );
 }
-if (site.timeZone !== 'Europe/London') {
+// 1.1 CONFIG checks the zone (TIME_ZONES) and the day start (4 to 23).
+var start = site.dayStartLocal;
+if (!site.timeZone || start === undefined) {
   return stop(
-    'time zone not supported',
-    'timeZone "' + site.timeZone + '" is not supported, only Europe/London'
+    'no timeZone or dayStartLocal',
+    'site "' + SITE_NAME + '" needs timeZone and dayStartLocal in CONFIG'
   );
 }
-// The clock change happens at 01:00 UTC, so a start before 02:00 local
-// would need another rule.
-var start = site.dayStartLocal;
-if (!(start >= 2 && start <= 23 && start % 1 === 0)) {
-  return stop(
-    'bad dayStartLocal',
-    'dayStartLocal must be a whole hour from 2 to 23, got ' + start
-  );
+
+// Last Sunday of the month at 01:00 UTC. The month is 0-based.
+function lastSundayUtc(year, monthIndex) {
+  var d = new Date(Date.UTC(year, monthIndex + 1, 0, 1, 0, 0));
+  d.setUTCDate(d.getUTCDate() - d.getUTCDay());
+  return d.getTime();
+}
+
+// Local hour of the site now: standard offset plus EU summer time.
+function localHour(ms) {
+  var year = new Date(ms).getUTCFullYear();
+  var summer = site.euSummer && ms >= lastSundayUtc(year, 2) &&
+    ms < lastSundayUtc(year, 9);
+  var offset = site.utcHours + (summer ? 1 : 0);
+  return new Date(ms + offset * 3600000).getUTCHours();
+}
+
+var p = msg.payload;
+var backfill = !!(p && typeof p === 'object' && p.start && p.end);
+if (!backfill && site.runHourLocal !== localHour(Date.now())) {
+  node.status({
+    fill: 'grey',
+    shape: 'ring',
+    text: 'not due (runs at ' + site.runHourLocal + ':00 local)'
+  });
+  return null;
 }
 
 var cfg = Object.assign({}, shared);
 cfg.site = site.name;
 cfg.dayStartLocal = start;
 cfg.timeZone = site.timeZone;
+cfg.utcHours = site.utcHours;
+cfg.euSummer = site.euSummer;
 cfg.assetIds = site.reportLineIds;
 cfg.excludeMachineNames = site.reportExcludeNames || [];
 cfg.dryRun = DRY_RUN;

@@ -40,10 +40,10 @@ const flows = [
   { file: 'vfc-reference-tables.json', scenarios: [
     'ok', 'ref-config-fail', 'ref-detail-fail', 'token-fail'
   ] },
-  // Since 2026-10-21 (SIH report daily) the tables of this tab have the
-  // report columns: only the API calls and errors are compared, the new run
-  // gets the reference files of its site setup. Its rows are proven by
-  // scripts/test-vfc-sih-report.js.
+  // Since 2026-10-21 (SIH report daily: report columns, local production
+  // day) this tab differs from the old commit on purpose. It is compared with
+  // itself: the new tab on legacy against both platforms, API calls and
+  // errors only. Its rows: scripts/test-vfc-sih-report.js.
   { file: 'vfc-pbi-daily-hull.json', callsOnly: true, scenarios: [
     'ok', 'products', 'products-fail', 'values-fail', 'value-kpi-fail',
     'no-collection', 'token-fail', 'kpi-fail'
@@ -147,10 +147,15 @@ for (const flow of flows) {
   const oldNodes = readOld(flow.file);
   const newNodes = readNew(flow.file);
   for (const scenario of flow.scenarios) {
-    const oldStats = await runFlow(
-      oldNodes,
-      options(oldConfig, oldMock.makeMockFetch, scenario, {})
-    );
+    const oldStats = flow.callsOnly
+      ? await runFlow(newNodes, options(newConfig, makeMockFetch, scenario, {
+        platform: 'legacy',
+        lake: referenceLake()
+      }))
+      : await runFlow(
+        oldNodes,
+        options(oldConfig, oldMock.makeMockFetch, scenario, {})
+      );
     for (const platform of ['legacy', 'xcelerator']) {
       const label = `${flow.file} ${scenario} [${platform}]`;
       const newStats = await runFlow(

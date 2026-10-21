@@ -4,6 +4,7 @@
 // hour.perMinute (design speed per minute or null) on every hour.
 var DAY_MS = 86400000;
 var HOUR_MS = 3600000;
+var cfg = flow.get('cfg') || {};
 
 // Last Sunday of the month at 01:00 UTC. The month is 0-based.
 function lastSundayUtc(year, monthIndex) {
@@ -12,11 +13,13 @@ function lastSundayUtc(year, monthIndex) {
   return d.getTime();
 }
 
-// Europe/London offset in hours (UK sites only).
-function londonOffsetHours(ms) {
+// UTC offset of the site in hours: the standard offset of its time zone
+// plus one hour in EU summer time (from 1.1 CONFIG, via flow context cfg).
+function offsetHours(ms) {
   var year = new Date(ms).getUTCFullYear();
-  var inBst = ms >= lastSundayUtc(year, 2) && ms < lastSundayUtc(year, 9);
-  return inBst ? 1 : 0;
+  var summer = !!cfg.euSummer && ms >= lastSundayUtc(year, 2) &&
+    ms < lastSundayUtc(year, 9);
+  return (cfg.utcHours || 0) + (summer ? 1 : 0);
 }
 
 // The shift of an instant: the event whose recurrence covers it, else null.
@@ -24,7 +27,7 @@ function londonOffsetHours(ms) {
 // of 06:00 local starts at 05:00 UTC in summer), so the instant is looked
 // up on its local wall clock time.
 function shiftOf(instant) {
-  var ms = instant + londonOffsetHours(instant) * HOUR_MS;
+  var ms = instant + offsetHours(instant) * HOUR_MS;
   var found = null;
   msg.shiftRules.forEach(function (rule) {
     if (found) {

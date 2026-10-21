@@ -182,6 +182,31 @@ check(unplanned && unplanned.Value === '3.0' && near(unplanned.target, 0.03),
 check(b2Loss.every((r) => r['Loss Target Key'] === 'B2 Auto-Hull ' + r.OEELossLvl3SubGroup + ' 01/09/2026'),
   'Loss Target Key = Unique Machine Name + sub group + month');
 
+// ---- 4b. the local production day (Hull 06:00 to 06:00 local) ----
+const HOUR = 3600000;
+const ms = (iso) => Date.parse(iso);
+const windowOf = async (d) => {
+  const s = await runFlow(daily, base({ startDay: d, write: false }));
+  const w = s.requests
+    .filter((q) => q.url.endsWith('/evaluateKPIs') && !/"value":\["/.test(q.body))
+    .map((q) => JSON.parse(q.body).scope)[0];
+  const stops = s.requests.find((q) => /downtimeReasons/.test(q.url));
+  return w ? { from: ms(w.from), to: ms(w.to), stops: stops && stops.url } : null;
+};
+const summer = await windowOf('2026-09-16');
+check(summer && summer.from === ms('2026-09-16T05:00:00Z') && summer.to === ms('2026-09-17T05:00:00Z'),
+  'summer: 06:00 local = 05:00 UTC to 05:00 UTC');
+check(summer && decodeURIComponent(summer.stops).includes('from=2026-09-16T05:00:00'), 'summer: stops asked for the same window');
+const winter = await windowOf('2026-12-10');
+check(winter && winter.from === ms('2026-12-10T06:00:00Z') && winter.to === ms('2026-12-11T06:00:00Z'),
+  'winter: 06:00 UTC to 06:00 UTC');
+const autumn = await windowOf('2026-10-24');
+check(autumn && autumn.to - autumn.from === 25 * HOUR, 'day before the clock goes back (24 Oct): 25 hours');
+const spring = await windowOf('2026-03-28');
+check(spring && spring.to - spring.from === 23 * HOUR, 'day before the clock goes forward (28 Mar): 23 hours');
+const allTime = rowsOf(await runFlow(daily, base({ startDay: '2026-10-24' })), 'Time_Utilisation_EU');
+check(allTime.length > 0 && allTime.every((r) => r['All Time'] === 1440), 'All Time stays 1440 on a 25 hour day');
+
 // ---- 5. column rules on a small synthetic day (node Build report columns) ----
 const ctx = {
   cfg: {
@@ -240,27 +265,41 @@ check(out.summary.notes.some((n) => /Yellow/.test(n) && /Second Shift/.test(n)) 
 
 // ---- 6. the hourly schedule check of 1.1 ----
 const settings = daily.find((n) => n.type === 'function' && /SITE SETTINGS/.test(n.name)).func;
-const runSettings = (payload, hourSetting) => {
+const runSettings = (payload, hourSetting, zone = [0, true]) => {
   const shared = {
     root: 'eu_report',
-    sites: [{ name: 'Hull', assetIds: ['a'], lines: [], reportSource: 'provideam', dayStartHour: 6, sihRunHourUtc: hourSetting }]
+    sites: [{
+      name: 'Hull', assetIds: ['a'], lines: [], reportSource: 'provideam', dayStartHour: 6,
+      dayStartLocal: 6, timeZone: 'X', utcHours: zone[0], euSummer: zone[1], runHourLocal: hourSetting
+    }]
   };
   const g = { get: () => shared };
   const f = { set: () => {} };
   const fn = vm.runInNewContext('(function(msg,flow,node,glob){' + settings + '\n})', {});
   return fn({ payload }, f, { status: () => {}, error: () => {} }, g);
 };
-const nowHour = new Date().getUTCHours();
-check(runSettings(Date.now(), nowHour) !== null, 'tick in the hour sihRunHourUtc: the run starts');
-check(runSettings(Date.now(), (nowHour + 1) % 24) === null, 'tick in another hour: nothing runs');
-check(runSettings(Date.now(), undefined) === null, 'no sihRunHourUtc: the tick never runs');
-check(runSettings({ start: day, end: day }, undefined) !== null, 'backfill runs without sihRunHourUtc');
-const badCfg = config.find((n) => n.type === 'function').func.replace('sihRunHourUtc: 7', 'sihRunHourUtc: 24');
+// Local hour now of a zone without summer time (offset 3) and of London.
+const now = Date.now();
+const year = new Date(now).getUTCFullYear();
+const lastSunday = (m) => {
+  const d = new Date(Date.UTC(year, m + 1, 0, 1));
+  d.setUTCDate(d.getUTCDate() - d.getUTCDay());
+  return d.getTime();
+};
+const bst = now >= lastSunday(2) && now < lastSunday(9) ? 1 : 0;
+const londonHour = (new Date(now).getUTCHours() + bst) % 24;
+const plus3Hour = (new Date(now).getUTCHours() + 3) % 24;
+check(runSettings(now, londonHour) !== null, 'tick in the local hour runHourLocal (London, summer time known): the run starts');
+check(runSettings(now, (londonHour + 1) % 24) === null, 'tick in another local hour: nothing runs');
+check(runSettings(now, plus3Hour, [3, false]) !== null, 'a zone at UTC+3 without summer time: its own local hour');
+check(runSettings(now, undefined) === null, 'no runHourLocal: the tick never runs');
+check(runSettings({ start: day, end: day }, undefined) !== null, 'backfill runs without runHourLocal');
+const badCfg = config.find((n) => n.type === 'function').func.replace('runHourLocal: 6', 'runHourLocal: 24');
 const cfgStore = {};
 const errs = [];
 vm.runInNewContext('(function(msg,flow,node,glob){' + badCfg.replace(/platform: '[^']*'/, "platform: 'legacy'") + '\n})', {})(
   {}, {}, { status: () => {}, error: (e) => errs.push(e) }, { get: (k) => cfgStore[k], set: (k, v) => { cfgStore[k] = v; } });
-check(!cfgStore.cfg && errs.some((e) => /sihRunHourUtc/.test(e)), 'CONFIG refuses sihRunHourUtc 24');
+check(!cfgStore.cfg && errs.some((e) => /runHourLocal/.test(e)), 'CONFIG refuses runHourLocal 24');
 
 // ---- 7. shift rule and sums on a small synthetic day (node 4.4) ----
 const H = 3600000;

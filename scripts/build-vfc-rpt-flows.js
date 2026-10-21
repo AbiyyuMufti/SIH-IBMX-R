@@ -20,9 +20,11 @@ import {
 } from './lib-flow-builder.js';
 import { windowSchema, hourSchema, eventSchema } from './lib-rpt-schemas.js';
 
-// One entry per site. cron = the daily schedule (UTC). The day list builds
-// the days that ended at least two hours before.
-const SITES = [{ name: 'Hull', cron: '0 8 * * *' }];
+// One entry per site. The tab runs at runHourLocal of the site in 1.1
+// CONFIG, local clock: an hourly tick (minute 17, after the SIH report daily
+// tab at minute 7) and node 1.1 checks the hour.
+const SITES = [{ name: 'Hull' }];
+const TICK = '17 * * * *';
 
 // Parquet, path and write object: the end of a table lane.
 const tableEnd = (table, schema, pathFile) => [
@@ -40,7 +42,7 @@ function buildFlow(site, index) {
   const stage1 = b.nextStage();
   comment(
     `[${stage1}] TRIGGERS & SITE SETTINGS`,
-    `STAGE ${stage1} - TRIGGERS AND SITE SETTINGS. Site ${site.name}. Writes the three SHIFT REPORT tables from the Insights Hub API, one file per table and production day: rpt_window (asset x window: the day and each shift run), rpt_hour (asset x hour) and rpt_event (one row per stop). Phase 1: the report lines of the Config tab (reportLineIds), no machines yet. The production day starts at dayStartLocal o'clock local time (Config, time zone Europe/London), so it is 23, 24 or 25 hours long. Schedule: daily, builds the days that ended at least two hours before (REBUILD_DAYS in 1.1). Backfill: edit the inject payload {"start":"YYYY-MM-DD","end":"YYYY-MM-DD"} (production days) and click the button. Both go through 1.1 SITE SETTINGS, the only node of this flow to edit: site name, dry-run switch, rebuild days, folder names. The shared settings (credentials, root folder, platform, planned reason roots, the lines, day start and time zone of the site) come from the Config tab through global context. dryRun is true by default: set it to false to write files. 1.2 sends ONE MESSAGE PER DAY with its exact window (dayFromMs, dayToMs); the delay node starts one day every 5 s.`,
+    `STAGE ${stage1} - TRIGGERS AND SITE SETTINGS. Site ${site.name}. Writes the three SHIFT REPORT tables from the Insights Hub API, one file per table and production day: rpt_window (asset x window: the day and each shift run), rpt_hour (asset x hour) and rpt_event (one row per stop). Phase 1: the report lines of the Config tab (reportLineIds), no machines yet. The production day starts at dayStartLocal o'clock local time (Config, timeZone of the site), so it is 23, 24 or 25 hours long. Schedule: a tick every hour; 1.1 goes on only in the local hour runHourLocal of the site in 1.1 CONFIG (the same local time in summer and winter; no hour: backfill only), then builds the days that have ended and the days before them (REBUILD_DAYS in 1.1). Backfill: edit the inject payload {"start":"YYYY-MM-DD","end":"YYYY-MM-DD"} (production days) and click the button. Both go through 1.1 SITE SETTINGS, the only node of this flow to edit: site name, dry-run switch, rebuild days, folder names. The shared settings (credentials, root folder, platform, planned reason roots, the lines, day start and time zone of the site) come from the Config tab through global context. dryRun is true by default: set it to false to write files. 1.2 sends ONE MESSAGE PER DAY with its exact window (dayFromMs, dayToMs); the delay node starts one day every 5 s.`,
     r
   );
   const inject = (name, dy, extra) => add({
@@ -50,8 +52,8 @@ function buildFlow(site, index) {
     powerMode: false, x: col(0), y: rowY(r) + dy, wires: [[id('settings')]],
     ...extra
   });
-  inject(`Schedule ${site.cron}`, -40, {
-    payload: '', payloadType: 'date', crontab: site.cron
+  inject('Tick every hour', -40, {
+    payload: '', payloadType: 'date', crontab: TICK
   });
   inject('Backfill (edit payload)', 40, {
     payload: '{"start":"2026-09-01","end":"2026-09-03"}',

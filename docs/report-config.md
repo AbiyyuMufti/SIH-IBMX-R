@@ -30,6 +30,7 @@ eu_report/
   dayStartHour: 6,
   dayStartLocal: 6,
   timeZone: 'Europe/London',
+  runHourLocal: 6,
   lines: [
     {
       id: '<32 character asset id>',
@@ -47,7 +48,10 @@ eu_report/
 | `lines[].id` | the asset id: the flows use only this |
 | `lines[].sih` | the name in Insights Hub, a label. The asset list warns when Insights Hub calls the id differently (renamed) |
 | `lines[].report` | the `MachineName` of the line in the report and in the Machine Names file of the site (B2 Line is `B2 Auto` in Provideam). Required, `?` is refused. The asset list proposes it from the Machine Names file and reports a Config value that is not there |
-| `sihRunHourUtc` | optional, the hour (UTC) the SIH report daily tab of the site runs; without it only the backfill button runs it |
+| `dayStartLocal` | first hour of the production day, local clock (4 to 23); the SIH report daily and the shift report use it |
+| `timeZone` | the site's time zone, one of `TIME_ZONES` in Config (EU zones with EU summer time, Europe/Istanbul) |
+| `runHourLocal` | optional, the local hour the SIH report daily and shift report tabs of the site run, the same all year; without it only their backfill buttons run them |
+| `dayStartHour` | first hour of the production day in UTC: only the old fact flow uses it |
 | `lines[].reportSource` | optional, overrides the site for this line: the rows whose `MachineName` is this line's `report` name follow it |
 | `lines[].shiftReport` | optional, `true` = the shift report flow builds this line |
 
@@ -73,7 +77,7 @@ Read calls only, nothing is written. Asset list of 2026-10-20 (xcelerator, scrip
 1. Config and folders (this page). Done, checked in the VFC.
 2. The three report tables with the columns of the Tableau extracts (`Plan_OPT_EU`, `Daily_Losses_EU`, `Time_Utilisation_EU`, plus `Dept`, `Area`, `Product Type`, `Data Source`), the machine names and shift naming as lookups only, no calendar; split of the rows by line source. Built offline 2026-10-20 ([pbi-report-build.md](pbi-report-build.md) "Step 6").
 3. Run in the VFC, check against Segun's files.
-4. The SIH flow on the same three tables. Built offline 2026-10-21 as one tab per site (the API nodes read one site's settings from flow context; one tab per site avoids changing them), run hour per site in Config (`sihRunHourUtc`), Hull only for now ([sih-report-daily.md](sih-report-daily.md)).
+4. The SIH flow on the same three tables. Built offline 2026-10-21 as one tab per site (the API nodes read one site's settings from flow context; one tab per site avoids changing them), run hour per site in Config (`runHourLocal`, local clock), Hull only for now ([sih-report-daily.md](sih-report-daily.md)).
 5. Switch sites or lines when the SIH rows match.
 
 ## Old files in the lake (not deleted)

@@ -4,8 +4,9 @@
 // Out: {topic: 'day', payload: 'YYYY-MM-DD', mode, dayFromMs, dayToMs}.
 var DAY_MS = 86400000;
 var HOUR_MS = 3600000;
-// The schedule builds a day this long after it ended.
-var GRACE_HOURS = 2;
+// The schedule builds the days that ended this many hours ago or more. The
+// tab runs at runHourLocal of the site (1.1 CONFIG), so no grace is needed.
+var GRACE_HOURS = 0;
 var cfg = flow.get('cfg');
 var p = msg.payload;
 var days = [];
@@ -22,18 +23,20 @@ function lastSundayUtc(year, monthIndex) {
   return d.getTime();
 }
 
-// Europe/London offset in hours (UK sites only).
-function londonOffsetHours(ms) {
+// UTC offset of the site in hours: the standard offset of its time zone
+// plus one hour in EU summer time (from 1.1 CONFIG, via flow context cfg).
+function offsetHours(ms) {
   var year = new Date(ms).getUTCFullYear();
-  var inBst = ms >= lastSundayUtc(year, 2) && ms < lastSundayUtc(year, 9);
-  return inBst ? 1 : 0;
+  var summer = !!cfg.euSummer && ms >= lastSundayUtc(year, 2) &&
+    ms < lastSundayUtc(year, 9);
+  return (cfg.utcHours || 0) + (summer ? 1 : 0);
 }
 
 // UTC instant of dayStartLocal o'clock on the local day that begins on the
-// UTC date dayMs. Right for a start from 02:00 (checked in node 1.1).
+// UTC date dayMs. Right for a start from 04:00 (checked in 1.1 CONFIG).
 function startOf(dayMs) {
   var asUtc = dayMs + cfg.dayStartLocal * HOUR_MS;
-  return asUtc - londonOffsetHours(asUtc) * HOUR_MS;
+  return asUtc - offsetHours(asUtc) * HOUR_MS;
 }
 
 if (p && typeof p === 'object' && p.start && p.end) {

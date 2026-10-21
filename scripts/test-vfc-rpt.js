@@ -149,12 +149,41 @@ const spring = await windowOf('2026-03-28');
 check(spring && spring[1] - spring[0] === 23 * H && spring[1] === ms('2026-03-29T05:00:00Z'),
   'day before the clock goes forward (28 Mar): 23 hours, ends 05:00 UTC');
 
-// The schedule builds the latest finished days (3 days, newest ended 2 h ago).
-const sched = await runFlow(flow, base({ write: false, startPayload: {} }));
+// Another time zone: Weinheim time (Europe/Berlin), day start 06:00 local.
+const berlin = config.map((n) => (n.type === 'function'
+  ? { ...n, func: n.func.replace("timeZone: 'Europe/London',\n      runHourLocal", "timeZone: 'Europe/Berlin',\n      runHourLocal") } : n));
+const berlinWindow = async (d) => {
+  const s = await runFlow(flow, base({ startDay: d, write: false, configNodes: berlin }));
+  const w = kpiWindows(s)[0];
+  return w ? [ms(w[0]), ms(w[1])] : null;
+};
+const bSummer = await berlinWindow('2026-09-16');
+const bWinter = await berlinWindow('2026-12-10');
+check(bSummer && bSummer[0] === ms('2026-09-16T04:00:00Z') && bWinter && bWinter[0] === ms('2026-12-10T05:00:00Z'),
+  'Europe/Berlin: 06:00 local is 04:00 UTC in summer, 05:00 UTC in winter');
+
+// The schedule builds the latest finished days (3 days, the newest has ended;
+// the tab runs at runHourLocal, so no grace).
+// The tick goes on only in runHourLocal: set it to the London hour of now.
+const lastSun = (y, m) => {
+  const d = new Date(Date.UTC(y, m + 1, 0, 1));
+  d.setUTCDate(d.getUTCDate() - d.getUTCDay());
+  return d.getTime();
+};
+const y = new Date().getUTCFullYear();
+const inBst = Date.now() >= lastSun(y, 2) && Date.now() < lastSun(y, 9);
+const hourNow = (new Date().getUTCHours() + (inBst ? 1 : 0)) % 24;
+const dueConfig = config.map((n) => (n.type === 'function'
+  ? { ...n, func: n.func.replace('runHourLocal: 6', `runHourLocal: ${hourNow}`) } : n));
+const notDue = await runFlow(flow, base({ write: false, startPayload: {},
+  configNodes: config.map((n) => (n.type === 'function'
+    ? { ...n, func: n.func.replace('runHourLocal: 6', `runHourLocal: ${(hourNow + 1) % 24}`) } : n)) }));
+check(notDue.requests.length === 0, 'tick outside runHourLocal: nothing runs');
+const sched = await runFlow(flow, base({ write: false, startPayload: {}, configNodes: dueConfig }));
 const wins = [...new Set(kpiWindows(sched).map((w) => w.join('|')))].map((w) => w.split('|').map(ms)).sort();
-check(wins.length === 3 && wins.every(([, to]) => to <= Date.now() - 2 * H) &&
-  wins[2][1] > Date.now() - 27 * H && wins[1][0] === wins[0][1] && wins[2][0] === wins[1][1],
-  'schedule: 3 consecutive finished days, the newest ended at least 2 h ago');
+check(wins.length === 3 && wins.every(([, to]) => to <= Date.now()) &&
+  wins[2][1] > Date.now() - 25 * H && wins[1][0] === wins[0][1] && wins[2][0] === wins[1][1],
+  'schedule: 3 consecutive finished days, the newest ended less than 25 h ago');
 
 // ---- machines: found automatically, exclusions, group minutes ----
 const REAL_LINE = 'cf4565d7da1e4efcbc0ea6a4814b8eee';
@@ -242,8 +271,8 @@ for (const [scenario, text] of [['segments-fail', 'time segments failed'], ['chi
 const badConfig = (from, to) => config.map((n) => (n.type === 'function'
   ? { ...n, func: n.func.replace(from, to) } : n));
 for (const [from, to, what] of [
-  ["timeZone: 'Europe/London'", "timeZone: 'Europe/Paris'", 'time zone other than Europe/London'],
-  ['dayStartLocal: 6', 'dayStartLocal: 1', 'day start 1 (before the clock change)'],
+  ["timeZone: 'Europe/London',\n      runHourLocal", "timeZone: 'Mars/Base',\n      runHourLocal", 'a time zone not in TIME_ZONES'],
+  ['dayStartLocal: 6', 'dayStartLocal: 3', 'day start 3 (before 04:00)'],
   ['shiftReport: true', 'shiftReport: false', 'no shift report lines'],
   ["report: 'GT4'", "report: '?'", 'a line without its report name']
 ]) {
