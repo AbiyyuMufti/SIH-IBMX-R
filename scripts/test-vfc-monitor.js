@@ -7,6 +7,7 @@ import vm from 'node:vm';
 import { runFlow, testPlatform } from './lib-vfc-runner.js';
 import { makeMockFetch } from './lib-mock-ih.js';
 import { code } from './lib-flow-builder.js';
+import { validateFlow } from './validate-flow.js';
 
 const platform = testPlatform();
 const BASELINE_COMMIT = '358ddb162bd12970709e97f8083a175f779dcf4c';
@@ -63,13 +64,19 @@ function vmFunction(fileName, replacements) {
 }
 
 const globalData = {};
+const flowData = {};
 const glob = {
   get: (key) => globalData[key],
   set: (key, value) => {
     globalData[key] = value;
   }
 };
-const flow = { get: (key) => key === 'cfg' ? { dryRun: true } : undefined };
+const flow = {
+  get: (key) => key === 'cfg' ? { dryRun: true } : flowData[key],
+  set: (key, value) => {
+    flowData[key] = value;
+  }
+};
 const node = { status: () => {}, error: (message) => {
   throw new Error(message);
 } };
@@ -406,8 +413,9 @@ check(
   pageMessage.statusCode === 200 &&
     pageMessage.headers['content-type'].indexOf('text/html') === 0 &&
     pageMessage.payload.indexOf('url("status")') !== -1 &&
-    pageMessage.payload.indexOf('url("history",params)') !== -1,
-  'monitor page includes polling and history endpoints'
+    pageMessage.payload.indexOf('url("history",params)') !== -1 &&
+    pageMessage.payload.indexOf('/command?key=') !== -1,
+  'monitor page includes status, history and command requests'
 );
 
 const listenerData = {};
@@ -497,6 +505,300 @@ check(
   globalData['runStatus_pbi-report'].state === 'failed' &&
     globalData['runStatus_pbi-report'].finishedAt,
   'quiet listener checkpoint preserves a PBI failure outcome'
+);
+
+const command = vmFunction('m10-command.js', {});
+globalData.cfg = {
+  root: 'eu_report',
+  sites: [
+    {
+      name: 'Hull'
+    }
+  ]
+};
+globalData['runStatus_sih-hull'] = undefined;
+globalData['runStatus_rpt-hull'] = undefined;
+globalData['runStatus_pbi-report'] = undefined;
+globalData.jobQueue = [];
+globalData.runMonitorCommands = [];
+const dailyBody = {
+  flow: 'sih-hull',
+  start: '2026-09-01',
+  end: '2026-10-01',
+  force: false
+};
+const dailyMessage = {
+  payload: dailyBody
+};
+const dailyResult = command(
+  flow,
+  node,
+  dailyMessage,
+  Buffer,
+  Promise,
+  glob
+);
+check(
+  dailyResult[0].statusCode === 202 &&
+    dailyResult[1].payload.start === dailyBody.start &&
+    dailyResult[1].payload.end === dailyBody.end &&
+    dailyResult[2] === null,
+  '31-day SIH command sends the exact daily settings payload'
+);
+check(
+  globalData['runStatus_sih-hull'].state === 'queued' &&
+    dailyResult[4].payload.indexOf('[command] ACCEPTED') !== -1 &&
+    globalData.runMonitorCommands[0].result === 'accepted',
+  'accepted command reserves status and emits an audit log'
+);
+const busyDaily = command(flow, node, {
+  payload: {
+    ...dailyBody,
+    end: '2026-09-30'
+  }
+}, Buffer, Promise, glob);
+check(
+  busyDaily[0].statusCode === 409 &&
+    busyDaily[1] === null,
+  'busy daily flow refuses a second command without force'
+);
+const forcedDaily = command(flow, node, {
+  payload: {
+    ...dailyBody,
+    end: '2026-09-30',
+    force: true
+  }
+}, Buffer, Promise, glob);
+check(
+  forcedDaily[0].statusCode === 202 &&
+    forcedDaily[0].payload.forced === true &&
+    forcedDaily[1].payload.start === dailyBody.start,
+  'force explicitly overrides a busy daily flow'
+);
+for (const body of [
+  {
+    flow: 'sih-hull',
+    start: '2026-02-30',
+    end: '2026-03-01'
+  },
+  {
+    flow: 'sih-hull',
+    start: '2026-09-01',
+    end: '2026-10-02'
+  },
+  {
+    flow: 'sih-hull',
+    start: '2026-09-02',
+    end: '2026-09-01'
+  },
+  {
+    flow: 'unknown',
+    start: '2026-09-01',
+    end: '2026-09-02'
+  },
+  {
+    flow: 'sih-hull',
+    start: '2026-09-01',
+    end: '2026-09-02',
+    force: 'true'
+  }
+]) {
+  const refused = command(flow, node, {
+    payload: body
+  }, Buffer, Promise, glob);
+  check(
+    refused[0].statusCode === 400 &&
+      refused[1] === null &&
+      refused[2] === null &&
+      refused[3] === null,
+    'invalid command is rejected before a BACKFILL output'
+  );
+}
+globalData['runStatus_rpt-hull'] = undefined;
+const shiftResult = command(flow, node, {
+  payload: {
+    flow: 'rpt-hull',
+    start: '2026-09-01',
+    end: '2026-09-02'
+  }
+}, Buffer, Promise, glob);
+check(
+  shiftResult[0].statusCode === 202 &&
+    shiftResult[2].payload.start === '2026-09-01' &&
+    shiftResult[2].payload.end === '2026-09-02',
+  'shift command routes the exact date payload to its BACKFILL output'
+);
+globalData['runStatus_pbi-report'] = undefined;
+const pbiBody = {
+  flow: 'pbi-report',
+  from: '2025-11',
+  to: '2026-10',
+  tables: ['Plan_OPT_EU'],
+  sites: ['Hull'],
+  force: false
+};
+const pbiResult = command(flow, node, {
+  payload: pbiBody
+}, Buffer, Promise, glob);
+check(
+  pbiResult[0].statusCode === 202 &&
+    JSON.stringify(pbiResult[3].payload) === JSON.stringify({
+      from: '2025-11',
+      to: '2026-10',
+      tables: ['Plan_OPT_EU'],
+      sites: ['Hull']
+    }),
+  '12-month PBI command sends the exact task-settings payload'
+);
+for (const body of [
+  {
+    flow: 'pbi-report',
+    from: '2025-10',
+    to: '2026-10'
+  },
+  {
+    flow: 'pbi-report',
+    from: '2026-10',
+    to: '2026-09'
+  },
+  {
+    flow: 'pbi-report',
+    from: '2026-13',
+    to: '2026-13'
+  },
+  {
+    flow: 'pbi-report',
+    from: '2026-09',
+    to: '2026-10',
+    tables: ['not-a-table']
+  },
+  {
+    flow: 'pbi-report',
+    from: '2026-09',
+    to: '2026-10',
+    sites: ['not-a-site']
+  }
+]) {
+  const refused = command(flow, node, {
+    payload: body
+  }, Buffer, Promise, glob);
+  check(
+    refused[0].statusCode === 400 && refused[3] === null,
+    'invalid PBI month, table or site is rejected before backfill'
+  );
+}
+globalData.jobQueue = [
+  {
+    tables: ['Plan_OPT_EU']
+  }
+];
+const busyPbi = command(flow, node, {
+  payload: {
+    ...pbiBody
+  }
+}, Buffer, Promise, glob);
+check(
+  busyPbi[0].statusCode === 409,
+  'queued listener job makes the PBI build busy'
+);
+const forcedPbi = command(flow, node, {
+  payload: {
+    ...pbiBody,
+    force: true
+  }
+}, Buffer, Promise, glob);
+check(
+  forcedPbi[0].statusCode === 202 &&
+    forcedPbi[0].payload.forced === true,
+  'force explicitly overrides a queued PBI listener job'
+);
+globalData.cfg = undefined;
+const noCommandConfig = command(flow, node, {
+  payload: {
+    flow: 'rpt-hull',
+    start: '2026-09-01',
+    end: '2026-09-02'
+  }
+}, Buffer, Promise, glob);
+check(
+  noCommandConfig[0].statusCode === 503,
+  'command reports missing Config as 503'
+);
+
+const monitorFlow = read('vfc-run-monitor.json');
+const unconnected = monitorFlow.filter((item) =>
+  item.type === 'link out' &&
+  [
+    'to sih-hull BACKFILL',
+    'to rpt-hull BACKFILL',
+    'to pbi-report BACKFILL'
+  ].includes(item.name)
+);
+check(
+  unconnected.length === 3 &&
+    unconnected.every((item) => item.links.length === 0),
+  'monitor exports the three intentionally unconnected BACKFILL links'
+);
+const postNode = monitorFlow.find((item) =>
+  item.type === 'http in' &&
+  item.endpoint === '/reports-monitor/command'
+);
+check(
+  postNode && postNode.method === 'post' && postNode.access === 'key',
+  'command endpoint requires the VFC access key'
+);
+for (const [file, name, targetName] of [
+  ['vfc-pbi-daily-hull.json', 'sih-hull BACKFILL', 'SITE SETTINGS'],
+  ['vfc-rpt-hull.json', 'rpt-hull BACKFILL', 'SITE SETTINGS'],
+  ['vfc-pbi-report.json', 'pbi-report BACKFILL', 'TASK SETTINGS']
+]) {
+  const targetFlow = read(file);
+  const backfill = targetFlow.find((item) =>
+    item.type === 'link in' && item.name === name
+  );
+  const settings = targetFlow.find((item) =>
+    item.type === 'function' && item.name.indexOf(targetName) !== -1
+  );
+  check(
+    backfill && backfill.links.length === 0 && settings &&
+      backfill.wires[0][0] === settings.id,
+    `${name} feeds the existing settings node and awaits manual wiring`
+  );
+  check(
+    validateFlow(targetFlow).errors.length === 0,
+    `${file} validates with its intentionally unconnected BACKFILL input`
+  );
+}
+const statusAfterCommand = {};
+globalData.cfg = {
+  platform: 'legacy',
+  sites: [
+    {
+      name: 'Hull'
+    }
+  ]
+};
+statusFn(flow, node, statusAfterCommand, Buffer, Promise, glob);
+check(
+  statusAfterCommand.payload.commands.length <= 50 &&
+    statusAfterCommand.payload.commands.some((entry) =>
+      entry.result === 'accepted' && entry.flow === 'pbi-report'
+    ),
+  'status JSON exposes the bounded command audit history'
+);
+globalData.runMonitorCommands = Array.from({ length: 55 }, (_, index) => ({
+  detail: index
+}));
+const auditCap = command(flow, node, {
+  payload: {
+    flow: 'unknown'
+  }
+}, Buffer, Promise, glob);
+check(
+  auditCap[0].statusCode === 400 &&
+    globalData.runMonitorCommands.length === 50 &&
+    globalData.runMonitorCommands[0].detail === 6,
+  'command audit retains only the newest 50 entries'
 );
 
 function mask(value) {

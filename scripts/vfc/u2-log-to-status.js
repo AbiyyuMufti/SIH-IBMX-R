@@ -45,6 +45,18 @@ if (status) {
     if (item.state !== 'running' || /ERROR in /.test(text)) {
       item.stepAt = now;
     }
+    var dayKeys = Object.keys(status.days || {});
+    var active = dayKeys.some(function (key) {
+      return status.days[key].state === 'running' ||
+        status.days[key].state === 'queued';
+    });
+    if (dayKeys.length && !active) {
+      var failed = dayKeys.some(function (key) {
+        return status.days[key].state === 'failed';
+      });
+      status.state = failed ? 'failed' : 'quiet';
+      status.finishedAt = now;
+    }
   }
   glob.set(KEY, status);
 }

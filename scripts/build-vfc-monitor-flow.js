@@ -5,8 +5,8 @@
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { validateFlow } from './validate-flow.js';
 import {
-  makeBuilder, fn, linkInStep, readStep, listNode, catchStep, rawStep,
-  compactLanes
+  makeBuilder, code, fn, linkInStep, readStep, listNode, catchStep, rawStep,
+  addLogLanes, compactLanes
 } from './lib-flow-builder.js';
 
 const FILE = 'vfc-run-monitor.json';
@@ -128,6 +128,98 @@ function buildFlow() {
       })
     ]);
 
+  const commandStage = b.nextStage();
+  b.comment(
+    `[${commandStage}] BACKFILL COMMAND`,
+    'POST /reports-monitor/command validates one backfill, records an ' +
+    'audit line, and returns 202 before the target starts. Generate this ' +
+    'HTTP In access key separately. Connect the three named BACKFILL link ' +
+    'outs to their matching report tabs after import. A force command can ' +
+    'run concurrently with the same flow.',
+    row
+  );
+  const commandIn = b.newId();
+  const commandFn = b.newId();
+  const commandResponse = b.newId();
+  const sihBackfill = b.newId();
+  const rptBackfill = b.newId();
+  const pbiBackfill = b.newId();
+  const commandLog = b.linkOut('LOG', b.col(2), b.rowY(row) + 120);
+  b.add({
+    id: commandIn,
+    type: 'http in',
+    name: 'Post backfill command',
+    endpoint: '/reports-monitor/command',
+    method: 'post',
+    upload: false,
+    access: 'key',
+    key: '',
+    users: '',
+    powerMode: false,
+    x: b.col(0),
+    y: b.rowY(row),
+    wires: [[commandFn]]
+  });
+  b.add({
+    id: commandFn,
+    type: 'function',
+    name: `${commandStage}.1 Validate backfill`,
+    func: code('m10-command.js'),
+    outputs: 5,
+    language: 'javascript',
+    noerr: 0,
+    x: b.col(1),
+    y: b.rowY(row),
+    wires: [
+      [commandResponse],
+      [sihBackfill],
+      [rptBackfill],
+      [pbiBackfill],
+      [commandLog]
+    ]
+  });
+  b.add({
+    id: sihBackfill,
+    type: 'link out',
+    name: 'to sih-hull BACKFILL',
+    mode: 'link',
+    links: [],
+    x: b.col(2),
+    y: b.rowY(row) + 40,
+    wires: []
+  });
+  b.add({
+    id: rptBackfill,
+    type: 'link out',
+    name: 'to rpt-hull BACKFILL',
+    mode: 'link',
+    links: [],
+    x: b.col(2),
+    y: b.rowY(row) + 80,
+    wires: []
+  });
+  b.add({
+    id: pbiBackfill,
+    type: 'link out',
+    name: 'to pbi-report BACKFILL',
+    mode: 'link',
+    links: [],
+    x: b.col(2),
+    y: b.rowY(row) + 160,
+    wires: []
+  });
+  b.add({
+    id: commandResponse,
+    type: 'http response',
+    name: 'Send command result',
+    statusCode: '',
+    headers: {},
+    x: b.col(2),
+    y: b.rowY(row),
+    wires: []
+  });
+  row++;
+
   b.lane(row++, 'NODE ERROR',
     'A data-lake node error returns a generic 502. Credentials and request ' +
     'keys are never copied into the response.',
@@ -143,14 +235,16 @@ function buildFlow() {
       })
     ]);
 
+  addLogLanes(b, row, 'run-monitor');
+
   b.nodes.unshift({
     id: b.TAB,
     type: 'tab',
     label: 'Run monitor',
     disabled: false,
     allowCycles: false,
-    info: 'Read-only status and monthly run-log history for the report flows. ' +
-      'Generate the access key on the HTTP In node after import.'
+    info: 'Report status, monthly history and validated backfill commands. ' +
+      'Generate both HTTP In access keys after import.'
   });
   return b.nodes;
 }

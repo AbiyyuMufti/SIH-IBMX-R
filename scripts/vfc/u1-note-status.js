@@ -54,6 +54,7 @@ status.dryRun = cfg.dryRun !== false;
 status.lastBeatAt = now;
 
 if (ACTION === 'queue') {
+  status.state = 'running';
   if (status.runId !== msg.runId) {
     status.runId = msg.runId || now;
     status.mode = msg.mode || '';
@@ -87,6 +88,9 @@ if (ACTION === 'queue') {
       partsTotal: 0
     };
     status.days[day] = item;
+  }
+  if (item) {
+    status.state = 'running';
   }
   if (item && ACTION === 'running') {
     item.state = 'running';

@@ -70,6 +70,7 @@ msg.headers = {
 msg.payload = {
   generatedAt: new Date(now).toISOString(),
   stuckAfterMs: STUCK_AFTER_MS,
-  flows: flows
+  flows: flows,
+  commands: glob.get('runMonitorCommands') || []
 };
 return msg;

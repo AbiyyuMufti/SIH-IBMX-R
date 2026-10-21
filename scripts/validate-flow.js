@@ -279,12 +279,16 @@ export function validateFlow(nodes) {
       }
     }
     if (n.type === 'link in') {
+      // Backfill inputs are connected to the monitor's outputs after import.
+      const pendingBackfill = String(n.name || '').endsWith(' BACKFILL');
       for (const t of n.links || []) {
         const source = byId.get(t);
         if (!source || source.type !== 'link out') errors.push(`${label(n)}: link from missing link out ${t}`);
         else if (!(source.links || []).includes(n.id)) errors.push(`${label(n)}: ${label(source)} does not list it`);
       }
-      if (!(n.links || []).length) errors.push(`${label(n)}: no link out points to it`);
+      if (!(n.links || []).length && !pendingBackfill) {
+        errors.push(`${label(n)}: no link out points to it`);
+      }
     }
   }
 

@@ -85,6 +85,15 @@ function buildFlow(site, index) {
     y: rowY(r), wires: [[id('dayDelay')]]
   });
   add({
+    id: stableId('rptBackfillIn'),
+    type: 'link in',
+    name: `${flowName} BACKFILL`,
+    links: [],
+    x: col(0),
+    y: rowY(r) + 80,
+    wires: [[id('settings')]]
+  });
+  add({
     id: id('dayDelay'), type: 'delay', name: 'One day per 5 s',
     pauseType: 'rate', timeout: '5', timeoutUnits: 'seconds', rate: '1',
     nbRateUnits: '5', rateUnits: 'second', randomFirst: '1', randomLast: '5',

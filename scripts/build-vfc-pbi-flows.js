@@ -50,7 +50,7 @@ const refEnd = (table, schema) => [
 // ---------- the daily flow of one site ----------
 function buildDailyFlow(site, index) {
   const b = makeBuilder(300 + index);
-  const { add, id, col, rowY, comment, lane, linkOut } = b;
+  const { add, id, stableId, col, rowY, comment, lane, linkOut } = b;
   const flowName = `sih-${site.name.toLowerCase()}`;
   let r = 1;
 
@@ -80,6 +80,15 @@ function buildDailyFlow(site, index) {
     func: code('d1-settings.js').replace('__SITE__', site.name),
     outputs: 1, language: 'javascript', noerr: 0, x: col(1), y: rowY(r),
     wires: [[linkOut('SETUP', col(2), rowY(r))]]
+  });
+  add({
+    id: stableId('backfillIn'),
+    type: 'link in',
+    name: `${flowName} BACKFILL`,
+    links: [],
+    x: col(0),
+    y: rowY(r) + 80,
+    wires: [[id('settings')]]
   });
   r++;
 
