@@ -7,7 +7,7 @@
 | **Tableau reads** | `eu_report/report/<table>/`, the whole folder with its subfolders: one data source per table |
 | **Switch** | `reportSource` per site (`provideam` or `sih`), optionally per line. The source in use writes to `report/`, the other one to `candidate/<source>/` |
 | **Asset ids** | Button `List SIH assets` on the Config tab (stages 2 to 5): every Insights Hub line with its id, the report name from the site's Machine Names file, and a block to paste into `lines` |
-| **Status** | Step 1 (Config, asset list) checked in the VFC by the user on 2026-10-20. Step 2 (the three Tableau tables, split by line source) built and tested offline, not run in the VFC yet |
+| **Status** | Step 1 (Config, asset list) checked in the VFC by the user on 2026-10-20. Step 2 (the three Tableau tables, split by line source) run in the VFC and the backfill checked (step 3, 2026-10-21). Step 4 (SIH report daily) run in the VFC for Sep 2026 on 2026-10-21; heavy days fail on the Siemens setup error ([sih-report-daily.md](sih-report-daily.md)) |
 
 ## Folders in the data lake
 ```

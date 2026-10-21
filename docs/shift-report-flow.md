@@ -4,7 +4,7 @@
 |---|---|
 | **What** | One VFC tab per site that writes three tables for the shift (management) report: `rpt_window`, `rpt_hour`, `rpt_event`. For every report line of the Config tab (B2 Line) it writes the line rows (phase 1) and the rows of its machines (phase 2). Both phases ran in the VFC for 14 and 15 Sep 2026 and were checked against the OEE app |
 | **Flow** | `flows/vfc-rpt-hull.json` (tab `Hull shift report`). Generator `scripts/build-vfc-rpt-flows.js`, code `scripts/vfc/q*.js` plus the `s*` and `d*` nodes of the Power BI daily flow, columns `scripts/lib-rpt-schemas.js` |
-| **Status** | Phases 1 and 2 done and checked (2026-10-19). Mock tests pass (`node scripts/test-vfc-rpt.js platform=legacy` and `platform=xcelerator`, 74 checks). `dryRun` is true by default. What is left: `docs/shift-report-flow.md` section "Open points and next steps" and the handover note `session_handover/shift-report-handover.md` (local, git-ignored) |
+| **Status** | Phases 1 and 2 done and checked (2026-10-19). Since 2026-10-21: local run hour `runHourLocal` (hourly tick) and the hourly fallback for evaluateKPIs 413. Mock tests pass (`node scripts/test-vfc-rpt.js platform=legacy` and `platform=xcelerator`, 74 checks). `dryRun` is true by default. What is left: `docs/shift-report-flow.md` section "Open points and next steps" and the handover note `session_handover/shift-report-handover.md` (local, git-ignored) |
 | **Needs** | The Config tab, re-imported: sites have `dayStartLocal`, `timeZone`, `lines` (the report lines have `shiftReport: true`, see [report-config.md](report-config.md)) and `reportExcludeNames` |
 | **Design** | `prompt-response/shift-report-data-map.md` (3 tables, data lake layout, test results). For the Tableau developer: `node scripts/build-segun-package.js` makes the folder `session_handover/segun_package/` (git-ignored, real values): the three CSV exports, a one page `README.txt`, `data_dictionary.csv` and `report_map.csv` (which columns each report block needs), from `scripts/lib-shift-report-columns.js` |
 
@@ -48,7 +48,7 @@ The tab was run for 14 and 15 Sep with write on (files in `reports/shift_report/
 | Event kinds | All `unplanned`: no planned reason occurred that day (planned stops are untested) |
 
 ## Heavy days (413)
-Since 2026-10-21 an evaluateKPIs call that answers 413 on the day window is asked again hour by hour and merged (day KPIs and product / order KPIs). Rule, log lines and proof: [sih-report-daily.md](sih-report-daily.md) "evaluateKPIs 413 on heavy days". Time segments and stops over 5,000 rows are not covered yet.
+Since 2026-10-21 an evaluateKPIs call that answers 413 on the day window is asked again hour by hour and merged (day KPIs and product / order KPIs). Rule, log lines and proof: [sih-report-daily.md](sih-report-daily.md) "evaluateKPIs 413 on heavy days". Time segments and stops over 5,000 rows are not covered: on 5 and 6 Sep 2026 B2 Line has 28,424 and 78,710 stops (the same setup error), so these days fail on `downtimeReasons`. Decision of the user (2026-10-21): leave them failing and rerun after the Siemens fix.
 
 ## Open points and next steps
 Decisions for the user:

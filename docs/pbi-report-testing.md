@@ -3,7 +3,7 @@
 | At a glance | |
 |---|---|
 | **What** | One checklist for the flow `flows/vfc-pbi-report.json` (tab `PBI report build`): what to import, what to run in which order, what you should see, how to check the files in the data lake, and what to send back when something is wrong |
-| **State of the build** | Since 2026-10-20 three tables: `Plan_OPT_EU`, `Time_Utilisation_EU`, `Daily_Losses_EU` (with Dept, Area, Product Type, Data Source), split by line source. Offline tests and the real-data comparison pass; **not run in the VFC yet**. Details: [pbi-report-build.md](pbi-report-build.md) "Step 6" |
+| **State of the build** | Since 2026-10-20 three tables: `Plan_OPT_EU`, `Time_Utilisation_EU`, `Daily_Losses_EU` (with Dept, Area, Product Type, Data Source), split by line source. Offline tests and the real-data comparison pass; run in the VFC on 2026-10-20 / 21 (test 1, 2 and the backfill), checked with `helper-check-pbi-report.py` (`problems: 0`). Details: [pbi-report-build.md](pbi-report-build.md) "Step 6" |
 | **Files** | Input in the lake: `eu_report/reference/` (14 files) and `eu_report/pbi_report/source/` (204 month files). Output: `eu_report/report/<table>/`, for a line on SIH `eu_report/candidate/provideam/<table>/` |
 | **Dry run** | Every table is `true` in `DRY_RUN` of node `1.1 TASK SETTINGS`. Nothing is written until you set a table to `false` and deploy |
 
