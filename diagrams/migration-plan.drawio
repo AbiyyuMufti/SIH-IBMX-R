@@ -1,14 +1,14 @@
-<mxfile host="drawio" version="26.0.16" pages="3">
-  <diagram name="1 Migration plan" id="mig1">
+<mxfile host="drawio" version="26.0.16" pages="2">
+  <diagram name="1 Migration plan and switch" id="mig1">
     <mxGraphModel dx="1000" dy="700" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
         <mxCell id="m1title" value="&lt;b&gt;Migration to Siemens Insights Hub (SIH): reports move first, data sources follow line by line&lt;/b&gt;" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=top;fontSize=18;" parent="1" vertex="1">
-          <mxGeometry x="40" y="20" width="1600" height="30" as="geometry" />
+          <mxGeometry x="40" y="20" width="1700" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="m1sub" value="The reports keep the data they need today. They first move to read the SIH data lake (still fed with Provideam data), then each site or line switches its source from Provideam to Insights Hub in the Config tab, without a change in the report. Two report types: EU Reporting (its site-level reports use the same tables, treated the same here) and the Shift / Management Report." style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=top;fontSize=11;" parent="1" vertex="1">
-          <mxGeometry x="40" y="55" width="1600" height="40" as="geometry" />
+        <mxCell id="m1sub" value="The reports keep the data they need today. They first move to read the SIH data lake (still fed with Provideam data), then each site or line switches its source from Provideam to Insights Hub in the Config tab, without a change in the report. Two report types: EU Reporting (its site-level reports use the same tables, treated the same here) and the Shift / Management Report. Top: overview. Below: how the switch works and where each flow writes." style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=top;fontSize=11;" parent="1" vertex="1">
+          <mxGeometry x="40" y="55" width="1700" height="40" as="geometry" />
         </mxCell>
         <mxCell id="m1lg1" value="Done" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" parent="1" vertex="1">
           <mxGeometry x="40" y="100" width="150" height="30" as="geometry" />
@@ -22,7 +22,7 @@
         <mxCell id="m1lg4" value="Old path, to retire" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontSize=11;" parent="1" vertex="1">
           <mxGeometry x="550" y="100" width="150" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="m1lg5" value="Target, later" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;dashed=1;fontSize=11;" parent="1" vertex="1">
+        <mxCell id="m1lg5" value="To be, later" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;dashed=1;fontSize=11;" parent="1" vertex="1">
           <mxGeometry x="720" y="100" width="150" height="30" as="geometry" />
         </mxCell>
         <mxCell id="m1h1" value="&lt;b&gt;1. BEFORE&lt;/b&gt;&lt;br&gt;Provideam feeds the reports through SharePoint" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" parent="1" vertex="1">
@@ -43,7 +43,7 @@
         <mxCell id="m1r3" value="&lt;b&gt;Reports&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#eeeeee;strokeColor=#999999;fontSize=12;" parent="1" vertex="1">
           <mxGeometry x="40" y="610" width="140" height="150" as="geometry" />
         </mxCell>
-        <mxCell id="m1a1" value="&lt;b&gt;Provideam&lt;/b&gt; (site production system)&lt;br&gt;Scheduled Day reports sent as CSV emails: Plan OPT, OEE Loss, Mode Log, Run Rates. First at 06:10, then every hour to 17:00 (late edits)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
+        <mxCell id="m1a1" value="&lt;b&gt;Provideam&lt;/b&gt; (site production system)&lt;br&gt;Scheduled Day reports sent as CSV emails. Plan OPT seen; OEE Loss, Mode Log, Run Rates and the 06:10 then hourly to 17:00 schedule come from the Hull maintenance guide and the Power BI folders, &lt;b&gt;not from the raw emails&lt;/b&gt;. Full list of emails: not known yet" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
           <mxGeometry x="200" y="230" width="400" height="150" as="geometry" />
         </mxCell>
         <mxCell id="m1a2" value="&lt;b&gt;Email → SharePoint&lt;/b&gt;&lt;br&gt;Outlook rules and Power Automate put one CSV per day in the site SharePoint folders.&lt;br&gt;Plus Excel files kept by hand: Machine Names, Shift Pattern Naming, Glidepaths, Equipment Coding" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
@@ -52,13 +52,13 @@
         <mxCell id="m1a3" value="&lt;b&gt;EU Reporting&lt;/b&gt; (and site-level reports) built from the SharePoint files&lt;br&gt;&lt;b&gt;Shift / Management Report&lt;/b&gt;: current site process" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
           <mxGeometry x="200" y="610" width="400" height="150" as="geometry" />
         </mxCell>
-        <mxCell id="m1b1" value="&lt;b&gt;Provideam&lt;/b&gt; CSV files, copied by hand from SharePoint to the data lake (backfill 2024-12 to 2026-10 done)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
+        <mxCell id="m1b1" value="&lt;b&gt;Provideam&lt;/b&gt; CSV files into the data lake. Now: copied by hand from SharePoint (backfill 2024-12 to 2026-10 done). To be: from the report emails, received directly" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
           <mxGeometry x="700" y="230" width="210" height="150" as="geometry" />
         </mxCell>
         <mxCell id="m1b1b" value="&lt;b&gt;Insights Hub OEE API&lt;/b&gt;, called by VFC flows, one tab per site (Hull built and run). Line configuration is work in progress" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
           <mxGeometry x="930" y="230" width="210" height="150" as="geometry" />
         </mxCell>
-        <mxCell id="m1b2" value="&lt;b&gt;SIH data lake&lt;/b&gt; (root eu_report)&lt;br&gt;Config tab: reportSource per site or line = provideam | sih.&lt;br&gt;report/ = the source in use (what the reports read)&lt;br&gt;candidate/&amp;lt;source&amp;gt;/ = the other source, to compare&lt;br&gt;Details: sheet 2" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
+        <mxCell id="m1b2" value="&lt;b&gt;SIH data lake&lt;/b&gt; (root eu_report)&lt;br&gt;Config tab: reportSource per site or line = provideam | sih.&lt;br&gt;report/ = the source in use (what the reports read)&lt;br&gt;candidate/&amp;lt;source&amp;gt;/ = the other source, to compare&lt;br&gt;Details: below" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
           <mxGeometry x="700" y="420" width="440" height="150" as="geometry" />
         </mxCell>
         <mxCell id="m1b3" value="&lt;b&gt;Reports read the lake&lt;/b&gt; (the reports move to SIH first)&lt;br&gt;&lt;b&gt;EU Reporting&lt;/b&gt; (+ site level): Plan_OPT_EU, Time_Utilisation_EU, Daily_Losses_EU&lt;br&gt;&lt;b&gt;Shift / Management Report&lt;/b&gt;: rpt_window, rpt_hour, rpt_event (from SIH only, Hull B2 line and machines)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
@@ -100,67 +100,71 @@
         <mxCell id="m1e9" value="B. switch&lt;br&gt;line by line" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=3;strokeColor=#9673a6;fontSize=10;labelBackgroundColor=#ffffff;" parent="1" source="m1h2" target="m1h3" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="m1n1" value="&lt;b&gt;For step B, Provideam data needs more than a manual copy&lt;/b&gt;&lt;br&gt;Receive the same Provideam report emails as the person who makes the report, so every file and every late edit lands in the data lake without a hand copy (sheet 3)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
+        <mxCell id="m1n1" value="&lt;b&gt;For step B, Provideam data needs more than a manual copy&lt;/b&gt;&lt;br&gt;Receive the same Provideam report emails as the person who makes the report, so every file and every late edit lands in the data lake without a hand copy (to-be path below, sheet 2)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
           <mxGeometry x="200" y="800" width="620" height="80" as="geometry" />
         </mxCell>
-        <mxCell id="m1n2" value="&lt;b&gt;For step B, SIH data needs the configuration finished&lt;/b&gt;&lt;br&gt;Lines and report names in Config, one SIH tab per site, Insights Hub OEE setup that gives rows matching Provideam (sheet 3)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
+        <mxCell id="m1n2" value="&lt;b&gt;For step B, SIH data needs the configuration finished&lt;/b&gt;&lt;br&gt;Lines and report names in Config, one SIH tab per site, Insights Hub OEE setup that gives rows matching Provideam (sheet 2)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
           <mxGeometry x="860" y="800" width="620" height="80" as="geometry" />
         </mxCell>
-      </root>
-    </mxGraphModel>
-  </diagram>
-  <diagram name="2 Switch (report config)" id="mig2">
-    <mxGraphModel dx="1000" dy="700" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
-      <root>
-        <mxCell id="0" />
-        <mxCell id="1" parent="0" />
-        <mxCell id="m2title" value="&lt;b&gt;How the switch works: one Config, two sources, one report folder (branch general-report-configurations)&lt;/b&gt;" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=top;fontSize=18;" parent="1" vertex="1">
-          <mxGeometry x="40" y="20" width="1700" height="30" as="geometry" />
+        <mxCell id="m2title" value="&lt;b&gt;How the switch works: one Config, two sources, one report folder (branch general-report-configurations)&lt;/b&gt;" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=top;fontSize=16;" parent="1" vertex="1">
+          <mxGeometry x="40" y="930" width="1700" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="m2sub" value="Both flows build the same three tables. Each flow sends the rows of a line to report/ when the line's source in Config is its own source, else to candidate/&amp;lt;source&amp;gt;/. The file name ends with the source (_provideam, _sih), so the two flows never overwrite each other. The reports read the whole report/ folder: switching a line is one Config change, nothing changes in the report." style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=top;fontSize=11;" parent="1" vertex="1">
-          <mxGeometry x="40" y="55" width="1700" height="40" as="geometry" />
+        <mxCell id="m2sub" value="Both flows build the same three tables. Each flow sends the rows of a line to report/ when the line's source in Config is its own source, else to candidate/&amp;lt;source&amp;gt;/. The file name ends with the source (_provideam, _sih), so the two flows never overwrite each other. The report reads the whole report/ folder: switching a line is one Config change, nothing changes in the report." style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=top;fontSize=11;" parent="1" vertex="1">
+          <mxGeometry x="40" y="965" width="1700" height="40" as="geometry" />
         </mxCell>
         <mxCell id="m2cfg" value="&lt;b&gt;1.1 CONFIG&lt;/b&gt; (Config tab, one place for all flows)&lt;br&gt;root: eu_report&lt;br&gt;sites[]: reportSource = provideam | sih, timeZone, runHourLocal&lt;br&gt;lines[]: id, sih name, report name (MachineName), optional reportSource, shiftReport" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
-          <mxGeometry x="560" y="110" width="500" height="100" as="geometry" />
+          <mxGeometry x="580" y="1020" width="480" height="100" as="geometry" />
         </mxCell>
         <mxCell id="m2btn" value="&lt;b&gt;Button List SIH assets&lt;/b&gt;&lt;br&gt;Every SIH line with its id and its report name from the Machine Names file, as a block to paste into lines[]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
-          <mxGeometry x="1120" y="110" width="320" height="100" as="geometry" />
+          <mxGeometry x="1120" y="1020" width="320" height="100" as="geometry" />
         </mxCell>
-        <mxCell id="m2pv1" value="&lt;b&gt;Provideam&lt;/b&gt; CSV reports (email → SharePoint)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
-          <mxGeometry x="40" y="270" width="200" height="80" as="geometry" />
+        <mxCell id="m2pv1" value="&lt;b&gt;Provideam&lt;/b&gt; Day reports, CSV emails. Full list not known yet (see top)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="40" y="1190" width="200" height="80" as="geometry" />
         </mxCell>
-        <mxCell id="m2pv2" value="&lt;b&gt;Manual copy&lt;/b&gt; to the lake: pbi_report/source/&amp;lt;type&amp;gt;/site=&amp;lt;Site&amp;gt;/" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
-          <mxGeometry x="290" y="270" width="220" height="80" as="geometry" />
+        <mxCell id="m2pv2" value="&lt;b&gt;NOW: manual copy&lt;/b&gt; from SharePoint to pbi_report/source/" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="290" y="1140" width="220" height="70" as="geometry" />
         </mxCell>
-        <mxCell id="m2pv3" value="&lt;b&gt;PBI report build&lt;/b&gt; (VFC)&lt;br&gt;Reads the CSV files and the reference files, no API calls" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
-          <mxGeometry x="580" y="270" width="200" height="80" as="geometry" />
+        <mxCell id="m2pv2b" value="&lt;b&gt;TO BE: emails received directly&lt;/b&gt; (same distribution as the report owner), each CSV uploaded to pbi_report/source/ as it arrives, late edits included. No SharePoint, no hand copy" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;dashed=1;strokeWidth=2;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="290" y="1230" width="220" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="m2pv3" value="&lt;b&gt;PBI report build&lt;/b&gt; (VFC)&lt;br&gt;Reads the CSV and reference files, no API calls. To be: started by the lake watcher" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="580" y="1190" width="200" height="90" as="geometry" />
         </mxCell>
         <mxCell id="m2d1" value="Line source&lt;br&gt;= provideam?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" parent="1" vertex="1">
-          <mxGeometry x="830" y="260" width="160" height="100" as="geometry" />
+          <mxGeometry x="830" y="1185" width="160" height="100" as="geometry" />
         </mxCell>
         <mxCell id="m2sh1" value="&lt;b&gt;Insights Hub OEE API&lt;/b&gt;&lt;br&gt;evaluateKPIs, downtimeReasons, orders" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
-          <mxGeometry x="40" y="480" width="200" height="80" as="geometry" />
+          <mxGeometry x="40" y="1420" width="200" height="80" as="geometry" />
         </mxCell>
         <mxCell id="m2sh3" value="&lt;b&gt;&amp;lt;Site&amp;gt; SIH report daily&lt;/b&gt; (VFC)&lt;br&gt;One tab per site (Hull now), runs at runHourLocal" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
-          <mxGeometry x="580" y="480" width="200" height="80" as="geometry" />
+          <mxGeometry x="580" y="1420" width="200" height="80" as="geometry" />
         </mxCell>
         <mxCell id="m2d2" value="Line source&lt;br&gt;= sih?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;" parent="1" vertex="1">
-          <mxGeometry x="830" y="470" width="160" height="100" as="geometry" />
+          <mxGeometry x="830" y="1410" width="160" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="m2shr" value="&lt;b&gt;&amp;lt;Site&amp;gt; shift report&lt;/b&gt; (VFC)&lt;br&gt;Lines with shiftReport: true" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="580" y="1550" width="200" height="70" as="geometry" />
         </mxCell>
         <mxCell id="m2cp" value="&lt;b&gt;candidate/provideam/&lt;/b&gt;&amp;lt;table&amp;gt;/site=&amp;lt;Site&amp;gt;/ (to compare)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
-          <mxGeometry x="1060" y="230" width="340" height="60" as="geometry" />
+          <mxGeometry x="1060" y="1150" width="340" height="60" as="geometry" />
         </mxCell>
         <mxCell id="m2rep" value="&lt;b&gt;report/&lt;/b&gt;&amp;lt;table&amp;gt;/site=&amp;lt;Site&amp;gt;/&amp;lt;table&amp;gt;_&amp;lt;YYYY-MM&amp;gt;_&amp;lt;source&amp;gt;.parquet&lt;br&gt;One month file per source; each holds only its own lines" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;verticalAlign=top;spacing=8;strokeWidth=2;" parent="1" vertex="1">
-          <mxGeometry x="1060" y="365" width="340" height="80" as="geometry" />
+          <mxGeometry x="1060" y="1290" width="340" height="80" as="geometry" />
         </mxCell>
         <mxCell id="m2cs" value="&lt;b&gt;candidate/sih/&lt;/b&gt;&amp;lt;table&amp;gt;/site=&amp;lt;Site&amp;gt;/ (to compare)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
-          <mxGeometry x="1060" y="520" width="340" height="60" as="geometry" />
+          <mxGeometry x="1060" y="1440" width="340" height="60" as="geometry" />
         </mxCell>
         <mxCell id="m2tab" value="&lt;b&gt;EU Reporting&lt;/b&gt;&lt;br&gt;One data source per table, reads the whole report/&amp;lt;table&amp;gt;/ folder:&lt;br&gt;Plan_OPT_EU&lt;br&gt;Time_Utilisation_EU&lt;br&gt;Daily_Losses_EU" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
-          <mxGeometry x="1480" y="335" width="260" height="140" as="geometry" />
+          <mxGeometry x="1480" y="1260" width="260" height="140" as="geometry" />
         </mxCell>
         <mxCell id="m2cmp" value="&lt;b&gt;Compare&lt;/b&gt; candidate/sih/ with report/ per line and month. When the SIH rows match: set reportSource = sih for the line or site in 1.1 CONFIG (step 5)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
-          <mxGeometry x="1060" y="620" width="340" height="80" as="geometry" />
+          <mxGeometry x="1060" y="1540" width="340" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="m2sro" value="&lt;b&gt;shift_report/&lt;/b&gt;&amp;lt;table&amp;gt;/site=&amp;lt;Site&amp;gt;/" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="830" y="1640" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="m2srr" value="&lt;b&gt;Shift / Management Report&lt;/b&gt;&lt;br&gt;rpt_window, rpt_hour, rpt_event" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="1480" y="1640" width="260" height="60" as="geometry" />
         </mxCell>
         <mxCell id="m2e1" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" parent="1" source="m2btn" target="m2cfg" edge="1">
           <mxGeometry relative="1" as="geometry" />
@@ -168,7 +172,13 @@
         <mxCell id="m2e2" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" parent="1" source="m2pv1" target="m2pv2" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
+        <mxCell id="m2e2b" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;dashed=1;strokeColor=#b85450;strokeWidth=2;" parent="1" source="m2pv1" target="m2pv2b" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
         <mxCell id="m2e3" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" parent="1" source="m2pv2" target="m2pv3" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m2e3b" value="lake watcher" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;dashed=1;strokeColor=#b85450;strokeWidth=2;fontSize=10;labelBackgroundColor=#ffffff;" parent="1" source="m2pv2b" target="m2pv3" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="m2e4" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" parent="1" source="m2pv3" target="m2d1" edge="1">
@@ -181,6 +191,9 @@
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="m2e7" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" parent="1" source="m2sh1" target="m2sh3" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m2e7b" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" parent="1" source="m2sh1" target="m2shr" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="m2e8" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" parent="1" source="m2sh3" target="m2d2" edge="1">
@@ -198,31 +211,94 @@
         <mxCell id="m2e12" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" parent="1" source="m2cs" target="m2cmp" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
+        <mxCell id="m2e15" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" parent="1" source="m2shr" target="m2sro" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m2e16" value="reads" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=2;fontSize=10;labelBackgroundColor=#ffffff;" parent="1" source="m2sro" target="m2srr" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
         <mxCell id="m2e13" value="reads source&lt;br&gt;per line" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;dashed=1;strokeColor=#82b366;fontSize=10;labelBackgroundColor=#ffffff;exitX=0.1;exitY=1;exitDx=0;exitDy=0;" parent="1" source="m2cfg" target="m2pv3" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="m2e14" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;dashed=1;strokeColor=#82b366;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.25;entryDx=0;entryDy=0;" parent="1" source="m2cfg" target="m2sh3" edge="1">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="545" y="160" />
-              <mxPoint x="545" y="500" />
+              <mxPoint x="545" y="1070" />
+              <mxPoint x="545" y="1440" />
             </Array>
           </mxGeometry>
         </mxCell>
+        <mxCell id="m2ftitle" value="&lt;b&gt;Destination: the folders in the SIH data lake&lt;/b&gt; (all below the root set in 1.1 CONFIG; each flow replaces only its own files)" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=top;fontSize=14;" parent="1" vertex="1">
+          <mxGeometry x="40" y="1750" width="1700" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="m2fh1" value="&lt;b&gt;Folder&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#eeeeee;strokeColor=#999999;fontSize=11;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="40" y="1790" width="520" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="m2fh2" value="&lt;b&gt;What is in it, who writes, who reads&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#eeeeee;strokeColor=#999999;fontSize=11;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="580" y="1790" width="1160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="m2f0" value="eu_report/" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;fontFamily=Courier New;fontStyle=1;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="40" y="1830" width="520" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="m2g0" value="The root (Config: root). Every flow writes below it, nothing outside" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="580" y="1830" width="1160" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="m2f1" value="reference/&amp;lt;type&amp;gt;/site=&amp;lt;Site&amp;gt;/" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;fontFamily=Courier New;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="70" y="1890" width="490" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="m2g1" value="Shared input files kept by the sites: Machine Names, shift patterns, Glidepaths, Equipment Coding. Read by the PBI report build and the asset button (report names)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="580" y="1890" width="1160" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="m2f2" value="pbi_report/source/&amp;lt;type&amp;gt;/site=&amp;lt;Site&amp;gt;/" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;fontFamily=Courier New;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="70" y="1950" width="490" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="m2g2" value="Provideam CSV files, as found in SharePoint (which email each comes from is not confirmed). Now: manual copy from SharePoint. To be: uploaded from the emails as they arrive; the lake watcher (PBI report listener) then starts the PBI report build" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="580" y="1950" width="1160" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="m2f3" value="report/&amp;lt;table&amp;gt;/site=&amp;lt;Site&amp;gt;/&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;lt;table&amp;gt;_&amp;lt;YYYY-MM&amp;gt;_&amp;lt;source&amp;gt;.parquet" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;fontSize=11;fontFamily=Courier New;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="70" y="2010" width="490" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="m2g3" value="&lt;b&gt;What the EU report reads&lt;/b&gt; (one data source per table, the whole folder). table = Plan_OPT_EU, Time_Utilisation_EU, Daily_Losses_EU. source = provideam or sih: written by the flow of that source, only with the lines whose source in Config is that source. A site with one line on sih has two files per month here, each with its own lines" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;fontSize=11;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="580" y="2010" width="1160" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="m2f4" value="candidate/provideam/&amp;lt;table&amp;gt;/site=&amp;lt;Site&amp;gt;/" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontSize=11;fontFamily=Courier New;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="70" y="2090" width="490" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="m2g4" value="Provideam rows of the lines already on sih. Not read by the report; kept to compare and to fall back (set the line back to provideam)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontSize=11;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="580" y="2090" width="1160" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="m2f5" value="candidate/sih/&amp;lt;table&amp;gt;/site=&amp;lt;Site&amp;gt;/" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontSize=11;fontFamily=Courier New;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="70" y="2150" width="490" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="m2g5" value="SIH rows of the lines still on provideam. Not read by the report; compared with report/ before a line switches" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontSize=11;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="580" y="2150" width="1160" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="m2f6" value="shift_report/&amp;lt;table&amp;gt;/site=&amp;lt;Site&amp;gt;/" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontFamily=Courier New;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="70" y="2210" width="490" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="m2g6" value="What the Shift / Management Report reads: rpt_window, rpt_hour, rpt_event, one file per production day. SIH only, no switch" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="580" y="2210" width="1160" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="m2f7" value="logs/&amp;lt;flow&amp;gt;/log_&amp;lt;YYYY-MM&amp;gt;.csv" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;fontFamily=Courier New;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="70" y="2270" width="490" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="m2g7" value="Run log of each flow (rows read and written, errors)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=11;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="580" y="2270" width="1160" height="50" as="geometry" />
+        </mxCell>
         <mxCell id="m2st1" value="&lt;b&gt;Step 1&lt;/b&gt; Config: root, sites with reportSource, lines with ids (asset button) and report names&lt;br&gt;Done, checked in the VFC 2026-10-20" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
-          <mxGeometry x="40" y="760" width="320" height="100" as="geometry" />
+          <mxGeometry x="40" y="2370" width="320" height="100" as="geometry" />
         </mxCell>
         <mxCell id="m2st2" value="&lt;b&gt;Step 2&lt;/b&gt; PBI report build writes the three tables (+ Dept, Area, Product Type, Data Source), split by line source&lt;br&gt;Done, run in the VFC" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
-          <mxGeometry x="380" y="760" width="320" height="100" as="geometry" />
+          <mxGeometry x="380" y="2370" width="320" height="100" as="geometry" />
         </mxCell>
         <mxCell id="m2st3" value="&lt;b&gt;Step 3&lt;/b&gt; Backfill 2024-12 to 2026-10, all sites, checked against the current report extracts&lt;br&gt;Done 2026-10-21" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
-          <mxGeometry x="720" y="760" width="320" height="100" as="geometry" />
+          <mxGeometry x="720" y="2370" width="320" height="100" as="geometry" />
         </mxCell>
         <mxCell id="m2st4" value="&lt;b&gt;Step 4&lt;/b&gt; SIH report daily writes the same tables per production day&lt;br&gt;Hull run in the VFC for Sep 2026; heavy days fail on a Siemens setup error. Other sites: to build" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
-          <mxGeometry x="1060" y="760" width="320" height="100" as="geometry" />
+          <mxGeometry x="1060" y="2370" width="320" height="100" as="geometry" />
         </mxCell>
         <mxCell id="m2st5" value="&lt;b&gt;Step 5&lt;/b&gt; Switch sites or lines to sih when the SIH rows match&lt;br&gt;Open" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;dashed=1;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
-          <mxGeometry x="1400" y="760" width="320" height="100" as="geometry" />
+          <mxGeometry x="1400" y="2370" width="320" height="100" as="geometry" />
         </mxCell>
         <mxCell id="m2s1" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" parent="1" source="m2st1" target="m2st2" edge="1">
           <mxGeometry relative="1" as="geometry" />
@@ -239,7 +315,7 @@
       </root>
     </mxGraphModel>
   </diagram>
-  <diagram name="3 What is needed" id="mig3">
+  <diagram name="2 What is needed" id="mig3">
     <mxGraphModel dx="1000" dy="700" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
       <root>
         <mxCell id="0" />
@@ -274,7 +350,7 @@
         <mxCell id="m3b2" value="&lt;b&gt;Not enough&lt;/b&gt;: depends on a person, no daily run, late Provideam edits (sent every hour until 17:00) are missed, only what is in SharePoint" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
           <mxGeometry x="540" y="370" width="230" height="160" as="geometry" />
         </mxCell>
-        <mxCell id="m3b3" value="&lt;b&gt;Needed (ask Reckitt)&lt;/b&gt;: receive the same Provideam report emails as the person who makes the report, for every site and report type" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left;verticalAlign=top;spacing=8;strokeWidth=2;" parent="1" vertex="1">
+        <mxCell id="m3b3" value="&lt;b&gt;Needed (ask Reckitt)&lt;/b&gt;: receive the same Provideam report emails as the person who makes the report, for every site and report type. This also confirms the full list of raw files" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left;verticalAlign=top;spacing=8;strokeWidth=2;" parent="1" vertex="1">
           <mxGeometry x="820" y="370" width="230" height="160" as="geometry" />
         </mxCell>
         <mxCell id="m3b4" value="&lt;b&gt;Land each CSV&lt;/b&gt; in eu_report/pbi_report/source/ automatically, the way the current Outlook rules and Power Automate fill SharePoint" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;dashed=1;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
