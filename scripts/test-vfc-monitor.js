@@ -447,6 +447,52 @@ check(
   'monitor page uses query views for GETs and a separate command route'
 );
 
+// The command form of the page: a visible key field, a pasted URL gives its
+// key, and an answer that is not JSON (the VFC refusing a key) is shown.
+{
+  const script = /<script>([\s\S]*)<\/script>/.exec(pageMessage.payload)[1];
+  const els = {};
+  const el = (id) => (els[id] = els[id] || {
+    value: '', textContent: '', hidden: false, checked: false,
+    addEventListener(type, fn) { this['on' + type] = fn; }
+  });
+  const sent = [];
+  vm.runInNewContext(script, {
+    location: { search: '?key=PAGEKEY', pathname: '/public/t/reports-monitor' },
+    URLSearchParams, JSON, Date, Object, encodeURIComponent,
+    document: { getElementById: el },
+    setInterval: () => {},
+    fetch: (url) => {
+      sent.push(url);
+      const refused = /BADKEY/.test(url);
+      return Promise.resolve({
+        ok: !refused, status: refused ? 401 : 202,
+        text: () => Promise.resolve(refused ? 'Unauthorized' : '{"accepted":true}')
+      });
+    }
+  });
+  const post = async (key) => {
+    el('commandFlow').value = 'sih-hull';
+    el('commandKey').value = key;
+    el('commandError').textContent = '';
+    el('commandResult').textContent = '';
+    await el('commandForm').onsubmit({ preventDefault() {} });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  };
+  check(pageMessage.payload.indexOf('id="commandKey" type="text"') !== -1,
+    'command key field is visible text, not a password field');
+  await post('KEY123');
+  check(sent[sent.length - 1].endsWith('/command?key=KEY123') &&
+    el('commandResult').textContent.indexOf('accepted') !== -1,
+    'command form sends the typed key');
+  await post('https://h/public/t/reports-monitor/command?key=KEY456&x=1');
+  check(sent[sent.length - 1].endsWith('/command?key=KEY456'),
+    'a pasted URL gives its key');
+  await post('BADKEY');
+  check(el('commandError').textContent === 'Command failed: HTTP 401 Unauthorized',
+    'a refusal that is not JSON shows its HTTP status and text');
+}
+
 const listenerData = {};
 const listenerFlow = {
   get: (key) => listenerData[key],

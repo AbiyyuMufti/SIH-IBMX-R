@@ -114,7 +114,7 @@ BACKFILL link connections before relying on it.
 
 ## Backfill commands
 
-The page's POST command endpoint has its own VFC access key. Enter that key
+The page's POST command endpoint has its own VFC access key. Enter that key (a visible text field; the key alone or the whole command URL)
 in the form; it is not stored in the page or source code. A command accepts
 one flow and one range:
 
