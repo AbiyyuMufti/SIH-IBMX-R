@@ -42,6 +42,9 @@ if (status) {
     } else if (/ERROR in /.test(text)) {
       item.detail = text.slice(text.indexOf('ERROR in '), 240);
     }
+    if (item.state !== 'running' && item.state !== 'queued') {
+      delete item.trail;
+    }
     if (item.state !== 'running' || /ERROR in /.test(text)) {
       item.stepAt = now;
     }

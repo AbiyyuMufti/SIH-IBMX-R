@@ -9,6 +9,14 @@ var PBI_TABLES = [
 ];
 var MAX_DAYS = 31;
 var MAX_MONTHS = 12;
+var DUPLICATE_MS = 5000;
+// Same limit as the STUCK state of the status page.
+var STALE_MS = 30 * 60 * 1000;
+var CLEAR_FLOWS = [
+  'sih-hull',
+  'rpt-hull',
+  'pbi-report'
+];
 
 // The VFC http in node can hand the POST body over as an object, as JSON
 // text, as a Buffer (also serialised) or in msg.req.body: take all of them.
@@ -42,6 +50,19 @@ var gotBody = describe(msg.payload);
 if (!request || typeof request !== 'object') {
   request = parseBody(msg.req && msg.req.body);
   gotBody += ', req.body ' + describe(msg.req && msg.req.body);
+}
+var commandKey = JSON.stringify(request);
+var previous = glob.get('lastCommand');
+if (previous && previous.key === commandKey &&
+    Date.now() - previous.at < DUPLICATE_MS) {
+  var again = Object.assign({}, msg);
+  again.statusCode = previous.status;
+  again.headers = {
+    'content-type': 'application/json; charset=utf-8',
+    'cache-control': 'no-store'
+  };
+  again.payload = previous.body;
+  return [again, null, null, null, null];
 }
 var acceptedFlow = '';
 var force = !!(request && request.force === true);
@@ -77,7 +98,15 @@ function audit(result, flowName, range, forced, detail) {
   };
 }
 
+// The VFC was seen to run this node twice for one POST (30 ms apart): an
+// identical command within DUPLICATE_MS gets the first answer again.
 function response(status, body) {
+  glob.set('lastCommand', {
+    key: commandKey,
+    at: Date.now(),
+    status: status,
+    body: body
+  });
   var out = Object.assign({}, msg);
   out.statusCode = status;
   out.headers = {
@@ -129,13 +158,50 @@ function monthIndex(value) {
     Number(value.slice(5, 7)) - 1;
 }
 
+// True when a status has had no checkpoint for STALE_MS (a dead run).
+function stale(status) {
+  var beat = Date.parse(status.lastBeatAt || status.startedAt || '');
+  return isFinite(beat) && Date.now() - beat > STALE_MS;
+}
+
+// Sets every running or queued item of a dead run to interrupted.
+function clearItems(items) {
+  var count = 0;
+  Object.keys(items || {}).forEach(function (name) {
+    var item = items[name];
+    if (item.state === 'running' || item.state === 'queued') {
+      item.state = 'interrupted';
+      item.detail = 'run stopped before this item finished';
+      count++;
+    }
+  });
+  return count;
+}
+
+function clearStuck() {
+  var count = 0;
+  CLEAR_FLOWS.forEach(function (name) {
+    var status = glob.get('runStatus_' + name);
+    if (!status || !stale(status)) {
+      return;
+    }
+    count += clearItems(status.days) + clearItems(status.months);
+    if (status.state === 'running' || status.state === 'queued') {
+      status.state = name === 'pbi-report' ? 'interrupted' : 'idle';
+      count++;
+    }
+    glob.set('runStatus_' + name, status);
+  });
+  return count;
+}
+
 function busy(flowName) {
   if (flowName === 'pbi-report' &&
       (glob.get('jobQueue') || []).length > 0) {
     return true;
   }
   var status = glob.get('runStatus_' + flowName);
-  if (!status) {
+  if (!status || stale(status)) {
     return false;
   }
   if (status.state === 'running' || status.state === 'queued') {
@@ -157,6 +223,21 @@ if (!request || typeof request !== 'object' || Array.isArray(request)) {
 }
 if (request.force !== undefined && typeof request.force !== 'boolean') {
   return refuse(400, 'force must be a boolean', '', '');
+}
+if (request.action === 'clear-stuck') {
+  var cleared = clearStuck();
+  var clearLog = audit('cleared', 'all', '', false, cleared + ' items');
+  return [
+    response(200, {
+      accepted: true,
+      action: 'clear-stuck',
+      cleared: cleared
+    }),
+    null,
+    null,
+    null,
+    clearLog
+  ];
 }
 var flowName = String(request.flow || '');
 if (DAILY_FLOWS.indexOf(flowName) === -1 &&

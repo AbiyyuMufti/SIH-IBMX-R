@@ -116,6 +116,53 @@ applyNote('part-done', {
   ...initial,
   parts: { count: 24 }
 });
+{
+  // A new run turns the open days of a dead older run into interrupted.
+  const old = new Date(Date.now() - 3600000).toISOString();
+  globalData['runStatus_sih-hull'].days['2026-08-01'] = {
+    state: 'running', stepAt: old
+  };
+  globalData['runStatus_sih-hull'].days['2026-08-02'] = {
+    state: 'running', stepAt: new Date().toISOString()
+  };
+  applyNote('queue', { ...initial, runId: 'next-run', day: '2026-08-03',
+    payload: '2026-08-03' });
+  const days = globalData['runStatus_sih-hull'].days;
+  check(
+    days['2026-08-01'].state === 'interrupted' &&
+      days['2026-08-02'].state === 'running',
+    'a new run interrupts dead open days and keeps recent ones'
+  );
+  delete days['2026-08-01'];
+  delete days['2026-08-02'];
+  delete days['2026-08-03'];
+}
+{
+  // A late checkpoint of another asset does not reopen a finished day.
+  const late = '2026-08-09';
+  globalData['runStatus_sih-hull'].days[late] = {
+    state: 'dry_run', step: 'JOIN & BUILD TABLES', stepAt: '2026-10-22T00:00:00Z'
+  };
+  const note = (step) => {
+    let src = code('u1-note-status.js');
+    src = src.replaceAll('__FLOW__', 'sih-hull').replaceAll('__SITE__', 'Hull');
+    src = src.replaceAll('__STEP__', step).replaceAll('__ACTION__', 'running');
+    vm.runInNewContext('(function(flow,node,msg,Buffer,Promise,glob){' + src + '\n})', {})(
+      flow, node, { day: late, payload: late }, Buffer, Promise, glob);
+  };
+  note('ASSET STOPS');
+  check(globalData['runStatus_sih-hull'].days[late].state === 'dry_run',
+    'a late ASSET STOPS checkpoint keeps a finished day finished');
+  note('DAY SETUP');
+  check(globalData['runStatus_sih-hull'].days[late].state === 'running',
+    'DAY SETUP restarts a finished day');
+  globalData['runStatus_sih-hull'].state = 'quiet';
+  globalData['runStatus_sih-hull'].days[late].state = 'dry_run';
+  note('ASSET STOPS');
+  check(globalData['runStatus_sih-hull'].state === 'quiet',
+    'a late checkpoint of a finished day does not turn the flow to running');
+  delete globalData['runStatus_sih-hull'].days[late];
+}
 const logMessage = {
   line: `${day} [backfill] DRY RUN: one table`,
   payload: {
@@ -438,11 +485,11 @@ vmFunction('v6-monitor-page.js', {})(
 check(
   pageMessage.statusCode === 200 &&
     pageMessage.headers['content-type'].indexOf('text/html') === 0 &&
-    pageMessage.payload.indexOf('base+"?view="') !== -1 &&
-    pageMessage.payload.indexOf('url("status")') !== -1 &&
-    pageMessage.payload.indexOf('url("history",params)') !== -1 &&
-    pageMessage.payload.indexOf('"/status"') === -1 &&
-    pageMessage.payload.indexOf('"/history"') === -1 &&
+    pageMessage.payload.indexOf("base + '?view='") !== -1 &&
+    pageMessage.payload.indexOf("url('status')") !== -1 &&
+    pageMessage.payload.indexOf("url('history', params)") !== -1 &&
+    pageMessage.payload.indexOf("'/status'") === -1 &&
+    pageMessage.payload.indexOf("'/history'") === -1 &&
     pageMessage.payload.indexOf('/command?key=') !== -1,
   'monitor page uses query views for GETs and a separate command route'
 );
@@ -622,7 +669,12 @@ check(
   'quiet listener checkpoint preserves a PBI failure outcome'
 );
 
-const command = vmFunction('v10-command.js', {});
+const commandRaw = vmFunction('v10-command.js', {});
+// Each call is a separate click, so the duplicate guard starts empty.
+const command = (...args) => {
+  delete globalData.lastCommand;
+  return commandRaw(...args);
+};
 globalData.cfg = {
   root: 'eu_report',
   sites: [
@@ -686,7 +738,8 @@ check(noBody[0].statusCode === 400 &&
   /got nothing, req.body nothing/.test(noBody[0].payload.error),
   'a missing body says what the node received');
 globalData['runStatus_sih-hull'] = {
-  flow: 'sih-hull', state: 'queued', startedAt: dailyBody.start, days: {}
+  flow: 'sih-hull', state: 'queued', startedAt: dailyBody.start,
+  lastBeatAt: new Date().toISOString(), days: {}
 };
 globalData.runMonitorCommands = [];
 const busyDaily = command(flow, node, {
@@ -700,6 +753,62 @@ check(
     busyDaily[1] === null,
   'busy daily flow refuses a second command without force'
 );
+{
+  // The same POST twice within 5 seconds runs once; the 2nd gets the 1st answer.
+  globalData['runStatus_sih-hull'] = undefined;
+  globalData.runMonitorCommands = [];
+  delete globalData.lastCommand;
+  const body = { flow: 'sih-hull', start: '2026-09-01', end: '2026-09-02' };
+  const first = commandRaw(flow, node, { payload: body }, Buffer, Promise, glob);
+  const second = commandRaw(flow, node, { payload: body }, Buffer, Promise, glob);
+  check(
+    first[0].statusCode === 202 && first[1] !== null &&
+      second[0].statusCode === 202 && second[1] === null &&
+      second[4] === null && globalData.runMonitorCommands.length === 1,
+    'a duplicate POST within 5 s is answered again but not run twice'
+  );
+}
+// A dead run (no checkpoint for 30 minutes) is not busy and can be cleared.
+{
+  const old = new Date(Date.now() - 3600000).toISOString();
+  const fresh = new Date().toISOString();
+  globalData['runStatus_sih-hull'] = {
+    flow: 'sih-hull', state: 'running', startedAt: old, lastBeatAt: old,
+    days: {
+      '2026-09-09': { state: 'running', stepAt: old },
+      '2026-09-10': { state: 'dry_run', stepAt: old }
+    }
+  };
+  globalData['runStatus_rpt-hull'] = {
+    flow: 'rpt-hull', state: 'running', startedAt: fresh, lastBeatAt: fresh,
+    days: { '2026-10-21': { state: 'running', stepAt: fresh } }
+  };
+  globalData.runMonitorCommands = [];
+  const cleared = command(flow, node, {
+    payload: { action: 'clear-stuck' }
+  }, Buffer, Promise, glob);
+  const sih = globalData['runStatus_sih-hull'];
+  check(
+    cleared[0].statusCode === 200 && cleared[0].payload.cleared === 2 &&
+      sih.days['2026-09-09'].state === 'interrupted' &&
+      sih.days['2026-09-10'].state === 'dry_run' &&
+      sih.state === 'idle',
+    'clear-stuck interrupts the open days of a dead run only'
+  );
+  check(
+    globalData['runStatus_rpt-hull'].days['2026-10-21'].state === 'running',
+    'clear-stuck leaves a run with a recent checkpoint alone'
+  );
+  globalData['runStatus_sih-hull'] = {
+    flow: 'sih-hull', state: 'running', startedAt: old, lastBeatAt: old,
+    days: { '2026-09-09': { state: 'running', stepAt: old } }
+  };
+  const idle = command(flow, node, {
+    payload: { ...dailyBody, end: '2026-09-30' }
+  }, Buffer, Promise, glob);
+  check(idle[0].statusCode === 202,
+    'a dead run does not block a new command');
+}
 const forcedDaily = command(flow, node, {
   payload: {
     ...dailyBody,

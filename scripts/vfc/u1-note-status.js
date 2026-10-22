@@ -8,10 +8,14 @@ var ACTION = '__ACTION__';
 var KEY = 'runStatus_' + FLOW_NAME;
 var MAX_DAYS = 100;
 var KEEP_DAYS_MS = 7 * 86400000;
+// A day of an older run with no checkpoint for this long is dead.
+var DEAD_AFTER_MS = 30 * 60 * 1000;
+// Steps an open day remembers (step, asset, time), to find a lost asset.
+var TRAIL_MAX = 14;
 
 function finished(state) {
   return state === 'written' || state === 'dry_run' ||
-    state === 'failed' || state === 'nothing';
+    state === 'failed' || state === 'nothing' || state === 'interrupted';
 }
 
 function prune(status, now) {
@@ -56,6 +60,15 @@ status.lastBeatAt = now;
 if (ACTION === 'queue') {
   status.state = 'running';
   if (status.runId !== msg.runId) {
+    Object.keys(status.days).forEach(function (name) {
+      var old = status.days[name];
+      var touched = Date.parse(old.stepAt || '');
+      var open = old.state === 'running' || old.state === 'queued';
+      if (open && isFinite(touched) && nowMs - touched > DEAD_AFTER_MS) {
+        old.state = 'interrupted';
+        old.detail = 'run stopped before this day finished';
+      }
+    });
     status.runId = msg.runId || now;
     status.mode = msg.mode || '';
     status.startedAt = msg.startedAt || now;
@@ -89,10 +102,10 @@ if (ACTION === 'queue') {
     };
     status.days[day] = item;
   }
-  if (item) {
-    status.state = 'running';
-  }
-  if (item && ACTION === 'running') {
+  // Only DAY SETUP (re)starts a day: a late checkpoint of another asset
+  // must not turn a finished day back into running.
+  if (item && ACTION === 'running' &&
+      (!finished(item.state) || STEP === 'DAY SETUP')) {
     item.state = 'running';
     item.step = STEP;
     item.stepAt = now;
@@ -114,6 +127,28 @@ if (ACTION === 'queue') {
   }
 }
 
+// Open days keep a short trail: which asset reached which step.
+function assetName() {
+  if (msg.asset && msg.asset.name) {
+    return msg.asset.name;
+  }
+  if (msg.h && msg.h.asset_name) {
+    return msg.h.asset_name;
+  }
+  return msg.payload && msg.payload.name ? msg.payload.name : '';
+}
+
+if (item && ACTION !== 'queue' && !finished(item.state)) {
+  item.trail = item.trail || [];
+  item.trail.push([STEP, assetName(), now.slice(11, 19)].join(' | '));
+  if (item.trail.length > TRAIL_MAX) {
+    item.trail.splice(0, item.trail.length - TRAIL_MAX);
+  }
+}
+// A late checkpoint of a finished day must not reopen the whole flow.
+if (item && !finished(item.state)) {
+  status.state = 'running';
+}
 prune(status, nowMs);
 glob.set(KEY, status);
 return msg;

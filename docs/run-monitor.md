@@ -35,7 +35,7 @@ route every 10 seconds and carries the GET key into its history request.
 
 | Request | Response |
 |---|---|
-| `GET /reports-monitor` | Self-contained page with status polling and a flow/month history form |
+| `GET /reports-monitor` | Self-contained page with three tabs (Live status, Run log history, Backfill). Each tab shows cards or tables, with a "Raw JSON" switch and a Copy JSON button. The tab is kept in the URL hash. The browser code is `scripts/browser/monitor-client.js`, embedded as a text string in node 2.1 by the builder (`code()` in `lib-flow-builder.js`) |
 | `GET /reports-monitor?view=status` | JSON snapshot of SIH daily, shift, PBI build, PBI listener and Config status |
 | `GET /reports-monitor?view=history&flow=<flow>&month=YYYY-MM` | Parsed rows from one monthly CSV log |
 | `POST /reports-monitor/command` | Validates and queues one report backfill; returns 202, 400, 409 or 503 |
@@ -143,3 +143,13 @@ feeding its existing settings node. After importing all four tabs, connect
 each link-out to its matching link-in in the VFC. The command endpoint is
 only operational after those three connections are made. Existing `DRY_RUN`
 values are unchanged.
+
+## Dead runs (stuck days)
+A deploy or restart kills the messages in flight, so a day can stay `running` or `queued` for ever. Found on 2026-10-22 in the VFC: SIH days 09-07, 09-09, 09-10, 09-14, 09-15 and shift days 10-19 to 10-21.
+- State `interrupted` = the run stopped before the day finished. It is not active, so it does not turn the flow STUCK.
+- A new run turns open days of an older run into `interrupted` when they have had no checkpoint for 30 minutes (`u1-note-status.js`, action `queue`).
+- A backfill command no longer counts a flow as busy when its last checkpoint is older than 30 minutes (`v10-command.js`).
+- Button "Clear stuck" (Live status tab) sends `POST .../command` with `{"action":"clear-stuck"}` and the command key. It sets the open days of runs with no checkpoint for 30 minutes to `interrupted`; a run with a recent checkpoint is left alone. Answer: `{accepted, action, cleared}`.
+- Fixed in `build-vfc-rpt-flows.js`: `__ACTION__` was replaced in the header comment only, so the shift report never queued its days (`replaceAll` now).
+- Live status tab: one accordion row per flow, the flow with the most recent checkpoint first, flows that never ran last. The first row is open; the open rows stay open at the 10 second refresh.
+- To change one node without importing the flow: `node scripts/build-monitor-page-paste.js` writes the node code to `flows/paste/`.

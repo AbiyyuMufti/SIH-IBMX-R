@@ -77,10 +77,10 @@ function buildFlow(site, index) {
     id: stableId('queueStatus'), type: 'function',
     name: '1.3 Note status: day list built',
     func: code('u1-note-status.js')
-      .replace('__FLOW__', flowName)
-      .replace('__SITE__', site.name)
-      .replace('__STEP__', 'day list built')
-      .replace('__ACTION__', 'queue'),
+      .replaceAll('__FLOW__', flowName)
+      .replaceAll('__SITE__', site.name)
+      .replaceAll('__STEP__', 'day list built')
+      .replaceAll('__ACTION__', 'queue'),
     outputs: 1, language: 'javascript', noerr: 0, x: col(3),
     y: rowY(r), wires: [[id('dayDelay')]]
   });

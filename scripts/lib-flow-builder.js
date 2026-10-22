@@ -4,7 +4,30 @@
 import { readFileSync } from 'node:fs';
 
 // Windows checkouts may have CRLF line endings: the flow always gets LF.
-export const code = (file) => readFileSync(new URL(`./vfc/${file}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+// The monitor page node holds the browser script as text: __CLIENT_SCRIPT__
+// becomes an array of short quoted pieces (no line over 80 characters).
+const clientScript = () => {
+  const url = new URL('./browser/monitor-client.js', import.meta.url);
+  const text = readFileSync(url, 'utf8').replace(/\r\n/g, '\n');
+  const quote = (piece) => `  '${piece
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/\n/g, '\\n')}'`;
+  const out = [];
+  const lines = text.split('\n');
+  lines.forEach((line, i) => {
+    if (i === lines.length - 1 && line === '') return;
+    const pieces = line.match(/[\s\S]{1,60}/g) || [''];
+    pieces[pieces.length - 1] += '\n';
+    pieces.forEach((piece) => out.push(quote(piece)));
+  });
+  return `[\n${out.join(',\n')}\n].join('')`;
+};
+export const code = (file) => {
+  const url = new URL(`./vfc/${file}`, import.meta.url);
+  const text = readFileSync(url, 'utf8').replace(/\r\n/g, '\n');
+  return text.replace('__CLIENT_SCRIPT__', clientScript);
+};
 
 // Types as saved by the VFC: UTF8 (shown as STRING), BOOLEAN, INT64, DOUBLE,
 // TIMESTAMP_MILLIS. There is no DATE type.
