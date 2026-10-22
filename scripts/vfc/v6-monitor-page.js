@@ -1,6 +1,14 @@
 // Builds the self-contained monitor page.
 // In: an authenticated GET for the base monitor route.
 // Out: HTML that polls status and lets the user inspect one month's log.
+
+// Set once after the import: the access key of "Post backfill command".
+// Filled: the page uses it and hides the key field. Empty: type it in the
+// page. Anyone who can open this page can then queue a backfill.
+var COMMAND_KEY = '';
+// The key goes into the page script as a JSON string (no markup in it).
+var presetKey = JSON.stringify(COMMAND_KEY).replace(/</g, '\\u003c');
+
 var html = [
   '<!doctype html>',
   '<html lang="en">',
@@ -44,16 +52,19 @@ var html = [
   '<div id="monthFields" hidden>',
   '<label>From <input id="fromMonth" type="month"></label>',
   '<label>To <input id="toMonth" type="month"></label></div>',
+  '<div id="keyRow">',
   '<label>Command key <input id="commandKey" type="text" size="50"',
-  ' autocomplete="off" required></label>',
+  ' autocomplete="off"></label>',
   '<p>Paste the key of "Post backfill command" (the text after key=;',
-  ' a pasted URL also works).</p>',
+  ' a pasted URL also works), or set COMMAND_KEY in node 2.1.</p></div>',
   '<label><input id="force" type="checkbox">Force if busy</label>',
   '<button type="submit">Queue backfill</button></form>',
   '<p id="commandError" class="error"></p>',
   '<pre id="commandResult">No command sent.</pre>',
   '<script>',
   '(function(){',
+  'var presetKey=' + presetKey + ';',
+  'document.getElementById("keyRow").hidden=presetKey!=="";',
   'var key=new URLSearchParams(location.search).get("key")||"";',
   'var base=location.pathname.replace(/\\/+$/,"");',
   'function url(view,params){',
@@ -139,7 +150,13 @@ var html = [
   '      payload.start=document.getElementById("start").value;',
   '      payload.end=document.getElementById("end").value;',
   '    }',
-  '    var commandKey=plainKey(document.getElementById("commandKey").value);',
+  '    var typed=document.getElementById("commandKey").value;',
+  '    var commandKey=presetKey||plainKey(typed);',
+  '    if(!commandKey){',
+  '      document.getElementById("commandError").textContent=',
+  '        "Command key missing: type it or set COMMAND_KEY in node 2.1.";',
+  '      return;',
+  '    }',
   '    var commandUrl=base+"/command?key="+encodeURIComponent(commandKey);',
   '    document.getElementById("commandError").textContent="";',
   '    fetch(commandUrl,{',

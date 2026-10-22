@@ -491,6 +491,46 @@ check(
   await post('BADKEY');
   check(el('commandError').textContent === 'Command failed: HTTP 401 Unauthorized',
     'a refusal that is not JSON shows its HTTP status and text');
+  await post('');
+  check(/Command key missing/.test(el('commandError').textContent),
+    'no key typed and none set: the page says so');
+  check(el('keyRow').hidden === false, 'no COMMAND_KEY: the key field is shown');
+}
+
+// COMMAND_KEY set once in the page node: the field is hidden and used.
+{
+  const key = 'SET<KEY>1';
+  const make = vmFunction('v6-monitor-page.js', {
+    "var COMMAND_KEY = '';": "var COMMAND_KEY = '" + key + "';"
+  });
+  const page = {};
+  make(flow, node, page, Buffer, Promise, glob);
+  check(page.payload.indexOf(key) === -1 &&
+    page.payload.indexOf('SET\\u003cKEY>1') !== -1,
+    'COMMAND_KEY goes into the page escaped (no markup)');
+  const script = /<script>([\s\S]*)<\/script>/.exec(page.payload)[1];
+  const els = {};
+  const el = (id) => (els[id] = els[id] || {
+    value: '', textContent: '', hidden: false, checked: false,
+    addEventListener(type, fn) { this['on' + type] = fn; }
+  });
+  const sent = [];
+  vm.runInNewContext(script, {
+    location: { search: '?key=PAGEKEY', pathname: '/public/t/reports-monitor' },
+    URLSearchParams, JSON, Date, Object, encodeURIComponent,
+    document: { getElementById: el },
+    setInterval: () => {},
+    fetch: (url) => {
+      sent.push(url);
+      return Promise.resolve({ ok: true, status: 202, text: () => Promise.resolve('{"accepted":true}') });
+    }
+  });
+  el('commandFlow').value = 'sih-hull';
+  await el('commandForm').onsubmit({ preventDefault() {} });
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  check(el('keyRow').hidden === true, 'COMMAND_KEY set: the key field is hidden');
+  check(sent[sent.length - 1].endsWith('/command?key=' + encodeURIComponent(key)),
+    'COMMAND_KEY set: the command is sent with it, nothing to type');
 }
 
 const listenerData = {};

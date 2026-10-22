@@ -114,7 +114,7 @@ BACKFILL link connections before relying on it.
 
 ## Backfill commands
 
-The page's POST command endpoint has its own VFC access key. Enter that key (a visible text field; the key alone or the whole command URL)
+The page's POST command endpoint has its own VFC access key. Set it once in node `2.1 Build monitor page` (constant `COMMAND_KEY` at the top; the page then hides the key field), or leave it empty and type it in the page (a visible text field; the key alone or the whole command URL). The committed flow keeps `COMMAND_KEY` empty: never commit the key. With the key in the page, anyone who can open the monitor link can queue a backfill
 in the form; it is not stored in the page or source code. A command accepts
 one flow and one range:
 
