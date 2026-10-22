@@ -21,6 +21,12 @@ import {
 } from './lib-flow-builder.js';
 import { windowSchema, hourSchema, eventSchema } from './lib-rpt-schemas.js';
 
+// Seconds between two days of a run. Days that overlap in time made the
+// run stall in the VFC (2026-10-22: a backfill of 2 days 5 s apart stopped
+// after 80 s with no error, the same day alone finished in 40 s). A day
+// takes 40 s or more, so the next day starts after the previous one.
+const DAY_PACE_SECONDS = 60;
+
 // One entry per site. The tab runs at runHourLocal of the site in 1.1
 // CONFIG, local clock: an hourly tick (minute 17, after the SIH report daily
 // tab at minute 7) and node 1.1 checks the hour.
@@ -94,9 +100,9 @@ function buildFlow(site, index) {
     wires: [[id('settings')]]
   });
   add({
-    id: id('dayDelay'), type: 'delay', name: 'One day per 5 s',
-    pauseType: 'rate', timeout: '5', timeoutUnits: 'seconds', rate: '1',
-    nbRateUnits: '5', rateUnits: 'second', randomFirst: '1', randomLast: '5',
+    id: id('dayDelay'), type: 'delay', name: `One day per ${DAY_PACE_SECONDS} s`,
+    pauseType: 'rate', timeout: String(DAY_PACE_SECONDS), timeoutUnits: 'seconds',
+    rate: '1', nbRateUnits: String(DAY_PACE_SECONDS), rateUnits: 'second', randomFirst: '1', randomLast: '5',
     randomUnits: 'seconds', drop: false, powerMode: false, x: col(4),
     y: rowY(r), wires: [[linkOut('DAY', col(5), rowY(r))]]
   });

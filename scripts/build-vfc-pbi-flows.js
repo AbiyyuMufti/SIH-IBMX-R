@@ -28,6 +28,11 @@ import {
 
 // One SIH report daily tab per site. The hour it runs is runHourLocal of
 // the site in 1.1 CONFIG, local clock (an hourly tick checks it).
+// Seconds between two days of a run (SIH report daily). A day takes about
+// 20 s; days that overlap lost an asset now and then (2026-10-22), see the
+// same constant in build-vfc-rpt-flows.js.
+const DAY_PACE_SECONDS = 30;
+
 const SITES = [{ name: 'Hull' }];
 const TICK = '7 * * * *';
 
@@ -142,7 +147,7 @@ function buildDailyFlow(site, index) {
         'day list built',
         'queue'
       ),
-      delay('dayDelay', 'One day per 5 s', 5),
+      delay('dayDelay', `One day per ${DAY_PACE_SECONDS} s`, DAY_PACE_SECONDS),
       end('DAY')
     ]);
   lane(r++, 'SETUP FAILED',
