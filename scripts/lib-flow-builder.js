@@ -4,7 +4,30 @@
 import { readFileSync } from 'node:fs';
 
 // Windows checkouts may have CRLF line endings: the flow always gets LF.
-export const code = (file) => readFileSync(new URL(`./vfc/${file}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+// The monitor page node holds the browser script as text: __CLIENT_SCRIPT__
+// becomes an array of short quoted pieces (no line over 80 characters).
+const clientScript = () => {
+  const url = new URL('./browser/monitor-client.js', import.meta.url);
+  const text = readFileSync(url, 'utf8').replace(/\r\n/g, '\n');
+  const quote = (piece) => `  '${piece
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/\n/g, '\\n')}'`;
+  const out = [];
+  const lines = text.split('\n');
+  lines.forEach((line, i) => {
+    if (i === lines.length - 1 && line === '') return;
+    const pieces = line.match(/[\s\S]{1,60}/g) || [''];
+    pieces[pieces.length - 1] += '\n';
+    pieces.forEach((piece) => out.push(quote(piece)));
+  });
+  return `[\n${out.join(',\n')}\n].join('')`;
+};
+export const code = (file) => {
+  const url = new URL(`./vfc/${file}`, import.meta.url);
+  const text = readFileSync(url, 'utf8').replace(/\r\n/g, '\n');
+  return text.replace('__CLIENT_SCRIPT__', clientScript);
+};
 
 // Types as saved by the VFC: UTF8 (shown as STRING), BOOLEAN, INT64, DOUBLE,
 // TIMESTAMP_MILLIS. There is no DATE type.
@@ -22,11 +45,40 @@ const FIRST_ROW = 120;
 
 export function makeBuilder(flowIndex) {
   let counter = flowIndex * 1000;
+  const usedIds = new Set();
+  const stableIds = {};
   const newId = () => {
-    counter++;
-    const a = (0x10000 + counter * 7919).toString(16).slice(-5);
-    const b = (0xa0000 + counter * 104729).toString(16).slice(-6);
-    return `${a}.${b}`;
+    let value;
+    do {
+      counter++;
+      const a = (0x10000 + counter * 7919).toString(16).slice(-5);
+      const b = (0xa0000 + counter * 104729).toString(16).slice(-6);
+      value = `${a}.${b}`;
+    } while (usedIds.has(value));
+    usedIds.add(value);
+    return value;
+  };
+  const stableId = (key) => {
+    if (stableIds[key]) {
+      return stableIds[key];
+    }
+    const text = `${flowIndex}:${key}`;
+    let hash = 2166136261;
+    for (let i = 0; i < text.length; i++) {
+      hash = Math.imul(hash ^ text.charCodeAt(i), 16777619);
+    }
+    let attempt = 0;
+    let value;
+    do {
+      const first = (hash + attempt * 2654435761) >>> 0;
+      const second = (hash ^ 0x9e3779b9) + attempt * 2246822519;
+      value = `${(first & 0xfffff).toString(16).padStart(5, '0')}.`;
+      value += (second >>> 0 & 0xffffff).toString(16).padStart(6, '0');
+      attempt++;
+    } while (usedIds.has(value));
+    usedIds.add(value);
+    stableIds[key] = value;
+    return value;
   };
   const TAB = newId();
   const nodes = [];
@@ -80,11 +132,12 @@ export function makeBuilder(flowIndex) {
     steps.forEach((step, i) => {
       const c = colOf[i];
       const nextStep = steps.slice(i + 1).find((s) => !s.stack);
+      const stepId = (s) => s.stableId ? stableId(s.key) : id(s.key);
       let nextId = null;
       if (nextStep && nextStep.t === 'end') {
         nextId = linkOut(nextStep.key, col(c + 1), rowY(r) + (step.dy || 0));
       } else if (nextStep) {
-        nextId = id(nextStep.key);
+        nextId = stepId(nextStep);
       }
       // Side link outs sit below their node, one more row of 40 px each.
       const wiresFor = (outs, fan) => {
@@ -104,7 +157,7 @@ export function makeBuilder(flowIndex) {
         for (const [from, to] of Object.entries(step.replace || {})) {
           func = func.replaceAll(from, to);
         }
-        const fnId = id(step.key);
+        const fnId = stepId(step);
         const wires = wiresFor(step.outs, step.fan);
         if (step.also) {
           wires[0] = wires[0].filter(Boolean);
@@ -199,12 +252,35 @@ export function makeBuilder(flowIndex) {
       }
     });
   }
-  return { nodes, TAB, add, newId, id, col, rowY, comment, lane, linkOut, linkIn, nextStage: () => ++stageNo };
+  return {
+    nodes,
+    TAB,
+    add,
+    newId,
+    stableId,
+    id,
+    col,
+    rowY,
+    comment,
+    lane,
+    linkOut,
+    linkIn,
+    nextStage: () => ++stageNo
+  };
 }
 
 // ---------- step helpers ----------
 export const fn = (key, name, file, outs, replace = {}, fan = false, also = null) => ({
   t: 'fn', key, name, file, outs, replace, fan, also
+});
+export const statusStep = (key, flowName, siteName, step, action = 'running') => ({
+  ...fn(key, `Note status: ${step}`, 'u1-note-status.js', ['next'], {
+    __FLOW__: flowName,
+    __SITE__: siteName,
+    __STEP__: step,
+    __ACTION__: action
+  }),
+  stableId: true
 });
 export const http = (key, name) => ({ t: 'http', key, name });
 export const linkInStep = (key) => ({ t: 'linkin', key });
@@ -221,12 +297,19 @@ export const waitStep = (key, name, seconds, stack = false, dy = 0) => ({
 // The hourly fallback of a day evaluateKPIs call that answered 413: one call
 // per hour of the day window, joined and merged into one day answer that goes
 // to the lane "back" (the check node of the day call).
-export const kpiPartsSteps = (prefix, back) => [
+export const kpiPartsSteps = (prefix, back, flowName, siteName) => [
   linkInStep(`${prefix} PARTS`),
   fn(`${prefix}PartsFn`, 'Build hour requests', 'd9-kpi-parts.js', ['next']),
   delay(`${prefix}PartsDelay`, 'One hour per second'),
   http(`${prefix}PartsHttp`, 'POST evaluateKPIs (one hour)'),
   fn(`${prefix}PackFn`, 'Pack hour answer', 'd9-kpi-pack.js', ['next']),
+  statusStep(
+    `${prefix}PartsStatus`,
+    flowName,
+    siteName,
+    `${prefix} hourly parts`,
+    'part-done'
+  ),
   join(`${prefix}PartsJoin`, 'Wait for all hours'),
   fn(`${prefix}MergeFn`, 'Merge hour answers', 'd9-kpi-merge.js', ['next']),
   end(back)
@@ -254,7 +337,7 @@ export const writeStep = (key, name) => ({ t: 'write', key, name });
 // <root>/logs/<flow name>/log_YYYY-MM.csv. Returns the next free row.
 // quiet: also tap every log line (node Note last log line, global context
 // lastLog) for the JOB DONE watch of another tab.
-export function addLogLanes(b, r, flowName, quiet = false) {
+export function addLogLanes(b, r, flowName, quiet = false, status = null) {
   const replace = { __FLOW__: flowName };
   b.lane(r++, 'ERRORS',
     'a catch node takes every error raised by a node of this tab and turns it into a log line with the name of the node and the message of the API (for example the limit message of evaluateKPIs). Errors of the log nodes themselves are not logged again.',
@@ -269,6 +352,19 @@ export function addLogLanes(b, r, flowName, quiet = false) {
       linkInStep('LOG'),
       fn('logFmt', 'Format log line', 'l2-format-line.js', ['next'], replace, false,
         quiet ? ['logDebug', 'noteLast'] : 'logDebug'),
+      ...(status ? [
+        fn(
+          'logStatus',
+          'Update run status',
+          'u2-log-to-status.js',
+          ['next'],
+          {
+            __FLOW__: flowName,
+            __SITE__: status.site,
+            __KIND__: status.kind
+          }
+        )
+      ] : []),
       joinTimeout('logJoin', 'Collect log lines', 30),
       debugStep('logDebug', 'Run log', 'line', true, 80),
       ...(quiet ? [{

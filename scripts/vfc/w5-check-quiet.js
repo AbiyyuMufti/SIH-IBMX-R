@@ -13,6 +13,15 @@ if (quiet < QUIET_SECONDS) {
   return null;
 }
 glob.set('done', true);
+var status = glob.get('runStatus_pbi-report');
+if (status) {
+  if (status.state !== 'failed') {
+    status.state = 'quiet';
+  }
+  status.finishedAt = new Date().toISOString();
+  status.lastBeatAt = status.finishedAt;
+  glob.set('runStatus_pbi-report', status);
+}
 node.status({
   fill: 'green',
   shape: 'dot',

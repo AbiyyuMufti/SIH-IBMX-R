@@ -16,7 +16,7 @@ import {
 import { validateFlow } from './validate-flow.js';
 import {
   code, makeBuilder, fn, http, linkInStep, end, split, delay, join,
-  kpiPartsSteps,
+  kpiPartsSteps, statusStep,
   addLogLanes, applyLayout, compactLanes, measureSpacing
 } from './lib-flow-builder.js';
 import { windowSchema, hourSchema, eventSchema } from './lib-rpt-schemas.js';
@@ -37,7 +37,8 @@ const tableEnd = (table, schema, pathFile) => [
 
 function buildFlow(site, index) {
   const b = makeBuilder(330 + index);
-  const { add, id, col, rowY, comment, lane, linkOut } = b;
+  const { add, id, stableId, col, rowY, comment, lane, linkOut } = b;
+  const flowName = `rpt-${site.name.toLowerCase()}`;
   let r = 1;
 
   const stage1 = b.nextStage();
@@ -70,14 +71,34 @@ function buildFlow(site, index) {
   add({
     id: id('daysFn'), type: 'function', name: '1.2 Build day list',
     func: code('q1-build-days.js'), outputs: 1, language: 'javascript',
-    noerr: 0, x: col(2), y: rowY(r), wires: [[id('dayDelay')]]
+    noerr: 0, x: col(2), y: rowY(r), wires: [[stableId('queueStatus')]]
+  });
+  add({
+    id: stableId('queueStatus'), type: 'function',
+    name: '1.3 Note status: day list built',
+    func: code('u1-note-status.js')
+      .replaceAll('__FLOW__', flowName)
+      .replaceAll('__SITE__', site.name)
+      .replaceAll('__STEP__', 'day list built')
+      .replaceAll('__ACTION__', 'queue'),
+    outputs: 1, language: 'javascript', noerr: 0, x: col(3),
+    y: rowY(r), wires: [[id('dayDelay')]]
+  });
+  add({
+    id: stableId('rptBackfillIn'),
+    type: 'link in',
+    name: `${flowName} BACKFILL`,
+    links: [],
+    x: col(0),
+    y: rowY(r) + 80,
+    wires: [[id('settings')]]
   });
   add({
     id: id('dayDelay'), type: 'delay', name: 'One day per 5 s',
     pauseType: 'rate', timeout: '5', timeoutUnits: 'seconds', rate: '1',
     nbRateUnits: '5', rateUnits: 'second', randomFirst: '1', randomLast: '5',
-    randomUnits: 'seconds', drop: false, powerMode: false, x: col(3),
-    y: rowY(r), wires: [[linkOut('DAY', col(4), rowY(r))]]
+    randomUnits: 'seconds', drop: false, powerMode: false, x: col(4),
+    y: rowY(r), wires: [[linkOut('DAY', col(5), rowY(r))]]
   });
   r++;
 
@@ -85,6 +106,7 @@ function buildFlow(site, index) {
     'one message per day: token request, OEE asset list (2.3 keeps a short copy of it), choose the report lines of the Config tab, one message per line (one per second). 2.5 asks Asset Management for the machines below the line, 2.6 packs the answer with its line, a join waits for the lists of all lines and 2.7 sends one message per asset: every line and every child that is a configured OEE asset and is not in reportExcludeNames of the Config tab (machines come in by themselves). The messages of the day form one group (msg.parts), so the join of stage 10 waits for all of them without keeping any rows in the flow context (the context accepts 2 MB per value only). Function nodes cannot use fetch in the VFC, so every call is an http request node: the function before it sets msg.method, msg.url and msg.headers. A failure goes to the LOG and nothing is written for that day.',
     [
       linkInStep('DAY'),
+      statusStep('daySetupStatus', flowName, site.name, 'DAY SETUP'),
       fn('tokenFn', 'Build token request', 's2-token-request.js', ['next']),
       http('tokenHttp', 'POST token'),
       fn('listFn', 'Build asset list request', 's2-asset-list-request.js',
@@ -119,7 +141,7 @@ function buildFlow(site, index) {
     ]);
   lane(r++, 'KPI PARTS',
     'the day evaluateKPIs call answered HTTP 413 (Request Entity Too Large: too many status changes for one call). The same KPIs are asked again hour by hour (one call per hour of the day window, one per second), a join waits for all hours and the answers are merged into one day answer (the hourly groups of every KPI, the same shape as the day call), which goes on to the check node of the day call. If an hourly call fails too, the day fails (no half days) and the log says "also on 1 h windows". The asset note in the log says "KPIs in n hourly parts".',
-    kpiPartsSteps('KPI', 'KPI CHECK'));
+    kpiPartsSteps('KPI', 'KPI CHECK', flowName, site.name));
   lane(r++, 'KPI CHECK',
     'the day answer of evaluateKPIs (from the day call or merged from the hourly parts) is checked, then pivoted to one entry per hour. A failed call ends at the join (link "to JOIN").',
     [
@@ -169,7 +191,7 @@ function buildFlow(site, index) {
     ]);
   lane(r++, 'VALUE PARTS',
     'the same hourly fallback for the evaluateKPIs call of one product or order that answered 413: hour by hour, joined, merged, then on to the collect node of the value calls. A separate lane from the day KPIs: one shared lane would make a loop.',
-    kpiPartsSteps('VALUE', 'VALUE CHECK'));
+    kpiPartsSteps('VALUE', 'VALUE CHECK', flowName, site.name));
   lane(r++, 'VALUE CHECK',
     'the answer of one product or order call (from the call or merged from the hourly parts): its hours with parts are kept until every value of the asset is in (flow context valueRuns). A failed call fails the day (link "to JOIN").',
     [
@@ -205,6 +227,7 @@ function buildFlow(site, index) {
     'one asset. 9.1 downtimeReasons GET over the exact window of the day (size 5000, one page), 9.2 checks the response, 9.3 builds the rpt_event rows (one per stop that starts inside the production day: UTC and local time, shift, kind microstop, planned or unplanned, reason and reason path, minutes, comment count, product and order of the hour of the stop, loss units = design speed per minute x minutes), 9.4 builds the result of the asset and sends it to the wait node (link "to JOIN").',
     [
       linkInStep('STOPS'),
+      statusStep('stopsStatus', flowName, site.name, 'ASSET STOPS'),
       fn('stopsReqFn', 'Build stops request', 's4-stops-request.js', ['next']),
       http('stopsHttp', 'GET downtimeReasons'),
       fn('stopsCheckFn', 'Check stops response', 's4-check-stops.js',
@@ -217,6 +240,13 @@ function buildFlow(site, index) {
     'the join waits for all assets of the day (the lines and their machines). 10.1 collects the results, 10.2 decides: it writes NOTHING if any asset failed (no half days) and nothing in dry-run mode, 10.3 builds one message per table. Output 1 of 10.3 = rpt_window, 2 = rpt_hour, 3 = rpt_event, 4 = log.',
     [
       linkInStep('JOIN'),
+      statusStep(
+        'assetDoneStatus',
+        flowName,
+        site.name,
+        'JOIN & BUILD TABLES',
+        'asset-done'
+      ),
       join('dayJoin', 'Wait for all assets of the day'),
       fn('collectFn', 'Collect results', 'q9-collect.js', ['next']),
       fn('decideFn', 'Decide day', 'q9-decide.js', ['next', 'LOG']),
@@ -238,7 +268,10 @@ function buildFlow(site, index) {
       `parquet node, path and write object for ${table} (${what}). The path is <root>/shift_report/${table}/site=<site>/${table}_<production day>.parquet, the same on every rerun, so a rerun replaces the day. Types: UTF8 (STRING), INT64, DOUBLE, TIMESTAMP_MILLIS. Days are text YYYY-MM-DD.`,
       [linkInStep(`WRITE ${table}`), ...tableEnd(table, schema, 's6-set-path.js')]);
   });
-  addLogLanes(b, r, `rpt-${site.name.toLowerCase()}`);
+  addLogLanes(b, r, flowName, false, {
+    site: site.name,
+    kind: 'day'
+  });
 
   b.nodes.unshift({
     id: b.TAB, type: 'tab', label: `${site.name} shift report`,

@@ -15,7 +15,7 @@ import {
 import { validateFlow } from './validate-flow.js';
 import {
   code, makeBuilder, fn, http, linkInStep, end, split, delay, join,
-  kpiPartsSteps,
+  kpiPartsSteps, statusStep,
   readStep, listNode, csvNode, addLogLanes, applyLayout, compactLanes, measureSpacing
 } from './lib-flow-builder.js';
 import {
@@ -50,7 +50,8 @@ const refEnd = (table, schema) => [
 // ---------- the daily flow of one site ----------
 function buildDailyFlow(site, index) {
   const b = makeBuilder(300 + index);
-  const { add, id, col, rowY, comment, lane, linkOut } = b;
+  const { add, id, stableId, col, rowY, comment, lane, linkOut } = b;
+  const flowName = `sih-${site.name.toLowerCase()}`;
   let r = 1;
 
   const stage1 = b.nextStage();
@@ -79,6 +80,15 @@ function buildDailyFlow(site, index) {
     func: code('d1-settings.js').replace('__SITE__', site.name),
     outputs: 1, language: 'javascript', noerr: 0, x: col(1), y: rowY(r),
     wires: [[linkOut('SETUP', col(2), rowY(r))]]
+  });
+  add({
+    id: stableId('backfillIn'),
+    type: 'link in',
+    name: `${flowName} BACKFILL`,
+    links: [],
+    x: col(0),
+    y: rowY(r) + 80,
+    wires: [[id('settings')]]
   });
   r++;
 
@@ -125,6 +135,13 @@ function buildDailyFlow(site, index) {
         ['next', 'SETUP FAILED']),
       fn('startDays', 'Start the day list', 'd2-start-days.js', ['next']),
       fn('daysFn', 'Build day list', 'q1-build-days.js', ['next']),
+      statusStep(
+        'queueStatus',
+        flowName,
+        site.name,
+        'day list built',
+        'queue'
+      ),
       delay('dayDelay', 'One day per 5 s', 5),
       end('DAY')
     ]);
@@ -139,6 +156,7 @@ function buildDailyFlow(site, index) {
     'one message per day: token request, OEE asset list, choose the assets, one message per asset (one per second). Function nodes cannot use fetch in the VFC, so every call is an http request node: the function before it sets msg.method, msg.url and msg.headers. A failure goes to the LOG and nothing is written for that day.',
     [
       linkInStep('DAY'),
+      statusStep('daySetupStatus', flowName, site.name, 'DAY SETUP'),
       fn('tokenFn', 'Build token request', 's2-token-request.js', ['next']),
       http('tokenHttp', 'POST token'),
       fn('listFn', 'Build asset list request', 's2-asset-list-request.js',
@@ -163,7 +181,7 @@ function buildDailyFlow(site, index) {
     ]);
   lane(r++, 'KPI PARTS',
     'the day evaluateKPIs call answered HTTP 413 (Request Entity Too Large: too many status changes for one call). The same KPIs are asked again hour by hour (one call per hour of the day window, one per second), a join waits for all hours and the answers are merged into one day answer (the hourly groups of every KPI, the same shape as the day call), which goes on to the check node of the day call. If an hourly call fails too, the day fails (no half days) and the log says "also on 1 h windows". The asset note in the log says "KPIs in n hourly parts".',
-    kpiPartsSteps('KPI', 'KPI CHECK'));
+    kpiPartsSteps('KPI', 'KPI CHECK', flowName, site.name));
   lane(r++, 'KPI CHECK',
     'the day answer of evaluateKPIs (from the day call or merged from the hourly parts) is checked, then pivoted to one entry per hour. A failed call ends at the join (link "to JOIN").',
     [
@@ -213,7 +231,7 @@ function buildDailyFlow(site, index) {
     ]);
   lane(r++, 'VALUE PARTS',
     'the same hourly fallback for the evaluateKPIs call of one product or order that answered 413: hour by hour, joined, merged, then on to the collect node of the value calls. A separate lane from the day KPIs: one shared lane would make a loop.',
-    kpiPartsSteps('VALUE', 'VALUE CHECK'));
+    kpiPartsSteps('VALUE', 'VALUE CHECK', flowName, site.name));
   lane(r++, 'VALUE CHECK',
     'the answer of one product or order call (from the call or merged from the hourly parts): its hours with parts are kept until every value of the asset is in (flow context valueRuns). A failed call fails the day (link "to JOIN").',
     [
@@ -235,6 +253,7 @@ function buildDailyFlow(site, index) {
     'one asset. 8.1 downtimeReasons GET (size 5000, one page), 8.2 checks the response, 8.3 builds the pbi_daily_losses rows (one per stop that starts inside the production day: local date and time, shift, duration in minutes, loss group, sub group, equipment; product, part name and batch id (= order) of the hour of the stop; loss units = design speed per minute x duration), 8.4 builds the result of the asset and sends it to the join.',
     [
       linkInStep('STOPS'),
+      statusStep('stopsStatus', flowName, site.name, 'ASSET STOPS'),
       fn('stopsReqFn', 'Build stops request', 's4-stops-request.js', ['next']),
       http('stopsHttp', 'GET downtimeReasons'),
       fn('stopsCheckFn', 'Check stops response', 's4-check-stops.js',
@@ -247,6 +266,13 @@ function buildDailyFlow(site, index) {
     'the join waits for all assets of the day. Collect the results, then turn them into the report columns: MachineName = the report name of the CONFIG line, Unique Machine Name = MachineName-Site, targets and loss targets from Glidepaths, Dept, Area, Product Type from Machine Names, shift kept or mapped, an empty sub group is Not Logged, an empty equipment Unclassed, Data Source = SIH; the rows are grouped by folder (line source sih: report, else candidate/sih). Decide writes NOTHING if any asset failed (no half days) and nothing in dry-run mode. Then one message per table and folder: output 1 = Plan_OPT_EU, 2 = Time_Utilisation_EU, 3 = Daily_Losses_EU, 4 = log.',
     [
       linkInStep('JOIN'),
+      statusStep(
+        'assetDoneStatus',
+        flowName,
+        site.name,
+        'JOIN & BUILD TABLES',
+        'asset-done'
+      ),
       join('dayJoin', 'Wait for all assets of the day'),
       fn('collectFn', 'Collect results', 'd6-collect.js', ['next']),
       fn('reportFn', 'Build report columns', 'd8-report-rows.js', ['next']),
@@ -271,7 +297,10 @@ function buildDailyFlow(site, index) {
       [linkInStep(`WRITE ${table}`),
         ...tableEnd(table, schema, 'd8-day-path.js')]);
   });
-  addLogLanes(b, r, `sih-${site.name.toLowerCase()}`);
+  addLogLanes(b, r, flowName, false, {
+    site: site.name,
+    kind: 'day'
+  });
 
   b.nodes.unshift({
     id: b.TAB, type: 'tab', label: `${site.name} SIH report daily`,

@@ -72,11 +72,16 @@ if (days.length > 1) {
   text += ' .. ' + dayStr(days[days.length - 1]);
 }
 node.status({ fill: 'blue', shape: 'dot', text: text });
+var runId = Date.now().toString(36) + '-';
+runId += Math.floor(Math.random() * 1000000).toString(36);
+var startedAt = new Date().toISOString();
 var messages = days.map(function (d) {
   return {
     topic: 'day',
     payload: dayStr(d),
     mode: mode,
+    runId: runId,
+    startedAt: startedAt,
     dayFromMs: startOf(d),
     dayToMs: startOf(d + DAY_MS)
   };

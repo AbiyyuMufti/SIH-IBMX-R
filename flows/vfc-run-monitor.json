@@ -1,0 +1,943 @@
+[
+  {
+    "id": "d7caf.492d59",
+    "type": "tab",
+    "label": "Run monitor",
+    "disabled": false,
+    "allowCycles": false,
+    "info": "Report status, monthly history and validated backfill commands. Generate both HTTP In access keys after import."
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "d9b9e.4ac672",
+    "type": "comment",
+    "name": "[1] HTTP MONITOR",
+    "info": "STAGE 1 - One access-key-protected route serves page, status and history at /reports-monitor using the view query parameter. Generate its access key in the VFC after import. The page reuses it for all GET requests.",
+    "x": 140,
+    "y": 40,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "dd97c.4df8a4",
+    "type": "http in",
+    "name": "Get report monitor",
+    "endpoint": "/reports-monitor",
+    "method": "get",
+    "upload": false,
+    "access": "key",
+    "key": "",
+    "users": "",
+    "powerMode": false,
+    "x": 140,
+    "y": 120,
+    "wires": [
+      [
+        "dba8d.4c5f8b"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "e175a.512ad6",
+    "type": "link out",
+    "name": "to PAGE",
+    "mode": "link",
+    "links": [
+      "df86b.4f91bd"
+    ],
+    "x": 540,
+    "y": 60,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "e5538.545d08",
+    "type": "link out",
+    "name": "to STATUS",
+    "mode": "link",
+    "links": [
+      "e3649.52c3ef"
+    ],
+    "x": 540,
+    "y": 100,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "e9316.578f3a",
+    "type": "link out",
+    "name": "to HISTORY",
+    "mode": "link",
+    "links": [
+      "e7427.55f621"
+    ],
+    "x": 540,
+    "y": 140,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "ed0f4.5ac16c",
+    "type": "link out",
+    "name": "to ERROR",
+    "mode": "link",
+    "links": [
+      "eb205.592853"
+    ],
+    "x": 540,
+    "y": 180,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "dba8d.4c5f8b",
+    "type": "function",
+    "name": "1.1 Route monitor request",
+    "func": "// Routes the monitor page, status JSON, history request or an unknown path.\n// In: an authenticated GET with an optional query parameter `view`.\n// Out: exactly one of PAGE, STATUS, HISTORY or ERROR.\nvar query = msg.req && msg.req.query ? msg.req.query : {};\nvar view = query.view;\n\nif (view === undefined || view === '' || view === 'page') {\n  return [msg, null, null, null];\n}\nif (view === 'status') {\n  return [null, msg, null, null];\n}\nif (view === 'history') {\n  return [null, null, msg, null];\n}\n\nmsg.statusCode = 404;\nmsg.headers = {\n  'content-type': 'application/json'\n};\nmsg.payload = {\n  error: 'unknown monitor endpoint'\n};\nreturn [null, null, null, msg];\n",
+    "outputs": 4,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 380,
+    "y": 120,
+    "wires": [
+      [
+        "e175a.512ad6"
+      ],
+      [
+        "e5538.545d08"
+      ],
+      [
+        "e9316.578f3a"
+      ],
+      [
+        "ed0f4.5ac16c"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "eefe3.5c5a85",
+    "type": "comment",
+    "name": "[2] PAGE",
+    "info": "STAGE 2 - Returns the self-contained page. It polls status every 10 seconds and loads one month of CSV history only when requested.",
+    "x": 100,
+    "y": 260,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "df86b.4f91bd",
+    "type": "link in",
+    "name": "PAGE",
+    "links": [
+      "e175a.512ad6"
+    ],
+    "x": 60,
+    "y": 340,
+    "wires": [
+      [
+        "f0ed2.5df39e"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "f0ed2.5df39e",
+    "type": "function",
+    "name": "2.1 Build monitor page",
+    "func": "// Builds the self-contained monitor page: three tabs (live status, run log\n// history, backfill command), each with a visual view and a raw JSON view.\n// In: an authenticated GET for the base monitor route.\n// Out: HTML that polls status and lets the user inspect one month's log.\n\n// Set once after the import: the access key of \"Post backfill command\".\n// Filled: the page uses it and hides the key field. Empty: type it in the\n// page. Anyone who can open this page can then queue a backfill.\nvar COMMAND_KEY = '';\n// The key goes into the page script as a JSON string (no markup in it).\nvar presetKey = JSON.stringify(COMMAND_KEY).replace(/</g, '\\\\u003c');\n// The browser code lives in scripts/browser/monitor-client.js. The builder\n// puts it here as text, so this node only builds a string: nothing of the\n// browser API is used by this node itself.\nvar clientScript = [\n  '// Browser code of the monitor page (tabs, status cards, his',\n  'tory table,\\n',\n  '// backfill form). Not a function node: the builder embeds i',\n  't as text in\\n',\n  '// node 2.1 (scripts/vfc/v6-monitor-page.js), inside a funct',\n  'ion that sets\\n',\n  '// presetKey first. Plain ES5 for the browser.\\n',\n  'var REFRESH_MS = 10000;\\n',\n  'var TABS = [\\n',\n  '  \\'status\\',\\n',\n  '  \\'history\\',\\n',\n  '  \\'command\\'\\n',\n  '];\\n',\n  'var FLOW_ORDER = [\\n',\n  '  \\'sih-hull\\',\\n',\n  '  \\'rpt-hull\\',\\n',\n  '  \\'pbi-report\\',\\n',\n  '  \\'pbi-listener\\',\\n',\n  '  \\'config\\'\\n',\n  '];\\n',\n  'var FLOW_TITLES = {\\n',\n  '  \\'sih-hull\\': \\'SIH report daily\\',\\n',\n  '  \\'rpt-hull\\': \\'Shift report\\',\\n',\n  '  \\'pbi-report\\': \\'PBI report build\\',\\n',\n  '  \\'pbi-listener\\': \\'PBI listener\\',\\n',\n  '  \\'config\\': \\'Config\\'\\n',\n  '};\\n',\n  'var TONES = {\\n',\n  '  running: \\'run\\',\\n',\n  '  queued: \\'run\\',\\n',\n  '  written: \\'ok\\',\\n',\n  '  ready: \\'ok\\',\\n',\n  '  accepted: \\'ok\\',\\n',\n  '  done: \\'ok\\',\\n',\n  '  dry_run: \\'idle\\',\\n',\n  '  idle: \\'idle\\',\\n',\n  '  info: \\'idle\\',\\n',\n  '  \\'not started\\': \\'idle\\',\\n',\n  '  nothing: \\'warn\\',\\n',\n  '  warn: \\'warn\\',\\n',\n  '  quiet: \\'warn\\',\\n',\n  '  failed: \\'bad\\',\\n',\n  '  error: \\'bad\\',\\n',\n  '  STUCK: \\'bad\\',\\n',\n  '  unavailable: \\'bad\\',\\n',\n  '  rejected: \\'bad\\',\\n',\n  '  interrupted: \\'warn\\',\\n',\n  '  cleared: \\'ok\\'\\n',\n  '};\\n',\n  'var lastHistory = null;\\n',\n  'var historyLoaded = false;\\n',\n  'var openFlows = null;\\n',\n  'var key = new URLSearchParams(location.search).get(\\'key\\') ||',\n  ' \\'\\';\\n',\n  'var base = location.pathname.replace(/\\\\/+$/, \\'\\');\\n',\n  '\\n',\n  'function $(id) {\\n',\n  '  return document.getElementById(id);\\n',\n  '}\\n',\n  '\\n',\n  'function esc(value) {\\n',\n  '  var text = String(value === null || value === undefined ? ',\n  '\\'\\' : value);\\n',\n  '  return text\\n',\n  '    .replace(/&/g, \\'&amp;\\')\\n',\n  '    .replace(/</g, \\'&lt;\\')\\n',\n  '    .replace(/>/g, \\'&gt;\\')\\n',\n  '    .replace(/\"/g, \\'&quot;\\');\\n',\n  '}\\n',\n  '\\n',\n  'function badge(state) {\\n',\n  '  var tone = TONES[state] || \\'idle\\';\\n',\n  '  var text = String(state).replace(/_/g, \\' \\');\\n',\n  '  return \\'<span class=\"badge \\' + tone + \\'\">\\' + esc(text) + \\'',\n  '</span>\\';\\n',\n  '}\\n',\n  '\\n',\n  'function ago(iso) {\\n',\n  '  var then = Date.parse(iso || \\'\\');\\n',\n  '  if (!isFinite(then)) {\\n',\n  '    return \\'\\';\\n',\n  '  }\\n',\n  '  var sec = Math.max(0, Math.round((Date.now() - then) / 100',\n  '0));\\n',\n  '  if (sec < 60) {\\n',\n  '    return sec + \\' s ago\\';\\n',\n  '  }\\n',\n  '  if (sec < 3600) {\\n',\n  '    return Math.round(sec / 60) + \\' min ago\\';\\n',\n  '  }\\n',\n  '  if (sec < 172800) {\\n',\n  '    return Math.round(sec / 3600) + \\' h ago\\';\\n',\n  '  }\\n',\n  '  return Math.round(sec / 86400) + \\' d ago\\';\\n',\n  '}\\n',\n  '\\n',\n  'function clock(iso) {\\n',\n  '  var when = new Date(iso);\\n',\n  '  if (!isFinite(when.getTime())) {\\n',\n  '    return esc(iso);\\n',\n  '  }\\n',\n  '  var day = when.toLocaleDateString([], {\\n',\n  '    month: \\'short\\',\\n',\n  '    day: \\'numeric\\'\\n',\n  '  });\\n',\n  '  return day + \\' \\' + when.toLocaleTimeString([], {\\n',\n  '    hour12: false\\n',\n  '  });\\n',\n  '}\\n',\n  '\\n',\n  'function url(view, params) {\\n',\n  '  var out = base + \\'?view=\\' + encodeURIComponent(view);\\n',\n  '  out += \\'&key=\\' + encodeURIComponent(key);\\n',\n  '  Object.keys(params || {}).forEach(function (name) {\\n',\n  '    out += \\'&\\' + encodeURIComponent(name) + \\'=\\';\\n',\n  '    out += encodeURIComponent(params[name]);\\n',\n  '  });\\n',\n  '  return out;\\n',\n  '}\\n',\n  '\\n',\n  'function plainKey(text) {\\n',\n  '  var found = /[?&]key=([^&\\\\s]+)/.exec(text);\\n',\n  '  return (found ? found[1] : text).trim();\\n',\n  '}\\n',\n  '\\n',\n  '// Reads an answer as text first: a refusal of the VFC is no',\n  't JSON.\\n',\n  'function answer(response) {\\n',\n  '  return response.text().then(function (text) {\\n',\n  '    var data;\\n',\n  '    try {\\n',\n  '      data = JSON.parse(text);\\n',\n  '    } catch (e) {\\n',\n  '      throw new Error(\\'HTTP \\' + response.status + \\' \\' + text',\n  '.slice(0, 120));\\n',\n  '    }\\n',\n  '    if (!response.ok) {\\n',\n  '      throw new Error(data.error || \\'HTTP \\' + response.statu',\n  's);\\n',\n  '    }\\n',\n  '    return data;\\n',\n  '  });\\n',\n  '}\\n',\n  '\\n',\n  '// ---------- small building blocks ----------\\n',\n  '\\n',\n  'function label(name) {\\n',\n  '  var text = name.replace(/([A-Z])/g, \\' $1\\').toLowerCase();\\n',\n  '  return text.charAt(0).toUpperCase() + text.slice(1);\\n',\n  '}\\n',\n  '\\n',\n  'function shorten(value) {\\n',\n  '  var text;\\n',\n  '  if (Array.isArray(value)) {\\n',\n  '    text = value.length + \\' items\\';\\n',\n  '  } else {\\n',\n  '    text = Object.keys(value).map(function (name) {\\n',\n  '      return name + \\': \\' + value[name];\\n',\n  '    }).join(\\', \\');\\n',\n  '  }\\n',\n  '  return text.slice(0, 200);\\n',\n  '}\\n',\n  '\\n',\n  'function valueHtml(name, value) {\\n',\n  '  if (value === null || value === undefined || value === \\'\\')',\n  ' {\\n',\n  '    return \\'<span class=\"mute\">-</span>\\';\\n',\n  '  }\\n',\n  '  if (/At$/.test(name)) {\\n',\n  '    return \\'<span title=\"\\' + esc(value) + \\'\">\\' +\\n',\n  '      esc(ago(value) || value) + \\'</span>\\';\\n',\n  '  }\\n',\n  '  if (typeof value === \\'object\\') {\\n',\n  '    return esc(shorten(value));\\n',\n  '  }\\n',\n  '  return esc(value);\\n',\n  '}\\n',\n  '\\n',\n  'function kvList(data, skip) {\\n',\n  '  var out = \\'\\';\\n',\n  '  Object.keys(data).forEach(function (name) {\\n',\n  '    if (skip.indexOf(name) !== -1) {\\n',\n  '      return;\\n',\n  '    }\\n',\n  '    out += \\'<dt>\\' + esc(label(name)) + \\'</dt>\\';\\n',\n  '    out += \\'<dd>\\' + valueHtml(name, data[name]) + \\'</dd>\\';\\n',\n  '  });\\n',\n  '  return out ? \\'<dl class=\"kv\">\\' + out + \\'</dl>\\' : \\'\\';\\n',\n  '}\\n',\n  '\\n',\n  'function meter(name, done, total) {\\n',\n  '  if (!total) {\\n',\n  '    return \\'\\';\\n',\n  '  }\\n',\n  '  var pct = Math.min(100, Math.round(100 * done / total));\\n',\n  '  var out = \\'<div class=\"meter\"><span class=\"mute\">\\' + name ',\n  '+ \\' \\';\\n',\n  '  out += done + \\'/\\' + total + \\'</span>\\';\\n',\n  '  out += \\'<span class=\"track\"><i style=\"width:\\' + pct + \\'%\">',\n  '</i></span>\\';\\n',\n  '  return out + \\'</div>\\';\\n',\n  '}\\n',\n  '\\n',\n  'function itemTable(items) {\\n',\n  '  var names = Object.keys(items || {}).sort().reverse();\\n',\n  '  if (!names.length) {\\n',\n  '    return \\'\\';\\n',\n  '  }\\n',\n  '  var counts = {};\\n',\n  '  names.forEach(function (name) {\\n',\n  '    var state = (items[name] || {}).state || \\'unknown\\';\\n',\n  '    counts[state] = (counts[state] || 0) + 1;\\n',\n  '  });\\n',\n  '  var chips = Object.keys(counts).map(function (state) {\\n',\n  '    return badge(state) + \\' <b>\\' + counts[state] + \\'</b>\\';\\n',\n  '  }).join(\\' \\');\\n',\n  '  var rows = \\'\\';\\n',\n  '  names.forEach(function (name) {\\n',\n  '    var item = items[name] || {};\\n',\n  '    rows += \\'<tr><td class=\"nw\">\\' + esc(name.replace(\\'|\\', \\' ',\n  '/ \\'));\\n',\n  '    rows += \\'</td><td>\\' + badge(item.state || \\'unknown\\') + \\'',\n  '</td>\\';\\n',\n  '    rows += \\'<td>\\' + esc(item.step || \\'\\');\\n',\n  '    rows += meter(\\'assets\\', item.assetsDone, item.assetsTota',\n  'l);\\n',\n  '    rows += meter(\\'parts\\', item.partsDone, item.partsTotal);\\n',\n  '    if (item.trail && item.trail.length) {\\n',\n  '      rows += \\'<div class=\"sub mute\">\\' + esc(item.trail.join',\n  '(\\' > \\'));\\n',\n  '      rows += \\'</div>\\';\\n',\n  '    }\\n',\n  '    rows += \\'</td><td class=\"wrap\">\\' + esc(item.detail || \\'\\'',\n  ') + \\'</td>\\';\\n',\n  '    rows += \\'<td class=\"nw mute\" title=\"\\' + esc(item.stepAt ',\n  '|| \\'\\') + \\'\">\\';\\n',\n  '    rows += esc(ago(item.stepAt)) + \\'</td></tr>\\';\\n',\n  '  });\\n',\n  '  var out = \\'<div class=\"chips\">\\' + chips + \\'</div>\\';\\n',\n  '  out += \\'<div class=\"scroll short\"><table><thead><tr>\\';\\n',\n  '  out += \\'<th>Item</th><th>State</th><th>Step</th><th>Detail',\n  '</th>\\';\\n',\n  '  out += \\'<th>Updated</th></tr></thead><tbody>\\' + rows;\\n',\n  '  return out + \\'</tbody></table></div>\\';\\n',\n  '}\\n',\n  '\\n',\n  '// ---------- tab 1: live status ----------\\n',\n  '\\n',\n  'function countChips(data) {\\n',\n  '  var counts = {};\\n',\n  '  [data.days, data.months].forEach(function (items) {\\n',\n  '    Object.keys(items || {}).forEach(function (name) {\\n',\n  '      var state = (items[name] || {}).state || \\'unknown\\';\\n',\n  '      counts[state] = (counts[state] || 0) + 1;\\n',\n  '    });\\n',\n  '  });\\n',\n  '  return Object.keys(counts).map(function (state) {\\n',\n  '    return badge(state) + \\' <b>\\' + counts[state] + \\'</b>\\';\\n',\n  '  }).join(\\' \\');\\n',\n  '}\\n',\n  '\\n',\n  'function lastActivity(data) {\\n',\n  '  return Date.parse(data.lastBeatAt || data.startedAt || \\'\\')',\n  ' || 0;\\n',\n  '}\\n',\n  '\\n',\n  'function flowCard(name, data, open) {\\n',\n  '  var state = data.state || \\'unknown\\';\\n',\n  '  var tone = TONES[state] || \\'idle\\';\\n',\n  '  var when = ago(data.lastBeatAt || data.startedAt);\\n',\n  '  var out = \\'<details class=\"card \\' + tone + \\'\" data-flow=\"\\'',\n  ' + esc(name) + \\'\"\\';\\n',\n  '  out += open ? \\' open>\\' : \\'>\\';\\n',\n  '  out += \\'<summary><span class=\"title\">\\';\\n',\n  '  out += esc(FLOW_TITLES[name] || name) + \\'</span>\\' + badge(',\n  'state);\\n',\n  '  out += \\'<span class=\"chips\">\\' + countChips(data) + \\'</span',\n  '>\\';\\n',\n  '  out += \\'<span class=\"when mute\">\\' + esc(when) + \\'</span></',\n  'summary>\\';\\n',\n  '  out += \\'<div class=\"body\">\\';\\n',\n  '  out += kvList(data, [\\n',\n  '    \\'flow\\',\\n',\n  '    \\'state\\',\\n',\n  '    \\'stuck\\',\\n',\n  '    \\'days\\',\\n',\n  '    \\'months\\',\\n',\n  '    \\'lastLog\\'\\n',\n  '  ]);\\n',\n  '  if (data.lastLog) {\\n',\n  '    out += \\'<p class=\"last\"><span class=\"mute\">Last log line',\n  '</span><br>\\';\\n',\n  '    out += esc(data.lastLog) + \\'</p>\\';\\n',\n  '  }\\n',\n  '  out += itemTable(data.days);\\n',\n  '  out += itemTable(data.months);\\n',\n  '  return out + \\'</div></details>\\';\\n',\n  '}\\n',\n  '\\n',\n  'function commandTable(commands) {\\n',\n  '  if (!commands.length) {\\n',\n  '    return \\'<p class=\"mute\">No backfill commands yet.</p>\\';\\n',\n  '  }\\n',\n  '  var rows = \\'\\';\\n',\n  '  commands.slice(-20).reverse().forEach(function (item) {\\n',\n  '    rows += \\'<tr><td class=\"nw\" title=\"\\' + esc(item.at) + \\'\"',\n  '>\\';\\n',\n  '    rows += esc(ago(item.at)) + \\'</td>\\';\\n',\n  '    rows += \\'<td>\\' + esc(FLOW_TITLES[item.flow] || item.flow',\n  ') + \\'</td>\\';\\n',\n  '    rows += \\'<td>\\' + badge(item.result) + \\'</td>\\';\\n',\n  '    rows += \\'<td class=\"nw\">\\' + esc(item.range || \\'\\') + \\'</t',\n  'd>\\';\\n',\n  '    rows += \\'<td>\\' + (item.force ? \\'force\\' : \\'\\') + \\'</td>\\';\\n',\n  '    rows += \\'<td class=\"wrap\">\\' + esc(item.detail || \\'\\') + \\'',\n  '</td></tr>\\';\\n',\n  '  });\\n',\n  '  var out = \\'<div class=\"scroll\"><table><thead><tr><th>When<',\n  '/th>\\';\\n',\n  '  out += \\'<th>Flow</th><th>Result</th><th>Range</th><th></th',\n  '>\\';\\n',\n  '  out += \\'<th>Detail</th></tr></thead><tbody>\\' + rows;\\n',\n  '  return out + \\'</tbody></table></div>\\';\\n',\n  '}\\n',\n  '\\n',\n  'function openNow() {\\n',\n  '  var view = $(\\'statusView\\');\\n',\n  '  if (!view.querySelectorAll) {\\n',\n  '    return;\\n',\n  '  }\\n',\n  '  var found = {};\\n',\n  '  var any = false;\\n',\n  '  view.querySelectorAll(\\'details\\').forEach(function (item) {\\n',\n  '    any = true;\\n',\n  '    if (item.open) {\\n',\n  '      found[item.getAttribute(\\'data-flow\\')] = true;\\n',\n  '    }\\n',\n  '  });\\n',\n  '  if (any) {\\n',\n  '    openFlows = found;\\n',\n  '  }\\n',\n  '}\\n',\n  '\\n',\n  'function renderStatus(data) {\\n',\n  '  openNow();\\n',\n  '  var flows = data.flows || {};\\n',\n  '  // Newest activity first; flows that never ran stay at the',\n  ' bottom.\\n',\n  '  var names = Object.keys(flows).sort(function (a, b) {\\n',\n  '    var diff = lastActivity(flows[b]) - lastActivity(flows[a',\n  ']);\\n',\n  '    if (diff !== 0) {\\n',\n  '      return diff;\\n',\n  '    }\\n',\n  '    return FLOW_ORDER.indexOf(a) - FLOW_ORDER.indexOf(b);\\n',\n  '  });\\n',\n  '  var out = \\'<div class=\"cards\">\\';\\n',\n  '  names.forEach(function (name, index) {\\n',\n  '    var open = openFlows ? !!openFlows[name] : index === 0;\\n',\n  '    out += flowCard(name, flows[name], open);\\n',\n  '  });\\n',\n  '  out += \\'</div><h2>Recent backfill commands</h2>\\';\\n',\n  '  out += commandTable(data.commands || []);\\n',\n  '  $(\\'statusView\\').innerHTML = out;\\n',\n  '  $(\\'statusRaw\\').textContent = JSON.stringify(data, null, 2)',\n  ';\\n',\n  '  var minutes = Math.round((data.stuckAfterMs || 0) / 60000)',\n  ';\\n',\n  '  $(\\'statusNote\\').textContent = \\'Updated \\' +\\n',\n  '    new Date().toLocaleTimeString() + \\'. STUCK = no checkpoi',\n  'nt for \\' +\\n',\n  '    minutes + \\' min while a run is active. Newest run first.',\n  '\\';\\n',\n  '}\\n',\n  '\\n',\n  'function refresh() {\\n',\n  '  fetch(url(\\'status\\')).then(answer).then(function (data) {\\n',\n  '    $(\\'statusError\\').textContent = \\'\\';\\n',\n  '    renderStatus(data);\\n',\n  '  }).catch(function (error) {\\n',\n  '    $(\\'statusError\\').textContent =\\n',\n  '      \\'Status request failed: \\' + error.message;\\n',\n  '  });\\n',\n  '}\\n',\n  '\\n',\n  '// ---------- tab 2: run log history ----------\\n',\n  '\\n',\n  'function renderHistory() {\\n',\n  '  if (!lastHistory) {\\n',\n  '    return;\\n',\n  '  }\\n',\n  '  var rows = lastHistory.rows || [];\\n',\n  '  var counts = {};\\n',\n  '  rows.forEach(function (row) {\\n',\n  '    counts[row.level] = (counts[row.level] || 0) + 1;\\n',\n  '  });\\n',\n  '  var chips = Object.keys(counts).map(function (level) {\\n',\n  '    return badge(level) + \\' <b>\\' + counts[level] + \\'</b>\\';\\n',\n  '  }).join(\\' \\');\\n',\n  '  var level = $(\\'levelFilter\\').value;\\n',\n  '  var needle = $(\\'textFilter\\').value.toLowerCase();\\n',\n  '  var shown = rows.filter(function (row) {\\n',\n  '    if (level && row.level !== level) {\\n',\n  '      return false;\\n',\n  '    }\\n',\n  '    var hay = [\\n',\n  '      row.message,\\n',\n  '      row.site,\\n',\n  '      row.production_day,\\n',\n  '      row.source\\n',\n  '    ].join(\\' \\').toLowerCase();\\n',\n  '    return hay.indexOf(needle) !== -1;\\n',\n  '  }).reverse();\\n',\n  '  var body = \\'\\';\\n',\n  '  shown.forEach(function (row) {\\n',\n  '    body += \\'<tr class=\"lv-\\' + (TONES[row.level] || \\'idle\\') ',\n  '+ \\'\">\\';\\n',\n  '    body += \\'<td class=\"nw\" title=\"\\' + esc(row.ts_utc) + \\' U',\n  'TC\">\\';\\n',\n  '    body += clock(row.ts_utc) + \\'</td>\\';\\n',\n  '    body += \\'<td>\\' + badge(row.level) + \\'</td>\\';\\n',\n  '    body += \\'<td class=\"nw\">\\' + esc(row.site) + \\'</td>\\';\\n',\n  '    body += \\'<td class=\"nw\">\\' + esc(row.production_day) + \\'<',\n  '/td>\\';\\n',\n  '    body += \\'<td class=\"wrap\">\\' + esc(row.message);\\n',\n  '    body += \\'<div class=\"sub mute\">#\\' + esc(row.seq) + \\' \\';\\n',\n  '    body += esc(row.source) + \\' \\' + esc(row.mode) + \\'</div><',\n  '/td></tr>\\';\\n',\n  '  });\\n',\n  '  var note = \\'Showing \\' + shown.length + \\' of \\' + rows.lengt',\n  'h + \\' rows\\';\\n',\n  '  if (lastHistory.truncated) {\\n',\n  '    note += \\' (the newest \\' + rows.length + \\' of \\' + lastHis',\n  'tory.count;\\n',\n  '    note += \\'; \\' + lastHistory.truncated + \\' older rows not ',\n  'loaded)\\';\\n',\n  '  }\\n',\n  '  var out = \\'<div class=\"chips\">\\' + chips + \\'</div>\\';\\n',\n  '  out += \\'<p class=\"mute\">\\' + esc(note) + \\', newest first.</',\n  'p>\\';\\n',\n  '  if (!shown.length) {\\n',\n  '    out += \\'<p class=\"empty\">No log rows match.</p>\\';\\n',\n  '  } else {\\n',\n  '    out += \\'<div class=\"scroll tall\"><table><thead><tr><th>T',\n  'ime</th>\\';\\n',\n  '    out += \\'<th>Level</th><th>Site</th><th>Day</th><th>Messa',\n  'ge</th>\\';\\n',\n  '    out += \\'</tr></thead><tbody>\\' + body + \\'</tbody></table>',\n  '</div>\\';\\n',\n  '  }\\n',\n  '  $(\\'historyView\\').innerHTML = out;\\n',\n  '}\\n',\n  '\\n',\n  'function loadHistory() {\\n',\n  '  var params = {\\n',\n  '    flow: $(\\'flow\\').value,\\n',\n  '    month: $(\\'month\\').value\\n',\n  '  };\\n',\n  '  $(\\'historyError\\').textContent = \\'\\';\\n',\n  '  $(\\'historyView\\').innerHTML = \\'<p class=\"mute\">Loading...</',\n  'p>\\';\\n',\n  '  historyLoaded = true;\\n',\n  '  fetch(url(\\'history\\', params)).then(answer).then(function (',\n  'data) {\\n',\n  '    lastHistory = data;\\n',\n  '    $(\\'historyRaw\\').textContent = JSON.stringify(data, null,',\n  ' 2);\\n',\n  '    renderHistory();\\n',\n  '  }).catch(function (error) {\\n',\n  '    $(\\'historyView\\').innerHTML = \\'\\';\\n',\n  '    $(\\'historyError\\').textContent =\\n',\n  '      \\'History request failed: \\' + error.message;\\n',\n  '  });\\n',\n  '}\\n',\n  '\\n',\n  '// ---------- tab 3: backfill command ----------\\n',\n  '\\n',\n  'function updateCommandFields() {\\n',\n  '  var pbi = $(\\'commandFlow\\').value === \\'pbi-report\\';\\n',\n  '  $(\\'dateFields\\').hidden = pbi;\\n',\n  '  $(\\'monthFields\\').hidden = !pbi;\\n',\n  '}\\n',\n  '\\n',\n  'function renderCommand(data) {\\n',\n  '  var out = \\'<article class=\"card ok static\"><header><h3>Bac',\n  'kfill queued</h3>\\';\\n',\n  '  out += badge(data.accepted ? \\'accepted\\' : \\'rejected\\') + \\'<',\n  '/header>\\';\\n',\n  '  out += kvList(data, [\\'accepted\\']) + \\'</article>\\';\\n',\n  '  $(\\'commandView\\').innerHTML = out;\\n',\n  '  $(\\'commandResult\\').textContent = JSON.stringify(data, null',\n  ', 2);\\n',\n  '}\\n',\n  '\\n',\n  'function currentKey() {\\n',\n  '  return presetKey || plainKey($(\\'commandKey\\').value);\\n',\n  '}\\n',\n  '\\n',\n  'function clearStuck() {\\n',\n  '  var commandKey = currentKey();\\n',\n  '  if (!commandKey) {\\n',\n  '    $(\\'statusError\\').textContent =\\n',\n  '      \\'Command key missing: type it on the Backfill tab or s',\n  'et COMMAND_KEY.\\';\\n',\n  '    return;\\n',\n  '  }\\n',\n  '  var commandUrl = base + \\'/command?key=\\' + encodeURICompone',\n  'nt(commandKey);\\n',\n  '  fetch(commandUrl, {\\n',\n  '    method: \\'POST\\',\\n',\n  '    headers: {\\n',\n  '      \\'Content-Type\\': \\'application/json\\'\\n',\n  '    },\\n',\n  '    body: JSON.stringify({\\n',\n  '      action: \\'clear-stuck\\'\\n',\n  '    })\\n',\n  '  }).then(answer).then(function (data) {\\n',\n  '    $(\\'statusError\\').textContent = \\'\\';\\n',\n  '    $(\\'statusInfo\\').textContent = \\'Cleared \\' + data.cleared ',\n  '+\\n',\n  '      \\' stuck items (only runs with no checkpoint for 30 min',\n  ').\\';\\n',\n  '    refresh();\\n',\n  '  }).catch(function (error) {\\n',\n  '    $(\\'statusError\\').textContent = \\'Clear failed: \\' + error.',\n  'message;\\n',\n  '  });\\n',\n  '}\\n',\n  '\\n',\n  'function sendCommand(event) {\\n',\n  '  event.preventDefault();\\n',\n  '  var flow = $(\\'commandFlow\\').value;\\n',\n  '  var payload = {\\n',\n  '    flow: flow,\\n',\n  '    force: $(\\'force\\').checked\\n',\n  '  };\\n',\n  '  if (flow === \\'pbi-report\\') {\\n',\n  '    payload.from = $(\\'fromMonth\\').value;\\n',\n  '    payload.to = $(\\'toMonth\\').value;\\n',\n  '  } else {\\n',\n  '    payload.start = $(\\'start\\').value;\\n',\n  '    payload.end = $(\\'end\\').value;\\n',\n  '  }\\n',\n  '  var commandKey = currentKey();\\n',\n  '  if (!commandKey) {\\n',\n  '    $(\\'commandError\\').textContent =\\n',\n  '      \\'Command key missing: type it or set COMMAND_KEY in no',\n  'de 2.1.\\';\\n',\n  '    return;\\n',\n  '  }\\n',\n  '  var commandUrl = base + \\'/command?key=\\' + encodeURICompone',\n  'nt(commandKey);\\n',\n  '  $(\\'commandError\\').textContent = \\'\\';\\n',\n  '  return fetch(commandUrl, {\\n',\n  '    method: \\'POST\\',\\n',\n  '    headers: {\\n',\n  '      \\'Content-Type\\': \\'application/json\\'\\n',\n  '    },\\n',\n  '    body: JSON.stringify(payload)\\n',\n  '  }).then(answer).then(renderCommand).catch(function (error)',\n  ' {\\n',\n  '    $(\\'commandError\\').textContent = \\'Command failed: \\' + err',\n  'or.message;\\n',\n  '  });\\n',\n  '}\\n',\n  '\\n',\n  '// ---------- tabs, raw toggles, copy ----------\\n',\n  '\\n',\n  'function showTab(name) {\\n',\n  '  TABS.forEach(function (tab) {\\n',\n  '    var on = tab === name;\\n',\n  '    $(\\'tab-\\' + tab).className = on ? \\'tab on\\' : \\'tab\\';\\n',\n  '    $(\\'tab-\\' + tab).ariaSelected = on ? \\'true\\' : \\'false\\';\\n',\n  '    $(\\'panel-\\' + tab).hidden = !on;\\n',\n  '  });\\n',\n  '  try {\\n',\n  '    history.replaceState(null, \\'\\', \\'#\\' + name);\\n',\n  '  } catch (e) {\\n',\n  '    // no history API (offline test): the tab still switches\\n',\n  '  }\\n',\n  '  if (name === \\'history\\' && !historyLoaded) {\\n',\n  '    loadHistory();\\n',\n  '  }\\n',\n  '}\\n',\n  '\\n',\n  'function applyRaw(name) {\\n',\n  '  var raw = $(\\'raw-\\' + name).checked;\\n',\n  '  $(\\'copy-\\' + name).textContent = \\'Copy JSON\\';\\n',\n  '  $(name + \\'View\\').hidden = raw;\\n',\n  '  $(name === \\'command\\' ? \\'commandResult\\' : name + \\'Raw\\').hid',\n  'den = !raw;\\n',\n  '}\\n',\n  '\\n',\n  'function copyRaw(name) {\\n',\n  '  var button = $(\\'copy-\\' + name);\\n',\n  '  var id = name === \\'command\\' ? \\'commandResult\\' : name + \\'Ra',\n  'w\\';\\n',\n  '  var text = $(id).textContent;\\n',\n  '  var done = function (message) {\\n',\n  '    button.textContent = message;\\n',\n  '  };\\n',\n  '  if (!navigator.clipboard) {\\n',\n  '    done(\\'Copy not allowed here\\');\\n',\n  '    return;\\n',\n  '  }\\n',\n  '  navigator.clipboard.writeText(text).then(function () {\\n',\n  '    done(\\'Copied\\');\\n',\n  '  }, function () {\\n',\n  '    done(\\'Copy failed\\');\\n',\n  '  });\\n',\n  '}\\n',\n  '\\n',\n  '// ---------- start ----------\\n',\n  '\\n',\n  '$(\\'keyRow\\').hidden = presetKey !== \\'\\';\\n',\n  '$(\\'month\\').value = new Date().toISOString().slice(0, 7);\\n',\n  'TABS.forEach(function (tab) {\\n',\n  '  $(\\'tab-\\' + tab).addEventListener(\\'click\\', function () {\\n',\n  '    showTab(tab);\\n',\n  '  });\\n',\n  '  $(\\'raw-\\' + tab).addEventListener(\\'change\\', function () {\\n',\n  '    applyRaw(tab);\\n',\n  '  });\\n',\n  '  $(\\'copy-\\' + tab).addEventListener(\\'click\\', function () {\\n',\n  '    copyRaw(tab);\\n',\n  '  });\\n',\n  '});\\n',\n  '$(\\'clearStuck\\').addEventListener(\\'click\\', clearStuck);\\n',\n  '$(\\'historyForm\\').addEventListener(\\'submit\\', function (event)',\n  ' {\\n',\n  '  event.preventDefault();\\n',\n  '  loadHistory();\\n',\n  '});\\n',\n  '$(\\'levelFilter\\').addEventListener(\\'change\\', renderHistory);\\n',\n  '$(\\'textFilter\\').addEventListener(\\'input\\', renderHistory);\\n',\n  '$(\\'commandFlow\\').addEventListener(\\'change\\', updateCommandFie',\n  'lds);\\n',\n  '$(\\'commandForm\\').addEventListener(\\'submit\\', sendCommand);\\n',\n  'updateCommandFields();\\n',\n  'var wanted = (location.hash || \\'\\').slice(1);\\n',\n  'showTab(TABS.indexOf(wanted) === -1 ? \\'status\\' : wanted);\\n',\n  'refresh();\\n',\n  'setInterval(refresh, REFRESH_MS);\\n'\n].join('');\n\nvar css = [\n  ':root{--bg:#f4f5f8;--card:#fff;--ink:#1b2230;--mute:#667085;',\n  '--line:#e2e5ec;--accent:#2457d6;--ok:#13663f;--okbg:#dff3e7;',\n  '--warn:#7a5200;--warnbg:#fdf0cf;--bad:#a8231a;--badbg:#fde3e0;',\n  '--run:#1c47b8;--runbg:#e0e9ff;--idle:#475467;--idlebg:#eceef3}',\n  '@media(prefers-color-scheme:dark){:root{--bg:#10141b;--card:#1a202a;',\n  '--ink:#e7eaf0;--mute:#98a2b3;--line:#2b3340;--accent:#86a8ff;',\n  '--ok:#74dba3;--okbg:#14372a;--warn:#f4c45e;--warnbg:#3b2e10;',\n  '--bad:#ff8f86;--badbg:#44201c;--run:#93b4ff;--runbg:#1c2d55;',\n  '--idle:#b6beca;--idlebg:#2a313d}}',\n  '*{box-sizing:border-box}[hidden]{display:none!important}',\n  'body{margin:0;background:var(--bg);color:var(--ink);',\n  'font:14px/1.45 system-ui,sans-serif}',\n  'header.top{display:flex;align-items:baseline;gap:1rem;flex-wrap:wrap;',\n  'padding:1rem 1.25rem .25rem;max-width:1200px;margin:0 auto}',\n  'h1{font-size:1.35rem;margin:0}',\n  'h2{font-size:1.05rem;margin:1.5rem 0 .6rem}',\n  'h3{font-size:1rem;margin:0}',\n  '.mute{color:var(--mute)}.nw{white-space:nowrap}',\n  '.wrap{word-break:break-word;min-width:14rem}',\n  'nav.tabs{position:sticky;top:0;z-index:2;background:var(--bg);',\n  'border-bottom:1px solid var(--line);display:flex;gap:.25rem;',\n  'padding:0 1.25rem;max-width:1200px;margin:0 auto;overflow-x:auto}',\n  '.tab{font:inherit;font-weight:600;color:var(--mute);background:none;',\n  'border:0;border-bottom:3px solid transparent;padding:.7rem 1rem;',\n  'cursor:pointer;white-space:nowrap}',\n  '.tab:hover{color:var(--ink)}',\n  '.tab.on{color:var(--accent);border-bottom-color:var(--accent)}',\n  'main{max-width:1200px;margin:0 auto;padding:1rem 1.25rem 3rem}',\n  '.toolbar{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;',\n  'margin-bottom:.9rem}',\n  '.spacer{flex:1}',\n  'button,select,input{font:inherit;color:var(--ink);background:var(--card);',\n  'border:1px solid var(--line);border-radius:6px;padding:.4rem .6rem}',\n  'button{cursor:pointer}',\n  'button.primary{background:var(--accent);border-color:var(--accent);',\n  'color:#fff;font-weight:600}',\n  'button.ghost:hover{border-color:var(--accent)}',\n  '.sw{display:inline-flex;align-items:center;gap:.4rem;cursor:pointer}',\n  '.sw input{padding:0}',\n  '.cards{display:flex;flex-direction:column;gap:.7rem}',\n  '.card{background:var(--card);border:1px solid var(--line);',\n  'border-left:5px solid var(--idle);border-radius:8px;padding:.9rem 1rem;',\n  'min-width:0}',\n  '.card.run{border-left-color:var(--run)}',\n  '.card.ok{border-left-color:var(--ok)}',\n  '.card.warn{border-left-color:var(--warn)}',\n  '.card.bad{border-left-color:var(--bad)}',\n  '.card summary{display:flex;align-items:center;gap:.7rem;',\n  'flex-wrap:wrap;cursor:pointer;list-style:none}',\n  '.card summary::-webkit-details-marker{display:none}',\n  '.card summary::before{content:\"\\\\25B8\";color:var(--mute)}',\n  '.card[open] summary::before{content:\"\\\\25BE\"}',\n  '.card summary .title{font-weight:700;font-size:1rem}',\n  '.card summary .chips{margin:0;flex:1}',\n  '.card .body{margin-top:.7rem;border-top:1px solid var(--line);',\n  'padding-top:.7rem}',\n  '.card.static header{display:flex;justify-content:space-between;',\n  'align-items:center;gap:.5rem;margin-bottom:.5rem}',\n  '.badge{display:inline-block;border-radius:999px;padding:.05rem .6rem;',\n  'font-size:.78rem;font-weight:700;text-transform:uppercase;',\n  'letter-spacing:.03em;white-space:nowrap}',\n  '.badge.ok{color:var(--ok);background:var(--okbg)}',\n  '.badge.run{color:var(--run);background:var(--runbg)}',\n  '.badge.warn{color:var(--warn);background:var(--warnbg)}',\n  '.badge.bad{color:var(--bad);background:var(--badbg)}',\n  '.badge.idle{color:var(--idle);background:var(--idlebg)}',\n  '.kv{display:grid;grid-template-columns:max-content 1fr;',\n  'gap:.2rem .9rem;margin:0 0 .6rem}',\n  '.kv dt{color:var(--mute)}.kv dd{margin:0;word-break:break-word}',\n  '.last{background:var(--bg);border-radius:6px;padding:.5rem .7rem;',\n  'margin:.4rem 0;word-break:break-word}',\n  '.chips{display:flex;gap:.6rem;flex-wrap:wrap;margin:.5rem 0;',\n  'align-items:center}',\n  '.scroll{overflow:auto;border:1px solid var(--line);border-radius:6px;',\n  'background:var(--card)}',\n  '.scroll.short{max-height:300px}.scroll.tall{max-height:70vh}',\n  'table{border-collapse:collapse;width:100%}',\n  'th{position:sticky;top:0;background:var(--card);text-align:left;',\n  'font-size:.75rem;text-transform:uppercase;color:var(--mute);',\n  'letter-spacing:.04em}',\n  'th,td{padding:.4rem .65rem;border-bottom:1px solid var(--line);',\n  'vertical-align:top}',\n  'tr:last-child td{border-bottom:0}',\n  'tr.lv-bad td:first-child{box-shadow:inset 4px 0 var(--bad)}',\n  'tr.lv-warn td:first-child{box-shadow:inset 4px 0 var(--warn)}',\n  '.sub{font-size:.75rem}',\n  '.meter{display:flex;align-items:center;gap:.5rem;font-size:.75rem}',\n  '.track{flex:1;min-width:60px;max-width:140px;height:6px;',\n  'background:var(--idlebg);border-radius:3px;overflow:hidden}',\n  '.track i{display:block;height:100%;background:var(--run)}',\n  'form.row{display:flex;gap:.9rem;flex-wrap:wrap;align-items:flex-end}',\n  'form.row label{display:flex;flex-direction:column;gap:.2rem;',\n  'font-weight:600;font-size:.85rem}',\n  'form.row label.check{flex-direction:row;align-items:center;gap:.4rem;',\n  'font-weight:400}',\n  '.fields{display:contents}',\n  '#keyRow{flex-basis:100%}',\n  '#keyRow input{width:100%;max-width:34rem}',\n  '.error{color:var(--bad);font-weight:600;margin:.5rem 0}',\n  '.error:empty{display:none}',\n  '.empty{padding:1.5rem;text-align:center;color:var(--mute)}',\n  'pre{background:var(--card);border:1px solid var(--line);',\n  'border-radius:6px;padding:1rem;overflow:auto;max-height:70vh;',\n  'font:12.5px/1.45 ui-monospace,Consolas,monospace}',\n  '@media(max-width:600px){main,nav.tabs,header.top{padding-left:.75rem;',\n  'padding-right:.75rem}.kv{grid-template-columns:1fr}',\n  '.kv dd{margin-bottom:.3rem}}'\n].join('\\n');\n\nfunction rawBar(name, note, extra) {\n  return [\n    '<div class=\"toolbar\"><span class=\"mute\" id=\"' + name + 'Note\">',\n    note + '</span><span class=\"spacer\"></span>' + (extra || ''),\n    '<label class=\"sw\"><input id=\"raw-' + name + '\" type=\"checkbox\">',\n    'Raw JSON</label>',\n    '<button id=\"copy-' + name + '\" type=\"button\" class=\"ghost\">',\n    'Copy JSON</button></div>'\n  ].join('');\n}\n\nvar html = [\n  '<!doctype html>',\n  '<html lang=\"en\">',\n  '<head><meta charset=\"utf-8\">',\n  '<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">',\n  '<title>Report run monitor</title>',\n  '<style>' + css + '</style></head>',\n  '<body>',\n  '<header class=\"top\"><h1>Report run monitor</h1></header>',\n  '<nav class=\"tabs\" role=\"tablist\">',\n  '<button id=\"tab-status\" class=\"tab on\" role=\"tab\" type=\"button\">',\n  'Live status</button>',\n  '<button id=\"tab-history\" class=\"tab\" role=\"tab\" type=\"button\">',\n  'Run log history</button>',\n  '<button id=\"tab-command\" class=\"tab\" role=\"tab\" type=\"button\">',\n  'Backfill</button></nav>',\n  '<main>',\n  '<section id=\"panel-status\" role=\"tabpanel\">',\n  rawBar(\n    'status',\n    'Refreshes every 10 seconds.',\n    '<button id=\"clearStuck\" type=\"button\" class=\"ghost\">Clear stuck</button>'\n  ),\n  '<p id=\"statusError\" class=\"error\"></p>',\n  '<p id=\"statusInfo\" class=\"mute\"></p>',\n  '<div id=\"statusView\">Loading status...</div>',\n  '<pre id=\"statusRaw\" hidden></pre>',\n  '</section>',\n  '<section id=\"panel-history\" role=\"tabpanel\" hidden>',\n  '<form id=\"historyForm\" class=\"row\">',\n  '<label>Flow <select id=\"flow\">',\n  '<option value=\"sih-hull\">SIH report daily</option>',\n  '<option value=\"rpt-hull\">Shift report</option>',\n  '<option value=\"pbi-report\">PBI report build</option>',\n  '<option value=\"run-monitor\">Monitor command log</option>',\n  '</select></label>',\n  '<label>Month <input id=\"month\" type=\"month\" required></label>',\n  '<button type=\"submit\" class=\"primary\">Load history</button>',\n  '<label>Level <select id=\"levelFilter\">',\n  '<option value=\"\">All</option>',\n  '<option value=\"failed\">failed</option>',\n  '<option value=\"error\">error</option>',\n  '<option value=\"warn\">warn</option>',\n  '<option value=\"info\">info</option>',\n  '</select></label>',\n  '<label>Search <input id=\"textFilter\" type=\"search\"',\n  ' placeholder=\"message, site, day\"></label>',\n  '</form>',\n  rawBar('history', 'Choose a flow and month.'),\n  '<p id=\"historyError\" class=\"error\"></p>',\n  '<div id=\"historyView\"></div>',\n  '<pre id=\"historyRaw\" hidden></pre>',\n  '</section>',\n  '<section id=\"panel-command\" role=\"tabpanel\" hidden>',\n  '<p class=\"mute\">The POST endpoint has its own key. Caps: 31 days or',\n  ' 12 months. Force may run a second backfill concurrently.</p>',\n  '<form id=\"commandForm\" class=\"row\">',\n  '<label>Flow <select id=\"commandFlow\">',\n  '<option value=\"sih-hull\">SIH report daily</option>',\n  '<option value=\"rpt-hull\">Shift report</option>',\n  '<option value=\"pbi-report\">PBI report build</option>',\n  '</select></label>',\n  '<div id=\"dateFields\" class=\"fields\">',\n  '<label>Start <input id=\"start\" type=\"date\"></label>',\n  '<label>End <input id=\"end\" type=\"date\"></label></div>',\n  '<div id=\"monthFields\" class=\"fields\" hidden>',\n  '<label>From <input id=\"fromMonth\" type=\"month\"></label>',\n  '<label>To <input id=\"toMonth\" type=\"month\"></label></div>',\n  '<label class=\"check\"><input id=\"force\" type=\"checkbox\">',\n  'Force if busy</label>',\n  '<button type=\"submit\" class=\"primary\">Queue backfill</button>',\n  '<div id=\"keyRow\">',\n  '<label>Command key <input id=\"commandKey\" type=\"text\" size=\"50\"',\n  ' autocomplete=\"off\"></label>',\n  '<p class=\"mute\">Paste the key of \"Post backfill command\" (the text',\n  ' after key=; a pasted URL also works), or set COMMAND_KEY in node',\n  ' 2.1.</p></div></form>',\n  '<p id=\"commandError\" class=\"error\"></p>',\n  rawBar('command', 'Answer of the last command.'),\n  '<div id=\"commandView\"><p class=\"mute\">No command sent.</p></div>',\n  '<pre id=\"commandResult\" hidden>No command sent.</pre>',\n  '</section></main>',\n  '<script>',\n  '(function () {',\n  'var presetKey = ' + presetKey + ';',\n  clientScript,\n  '})();',\n  '</script></body></html>'\n].join('\\n');\n\nmsg.statusCode = 200;\nmsg.headers = {\n  'content-type': 'text/html; charset=utf-8',\n  'cache-control': 'no-store'\n};\nmsg.payload = html;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 220,
+    "y": 340,
+    "wires": [
+      [
+        "f2dc1.5f8cb7"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "f2dc1.5f8cb7",
+    "type": "http response",
+    "name": "Send page",
+    "statusCode": "",
+    "headers": {},
+    "x": 420,
+    "y": 340,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "f4cb0.6125d0",
+    "type": "comment",
+    "name": "[3] STATUS",
+    "info": "STAGE 3 - Returns compact snapshots only: report-day checkpoints, PBI build and listener state, Config state, plus a derived STUCK state after 30 minutes without a checkpoint.",
+    "x": 120,
+    "y": 480,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "e3649.52c3ef",
+    "type": "link in",
+    "name": "STATUS",
+    "links": [
+      "e5538.545d08"
+    ],
+    "x": 60,
+    "y": 560,
+    "wires": [
+      [
+        "f6b9f.62bee9"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "f6b9f.62bee9",
+    "type": "function",
+    "name": "3.1 Build status JSON",
+    "func": "// Builds a JSON snapshot of the small global run-status records.\n// In: an authenticated status request.\n// Out: JSON with a derived STUCK state after 30 minutes without a checkpoint.\nvar STUCK_AFTER_MS = 30 * 60 * 1000;\nvar now = Date.now();\nvar keys = [\n  'runStatus_sih-hull',\n  'runStatus_rpt-hull',\n  'runStatus_pbi-report',\n  'runStatus_pbi-listener'\n];\nvar flows = {};\n\nfunction active(status) {\n  if (status.state === 'running' || status.state === 'queued') {\n    return true;\n  }\n  var days = status.days || {};\n  return Object.keys(days).some(function (day) {\n    return days[day].state === 'running' ||\n      days[day].state === 'queued';\n  });\n}\n\nfunction snapshot(key) {\n  var stored = glob.get(key);\n  if (!stored || typeof stored !== 'object') {\n    return {\n      state: 'not started'\n    };\n  }\n\n  var copy = JSON.parse(JSON.stringify(stored));\n  var running = active(copy);\n  copy.state = copy.state || (running ? 'running' : 'idle');\n  var beat = Date.parse(copy.lastBeatAt || copy.startedAt || '');\n  if (running && isFinite(beat) && now - beat > STUCK_AFTER_MS) {\n    copy.state = 'STUCK';\n    copy.stuck = true;\n    Object.keys(copy.days || {}).forEach(function (day) {\n      var item = copy.days[day];\n      if (item.state === 'running' || item.state === 'queued') {\n        item.state = 'STUCK';\n      }\n    });\n  } else {\n    copy.stuck = false;\n  }\n  return copy;\n}\n\nkeys.forEach(function (key) {\n  flows[key.replace('runStatus_', '')] = snapshot(key);\n});\nvar cfg = glob.get('cfg');\nflows.config = cfg && cfg.platform && Array.isArray(cfg.sites) ?\n  {\n    state: 'ready',\n    platform: cfg.platform,\n    sites: cfg.sites.length\n  } : {\n    state: 'unavailable'\n  };\n\nmsg.statusCode = 200;\nmsg.headers = {\n  'content-type': 'application/json; charset=utf-8',\n  'cache-control': 'no-store'\n};\nmsg.payload = {\n  generatedAt: new Date(now).toISOString(),\n  stuckAfterMs: STUCK_AFTER_MS,\n  flows: flows,\n  commands: glob.get('runMonitorCommands') || []\n};\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 220,
+    "y": 560,
+    "wires": [
+      [
+        "f8a8e.645802"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "f8a8e.645802",
+    "type": "http response",
+    "name": "Send status",
+    "statusCode": "",
+    "headers": {},
+    "x": 420,
+    "y": 560,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "fa97d.65f11b",
+    "type": "comment",
+    "name": "[4] HISTORY REQUEST",
+    "info": "STAGE 4 - Validates the flow and month, lists one log folder, and reads the requested monthly CSV only when it exists.",
+    "x": 140,
+    "y": 700,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "e7427.55f621",
+    "type": "link in",
+    "name": "HISTORY",
+    "links": [
+      "e9316.578f3a"
+    ],
+    "x": 60,
+    "y": 780,
+    "wires": [
+      [
+        "fc86c.678a34"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "0064a.6abc66",
+    "type": "link out",
+    "name": "to ERROR",
+    "mode": "link",
+    "links": [
+      "eb205.592853"
+    ],
+    "x": 380,
+    "y": 800,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "fc86c.678a34",
+    "type": "function",
+    "name": "4.1 Check history request",
+    "func": "// Validates a history query and builds the one-month data-lake folder path.\n// In: query.flow and query.month from the authenticated history request.\n// Out: the list-objects request, or an explicit 400/503 JSON response.\nvar FLOWS = [\n  'sih-hull',\n  'rpt-hull',\n  'pbi-report',\n  'run-monitor'\n];\nvar query = msg.req && msg.req.query ? msg.req.query : {};\nvar flowName = String(query.flow || '');\nvar month = String(query.month || '');\n\nfunction refuse(code, reason) {\n  msg.statusCode = code;\n  msg.headers = {\n    'content-type': 'application/json'\n  };\n  msg.payload = {\n    error: reason\n  };\n  return [null, msg];\n}\n\nif (FLOWS.indexOf(flowName) === -1) {\n  return refuse(400, 'flow must be a known report log');\n}\nif (!/^\\d{4}-(0[1-9]|1[0-2])$/.test(month)) {\n  return refuse(400, 'month must be YYYY-MM');\n}\n\nvar cfg = glob.get('cfg');\nif (!cfg || !cfg.root) {\n  return refuse(503, 'Config is not available');\n}\n\nmsg.historyFlow = flowName;\nmsg.historyMonth = month;\nmsg.historyFolder = cfg.root + '/logs/' + flowName + '/';\nmsg.historyName = 'log_' + month + '.csv';\nmsg.path = msg.historyFolder;\nreturn [msg, null];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 220,
+    "y": 780,
+    "wires": [
+      [
+        "fe75b.69234d"
+      ],
+      [
+        "0064a.6abc66"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "fe75b.69234d",
+    "type": "list objects",
+    "name": "List objects",
+    "subtenant": "",
+    "path": "",
+    "x": 440,
+    "y": 760,
+    "wires": [
+      [
+        "02539.6c557f"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "08206.7120ca",
+    "type": "link out",
+    "name": "to NOT FOUND",
+    "mode": "link",
+    "links": [
+      "06317.6f87b1"
+    ],
+    "x": 820,
+    "y": 780,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "0a0f5.72b9e3",
+    "type": "link out",
+    "name": "to ERROR",
+    "mode": "link",
+    "links": [
+      "eb205.592853"
+    ],
+    "x": 820,
+    "y": 820,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "02539.6c557f",
+    "type": "function",
+    "name": "4.2 Find history file",
+    "func": "// Finds the requested month file in the listed log folder.\n// In: msg.payload = list objects result; msg.historyName = exact filename.\n// Out: read object (path without data/ten=<tenant>/), 404 when absent, or\n// 502 for an invalid list response.\nvar TENANT_PREFIX = /^\\/?(data\\/ten=[^\\/]+\\/)?/;\nif (!Array.isArray(msg.payload)) {\n  msg.statusCode = 502;\n  msg.headers = {\n    'content-type': 'application/json'\n  };\n  msg.payload = {\n    error: 'the data lake did not return a history folder list'\n  };\n  return [null, null, msg];\n}\n\nvar found = msg.payload.filter(function (item) {\n  return String(item.key || '').split('/').pop() === msg.historyName;\n})[0];\n\nif (!found) {\n  msg.statusCode = 404;\n  msg.headers = {\n    'content-type': 'application/json'\n  };\n  msg.payload = {\n    error: 'history file not found',\n    flow: msg.historyFlow,\n    month: msg.historyMonth\n  };\n  return [null, msg, null];\n}\n\nmsg.path = String(found.key).replace(TENANT_PREFIX, '');\nreturn [msg, null, null];\n",
+    "outputs": 3,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 660,
+    "y": 780,
+    "wires": [
+      [
+        "04428.6dee98"
+      ],
+      [
+        "08206.7120ca"
+      ],
+      [
+        "0a0f5.72b9e3"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "04428.6dee98",
+    "type": "read object",
+    "name": "Read history CSV",
+    "path": "",
+    "mode": "object",
+    "x": 880,
+    "y": 740,
+    "wires": [
+      [
+        "0bfe4.7452fc"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "0bfe4.7452fc",
+    "type": "function",
+    "name": "4.3 Build history JSON",
+    "func": "// Parses one quoted CSV log file and returns its newest 200 rows as JSON.\n// In: msg.payload = the CSV text from the data lake read-object node.\n// Out: JSON rows, or an explicit 502 for an unusable file.\nvar MAX_ROWS = 200;\n\n// The read node gives a Buffer (or a serialised one) in the VFC, or text.\nfunction decode(payload) {\n  if (typeof payload === 'string') {\n    return payload;\n  }\n  if (Buffer.isBuffer(payload)) {\n    return payload.toString('utf8');\n  }\n  if (payload && payload.type === 'Buffer' && payload.data) {\n    return Buffer.from(payload.data).toString('utf8');\n  }\n  return null;\n}\n\nvar text = decode(msg.payload);\nif (text === null) {\n  msg.statusCode = 502;\n  msg.headers = {\n    'content-type': 'application/json'\n  };\n  msg.payload = {\n    error: 'the data lake did not return log text'\n  };\n  return msg;\n}\n\nvar rows = [];\nvar row = [];\nvar field = '';\nvar quoted = false;\nfor (var i = 0; i < text.length; i++) {\n  var ch = text.charAt(i);\n  if (ch === '\"') {\n    if (quoted && text.charAt(i + 1) === '\"') {\n      field += '\"';\n      i++;\n    } else {\n      quoted = !quoted;\n    }\n  } else if (ch === ',' && !quoted) {\n    row.push(field);\n    field = '';\n  } else if (ch === '\\n' && !quoted) {\n    row.push(field.replace(/\\r$/, ''));\n    rows.push(row);\n    row = [];\n    field = '';\n  } else {\n    field += ch;\n  }\n}\nif (field || row.length) {\n  row.push(field.replace(/\\r$/, ''));\n  rows.push(row);\n}\n\nvar headers = rows.shift() || [];\nif (headers.indexOf('ts_utc') === -1 ||\n    headers.indexOf('message') === -1) {\n  msg.statusCode = 502;\n  msg.headers = {\n    'content-type': 'application/json'\n  };\n  msg.payload = {\n    error: 'the history file has an unexpected header'\n  };\n  return msg;\n}\n\nvar entries = rows.filter(function (values) {\n  return values.some(function (value) {\n    return value !== '';\n  });\n}).map(function (values) {\n  var entry = {};\n  headers.forEach(function (header, index) {\n    entry[header] = values[index] || '';\n  });\n  return entry;\n});\nvar total = entries.length;\nvar recent = entries.slice(-MAX_ROWS);\n\nmsg.statusCode = 200;\nmsg.headers = {\n  'content-type': 'application/json; charset=utf-8',\n  'cache-control': 'no-store'\n};\nmsg.payload = {\n  flow: msg.historyFlow,\n  month: msg.historyMonth,\n  count: total,\n  truncated: total - recent.length,\n  rows: recent\n};\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 1100,
+    "y": 780,
+    "wires": [
+      [
+        "0ded3.75ec15"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "0ded3.75ec15",
+    "type": "http response",
+    "name": "Send history",
+    "statusCode": "",
+    "headers": {},
+    "x": 1320,
+    "y": 780,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "0fdc2.77852e",
+    "type": "comment",
+    "name": "[5] ERROR RESPONSE",
+    "info": "STAGE 5 - Invalid requests keep their explicit 400, 404 or 503 status and JSON error. A list-object response that is not a list returns 502.",
+    "x": 140,
+    "y": 920,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "eb205.592853",
+    "type": "link in",
+    "name": "ERROR",
+    "links": [
+      "ed0f4.5ac16c",
+      "0064a.6abc66",
+      "0a0f5.72b9e3"
+    ],
+    "x": 60,
+    "y": 1000,
+    "wires": [
+      [
+        "11cb1.791e47"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "11cb1.791e47",
+    "type": "http response",
+    "name": "Send request error",
+    "statusCode": "",
+    "headers": {},
+    "x": 200,
+    "y": 1000,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "13ba0.7ab760",
+    "type": "comment",
+    "name": "[6] HISTORY NOT FOUND",
+    "info": "STAGE 6 - A month with no CSV log returns 404 without starting a read-object request that could otherwise wait indefinitely.",
+    "x": 160,
+    "y": 1140,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "06317.6f87b1",
+    "type": "link in",
+    "name": "NOT FOUND",
+    "links": [
+      "08206.7120ca"
+    ],
+    "x": 60,
+    "y": 1220,
+    "wires": [
+      [
+        "15a8f.7c5079"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "15a8f.7c5079",
+    "type": "http response",
+    "name": "Send history not found",
+    "statusCode": "",
+    "headers": {},
+    "x": 220,
+    "y": 1220,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "1797e.7de992",
+    "type": "comment",
+    "name": "[7] BACKFILL COMMAND",
+    "info": "POST /reports-monitor/command validates one backfill, records an audit line, and returns 202 before the target starts. Generate this HTTP In access key separately. Connect the three named BACKFILL link outs to their matching report tabs after import. A force command can run concurrently with the same flow.",
+    "x": 140,
+    "y": 1360,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "270f6.8ab25a",
+    "type": "link out",
+    "name": "to LOG",
+    "mode": "link",
+    "links": [
+      "25207.891941"
+    ],
+    "x": 560,
+    "y": 1520,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "1986d.7f82ab",
+    "type": "http in",
+    "name": "Post backfill command",
+    "endpoint": "/reports-monitor/command",
+    "method": "post",
+    "upload": false,
+    "access": "key",
+    "key": "",
+    "users": "",
+    "powerMode": false,
+    "x": 160,
+    "y": 1440,
+    "wires": [
+      [
+        "1b75c.811bc4"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "1b75c.811bc4",
+    "type": "function",
+    "name": "7.1 Validate backfill",
+    "func": "// Validates a backfill command, records its audit entry and emits one target.\n// In: JSON {flow, force, start/end} or {flow, force, from/to, tables, sites}.\n// Out: HTTP 202/400/409/503, one BACKFILL message, and a CSV log message.\nvar DAILY_FLOWS = ['sih-hull', 'rpt-hull'];\nvar PBI_TABLES = [\n  'Plan_OPT_EU',\n  'Time_Utilisation_EU',\n  'Daily_Losses_EU'\n];\nvar MAX_DAYS = 31;\nvar MAX_MONTHS = 12;\nvar DUPLICATE_MS = 5000;\n// Same limit as the STUCK state of the status page.\nvar STALE_MS = 30 * 60 * 1000;\nvar CLEAR_FLOWS = [\n  'sih-hull',\n  'rpt-hull',\n  'pbi-report'\n];\n\n// The VFC http in node can hand the POST body over as an object, as JSON\n// text, as a Buffer (also serialised) or in msg.req.body: take all of them.\nfunction parseBody(value) {\n  var text = null;\n  if (typeof value === 'string') {\n    text = value;\n  } else if (Buffer.isBuffer(value)) {\n    text = value.toString('utf8');\n  } else if (value && value.type === 'Buffer' && value.data) {\n    text = Buffer.from(value.data).toString('utf8');\n  } else {\n    return value;\n  }\n  try {\n    return JSON.parse(text);\n  } catch (e) {\n    return undefined;\n  }\n}\n\nfunction describe(value) {\n  if (value === undefined || value === null) {\n    return 'nothing';\n  }\n  return Buffer.isBuffer(value) ? 'a Buffer' : typeof value;\n}\n\nvar request = parseBody(msg.payload);\nvar gotBody = describe(msg.payload);\nif (!request || typeof request !== 'object') {\n  request = parseBody(msg.req && msg.req.body);\n  gotBody += ', req.body ' + describe(msg.req && msg.req.body);\n}\nvar commandKey = JSON.stringify(request);\nvar previous = glob.get('lastCommand');\nif (previous && previous.key === commandKey &&\n    Date.now() - previous.at < DUPLICATE_MS) {\n  var again = Object.assign({}, msg);\n  again.statusCode = previous.status;\n  again.headers = {\n    'content-type': 'application/json; charset=utf-8',\n    'cache-control': 'no-store'\n  };\n  again.payload = previous.body;\n  return [again, null, null, null, null];\n}\nvar acceptedFlow = '';\nvar force = !!(request && request.force === true);\nvar cfg = glob.get('cfg');\n\nfunction audit(result, flowName, range, forced, detail) {\n  var events = glob.get('runMonitorCommands') || [];\n  var entry = {\n    at: new Date().toISOString(),\n    flow: flowName,\n    result: result,\n    force: forced,\n    range: range,\n    detail: detail\n  };\n  events.push(entry);\n  if (events.length > 50) {\n    events.splice(0, events.length - 50);\n  }\n  glob.set('runMonitorCommands', events);\n\n  if (!cfg || !cfg.root) {\n    return null;\n  }\n  flow.set('cfg', {\n    root: cfg.root\n  });\n  return {\n    payload: '[command] ' + result.toUpperCase() + ': ' + flowName +\n      (range ? ' ' + range : '') + (forced ? ' force=true' : ''),\n    level: result === 'accepted' ? 'info' : 'warn',\n    source: 'run-monitor'\n  };\n}\n\n// The VFC was seen to run this node twice for one POST (30 ms apart): an\n// identical command within DUPLICATE_MS gets the first answer again.\nfunction response(status, body) {\n  glob.set('lastCommand', {\n    key: commandKey,\n    at: Date.now(),\n    status: status,\n    body: body\n  });\n  var out = Object.assign({}, msg);\n  out.statusCode = status;\n  out.headers = {\n    'content-type': 'application/json; charset=utf-8',\n    'cache-control': 'no-store'\n  };\n  out.payload = body;\n  return out;\n}\n\nfunction refuse(status, reason, flowName, range) {\n  var name = flowName || 'unknown';\n  var log = audit('rejected', name, range || '', force, reason);\n  return [\n    response(status, {\n      accepted: false,\n      error: reason\n    }),\n    null,\n    null,\n    null,\n    log\n  ];\n}\n\nfunction validDay(value) {\n  if (typeof value !== 'string' ||\n      !/^\\d{4}-\\d{2}-\\d{2}$/.test(value)) {\n    return null;\n  }\n  var parts = value.split('-').map(Number);\n  var date = new Date(0);\n  date.setUTCFullYear(parts[0], parts[1] - 1, parts[2]);\n  date.setUTCHours(0, 0, 0, 0);\n  if (date.getUTCFullYear() !== parts[0] ||\n      date.getUTCMonth() !== parts[1] - 1 ||\n      date.getUTCDate() !== parts[2]) {\n    return null;\n  }\n  return date.getTime();\n}\n\nfunction monthIndex(value) {\n  if (typeof value !== 'string' ||\n      !/^\\d{4}-(0[1-9]|1[0-2])$/.test(value)) {\n    return null;\n  }\n  return Number(value.slice(0, 4)) * 12 +\n    Number(value.slice(5, 7)) - 1;\n}\n\n// True when a status has had no checkpoint for STALE_MS (a dead run).\nfunction stale(status) {\n  var beat = Date.parse(status.lastBeatAt || status.startedAt || '');\n  return isFinite(beat) && Date.now() - beat > STALE_MS;\n}\n\n// Sets every running or queued item of a dead run to interrupted.\nfunction clearItems(items) {\n  var count = 0;\n  Object.keys(items || {}).forEach(function (name) {\n    var item = items[name];\n    if (item.state === 'running' || item.state === 'queued') {\n      item.state = 'interrupted';\n      item.detail = 'run stopped before this item finished';\n      count++;\n    }\n  });\n  return count;\n}\n\nfunction clearStuck() {\n  var count = 0;\n  CLEAR_FLOWS.forEach(function (name) {\n    var status = glob.get('runStatus_' + name);\n    if (!status || !stale(status)) {\n      return;\n    }\n    count += clearItems(status.days) + clearItems(status.months);\n    if (status.state === 'running' || status.state === 'queued') {\n      status.state = name === 'pbi-report' ? 'interrupted' : 'idle';\n      count++;\n    }\n    glob.set('runStatus_' + name, status);\n  });\n  return count;\n}\n\nfunction busy(flowName) {\n  if (flowName === 'pbi-report' &&\n      (glob.get('jobQueue') || []).length > 0) {\n    return true;\n  }\n  var status = glob.get('runStatus_' + flowName);\n  if (!status || stale(status)) {\n    return false;\n  }\n  if (status.state === 'running' || status.state === 'queued') {\n    return true;\n  }\n  return Object.keys(status.days || {}).some(function (day) {\n    return status.days[day].state === 'running' ||\n      status.days[day].state === 'queued';\n  });\n}\n\nif (!request || typeof request !== 'object' || Array.isArray(request)) {\n  return refuse(\n    400,\n    'payload must be a JSON object (got ' + gotBody + ')',\n    '',\n    ''\n  );\n}\nif (request.force !== undefined && typeof request.force !== 'boolean') {\n  return refuse(400, 'force must be a boolean', '', '');\n}\nif (request.action === 'clear-stuck') {\n  var cleared = clearStuck();\n  var clearLog = audit('cleared', 'all', '', false, cleared + ' items');\n  return [\n    response(200, {\n      accepted: true,\n      action: 'clear-stuck',\n      cleared: cleared\n    }),\n    null,\n    null,\n    null,\n    clearLog\n  ];\n}\nvar flowName = String(request.flow || '');\nif (DAILY_FLOWS.indexOf(flowName) === -1 &&\n    flowName !== 'pbi-report') {\n  return refuse(400, 'flow must be a known report flow', '', '');\n}\nacceptedFlow = flowName;\n\nif (!cfg || !cfg.root || !Array.isArray(cfg.sites)) {\n  return refuse(503, 'Config is not available', acceptedFlow, '');\n}\n\nvar range = '';\nvar dailyPayload = null;\nvar pbiPayload = null;\nif (DAILY_FLOWS.indexOf(flowName) !== -1) {\n  var startMs = validDay(request.start);\n  var endMs = validDay(request.end);\n  if (startMs === null || endMs === null || endMs < startMs) {\n    return refuse(\n      400,\n      'start and end must be valid YYYY-MM-DD dates, start not after end',\n      flowName,\n      ''\n    );\n  }\n  var days = Math.floor((endMs - startMs) / 86400000) + 1;\n  if (days > MAX_DAYS) {\n    return refuse(\n      400,\n      'date range must not exceed ' + MAX_DAYS + ' days',\n      flowName,\n      ''\n    );\n  }\n  range = request.start + '..' + request.end;\n  dailyPayload = {\n    start: request.start,\n    end: request.end\n  };\n} else {\n  var fromIndex = monthIndex(request.from);\n  var toIndex = monthIndex(request.to);\n  if (fromIndex === null || toIndex === null || toIndex < fromIndex) {\n    return refuse(\n      400,\n      'from and to must be valid YYYY-MM months, from not after to',\n      flowName,\n      ''\n    );\n  }\n  var months = toIndex - fromIndex + 1;\n  if (months > MAX_MONTHS) {\n    return refuse(\n      400,\n      'month range must not exceed ' + MAX_MONTHS + ' months',\n      flowName,\n      ''\n    );\n  }\n  var sites = cfg.sites.map(function (site) {\n    return site.name;\n  });\n  pbiPayload = {\n    from: request.from,\n    to: request.to\n  };\n  if (request.tables !== undefined) {\n    if (!Array.isArray(request.tables) || !request.tables.length ||\n        request.tables.some(function (table) {\n          return PBI_TABLES.indexOf(table) === -1;\n        })) {\n      return refuse(400, 'tables must be known PBI report tables', flowName,\n        '');\n    }\n    pbiPayload.tables = request.tables.slice();\n  }\n  if (request.sites !== undefined) {\n    if (!Array.isArray(request.sites) || !request.sites.length ||\n        request.sites.some(function (site) {\n          return sites.indexOf(site) === -1;\n        })) {\n      return refuse(400, 'sites must be present in Config', flowName, '');\n    }\n    pbiPayload.sites = request.sites.slice();\n  }\n  range = request.from + '..' + request.to;\n}\n\nif (busy(flowName) && !force) {\n  return refuse(\n    409,\n    'flow is busy; set force=true to allow a concurrent backfill',\n    flowName,\n    range\n  );\n}\n\nvar now = new Date().toISOString();\nif (dailyPayload) {\n  var current = glob.get('runStatus_' + flowName) || {\n    flow: flowName\n  };\n  current.state = 'queued';\n  current.mode = 'backfill';\n  current.runId = 'monitor-' + Date.now().toString(36);\n  current.startedAt = now;\n  current.lastBeatAt = now;\n  current.days = {};\n  glob.set('runStatus_' + flowName, current);\n} else {\n  var tableSummary = (pbiPayload.tables || ['all']).join(', ').slice(0, 120);\n  var siteSummary = (pbiPayload.sites || ['all']).join(', ').slice(0, 120);\n  glob.set('runStatus_pbi-report', {\n    flow: 'pbi-report',\n    state: 'queued',\n    source: 'monitor',\n    startedAt: now,\n    lastBeatAt: now,\n    job: {\n      tables: tableSummary,\n      sites: siteSummary,\n      from: pbiPayload.from,\n      to: pbiPayload.to\n    },\n    lastLog: ''\n  });\n}\n\nvar log = audit('accepted', flowName, range, force, '');\nvar result = response(202, {\n  accepted: true,\n  flow: flowName,\n  range: range,\n  forced: force\n});\nif (flowName === 'sih-hull') {\n  return [\n    result,\n    {\n      payload: dailyPayload\n    },\n    null,\n    null,\n    log\n  ];\n}\nif (flowName === 'rpt-hull') {\n  return [\n    result,\n    null,\n    {\n      payload: dailyPayload\n    },\n    null,\n    log\n  ];\n}\nreturn [\n  result,\n  null,\n  null,\n  {\n    payload: pbiPayload\n  },\n  log\n];\n",
+    "outputs": 5,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 400,
+    "y": 1440,
+    "wires": [
+      [
+        "1d64b.82b4dd"
+      ],
+      [
+        "1f53a.844df6"
+      ],
+      [
+        "21429.85e70f"
+      ],
+      [
+        "23318.878028"
+      ],
+      [
+        "270f6.8ab25a"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "1f53a.844df6",
+    "type": "link out",
+    "name": "to sih-hull BACKFILL",
+    "mode": "link",
+    "links": [],
+    "x": 560,
+    "y": 1400,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "21429.85e70f",
+    "type": "link out",
+    "name": "to rpt-hull BACKFILL",
+    "mode": "link",
+    "links": [],
+    "x": 560,
+    "y": 1440,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "23318.878028",
+    "type": "link out",
+    "name": "to pbi-report BACKFILL",
+    "mode": "link",
+    "links": [],
+    "x": 560,
+    "y": 1480,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "1d64b.82b4dd",
+    "type": "http response",
+    "name": "Send command result",
+    "statusCode": "",
+    "headers": {},
+    "x": 640,
+    "y": 1360,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "28fe5.8c4b73",
+    "type": "comment",
+    "name": "[8] NODE ERROR",
+    "info": "STAGE 8 - A data-lake node error returns a generic 502. Credentials and request keys are never copied into the response.",
+    "x": 120,
+    "y": 1580,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "2cdc3.8f7da5",
+    "type": "catch",
+    "name": "Catch monitor errors",
+    "scope": null,
+    "uncaught": false,
+    "x": 140,
+    "y": 1660,
+    "wires": [
+      [
+        "2aed4.8de48c"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "2aed4.8de48c",
+    "type": "function",
+    "name": "8.1 Build error response",
+    "func": "// Returns a safe, explicit error for monitor-node failures.\n// In: a message from a catch node.\n// Out: a generic JSON 502 without exposing request credentials.\nnode.status({\n  fill: 'red',\n  shape: 'ring',\n  text: 'monitor request failed'\n});\nmsg.statusCode = 502;\nmsg.headers = {\n  'content-type': 'application/json'\n};\nmsg.payload = {\n  error: 'monitor request failed'\n};\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 380,
+    "y": 1660,
+    "wires": [
+      [
+        "2ecb2.9116be"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "2ecb2.9116be",
+    "type": "http response",
+    "name": "Send node error",
+    "statusCode": "",
+    "headers": {},
+    "x": 620,
+    "y": 1660,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "30ba1.92afd7",
+    "type": "comment",
+    "name": "[9] ERRORS",
+    "info": "STAGE 9 - a catch node takes every error raised by a node of this tab and turns it into a log line with the name of the node and the message of the API (for example the limit message of evaluateKPIs). Errors of the log nodes themselves are not logged again.",
+    "x": 120,
+    "y": 1800,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "3497f.95e209",
+    "type": "catch",
+    "name": "Catch errors",
+    "scope": null,
+    "uncaught": false,
+    "x": 120,
+    "y": 1880,
+    "wires": [
+      [
+        "32a90.9448f0"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "3686e.977b22",
+    "type": "link out",
+    "name": "to LOG",
+    "mode": "link",
+    "links": [
+      "25207.891941"
+    ],
+    "x": 460,
+    "y": 1880,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "32a90.9448f0",
+    "type": "function",
+    "name": "9.1 Describe error",
+    "func": "// Turns an error caught by the catch node into a log line.\n// In: the message of a catch node (msg.error).\n// Out: a log line for the shared log. Errors of the log nodes themselves\n// are dropped (no log loop).\nvar err = msg.error || {};\nvar source = (err.source && err.source.name) || 'unknown node';\n\nfunction textOf(value) {\n  if (value === undefined || value === null) {\n    return '';\n  }\n  if (typeof value === 'string') {\n    return value;\n  }\n  return JSON.stringify(value);\n}\n\n// Takes the API message out of an error body when there is one.\nfunction apiMessage(value) {\n  var body = value;\n  if (typeof value === 'string') {\n    try {\n      body = JSON.parse(value);\n    } catch (e) {\n      return value;\n    }\n  }\n  var data = body && body.data;\n  var list = (data && data.errors) || (body && body.errors);\n  if (list && list.length && list[0].message) {\n    return list[0].message;\n  }\n  return textOf(value);\n}\n\nif (msg.logBatch) {\n  node.status({\n    fill: 'red',\n    shape: 'ring',\n    text: 'log write failed'\n  });\n  return null;\n}\n\nvar text = '';\nif (msg.day) {\n  text += msg.day + ' [' + msg.mode + '] ';\n}\ntext += 'ERROR in ' + source + ': ' + apiMessage(err.message);\nreturn {\n  topic: 'log',\n  payload: text,\n  level: 'error',\n  source: source\n};\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 320,
+    "y": 1880,
+    "wires": [
+      [
+        "3686e.977b22"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "3875d.99143b",
+    "type": "comment",
+    "name": "[10] LOG",
+    "info": "STAGE 10 - every log line arrives here through the link \"to LOG\". 1 turns a line into a row (time, flow, site, production day, level) and shows it in the debug sidebar. The join collects the rows for 30 s, the delay lets one batch pass every 10 s so two writes do not overlap, 3 sets the file of the month and the read node loads the old file. A read of a file that does not exist answers nothing (only a warning), so the same batch also goes through a 10 s wait to the append step. The log is written whatever the dry-run switch says.",
+    "x": 100,
+    "y": 2020,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "25207.891941",
+    "type": "link in",
+    "name": "LOG",
+    "links": [
+      "270f6.8ab25a",
+      "3686e.977b22"
+    ],
+    "x": 60,
+    "y": 2100,
+    "wires": [
+      [
+        "3a64c.9aad54"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "3a64c.9aad54",
+    "type": "function",
+    "name": "10.1 Format log line",
+    "func": "// Turns one log message into a row for the log file.\n// In: msg.payload = log text (optional msg.level and msg.source).\n// Out: msg.payload = the row, msg.line = the text for the debug node.\nvar FLOW_NAME = 'run-monitor';\nvar cfg = flow.get('cfg') || {};\nvar text = String(msg.payload);\n\nvar seq = (flow.get('logSeq') || 0) + 1;\nflow.set('logSeq', seq);\n\n// Most lines start with the production day and the mode: \"2026-09-01 [x] \".\nvar day = '';\nvar mode = '';\nvar message = text;\nvar parts = /^(\\d{4}-\\d{2}-\\d{2}) \\[([^\\]]*)\\] ([\\s\\S]*)$/.exec(text);\nif (parts) {\n  day = parts[1];\n  mode = parts[2];\n  message = parts[3];\n}\n\nvar level = msg.level;\nif (!level) {\n  if (/FAILED/.test(message)) {\n    level = 'failed';\n  } else if (/NOTHING TO WRITE/.test(message)) {\n    level = 'warn';\n  } else {\n    level = 'info';\n  }\n}\n\nmsg.line = text;\nmsg.payload = {\n  ts_utc: new Date().toISOString(),\n  seq: seq,\n  flow: FLOW_NAME,\n  site: cfg.site || 'all',\n  production_day: day,\n  mode: mode,\n  level: level,\n  source: msg.source || 'flow',\n  message: message\n};\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 200,
+    "y": 2100,
+    "wires": [
+      [
+        "3c53b.9c466d",
+        "3e42a.9ddf86"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "3c53b.9c466d",
+    "type": "join",
+    "name": "Collect log lines",
+    "mode": "custom",
+    "build": "array",
+    "property": "payload",
+    "propertyType": "msg",
+    "key": "topic",
+    "joiner": "\\n",
+    "joinerType": "str",
+    "accumulate": false,
+    "useparts": false,
+    "timeout": "30",
+    "count": "",
+    "reduceRight": false,
+    "reduceExp": "",
+    "reduceInit": "",
+    "reduceInitType": "",
+    "reduceFixup": "",
+    "x": 420,
+    "y": 2080,
+    "wires": [
+      [
+        "40319.9f789f"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "3e42a.9ddf86",
+    "type": "debug",
+    "name": "Run log",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "line",
+    "targetType": "msg",
+    "x": 380,
+    "y": 2120,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "40319.9f789f",
+    "type": "delay",
+    "name": "One log batch per 10 s",
+    "pauseType": "rate",
+    "timeout": "1",
+    "timeoutUnits": "seconds",
+    "rate": "1",
+    "nbRateUnits": "10",
+    "rateUnits": "second",
+    "randomFirst": "1",
+    "randomLast": "1",
+    "randomUnits": "seconds",
+    "drop": false,
+    "powerMode": false,
+    "x": 640,
+    "y": 2100,
+    "wires": [
+      [
+        "42208.a111b8"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "42208.a111b8",
+    "type": "function",
+    "name": "10.2 Build log write",
+    "func": "// Prepares the write of one batch of log rows (the read node runs next).\n// In: msg.payload = array of log rows from the join node.\n// Out: msg.path = file of the month, msg.logRows, msg.logBatchId, no payload.\n// msg.logBatch keeps errors of the log nodes themselves out of the log.\nvar FLOW_NAME = 'run-monitor';\nvar cfg = flow.get('cfg') || {};\nvar root = cfg.root || 'logs_without_root';\nvar rows = msg.payload;\nvar month = rows[0].ts_utc.slice(0, 7);\n\nvar batchNo = (flow.get('logBatchNo') || 0) + 1;\nflow.set('logBatchNo', batchNo);\n\nmsg.logRows = rows;\nmsg.path = root + '/logs/' + FLOW_NAME + '/log_' + month + '.csv';\nmsg.logBatch = true;\nmsg.logBatchId = rows[0].ts_utc + '#' + batchNo;\ndelete msg.payload;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 880,
+    "y": 2100,
+    "wires": [
+      [
+        "440f7.a2aad1",
+        "45fe6.a443ea"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "49dc4.a7761c",
+    "type": "link out",
+    "name": "to APPEND",
+    "mode": "link",
+    "links": [
+      "47ed5.a5dd03"
+    ],
+    "x": 1240,
+    "y": 2100,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "440f7.a2aad1",
+    "type": "read object",
+    "name": "Read log file",
+    "path": "",
+    "mode": "object",
+    "x": 1080,
+    "y": 2080,
+    "wires": [
+      [
+        "49dc4.a7761c"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "4bcb3.a90f35",
+    "type": "link out",
+    "name": "to APPEND",
+    "mode": "link",
+    "links": [
+      "47ed5.a5dd03"
+    ],
+    "x": 1240,
+    "y": 2180,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "45fe6.a443ea",
+    "type": "delay",
+    "name": "Wait for read 10 s",
+    "pauseType": "delay",
+    "timeout": "10",
+    "timeoutUnits": "seconds",
+    "rate": "1",
+    "nbRateUnits": "1",
+    "rateUnits": "second",
+    "randomFirst": "1",
+    "randomLast": "5",
+    "randomUnits": "seconds",
+    "drop": false,
+    "powerMode": false,
+    "x": 1100,
+    "y": 2120,
+    "wires": [
+      [
+        "4bcb3.a90f35"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "4dba2.aaa84e",
+    "type": "comment",
+    "name": "[11] LOG WRITE",
+    "info": "STAGE 11 - adds the rows of the batch to the old file and writes the whole file back (the data lake has no append). Columns: ts_utc, seq, flow, site, production_day, mode, level, source, message. Every field is quoted, line breaks become a space. The batch arrives twice (read answer and the wait) and is written once. If the read gives no answer for a file this flow wrote before, a new file with a time stamp is written, so the history is never replaced.",
+    "x": 120,
+    "y": 2240,
+    "wires": []
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "47ed5.a5dd03",
+    "type": "link in",
+    "name": "APPEND",
+    "links": [
+      "49dc4.a7761c",
+      "4bcb3.a90f35"
+    ],
+    "x": 60,
+    "y": 2320,
+    "wires": [
+      [
+        "4fa91.ac4167"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "4fa91.ac4167",
+    "type": "function",
+    "name": "11.1 Append log rows",
+    "func": "// Adds the rows of one batch to the log file of the month.\n// In: msg.payload = the old file (read answered) or nothing (no answer).\n// Out: msg.payload = the whole new file, the data lake has no append.\n// The same batch can arrive twice (read answer, then the wait): once only.\nvar SEPARATOR = ',';\nvar KEEP_IDS = 50;\nvar COLUMNS = [\n  'ts_utc',\n  'seq',\n  'flow',\n  'site',\n  'production_day',\n  'mode',\n  'level',\n  'source',\n  'message'\n];\n\n// Quotes inside a field are doubled, line breaks become a space.\nfunction quote(value) {\n  var text = (value === undefined || value === null) ? '' : String(value);\n  text = text.replace(/\"/g, '\"\"').replace(/[\\r\\n]+/g, ' ');\n  return '\"' + text + '\"';\n}\n\nfunction lineOf(row) {\n  return COLUMNS.map(function (name) {\n    return quote(row[name]);\n  }).join(SEPARATOR);\n}\n\n// The read node gives text, or a serialised buffer.\nfunction decode(payload) {\n  if (typeof payload === 'string') {\n    return payload;\n  }\n  if (payload && payload.type === 'Buffer' && payload.data) {\n    var bin = '';\n    payload.data.forEach(function (byte) {\n      bin += String.fromCharCode(byte);\n    });\n    try {\n      return decodeURIComponent(escape(bin));\n    } catch (e) {\n      return bin;\n    }\n  }\n  return null;\n}\n\nvar rows = msg.logRows.slice();\nrows.sort(function (a, b) {\n  if (a.ts_utc !== b.ts_utc) {\n    return a.ts_utc < b.ts_utc ? -1 : 1;\n  }\n  return a.seq - b.seq;\n});\n\nvar done = flow.get('logDone') || [];\nvar known = flow.get('logKnown') || [];\nif (done.indexOf(msg.logBatchId) >= 0) {\n  return null;\n}\n\nvar path = msg.path;\nvar old = '';\nvar problem = '';\nif (msg.payload === undefined || msg.payload === null) {\n  if (known.indexOf(path) >= 0) {\n    problem = 'read gave no answer for a file written before';\n  }\n} else {\n  old = decode(msg.payload);\n  if (old === null) {\n    old = '';\n    problem = 'old file is not text';\n  }\n}\nif (problem) {\n  // Never replace the old file: write a new one with a time stamp.\n  var stamp = new Date().toISOString().replace(/[-:.TZ]/g, '');\n  path = path.replace(/\\.csv$/, '_' + stamp + '.csv');\n  rows.push({\n    ts_utc: new Date().toISOString(),\n    seq: 0,\n    flow: rows[0].flow,\n    site: rows[0].site,\n    production_day: '',\n    mode: '',\n    level: 'error',\n    source: 'log',\n    message: problem + ', wrote ' + path\n  });\n} else if (known.indexOf(path) < 0) {\n  known.push(path);\n  flow.set('logKnown', known);\n}\n\nvar lines = [];\nif (!old) {\n  lines.push(COLUMNS.map(quote).join(SEPARATOR));\n} else if (old.slice(-1) !== '\\n') {\n  old += '\\n';\n}\nrows.forEach(function (row) {\n  lines.push(lineOf(row));\n});\n\ndone.push(msg.logBatchId);\nflow.set('logDone', done.slice(-KEEP_IDS));\n\nmsg.payload = old + lines.join('\\n') + '\\n';\nmsg.path = path;\ndelete msg.logRows;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 200,
+    "y": 2320,
+    "wires": [
+      [
+        "51980.adda80"
+      ]
+    ]
+  },
+  {
+    "z": "d7caf.492d59",
+    "id": "51980.adda80",
+    "type": "write object",
+    "name": "Log to data lake",
+    "path": "",
+    "mode": "object",
+    "x": 420,
+    "y": 2320,
+    "wires": []
+  }
+]

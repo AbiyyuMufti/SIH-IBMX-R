@@ -25,6 +25,7 @@ var pending = flow.get('pending') || {};
 var now = Date.now();
 var day = new Date(now).toISOString().slice(0, 10);
 var queue = glob.get('jobQueue') || [];
+var lastQueuedJob = null;
 var added = 0;
 var logs = [];
 var sourceGroups = {};
@@ -49,6 +50,7 @@ function addTables(list, tables) {
 
 function addJob(job, why) {
   queue.push(job);
+  lastQueuedJob = job;
   added++;
   logs.push({
     topic: 'log',
@@ -134,6 +136,21 @@ Object.keys(sourceGroups).forEach(function (key) {
 flow.set('pending', pending);
 glob.set('jobQueue', queue);
 var waiting = Object.keys(pending).length;
+var status = glob.get('runStatus_pbi-listener') || {};
+status.flow = 'pbi-listener';
+status.state = 'listening';
+status.lastBeatAt = new Date(now).toISOString();
+status.pendingEntries = waiting;
+status.queuedJobs = queue.length;
+if (lastQueuedJob) {
+  status.lastQueuedJob = {
+    tables: (lastQueuedJob.tables || []).join(', ').slice(0, 120),
+    sites: (lastQueuedJob.sites || []).join(', ').slice(0, 120),
+    from: lastQueuedJob.from || '',
+    to: lastQueuedJob.to || ''
+  };
+}
+glob.set('runStatus_pbi-listener', status);
 node.status({
   fill: added ? 'green' : 'blue',
   shape: 'dot',

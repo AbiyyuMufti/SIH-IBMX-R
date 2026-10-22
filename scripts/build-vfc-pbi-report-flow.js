@@ -37,7 +37,7 @@ const monthEnd = (table, schema) => [
 
 function buildFlow() {
   const b = makeBuilder(330);
-  const { add, id, col, rowY, comment, lane, linkOut } = b;
+  const { add, id, stableId, col, rowY, comment, lane, linkOut } = b;
   let r = 1;
 
   const stage1 = b.nextStage();
@@ -77,6 +77,15 @@ function buildFlow() {
     func: code('b1-settings.js').replace('__DRY_RUN__', dryRun),
     outputs: 1, language: 'javascript', noerr: 0, x: col(1), y: rowY(r),
     wires: [[id('startFn')]]
+  });
+  add({
+    id: stableId('pbiReportBackfillIn'),
+    type: 'link in',
+    name: 'pbi-report BACKFILL',
+    links: [],
+    x: col(0),
+    y: rowY(r) + 40,
+    wires: [[id('settings')]]
   });
   add({
     id: id('startFn'), type: 'function', name: '1.2 Start jobs',

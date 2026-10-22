@@ -236,6 +236,8 @@ export function lintFunction(code) {
   return { errors, logicLines: logic, longest: Math.max(...raw.map((x) => x.length)) };
 }
 
+const MAX_NODES_PER_TAB = 200;
+
 // ---------------------------------------------------------------------------
 // Flow checks: ids, wires, links, cycles, debug fan-in, backward wires.
 // ---------------------------------------------------------------------------
@@ -279,12 +281,16 @@ export function validateFlow(nodes) {
       }
     }
     if (n.type === 'link in') {
+      // Backfill inputs are connected to the monitor's outputs after import.
+      const pendingBackfill = String(n.name || '').endsWith(' BACKFILL');
       for (const t of n.links || []) {
         const source = byId.get(t);
         if (!source || source.type !== 'link out') errors.push(`${label(n)}: link from missing link out ${t}`);
         else if (!(source.links || []).includes(n.id)) errors.push(`${label(n)}: ${label(source)} does not list it`);
       }
-      if (!(n.links || []).length) errors.push(`${label(n)}: no link out points to it`);
+      if (!(n.links || []).length && !pendingBackfill) {
+        errors.push(`${label(n)}: no link out points to it`);
+      }
     }
   }
 
@@ -313,6 +319,18 @@ export function validateFlow(nodes) {
     }
     const isStart = ['inject', 'comment', 'tab', 'link in', 'catch', 'http in', 'subscribe object'].includes(n.type);
     if (!isStart && incoming.get(n.id) === 0) warnings.push(`${label(n)}: nothing is wired to it`);
+  }
+
+  // The VFC refuses a workspace (tab) with more than 200 nodes.
+  const perTab = new Map();
+  for (const n of nodes) {
+    if (n.type !== 'tab') perTab.set(n.z, (perTab.get(n.z) || 0) + 1);
+  }
+  for (const [tab, count] of perTab) {
+    if (count > MAX_NODES_PER_TAB) {
+      const t = nodes.find((x) => x.id === tab);
+      errors.push(`tab "${(t && t.label) || tab}": ${count} nodes, the VFC allows ${MAX_NODES_PER_TAB}`);
+    }
   }
 
   // function nodes

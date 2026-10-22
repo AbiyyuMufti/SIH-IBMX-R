@@ -5,6 +5,13 @@
 var LISTENERS_ON = true;
 
 if (!LISTENERS_ON) {
+  glob.set('runStatus_pbi-listener', {
+    flow: 'pbi-listener',
+    state: 'off',
+    lastBeatAt: new Date().toISOString(),
+    pendingEntries: 0,
+    queuedJobs: (glob.get('jobQueue') || []).length
+  });
   node.status({
     fill: 'grey',
     shape: 'ring',
@@ -18,6 +25,7 @@ var pending = flow.get('pending') || {};
 var key = event.kind + '|' + event.site + '|';
 key += event.kind === 'source' ? event.month : event.type;
 var now = Date.now();
+var status = glob.get('runStatus_pbi-listener') || {};
 
 var entry = pending[key];
 if (!entry) {
@@ -35,6 +43,18 @@ entry.types[event.type] = true;
 entry.events++;
 pending[key] = entry;
 flow.set('pending', pending);
+status.flow = 'pbi-listener';
+status.state = 'listening';
+status.lastBeatAt = new Date(now).toISOString();
+status.pendingEntries = Object.keys(pending).length;
+status.queuedJobs = (glob.get('jobQueue') || []).length;
+status.lastEvent = {
+  kind: event.kind,
+  site: event.site,
+  month: event.month || '',
+  type: event.type || ''
+};
+glob.set('runStatus_pbi-listener', status);
 
 node.status({
   fill: 'blue',
