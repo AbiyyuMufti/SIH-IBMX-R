@@ -1,9 +1,10 @@
 // Routes the monitor page, status JSON, history request or an unknown path.
-// In: an authenticated GET with the optional route parameter `view`.
+// In: an authenticated GET with an optional query parameter `view`.
 // Out: exactly one of PAGE, STATUS, HISTORY or ERROR.
-var view = msg.req && msg.req.params && msg.req.params.view;
+var query = msg.req && msg.req.query ? msg.req.query : {};
+var view = query.view;
 
-if (!view) {
+if (view === undefined || view === '' || view === 'page') {
   return [msg, null, null, null];
 }
 if (view === 'status') {

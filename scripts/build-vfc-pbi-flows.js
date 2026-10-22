@@ -171,7 +171,6 @@ function buildDailyFlow(site, index) {
     'one asset. 3.1 and 3.2: Asset Management GET asset (hierarchyPath), then evaluateKPIs POST (read-style, groupedByDateTime=true, recursive=false, no ORDER filter). 3.3 checks the response, 3.4 pivots it to one entry per hour. Every asset ends at the join, also when skipped or failed (link "to JOIN"), so the join never waits for a missing message.',
     [
       linkInStep('ASSET'),
-      statusStep('assetKpiStatus', flowName, site.name, 'ASSET KPIs'),
       fn('assetFn', 'Build asset request', 's3-asset-request.js', ['next']),
       http('assetHttp', 'GET asset (hierarchy)'),
       fn('kpiReqFn', 'Build KPI request', 's3-kpi-request.js',
@@ -187,7 +186,6 @@ function buildDailyFlow(site, index) {
     'the day answer of evaluateKPIs (from the day call or merged from the hourly parts) is checked, then pivoted to one entry per hour. A failed call ends at the join (link "to JOIN").',
     [
       linkInStep('KPI CHECK'),
-      statusStep('kpiCheckStatus', flowName, site.name, 'KPI CHECK'),
       fn('kpiCheckFn', 'Check KPI response', 's3-check-kpi.js',
         ['next', 'JOIN']),
       fn('pivotFn', 'Pivot KPI results', 's3-pivot-kpi.js', ['next']),
@@ -197,7 +195,6 @@ function buildDailyFlow(site, index) {
     'one asset. The shift of an hour comes from the calendar of the asset. 4.1 asks the OEE config for the calendar id and the product collection id, 4.2 asks the calendar events that cover the production day, 4.3 turns them into shift rules (freq, interval, start, until, duration). A failed call or an asset without a calendar fails the day (link "to JOIN").',
     [
       linkInStep('SHIFT'),
-      statusStep('shiftStatus', flowName, site.name, 'ASSET SHIFTS'),
       fn('cfgFn', 'Build config request', 'd4-config-request.js', ['next']),
       http('cfgHttp', 'GET asset config'),
       fn('evFn', 'Build calendar events request', 'd4-events-request.js',
@@ -211,7 +208,6 @@ function buildDailyFlow(site, index) {
     'one asset. 5.1 asks filterValues for the products and orders of the production day (the lists behind the Product and Order dropdowns of the OEE app). 5.2 checks the answer and asks the product list (name, code, description, design speed) of the product collection of the asset. A day without any product or order goes straight to "to ASSIGN"; an asset without a product collection goes on without master data ("to VALUES"). A failed call fails the day (link "to JOIN").',
     [
       linkInStep('PRODUCTS'),
-      statusStep('productsStatus', flowName, site.name, 'ASSET PRODUCTS'),
       fn('valReqFn', 'Build filter values request', 'd7-values-request.js',
         ['next']),
       http('valHttp', 'GET filter values'),
@@ -224,7 +220,6 @@ function buildDailyFlow(site, index) {
     'one asset. 6.1 keeps the master data of the products of the day and sends ONE MESSAGE PER PRODUCT AND PER ORDER (one per second). 6.2 builds the evaluateKPIs POST (read-style, hourly) filtered on that product or order. 6.3 keeps the hours that have parts and waits until every value of the asset is in (the state is kept in flow context under valueRuns, so no second split is needed). A failed call fails the day (link "to JOIN").',
     [
       linkInStep('VALUES'),
-      statusStep('valueKpiStatus', flowName, site.name, 'VALUE KPIs'),
       fn('valMsgFn', 'Build value messages', 'd7-value-messages.js',
         ['next', 'ASSIGN', 'JOIN']),
       delay('valDelay', 'One value per second'),
@@ -241,7 +236,6 @@ function buildDailyFlow(site, index) {
     'the answer of one product or order call (from the call or merged from the hourly parts): its hours with parts are kept until every value of the asset is in (flow context valueRuns). A failed call fails the day (link "to JOIN").',
     [
       linkInStep('VALUE CHECK'),
-      statusStep('valueCheckStatus', flowName, site.name, 'VALUE CHECK'),
       fn('valCollectFn', 'Collect value hours', 'd7-collect.js',
         ['next', 'JOIN']),
       end('ASSIGN')
@@ -250,7 +244,6 @@ function buildDailyFlow(site, index) {
     'one asset. 7.1 gives every hour its product and order: the value that has parts in that hour; an hour without parts takes the value of the hour before it (the first hours take the next value). 7.2 groups the hourly KPIs per shift AND product and builds the pbi_plan_opt rows (total time = total minus shift plan stop, planned OpT = operational time, OEE time = used operational time, all in minutes; capacity = design speed per minute x planned OpT; downtime units = design speed per minute x downtime minutes; part name = product description, else name; product key = product code) and the pbi_time_utilisation row. An hour outside every shift gets shift_name null.',
     [
       linkInStep('ASSIGN'),
-      statusStep('assignStatus', flowName, site.name, 'ASSIGN & PLAN'),
       fn('assignFn', 'Assign hours to products', 'd7-assign-hours.js',
         ['next']),
       fn('planFn', 'Build plan rows', 'd4-plan-rows.js', ['next']),

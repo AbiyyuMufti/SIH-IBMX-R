@@ -276,12 +276,6 @@ export const waitStep = (key, name, seconds, stack = false, dy = 0) => ({
 // to the lane "back" (the check node of the day call).
 export const kpiPartsSteps = (prefix, back, flowName, siteName) => [
   linkInStep(`${prefix} PARTS`),
-  statusStep(
-    `${prefix}PartsStart`,
-    flowName,
-    siteName,
-    `${prefix} PARTS`
-  ),
   fn(`${prefix}PartsFn`, 'Build hour requests', 'd9-kpi-parts.js', ['next']),
   delay(`${prefix}PartsDelay`, 'One hour per second'),
   http(`${prefix}PartsHttp`, 'POST evaluateKPIs (one hour)'),

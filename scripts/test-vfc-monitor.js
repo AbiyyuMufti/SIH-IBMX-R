@@ -191,7 +191,7 @@ check(
   'pruned status remains below the 2 MB VFC context limit'
 );
 
-const route = vmFunction('m1-route.js', {});
+const route = vmFunction('v1-route.js', {});
 for (const [view, output] of [
   ['', 0],
   ['status', 1],
@@ -199,7 +199,7 @@ for (const [view, output] of [
 ]) {
   const request = {
     req: {
-      params: view ? { view } : {}
+      query: view ? { view } : {}
     }
   };
   const routed = route(flow, node, request, Buffer, Promise, glob);
@@ -207,7 +207,7 @@ for (const [view, output] of [
 }
 const unknownRoute = {
   req: {
-    params: {
+    query: {
       view: 'unknown'
     }
   }
@@ -225,7 +225,7 @@ check(
   'unknown monitor route returns 404 JSON'
 );
 
-const statusFn = vmFunction('m2-status-json.js', {});
+const statusFn = vmFunction('v2-status-json.js', {});
 const staleAt = new Date(Date.now() - 31 * 60 * 1000).toISOString();
 globalData['runStatus_sih-hull'] = {
   flow: 'sih-hull',
@@ -274,7 +274,7 @@ check(
   'Config status is derived without exposing credentials'
 );
 
-const historyRequest = vmFunction('m3-history-request.js', {});
+const historyRequest = vmFunction('v3-history-request.js', {});
 globalData.cfg = {
   root: 'eu_report'
 };
@@ -332,7 +332,7 @@ globalData.cfg = {
   root: 'eu_report'
 };
 
-const pickHistory = vmFunction('m4-pick-history.js', {});
+const pickHistory = vmFunction('v4-pick-history.js', {});
 const historyList = {
   payload: [
     {
@@ -381,7 +381,7 @@ for (let i = 1; i <= 205; i++) {
     `"2026-10-01","backfill","info","flow","${escaped}"`
   );
 }
-const historyJson = vmFunction('m5-history-json.js', {});
+const historyJson = vmFunction('v5-history-json.js', {});
 const historyMessage = {
   payload: historyRows.join('\r\n'),
   historyFlow: 'sih-hull',
@@ -401,7 +401,7 @@ check(
 );
 
 const pageMessage = {};
-vmFunction('m6-monitor-page.js', {})(
+vmFunction('v6-monitor-page.js', {})(
   flow,
   node,
   pageMessage,
@@ -412,10 +412,13 @@ vmFunction('m6-monitor-page.js', {})(
 check(
   pageMessage.statusCode === 200 &&
     pageMessage.headers['content-type'].indexOf('text/html') === 0 &&
+    pageMessage.payload.indexOf('base+"/?view="') !== -1 &&
     pageMessage.payload.indexOf('url("status")') !== -1 &&
     pageMessage.payload.indexOf('url("history",params)') !== -1 &&
+    pageMessage.payload.indexOf('"/status"') === -1 &&
+    pageMessage.payload.indexOf('"/history"') === -1 &&
     pageMessage.payload.indexOf('/command?key=') !== -1,
-  'monitor page includes status, history and command requests'
+  'monitor page uses query views for GETs and a separate command route'
 );
 
 const listenerData = {};
@@ -507,7 +510,7 @@ check(
   'quiet listener checkpoint preserves a PBI failure outcome'
 );
 
-const command = vmFunction('m10-command.js', {});
+const command = vmFunction('v10-command.js', {});
 globalData.cfg = {
   root: 'eu_report',
   sites: [
@@ -746,6 +749,15 @@ const postNode = monitorFlow.find((item) =>
 check(
   postNode && postNode.method === 'post' && postNode.access === 'key',
   'command endpoint requires the VFC access key'
+);
+const getNode = monitorFlow.find((item) =>
+  item.type === 'http in' &&
+  item.name === 'Get report monitor'
+);
+check(
+  getNode && getNode.endpoint === '/reports-monitor/' &&
+    getNode.method === 'get',
+  'monitor GET endpoint uses the fixed trailing-slash route'
 );
 for (const [file, name, targetName] of [
   ['vfc-pbi-daily-hull.json', 'sih-hull BACKFILL', 'SITE SETTINGS'],

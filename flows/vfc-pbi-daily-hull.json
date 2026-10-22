@@ -1008,23 +1008,6 @@
     "y": 1440,
     "wires": [
       [
-        "86838.4f1181"
-      ]
-    ]
-  },
-  {
-    "z": "b6d0f.bee9f9",
-    "id": "86838.4f1181",
-    "type": "function",
-    "name": "7.1 Note status: ASSET KPIs",
-    "func": "// Updates one small live status entry in global context.\n// In: a report message; out: the same message, unchanged.\n// running writes queued, running, an asset count, or an hourly-part count.\nvar FLOW_NAME = 'sih-hull';\nvar SITE_NAME = 'Hull';\nvar STEP = 'ASSET KPIs';\nvar ACTION = 'running';\nvar KEY = 'runStatus_' + FLOW_NAME;\nvar MAX_DAYS = 100;\nvar KEEP_DAYS_MS = 7 * 86400000;\n\nfunction finished(state) {\n  return state === 'written' || state === 'dry_run' ||\n    state === 'failed' || state === 'nothing';\n}\n\nfunction prune(status, now) {\n  var keys = Object.keys(status.days);\n  keys.forEach(function (day) {\n    var item = status.days[day];\n    var touched = Date.parse(item.stepAt || status.startedAt || now);\n    if (finished(item.state) && now - touched > KEEP_DAYS_MS) {\n      delete status.days[day];\n    }\n  });\n  keys = Object.keys(status.days);\n  if (keys.length > MAX_DAYS) {\n    keys.sort(function (a, b) {\n      return Date.parse(status.days[a].stepAt || '') -\n        Date.parse(status.days[b].stepAt || '');\n    });\n    keys.slice(0, keys.length - MAX_DAYS).forEach(function (day) {\n      delete status.days[day];\n    });\n  }\n}\n\nvar now = new Date().toISOString();\nvar nowMs = Date.parse(now);\nvar status = glob.get(KEY) || {\n  flow: FLOW_NAME,\n  site: SITE_NAME,\n  dryRun: true,\n  runId: '',\n  mode: '',\n  startedAt: now,\n  lastBeatAt: now,\n  days: {}\n};\nvar cfg = flow.get('cfg') || {};\nstatus.flow = FLOW_NAME;\nstatus.site = SITE_NAME;\nstatus.dryRun = cfg.dryRun !== false;\nstatus.lastBeatAt = now;\n\nif (ACTION === 'queue') {\n  status.state = 'running';\n  if (status.runId !== msg.runId) {\n    status.runId = msg.runId || now;\n    status.mode = msg.mode || '';\n    status.startedAt = msg.startedAt || now;\n  }\n  var queued = msg.day || msg.payload;\n  if (/^\\d{4}-\\d{2}-\\d{2}$/.test(String(queued))) {\n    status.days[queued] = {\n      state: 'queued',\n      step: 'queued',\n      stepAt: now,\n      detail: '',\n      assetsDone: 0,\n      assetsTotal: 0,\n      partsDone: 0,\n      partsTotal: 0\n    };\n  }\n} else {\n  var day = msg.day || (msg.topic === 'day' ? msg.payload : null);\n  var item = status.days[day];\n  if (day && !item) {\n    item = {\n      state: 'running',\n      step: STEP,\n      stepAt: now,\n      detail: '',\n      assetsDone: 0,\n      assetsTotal: 0,\n      partsDone: 0,\n      partsTotal: 0\n    };\n    status.days[day] = item;\n  }\n  if (item) {\n    status.state = 'running';\n  }\n  if (item && ACTION === 'running') {\n    item.state = 'running';\n    item.step = STEP;\n    item.stepAt = now;\n    item.detail = '';\n  }\n  if (item && ACTION === 'asset-done') {\n    item.assetsDone = (item.assetsDone || 0) + 1;\n    item.assetsTotal = msg.parts && msg.parts.count ?\n      msg.parts.count : item.assetsTotal;\n    item.step = STEP;\n    item.stepAt = now;\n  }\n  if (item && ACTION === 'part-done') {\n    item.partsDone = (item.partsDone || 0) + 1;\n    item.partsTotal = msg.parts && msg.parts.count ?\n      msg.parts.count : item.partsTotal;\n    item.step = STEP;\n    item.stepAt = now;\n  }\n}\n\nprune(status, nowMs);\nglob.set(KEY, status);\nreturn msg;\n",
-    "outputs": 1,
-    "language": "javascript",
-    "noerr": 0,
-    "x": 240,
-    "y": 1440,
-    "wires": [
-      [
         "2cc02.2064ee"
       ]
     ]
@@ -1033,12 +1016,12 @@
     "z": "b6d0f.bee9f9",
     "id": "2cc02.2064ee",
     "type": "function",
-    "name": "7.2 Build asset request",
+    "name": "7.1 Build asset request",
     "func": "// Builds the Asset Management request for one asset (to get hierarchyPath).\n// In: one asset {id, isManual, name} from the split node.\n// Out: msg.method, msg.url and msg.headers for the http request node.\nvar cfg = flow.get('cfg');\nmsg.asset = msg.payload;\nmsg.method = 'GET';\nmsg.url = cfg.amBase + '/assets/' +\n  encodeURIComponent(msg.asset.id);\nmsg.headers = {\n  'Authorization': 'Bearer ' + msg.token,\n  'Accept': 'application/hal+json'\n};\ndelete msg.payload;\nreturn msg;\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 500,
+    "x": 220,
     "y": 1440,
     "wires": [
       [
@@ -1058,7 +1041,7 @@
     "mindspherePath": "",
     "useMindsphereAuth": false,
     "isAdmin": false,
-    "x": 740,
+    "x": 460,
     "y": 1440,
     "wires": [
       [
@@ -1075,7 +1058,7 @@
     "links": [
       "347be.26c952"
     ],
-    "x": 1140,
+    "x": 860,
     "y": 1460,
     "wires": []
   },
@@ -1083,12 +1066,12 @@
     "z": "b6d0f.bee9f9",
     "id": "309e0.239720",
     "type": "function",
-    "name": "7.3 Build KPI request",
+    "name": "7.2 Build KPI request",
     "func": "// Works out the asset hierarchy and builds the evaluateKPIs request.\n// In: the Asset Management response. Out 1: the KPI request.\n// Out 2: the asset result for the join when the asset failed or is excluded.\nvar cfg = flow.get('cfg');\nvar DAY_MS = 86400000;\nvar HOUR_MS = 3600000;\n\n// Names are root first. Tenant layout: [0] tenant, [1] region, [2] site,\n// [3] area, [4] line, [5] machine. GT4 has no machine, so it is the line.\nfunction hierarchyFromNames(names) {\n  return {\n    asset_name: names[names.length - 1] || null,\n    site: names[2] || null,\n    area: names[3] || null,\n    line: names[4] || null,\n    machine: names[5] || null\n  };\n}\n\nfunction toJoin(note) {\n  msg.payload = {\n    assetId: msg.asset.id,\n    name: msg.asset.name,\n    failed: note.failed || null,\n    skipped: note.skipped || null,\n    kpiRows: [],\n    lossRows: []\n  };\n  return [null, msg];\n}\n\nvar details = msg.payload;\nif (msg.statusCode !== 200 || !details || !details.name) {\n  return toJoin({\n    failed: msg.asset.name + ': asset details failed, HTTP ' + msg.statusCode\n  });\n}\n\nvar names = (details.hierarchyPath || []).map(function (p) {\n  return p.name;\n});\nnames.push(details.name);\nmsg.h = hierarchyFromNames(names);\nvar excluded = cfg.excludeNames.indexOf(details.name) >= 0;\nvar parentExcluded = names.slice(0, -1).some(function (n) {\n  return cfg.excludeAncestorNames.indexOf(n) >= 0;\n});\nif (excluded || parentExcluded) {\n  return toJoin({ skipped: msg.h.asset_name + ' excluded' });\n}\n\n// A production day D runs from D start hour to D+1 start hour (UTC).\nvar from = Date.parse(msg.day + 'T00:00:00.000Z') + cfg.dayStartHour * HOUR_MS;\nvar to = from + DAY_MS;\n// The shift report sets the exact window of the day (local day start).\nif (msg.dayFromMs !== undefined) {\n  from = msg.dayFromMs;\n  to = msg.dayToMs;\n}\nmsg.method = 'POST';\nmsg.url = cfg.oeeBase + '/expressions/evaluateKPIs';\nmsg.headers = {\n  'Authorization': 'Bearer ' + msg.token,\n  'Content-Type': 'application/json',\n  'Accept': 'application/json'\n};\nmsg.payload = {\n  assetId: msg.asset.id,\n  scope: {\n    from: new Date(from).toISOString(),\n    to: new Date(to).toISOString(),\n    filter: [{ key: 'PRODUCT', value: [] }],\n    recursive: false,\n    groupedByDateTime: true\n  }\n};\nreturn [msg, null];\n",
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
-    "x": 980,
+    "x": 700,
     "y": 1440,
     "wires": [
       [
@@ -1111,7 +1094,7 @@
     "mindspherePath": "",
     "useMindsphereAuth": false,
     "isAdmin": false,
-    "x": 1200,
+    "x": 920,
     "y": 1420,
     "wires": [
       [
@@ -1128,7 +1111,7 @@
     "links": [
       "3a48b.2b949d"
     ],
-    "x": 1560,
+    "x": 1280,
     "y": 1420,
     "wires": []
   },
@@ -1141,7 +1124,7 @@
     "links": [
       "3e269.2ec6cf"
     ],
-    "x": 1560,
+    "x": 1280,
     "y": 1460,
     "wires": []
   },
@@ -1149,12 +1132,12 @@
     "z": "b6d0f.bee9f9",
     "id": "3859c.29fb84",
     "type": "function",
-    "name": "7.4 Check day size",
+    "name": "7.3 Check day size",
     "func": "// Sends the answer of a day evaluateKPIs call on, or to the hourly parts.\n// In: the answer of the http request node. Out 1: the answer, to the check\n// node. Out 2: HTTP 413 (the day is too big for one call): to the hourly\n// parts, which ask the same KPIs hour by hour and merge them.\nif (msg.statusCode === 413) {\n  return [null, msg];\n}\nreturn [msg, null];\n",
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
-    "x": 1420,
+    "x": 1140,
     "y": 1440,
     "wires": [
       [
@@ -1187,23 +1170,6 @@
     "y": 1660,
     "wires": [
       [
-        "b3138.dc4881"
-      ]
-    ]
-  },
-  {
-    "z": "b6d0f.bee9f9",
-    "id": "b3138.dc4881",
-    "type": "function",
-    "name": "8.1 Note status: KPI PARTS",
-    "func": "// Updates one small live status entry in global context.\n// In: a report message; out: the same message, unchanged.\n// running writes queued, running, an asset count, or an hourly-part count.\nvar FLOW_NAME = 'sih-hull';\nvar SITE_NAME = 'Hull';\nvar STEP = 'KPI PARTS';\nvar ACTION = 'running';\nvar KEY = 'runStatus_' + FLOW_NAME;\nvar MAX_DAYS = 100;\nvar KEEP_DAYS_MS = 7 * 86400000;\n\nfunction finished(state) {\n  return state === 'written' || state === 'dry_run' ||\n    state === 'failed' || state === 'nothing';\n}\n\nfunction prune(status, now) {\n  var keys = Object.keys(status.days);\n  keys.forEach(function (day) {\n    var item = status.days[day];\n    var touched = Date.parse(item.stepAt || status.startedAt || now);\n    if (finished(item.state) && now - touched > KEEP_DAYS_MS) {\n      delete status.days[day];\n    }\n  });\n  keys = Object.keys(status.days);\n  if (keys.length > MAX_DAYS) {\n    keys.sort(function (a, b) {\n      return Date.parse(status.days[a].stepAt || '') -\n        Date.parse(status.days[b].stepAt || '');\n    });\n    keys.slice(0, keys.length - MAX_DAYS).forEach(function (day) {\n      delete status.days[day];\n    });\n  }\n}\n\nvar now = new Date().toISOString();\nvar nowMs = Date.parse(now);\nvar status = glob.get(KEY) || {\n  flow: FLOW_NAME,\n  site: SITE_NAME,\n  dryRun: true,\n  runId: '',\n  mode: '',\n  startedAt: now,\n  lastBeatAt: now,\n  days: {}\n};\nvar cfg = flow.get('cfg') || {};\nstatus.flow = FLOW_NAME;\nstatus.site = SITE_NAME;\nstatus.dryRun = cfg.dryRun !== false;\nstatus.lastBeatAt = now;\n\nif (ACTION === 'queue') {\n  status.state = 'running';\n  if (status.runId !== msg.runId) {\n    status.runId = msg.runId || now;\n    status.mode = msg.mode || '';\n    status.startedAt = msg.startedAt || now;\n  }\n  var queued = msg.day || msg.payload;\n  if (/^\\d{4}-\\d{2}-\\d{2}$/.test(String(queued))) {\n    status.days[queued] = {\n      state: 'queued',\n      step: 'queued',\n      stepAt: now,\n      detail: '',\n      assetsDone: 0,\n      assetsTotal: 0,\n      partsDone: 0,\n      partsTotal: 0\n    };\n  }\n} else {\n  var day = msg.day || (msg.topic === 'day' ? msg.payload : null);\n  var item = status.days[day];\n  if (day && !item) {\n    item = {\n      state: 'running',\n      step: STEP,\n      stepAt: now,\n      detail: '',\n      assetsDone: 0,\n      assetsTotal: 0,\n      partsDone: 0,\n      partsTotal: 0\n    };\n    status.days[day] = item;\n  }\n  if (item) {\n    status.state = 'running';\n  }\n  if (item && ACTION === 'running') {\n    item.state = 'running';\n    item.step = STEP;\n    item.stepAt = now;\n    item.detail = '';\n  }\n  if (item && ACTION === 'asset-done') {\n    item.assetsDone = (item.assetsDone || 0) + 1;\n    item.assetsTotal = msg.parts && msg.parts.count ?\n      msg.parts.count : item.assetsTotal;\n    item.step = STEP;\n    item.stepAt = now;\n  }\n  if (item && ACTION === 'part-done') {\n    item.partsDone = (item.partsDone || 0) + 1;\n    item.partsTotal = msg.parts && msg.parts.count ?\n      msg.parts.count : item.partsTotal;\n    item.step = STEP;\n    item.stepAt = now;\n  }\n}\n\nprune(status, nowMs);\nglob.set(KEY, status);\nreturn msg;\n",
-    "outputs": 1,
-    "language": "javascript",
-    "noerr": 0,
-    "x": 220,
-    "y": 1660,
-    "wires": [
-      [
         "43f36.33921a"
       ]
     ]
@@ -1212,12 +1178,12 @@
     "z": "b6d0f.bee9f9",
     "id": "43f36.33921a",
     "type": "function",
-    "name": "8.2 Build hour requests",
+    "name": "8.1 Build hour requests",
     "func": "// Splits a day evaluateKPIs call that answered 413 into hourly calls.\n// In: the 413 answer, msg.asset, msg.token, msg.dayFromMs, msg.dayToMs and\n// msg.job (a product or order call) or none (the day call). Out: one request\n// per hour of the day, all in one group (msg.parts) for the join.\nvar cfg = flow.get('cfg');\n// The length of one part. The day window is split into parts this long.\nvar PART_HOURS = 1;\nvar HOUR_MS = 3600000;\n\n// The filters of the original call: the product or order of msg.job (same\n// as the value KPI request), else the plain day call.\nfunction filters() {\n  if (!msg.job) {\n    return [{ key: 'PRODUCT', value: [] }];\n  }\n  function filterFor(key) {\n    return {\n      key: key,\n      value: msg.job.key === key ? [msg.job.value] : []\n    };\n  }\n  return [\n    filterFor('PRODUCT'),\n    filterFor('ORDER'),\n    { key: 'SHIFT', value: [] }\n  ];\n}\n\nvar windows = [];\nfor (var t = msg.dayFromMs; t < msg.dayToMs; t += PART_HOURS * HOUR_MS) {\n  windows.push([t, Math.min(t + PART_HOURS * HOUR_MS, msg.dayToMs)]);\n}\n\n// The day join of the flow uses msg.parts too: keep it aside.\nmsg.dayParts = msg.parts;\nvar group = msg.asset.id + '|' + msg.day + '|' + Date.now() + '|';\ngroup += Math.floor(Math.random() * 1000000);\ndelete msg.payload;\nvar out = windows.map(function (w, index) {\n  var copy = JSON.parse(JSON.stringify(msg));\n  copy.method = 'POST';\n  copy.url = cfg.oeeBase + '/expressions/evaluateKPIs';\n  copy.headers = {\n    'Authorization': 'Bearer ' + msg.token,\n    'Content-Type': 'application/json',\n    'Accept': 'application/json'\n  };\n  copy.payload = {\n    assetId: msg.asset.id,\n    scope: {\n      from: new Date(w[0]).toISOString(),\n      to: new Date(w[1]).toISOString(),\n      filter: filters(),\n      recursive: false,\n      groupedByDateTime: true\n    }\n  };\n  copy.parts = {\n    id: group,\n    index: index,\n    count: windows.length,\n    type: 'array'\n  };\n  return copy;\n});\nnode.status({\n  fill: 'yellow',\n  shape: 'dot',\n  text: msg.asset.name + ': 413, ' + out.length + ' hourly parts'\n});\nreturn [out];\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 480,
+    "x": 220,
     "y": 1660,
     "wires": [
       [
@@ -1241,7 +1207,7 @@
     "randomUnits": "seconds",
     "drop": false,
     "powerMode": false,
-    "x": 720,
+    "x": 460,
     "y": 1660,
     "wires": [
       [
@@ -1261,7 +1227,7 @@
     "mindspherePath": "",
     "useMindsphereAuth": false,
     "isAdmin": false,
-    "x": 980,
+    "x": 720,
     "y": 1660,
     "wires": [
       [
@@ -1273,12 +1239,12 @@
     "z": "b6d0f.bee9f9",
     "id": "49c03.385d65",
     "type": "function",
-    "name": "8.3 Pack hour answer",
+    "name": "8.2 Pack hour answer",
     "func": "// Packs the answer of one hourly evaluateKPIs call with its status code, so\n// the join that follows keeps both.\n// In: the answer of the http request node. Out: msg.payload = {statusCode,\n// body}.\nmsg.payload = {\n  statusCode: msg.statusCode,\n  body: msg.payload\n};\nreturn msg;\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 1240,
+    "x": 980,
     "y": 1660,
     "wires": [
       [
@@ -1290,12 +1256,12 @@
     "z": "b6d0f.bee9f9",
     "id": "7dafe.a0a347",
     "type": "function",
-    "name": "8.4 Note status: KPI hourly parts",
+    "name": "8.3 Note status: KPI hourly parts",
     "func": "// Updates one small live status entry in global context.\n// In: a report message; out: the same message, unchanged.\n// part-done writes queued, running, an asset count, or an hourly-part count.\nvar FLOW_NAME = 'sih-hull';\nvar SITE_NAME = 'Hull';\nvar STEP = 'KPI hourly parts';\nvar ACTION = 'part-done';\nvar KEY = 'runStatus_' + FLOW_NAME;\nvar MAX_DAYS = 100;\nvar KEEP_DAYS_MS = 7 * 86400000;\n\nfunction finished(state) {\n  return state === 'written' || state === 'dry_run' ||\n    state === 'failed' || state === 'nothing';\n}\n\nfunction prune(status, now) {\n  var keys = Object.keys(status.days);\n  keys.forEach(function (day) {\n    var item = status.days[day];\n    var touched = Date.parse(item.stepAt || status.startedAt || now);\n    if (finished(item.state) && now - touched > KEEP_DAYS_MS) {\n      delete status.days[day];\n    }\n  });\n  keys = Object.keys(status.days);\n  if (keys.length > MAX_DAYS) {\n    keys.sort(function (a, b) {\n      return Date.parse(status.days[a].stepAt || '') -\n        Date.parse(status.days[b].stepAt || '');\n    });\n    keys.slice(0, keys.length - MAX_DAYS).forEach(function (day) {\n      delete status.days[day];\n    });\n  }\n}\n\nvar now = new Date().toISOString();\nvar nowMs = Date.parse(now);\nvar status = glob.get(KEY) || {\n  flow: FLOW_NAME,\n  site: SITE_NAME,\n  dryRun: true,\n  runId: '',\n  mode: '',\n  startedAt: now,\n  lastBeatAt: now,\n  days: {}\n};\nvar cfg = flow.get('cfg') || {};\nstatus.flow = FLOW_NAME;\nstatus.site = SITE_NAME;\nstatus.dryRun = cfg.dryRun !== false;\nstatus.lastBeatAt = now;\n\nif (ACTION === 'queue') {\n  status.state = 'running';\n  if (status.runId !== msg.runId) {\n    status.runId = msg.runId || now;\n    status.mode = msg.mode || '';\n    status.startedAt = msg.startedAt || now;\n  }\n  var queued = msg.day || msg.payload;\n  if (/^\\d{4}-\\d{2}-\\d{2}$/.test(String(queued))) {\n    status.days[queued] = {\n      state: 'queued',\n      step: 'queued',\n      stepAt: now,\n      detail: '',\n      assetsDone: 0,\n      assetsTotal: 0,\n      partsDone: 0,\n      partsTotal: 0\n    };\n  }\n} else {\n  var day = msg.day || (msg.topic === 'day' ? msg.payload : null);\n  var item = status.days[day];\n  if (day && !item) {\n    item = {\n      state: 'running',\n      step: STEP,\n      stepAt: now,\n      detail: '',\n      assetsDone: 0,\n      assetsTotal: 0,\n      partsDone: 0,\n      partsTotal: 0\n    };\n    status.days[day] = item;\n  }\n  if (item) {\n    status.state = 'running';\n  }\n  if (item && ACTION === 'running') {\n    item.state = 'running';\n    item.step = STEP;\n    item.stepAt = now;\n    item.detail = '';\n  }\n  if (item && ACTION === 'asset-done') {\n    item.assetsDone = (item.assetsDone || 0) + 1;\n    item.assetsTotal = msg.parts && msg.parts.count ?\n      msg.parts.count : item.assetsTotal;\n    item.step = STEP;\n    item.stepAt = now;\n  }\n  if (item && ACTION === 'part-done') {\n    item.partsDone = (item.partsDone || 0) + 1;\n    item.partsTotal = msg.parts && msg.parts.count ?\n      msg.parts.count : item.partsTotal;\n    item.step = STEP;\n    item.stepAt = now;\n  }\n}\n\nprune(status, nowMs);\nglob.set(KEY, status);\nreturn msg;\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 1520,
+    "x": 1260,
     "y": 1660,
     "wires": [
       [
@@ -1318,7 +1284,7 @@
     "accumulate": false,
     "timeout": "",
     "count": "",
-    "x": 1800,
+    "x": 1540,
     "y": 1660,
     "wires": [
       [
@@ -1335,7 +1301,7 @@
     "links": [
       "3a48b.2b949d"
     ],
-    "x": 2200,
+    "x": 1940,
     "y": 1660,
     "wires": []
   },
@@ -1343,12 +1309,12 @@
     "z": "b6d0f.bee9f9",
     "id": "4d9e1.3b8f97",
     "type": "function",
-    "name": "8.5 Merge hour answers",
+    "name": "8.4 Merge hour answers",
     "func": "// Merges the hourly evaluateKPIs answers into one answer of the whole day,\n// the same shape as the day call (results with their hourly groups).\n// In: msg.payload = [{statusCode, body}] in hour order (join). Out: the day\n// answer with msg.statusCode, to the same check node as the day call.\nvar parts = Array.isArray(msg.payload) ? msg.payload : [];\n\n// Short text of the API error (errors[0].message), else the raw body.\nfunction apiMessage(body) {\n  var list = body && (body.errors || (body.data && body.data.errors));\n  if (list && list.length && list[0].message) {\n    return String(list[0].message);\n  }\n  return JSON.stringify(body).slice(0, 200);\n}\n\n// The day join of the flow gets its msg.parts back.\nif (msg.dayParts === undefined) {\n  delete msg.parts;\n} else {\n  msg.parts = msg.dayParts;\n}\ndelete msg.dayParts;\n\nvar bad = parts.filter(function (p) {\n  return !p || p.statusCode !== 200 || !p.body || typeof p.body !== 'object';\n})[0];\nif (bad || !parts.length) {\n  msg.statusCode = bad ? bad.statusCode : 413;\n  var text = 'also on 1 h windows: ';\n  text += bad ? apiMessage(bad.body) : 'no hourly answer';\n  msg.payload = {\n    errors: [\n      {\n        message: text\n      }\n    ]\n  };\n  return msg;\n}\n\n// Step 1: the groups of every KPI, in the order the hours came.\nvar byName = {};\nvar order = [];\nparts.forEach(function (p) {\n  (p.body.results || []).forEach(function (r) {\n    if (!byName[r.name]) {\n      byName[r.name] = {\n        name: r.name,\n        groups: []\n      };\n      order.push(r.name);\n    }\n    byName[r.name].groups = byName[r.name].groups.concat(r.groups || []);\n  });\n});\n\n// Step 2: the day answer. Unit and missing mappings of the first hour.\nvar first = parts[0].body;\nvar body = {\n  productUnit: first.productUnit,\n  results: order.map(function (name) {\n    return byName[name];\n  })\n};\nif (first.missingMapping) {\n  body.missingMapping = first.missingMapping;\n}\nmsg.statusCode = 200;\nmsg.payload = body;\nif (!msg.job) {\n  msg.kpiHourParts = parts.length;\n}\nreturn msg;\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 2040,
+    "x": 1780,
     "y": 1660,
     "wires": [
       [
@@ -1379,23 +1345,6 @@
     "y": 1880,
     "wires": [
       [
-        "86838.8f1181"
-      ]
-    ]
-  },
-  {
-    "z": "b6d0f.bee9f9",
-    "id": "86838.8f1181",
-    "type": "function",
-    "name": "9.1 Note status: KPI CHECK",
-    "func": "// Updates one small live status entry in global context.\n// In: a report message; out: the same message, unchanged.\n// running writes queued, running, an asset count, or an hourly-part count.\nvar FLOW_NAME = 'sih-hull';\nvar SITE_NAME = 'Hull';\nvar STEP = 'KPI CHECK';\nvar ACTION = 'running';\nvar KEY = 'runStatus_' + FLOW_NAME;\nvar MAX_DAYS = 100;\nvar KEEP_DAYS_MS = 7 * 86400000;\n\nfunction finished(state) {\n  return state === 'written' || state === 'dry_run' ||\n    state === 'failed' || state === 'nothing';\n}\n\nfunction prune(status, now) {\n  var keys = Object.keys(status.days);\n  keys.forEach(function (day) {\n    var item = status.days[day];\n    var touched = Date.parse(item.stepAt || status.startedAt || now);\n    if (finished(item.state) && now - touched > KEEP_DAYS_MS) {\n      delete status.days[day];\n    }\n  });\n  keys = Object.keys(status.days);\n  if (keys.length > MAX_DAYS) {\n    keys.sort(function (a, b) {\n      return Date.parse(status.days[a].stepAt || '') -\n        Date.parse(status.days[b].stepAt || '');\n    });\n    keys.slice(0, keys.length - MAX_DAYS).forEach(function (day) {\n      delete status.days[day];\n    });\n  }\n}\n\nvar now = new Date().toISOString();\nvar nowMs = Date.parse(now);\nvar status = glob.get(KEY) || {\n  flow: FLOW_NAME,\n  site: SITE_NAME,\n  dryRun: true,\n  runId: '',\n  mode: '',\n  startedAt: now,\n  lastBeatAt: now,\n  days: {}\n};\nvar cfg = flow.get('cfg') || {};\nstatus.flow = FLOW_NAME;\nstatus.site = SITE_NAME;\nstatus.dryRun = cfg.dryRun !== false;\nstatus.lastBeatAt = now;\n\nif (ACTION === 'queue') {\n  status.state = 'running';\n  if (status.runId !== msg.runId) {\n    status.runId = msg.runId || now;\n    status.mode = msg.mode || '';\n    status.startedAt = msg.startedAt || now;\n  }\n  var queued = msg.day || msg.payload;\n  if (/^\\d{4}-\\d{2}-\\d{2}$/.test(String(queued))) {\n    status.days[queued] = {\n      state: 'queued',\n      step: 'queued',\n      stepAt: now,\n      detail: '',\n      assetsDone: 0,\n      assetsTotal: 0,\n      partsDone: 0,\n      partsTotal: 0\n    };\n  }\n} else {\n  var day = msg.day || (msg.topic === 'day' ? msg.payload : null);\n  var item = status.days[day];\n  if (day && !item) {\n    item = {\n      state: 'running',\n      step: STEP,\n      stepAt: now,\n      detail: '',\n      assetsDone: 0,\n      assetsTotal: 0,\n      partsDone: 0,\n      partsTotal: 0\n    };\n    status.days[day] = item;\n  }\n  if (item) {\n    status.state = 'running';\n  }\n  if (item && ACTION === 'running') {\n    item.state = 'running';\n    item.step = STEP;\n    item.stepAt = now;\n    item.detail = '';\n  }\n  if (item && ACTION === 'asset-done') {\n    item.assetsDone = (item.assetsDone || 0) + 1;\n    item.assetsTotal = msg.parts && msg.parts.count ?\n      msg.parts.count : item.assetsTotal;\n    item.step = STEP;\n    item.stepAt = now;\n  }\n  if (item && ACTION === 'part-done') {\n    item.partsDone = (item.partsDone || 0) + 1;\n    item.partsTotal = msg.parts && msg.parts.count ?\n      msg.parts.count : item.partsTotal;\n    item.step = STEP;\n    item.stepAt = now;\n  }\n}\n\nprune(status, nowMs);\nglob.set(KEY, status);\nreturn msg;\n",
-    "outputs": 1,
-    "language": "javascript",
-    "noerr": 0,
-    "x": 220,
-    "y": 1880,
-    "wires": [
-      [
         "536ae.405ae2"
       ]
     ]
@@ -1409,7 +1358,7 @@
     "links": [
       "347be.26c952"
     ],
-    "x": 640,
+    "x": 380,
     "y": 1900,
     "wires": []
   },
@@ -1417,12 +1366,12 @@
     "z": "b6d0f.bee9f9",
     "id": "536ae.405ae2",
     "type": "function",
-    "name": "9.2 Check KPI response",
+    "name": "9.1 Check KPI response",
     "func": "// Checks the evaluateKPIs response of one asset.\n// In: the response. Out 1: the same message when it holds KPI results.\n// Out 2: the asset result for the join when the call failed, the asset\n// configuration is not finished or there is no data.\nvar name = msg.h.asset_name;\nvar body = msg.payload;\n\nfunction toJoin(note) {\n  msg.payload = {\n    assetId: msg.asset.id,\n    name: name,\n    failed: note.failed || null,\n    skipped: note.skipped || null,\n    kpiRows: [],\n    lossRows: []\n  };\n  return [null, msg];\n}\n\nvar notFinished = msg.statusCode === 400 &&\n  /configuration not finished/i.test(JSON.stringify(body));\nif (notFinished) {\n  return toJoin({ skipped: name + ' configuration not finished' });\n}\n// Short text of the API error (errors[0].message), else the raw body.\nfunction apiMessage(payload) {\n  var list = payload && (payload.errors ||\n    (payload.data && payload.data.errors));\n  if (list && list.length && list[0].message) {\n    return String(list[0].message);\n  }\n  return JSON.stringify(payload).slice(0, 200);\n}\n\nif (msg.statusCode !== 200 || !body || typeof body !== 'object') {\n  var why = msg.statusCode === 200 ? '' : ': ' + apiMessage(body);\n  return toJoin({\n    failed: name + ': evaluateKPIs failed, HTTP ' + msg.statusCode + why\n  });\n}\nif (!body.results || !body.results.length) {\n  return toJoin({ skipped: name + ' no data' });\n}\nreturn [msg, null];\n",
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
-    "x": 480,
+    "x": 220,
     "y": 1880,
     "wires": [
       [
@@ -1442,7 +1391,7 @@
     "links": [
       "5937b.45262d"
     ],
-    "x": 880,
+    "x": 620,
     "y": 1880,
     "wires": []
   },
@@ -1450,12 +1399,12 @@
     "z": "b6d0f.bee9f9",
     "id": "5559d.41f3fb",
     "type": "function",
-    "name": "9.3 Pivot KPI results",
+    "name": "9.2 Pivot KPI results",
     "func": "// Pivots the evaluateKPIs response to one entry per hour.\n// In: the response (msg.payload.results, checked in node 3.3).\n// Out: msg.hours = [{time, values}] oldest hour first, msg.kpiMeta and\n// msg.unmapped (KPI names that have no column).\n\n// KPI name in Insights Hub -> column name in fact_kpi.\nvar KPI_COLUMNS = {\n  'Good parts': 'good_parts',\n  'Total parts': 'total_parts',\n  'Rejected parts': 'rejected_parts',\n  'Connected rejected parts': 'connected_rejected_parts',\n  'Manual rejected parts': 'manual_rejected_parts',\n  'Theoretical output': 'theoretical_output',\n  'Quality': 'quality',\n  'Performance': 'performance',\n  'Availability': 'availability',\n  'OEE': 'oee',\n  'TEEP': 'teep',\n  'Total time': 'total_time_ms',\n  'Planned stops': 'planned_stops_ms',\n  'Planned stop from shift plan': 'planned_stop_shift_plan_ms',\n  'Operational time': 'operational_time_ms',\n  'Net production time': 'net_production_time_ms',\n  'Net operational time': 'net_operational_time_ms',\n  'Used operational time': 'used_operational_time_ms',\n  'Availability losses': 'availability_losses_ms',\n  'Availability loss (occurrence)': 'availability_loss_count',\n  'Performance losses': 'performance_losses_ms',\n  'Quality losses': 'quality_losses_ms',\n  'MTTR': 'mttr_ms',\n  'MTBF': 'mtbf_ms',\n  'Downtime (duration)': 'downtime_ms',\n  'Downtimes (occurrence)': 'downtime_count',\n  'Micro stops (duration)': 'micro_stops_ms',\n  'Micro stops (occurrence)': 'micro_stops_count',\n  'Macro stops (duration)': 'macro_stops_ms',\n  'Macro stops (occurrence)': 'macro_stops_count'\n};\n// Columns that are rounded to whole numbers. All others keep their decimals.\nvar INT_COLUMNS = [\n  'total_time_ms',\n  'planned_stops_ms',\n  'planned_stop_shift_plan_ms',\n  'operational_time_ms',\n  'net_production_time_ms',\n  'availability_losses_ms',\n  'micro_stops_ms',\n  'micro_stops_count',\n  'macro_stops_ms'\n];\n// These columns come first in every row.\nvar RATIO_COLUMNS = [\n  'oee',\n  'teep',\n  'availability',\n  'performance',\n  'quality'\n];\n\nfunction numOrNull(v) {\n  if (v === null || v === undefined || v === '') {\n    return null;\n  }\n  var n = Number(v);\n  return isFinite(n) ? n : null;\n}\n\n// Collect the value of every KPI per hour.\nvar body = msg.payload;\nvar unmapped = [];\nvar byHour = {};\nvar times = [];\nbody.results.forEach(function (r) {\n  var col = KPI_COLUMNS[r.name];\n  if (!col) {\n    if (unmapped.indexOf(r.name) < 0) {\n      unmapped.push(r.name);\n    }\n    return;\n  }\n  (r.groups || []).forEach(function (g) {\n    if (!byHour[g.time]) {\n      byHour[g.time] = {};\n      times.push(g.time);\n    }\n    byHour[g.time][col] = numOrNull(g.value);\n  });\n});\n\n// One entry per hour with every column present (null when missing).\nmsg.hours = times.sort().map(function (t) {\n  var hour = byHour[t];\n  var values = {};\n  RATIO_COLUMNS.forEach(function (c) {\n    values[c] = hour[c] === undefined ? null : hour[c];\n  });\n  Object.keys(KPI_COLUMNS).forEach(function (k) {\n    var c = KPI_COLUMNS[k];\n    if (values.hasOwnProperty(c)) {\n      return;\n    }\n    var x = hour[c] === undefined ? null : hour[c];\n    var rounded = x !== null && INT_COLUMNS.indexOf(c) >= 0;\n    values[c] = rounded ? Math.round(x) : x;\n  });\n  return { time: t, values: values };\n});\n\nvar missing = null;\nif (body.missingMapping && body.missingMapping.length) {\n  missing = JSON.stringify(body.missingMapping);\n}\nmsg.kpiMeta = {\n  productUnit: body.productUnit || null,\n  missingMapping: missing\n};\nmsg.unmapped = unmapped;\ndelete msg.payload;\nreturn msg;\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 720,
+    "x": 460,
     "y": 1860,
     "wires": [
       [
@@ -1485,23 +1434,6 @@
     "y": 2100,
     "wires": [
       [
-        "2b536.65cc8f"
-      ]
-    ]
-  },
-  {
-    "z": "b6d0f.bee9f9",
-    "id": "2b536.65cc8f",
-    "type": "function",
-    "name": "10.1 Note status: ASSET SHIFTS",
-    "func": "// Updates one small live status entry in global context.\n// In: a report message; out: the same message, unchanged.\n// running writes queued, running, an asset count, or an hourly-part count.\nvar FLOW_NAME = 'sih-hull';\nvar SITE_NAME = 'Hull';\nvar STEP = 'ASSET SHIFTS';\nvar ACTION = 'running';\nvar KEY = 'runStatus_' + FLOW_NAME;\nvar MAX_DAYS = 100;\nvar KEEP_DAYS_MS = 7 * 86400000;\n\nfunction finished(state) {\n  return state === 'written' || state === 'dry_run' ||\n    state === 'failed' || state === 'nothing';\n}\n\nfunction prune(status, now) {\n  var keys = Object.keys(status.days);\n  keys.forEach(function (day) {\n    var item = status.days[day];\n    var touched = Date.parse(item.stepAt || status.startedAt || now);\n    if (finished(item.state) && now - touched > KEEP_DAYS_MS) {\n      delete status.days[day];\n    }\n  });\n  keys = Object.keys(status.days);\n  if (keys.length > MAX_DAYS) {\n    keys.sort(function (a, b) {\n      return Date.parse(status.days[a].stepAt || '') -\n        Date.parse(status.days[b].stepAt || '');\n    });\n    keys.slice(0, keys.length - MAX_DAYS).forEach(function (day) {\n      delete status.days[day];\n    });\n  }\n}\n\nvar now = new Date().toISOString();\nvar nowMs = Date.parse(now);\nvar status = glob.get(KEY) || {\n  flow: FLOW_NAME,\n  site: SITE_NAME,\n  dryRun: true,\n  runId: '',\n  mode: '',\n  startedAt: now,\n  lastBeatAt: now,\n  days: {}\n};\nvar cfg = flow.get('cfg') || {};\nstatus.flow = FLOW_NAME;\nstatus.site = SITE_NAME;\nstatus.dryRun = cfg.dryRun !== false;\nstatus.lastBeatAt = now;\n\nif (ACTION === 'queue') {\n  status.state = 'running';\n  if (status.runId !== msg.runId) {\n    status.runId = msg.runId || now;\n    status.mode = msg.mode || '';\n    status.startedAt = msg.startedAt || now;\n  }\n  var queued = msg.day || msg.payload;\n  if (/^\\d{4}-\\d{2}-\\d{2}$/.test(String(queued))) {\n    status.days[queued] = {\n      state: 'queued',\n      step: 'queued',\n      stepAt: now,\n      detail: '',\n      assetsDone: 0,\n      assetsTotal: 0,\n      partsDone: 0,\n      partsTotal: 0\n    };\n  }\n} else {\n  var day = msg.day || (msg.topic === 'day' ? msg.payload : null);\n  var item = status.days[day];\n  if (day && !item) {\n    item = {\n      state: 'running',\n      step: STEP,\n      stepAt: now,\n      detail: '',\n      assetsDone: 0,\n      assetsTotal: 0,\n      partsDone: 0,\n      partsTotal: 0\n    };\n    status.days[day] = item;\n  }\n  if (item) {\n    status.state = 'running';\n  }\n  if (item && ACTION === 'running') {\n    item.state = 'running';\n    item.step = STEP;\n    item.stepAt = now;\n    item.detail = '';\n  }\n  if (item && ACTION === 'asset-done') {\n    item.assetsDone = (item.assetsDone || 0) + 1;\n    item.assetsTotal = msg.parts && msg.parts.count ?\n      msg.parts.count : item.assetsTotal;\n    item.step = STEP;\n    item.stepAt = now;\n  }\n  if (item && ACTION === 'part-done') {\n    item.partsDone = (item.partsDone || 0) + 1;\n    item.partsTotal = msg.parts && msg.parts.count ?\n      msg.parts.count : item.partsTotal;\n    item.step = STEP;\n    item.stepAt = now;\n  }\n}\n\nprune(status, nowMs);\nglob.set(KEY, status);\nreturn msg;\n",
-    "outputs": 1,
-    "language": "javascript",
-    "noerr": 0,
-    "x": 240,
-    "y": 2100,
-    "wires": [
-      [
         "5f048.49f178"
       ]
     ]
@@ -1510,12 +1442,12 @@
     "z": "b6d0f.bee9f9",
     "id": "5f048.49f178",
     "type": "function",
-    "name": "10.2 Build config request",
+    "name": "10.1 Build config request",
     "func": "// Builds the OEE config request of one asset (to get its calendar id).\n// In: msg.asset and msg.token, after the KPI steps. msg.hours is kept.\n// Out: msg.method, msg.url and msg.headers for the http request node.\nvar cfg = flow.get('cfg');\nmsg.method = 'GET';\nmsg.url = cfg.oeeBase + '/assets/' +\n  encodeURIComponent(msg.asset.id) + '/config';\nmsg.headers = {\n  'Authorization': 'Bearer ' + msg.token,\n  'Accept': 'application/json'\n};\ndelete msg.payload;\nreturn msg;\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 520,
+    "x": 220,
     "y": 2100,
     "wires": [
       [
@@ -1535,7 +1467,7 @@
     "mindspherePath": "",
     "useMindsphereAuth": false,
     "isAdmin": false,
-    "x": 760,
+    "x": 460,
     "y": 2100,
     "wires": [
       [
@@ -1552,7 +1484,7 @@
     "links": [
       "347be.26c952"
     ],
-    "x": 1220,
+    "x": 920,
     "y": 2120,
     "wires": []
   },
@@ -1560,12 +1492,12 @@
     "z": "b6d0f.bee9f9",
     "id": "62e26.4d23aa",
     "type": "function",
-    "name": "10.3 Build calendar events request",
+    "name": "10.2 Build calendar events request",
     "func": "// Saves the calendar and product collection ids, builds the events request.\n// In: the OEE config response. Out 1: the calendarEvents request. Out 2:\n// the asset result for the join when the config call failed or the asset\n// has no calendar (no half days).\nvar cfg = flow.get('cfg');\nvar DAY_MS = 86400000;\nvar HOUR_MS = 3600000;\nvar name = msg.h.asset_name;\n\nfunction toJoin(text) {\n  msg.payload = {\n    assetId: msg.asset.id,\n    name: name,\n    failed: text,\n    skipped: null,\n    planRows: [],\n    utilRows: [],\n    lossRows: []\n  };\n  delete msg.hours;\n  delete msg.kpiMeta;\n  return [null, msg];\n}\n\nvar config = msg.payload || {};\nif (msg.statusCode !== 200) {\n  return toJoin(name + ': asset config failed, HTTP ' + msg.statusCode);\n}\nif (!config.calendarId) {\n  return toJoin(name + ': asset has no calendar id');\n}\n\n// The events that cover the production day D (D start hour to D+1).\nvar from = Date.parse(msg.day + 'T00:00:00.000Z') + cfg.dayStartHour * HOUR_MS;\nvar to = from + DAY_MS;\n// The shift report sets the exact window of the day (local day start).\nif (msg.dayFromMs !== undefined) {\n  from = msg.dayFromMs;\n  to = msg.dayToMs;\n}\nmsg.calendarId = config.calendarId;\nmsg.productCollectionId = config.productCollectionId || null;\nmsg.method = 'GET';\nmsg.url = cfg.oeeBase + '/calendars/' +\n  encodeURIComponent(config.calendarId) + '/calendarEvents' +\n  '?from=' + new Date(from).toISOString() +\n  '&to=' + new Date(to).toISOString();\nmsg.headers = {\n  'Authorization': 'Bearer ' + msg.token,\n  'Accept': 'application/json'\n};\ndelete msg.payload;\nreturn [msg, null];\n",
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
-    "x": 1020,
+    "x": 720,
     "y": 2100,
     "wires": [
       [
@@ -1588,7 +1520,7 @@
     "mindspherePath": "",
     "useMindsphereAuth": false,
     "isAdmin": false,
-    "x": 1300,
+    "x": 1000,
     "y": 2080,
     "wires": [
       [
@@ -1605,7 +1537,7 @@
     "links": [
       "6a9e2.53880e"
     ],
-    "x": 1700,
+    "x": 1400,
     "y": 2080,
     "wires": []
   },
@@ -1618,7 +1550,7 @@
     "links": [
       "347be.26c952"
     ],
-    "x": 1700,
+    "x": 1400,
     "y": 2120,
     "wires": []
   },
@@ -1626,12 +1558,12 @@
     "z": "b6d0f.bee9f9",
     "id": "68af3.51eef5",
     "type": "function",
-    "name": "10.4 Build shift rules",
+    "name": "10.3 Build shift rules",
     "func": "// Turns the calendar events into shift rules.\n// In: the calendarEvents response. Out 1: msg.shiftRules = [{name, freq,\n// interval, start, until, duration}] (epoch ms, null when open ended).\n// Out 2: the asset result for the join when the call failed.\nvar name = msg.h.asset_name;\nvar events = msg.payload && msg.payload.calendarEvents;\n\nif (msg.statusCode !== 200 || !Array.isArray(events)) {\n  msg.payload = {\n    assetId: msg.asset.id,\n    name: name,\n    failed: name + ': calendar events failed, HTTP ' + msg.statusCode,\n    skipped: null,\n    planRows: [],\n    utilRows: [],\n    lossRows: []\n  };\n  delete msg.hours;\n  delete msg.kpiMeta;\n  return [null, msg];\n}\n\n// Date text to epoch ms, null when missing or not a date.\nfunction toMs(text) {\n  var ms = Date.parse(text);\n  return isNaN(ms) ? null : ms;\n}\n\n// An event without a recurrence object gets freq null and never matches.\nmsg.shiftRules = events.map(function (e) {\n  var rule = e.rrule;\n  if (!rule || typeof rule !== 'object') {\n    rule = {};\n  }\n  return {\n    name: e.name || null,\n    freq: rule.freq || null,\n    interval: rule.interval || null,\n    start: toMs(rule.dtstart),\n    until: toMs(rule.until),\n    duration: Math.round(Number(e.duration))\n  };\n});\ndelete msg.payload;\nreturn [msg, null];\n",
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
-    "x": 1540,
+    "x": 1240,
     "y": 2100,
     "wires": [
       [
@@ -1664,23 +1596,6 @@
     "y": 2320,
     "wires": [
       [
-        "44346.333aff"
-      ]
-    ]
-  },
-  {
-    "z": "b6d0f.bee9f9",
-    "id": "44346.333aff",
-    "type": "function",
-    "name": "11.1 Note status: ASSET PRODUCTS",
-    "func": "// Updates one small live status entry in global context.\n// In: a report message; out: the same message, unchanged.\n// running writes queued, running, an asset count, or an hourly-part count.\nvar FLOW_NAME = 'sih-hull';\nvar SITE_NAME = 'Hull';\nvar STEP = 'ASSET PRODUCTS';\nvar ACTION = 'running';\nvar KEY = 'runStatus_' + FLOW_NAME;\nvar MAX_DAYS = 100;\nvar KEEP_DAYS_MS = 7 * 86400000;\n\nfunction finished(state) {\n  return state === 'written' || state === 'dry_run' ||\n    state === 'failed' || state === 'nothing';\n}\n\nfunction prune(status, now) {\n  var keys = Object.keys(status.days);\n  keys.forEach(function (day) {\n    var item = status.days[day];\n    var touched = Date.parse(item.stepAt || status.startedAt || now);\n    if (finished(item.state) && now - touched > KEEP_DAYS_MS) {\n      delete status.days[day];\n    }\n  });\n  keys = Object.keys(status.days);\n  if (keys.length > MAX_DAYS) {\n    keys.sort(function (a, b) {\n      return Date.parse(status.days[a].stepAt || '') -\n        Date.parse(status.days[b].stepAt || '');\n    });\n    keys.slice(0, keys.length - MAX_DAYS).forEach(function (day) {\n      delete status.days[day];\n    });\n  }\n}\n\nvar now = new Date().toISOString();\nvar nowMs = Date.parse(now);\nvar status = glob.get(KEY) || {\n  flow: FLOW_NAME,\n  site: SITE_NAME,\n  dryRun: true,\n  runId: '',\n  mode: '',\n  startedAt: now,\n  lastBeatAt: now,\n  days: {}\n};\nvar cfg = flow.get('cfg') || {};\nstatus.flow = FLOW_NAME;\nstatus.site = SITE_NAME;\nstatus.dryRun = cfg.dryRun !== false;\nstatus.lastBeatAt = now;\n\nif (ACTION === 'queue') {\n  status.state = 'running';\n  if (status.runId !== msg.runId) {\n    status.runId = msg.runId || now;\n    status.mode = msg.mode || '';\n    status.startedAt = msg.startedAt || now;\n  }\n  var queued = msg.day || msg.payload;\n  if (/^\\d{4}-\\d{2}-\\d{2}$/.test(String(queued))) {\n    status.days[queued] = {\n      state: 'queued',\n      step: 'queued',\n      stepAt: now,\n      detail: '',\n      assetsDone: 0,\n      assetsTotal: 0,\n      partsDone: 0,\n      partsTotal: 0\n    };\n  }\n} else {\n  var day = msg.day || (msg.topic === 'day' ? msg.payload : null);\n  var item = status.days[day];\n  if (day && !item) {\n    item = {\n      state: 'running',\n      step: STEP,\n      stepAt: now,\n      detail: '',\n      assetsDone: 0,\n      assetsTotal: 0,\n      partsDone: 0,\n      partsTotal: 0\n    };\n    status.days[day] = item;\n  }\n  if (item) {\n    status.state = 'running';\n  }\n  if (item && ACTION === 'running') {\n    item.state = 'running';\n    item.step = STEP;\n    item.stepAt = now;\n    item.detail = '';\n  }\n  if (item && ACTION === 'asset-done') {\n    item.assetsDone = (item.assetsDone || 0) + 1;\n    item.assetsTotal = msg.parts && msg.parts.count ?\n      msg.parts.count : item.assetsTotal;\n    item.step = STEP;\n    item.stepAt = now;\n  }\n  if (item && ACTION === 'part-done') {\n    item.partsDone = (item.partsDone || 0) + 1;\n    item.partsTotal = msg.parts && msg.parts.count ?\n      msg.parts.count : item.partsTotal;\n    item.step = STEP;\n    item.stepAt = now;\n  }\n}\n\nprune(status, nowMs);\nglob.set(KEY, status);\nreturn msg;\n",
-    "outputs": 1,
-    "language": "javascript",
-    "noerr": 0,
-    "x": 260,
-    "y": 2320,
-    "wires": [
-      [
         "7259e.59ec72"
       ]
     ]
@@ -1689,12 +1604,12 @@
     "z": "b6d0f.bee9f9",
     "id": "7259e.59ec72",
     "type": "function",
-    "name": "11.2 Build filter values request",
+    "name": "11.1 Build filter values request",
     "func": "// Builds the filterValues request: the products and orders of the day.\n// In: msg.asset, msg.token and msg.day after the shift steps.\n// Out: msg.method, msg.url and msg.headers for the http request node.\nvar cfg = flow.get('cfg');\nvar DAY_MS = 86400000;\nvar HOUR_MS = 3600000;\n\n// A production day D runs from D start hour to D+1 start hour (UTC).\nvar from = Date.parse(msg.day + 'T00:00:00.000Z') + cfg.dayStartHour * HOUR_MS;\nvar to = from + DAY_MS;\n// The shift report sets the exact window of the day (local day start).\nif (msg.dayFromMs !== undefined) {\n  from = msg.dayFromMs;\n  to = msg.dayToMs;\n}\nvar url = cfg.oeeBase + '/assets/';\nurl += encodeURIComponent(msg.asset.id) + '/filterValues';\nurl += '?from=' + new Date(from).toISOString();\nurl += '&to=' + new Date(to).toISOString();\n\nmsg.method = 'GET';\nmsg.url = url;\nmsg.headers = {\n  'Authorization': 'Bearer ' + msg.token,\n  'Accept': 'application/json'\n};\ndelete msg.payload;\nreturn msg;\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 580,
+    "x": 260,
     "y": 2320,
     "wires": [
       [
@@ -1714,7 +1629,7 @@
     "mindspherePath": "",
     "useMindsphereAuth": false,
     "isAdmin": false,
-    "x": 840,
+    "x": 520,
     "y": 2320,
     "wires": [
       [
@@ -1731,7 +1646,7 @@
     "links": [
       "7a15a.6050d6"
     ],
-    "x": 1280,
+    "x": 960,
     "y": 2300,
     "wires": []
   },
@@ -1744,7 +1659,7 @@
     "links": [
       "7df38.638308"
     ],
-    "x": 1280,
+    "x": 960,
     "y": 2340,
     "wires": []
   },
@@ -1757,7 +1672,7 @@
     "links": [
       "347be.26c952"
     ],
-    "x": 1280,
+    "x": 960,
     "y": 2380,
     "wires": []
   },
@@ -1765,12 +1680,12 @@
     "z": "b6d0f.bee9f9",
     "id": "7637c.5d1ea4",
     "type": "function",
-    "name": "11.3 Build product list request",
+    "name": "11.2 Build product list request",
     "func": "// Reads the filterValues answer and asks for the product list.\n// In: the filterValues response. Out 1: the product list request. Out 2:\n// no product collection, go on. Out 3: no product or order that day.\n// Out 4: the asset result for the join when the call failed.\nvar cfg = flow.get('cfg');\nvar name = msg.h.asset_name;\n// More values than this in one day fail the asset (one KPI call each).\nvar MAX_VALUES = 30;\n\nfunction toJoin(text) {\n  msg.payload = {\n    assetId: msg.asset.id,\n    name: name,\n    failed: text,\n    skipped: null,\n    planRows: [],\n    utilRows: [],\n    lossRows: []\n  };\n  delete msg.hours;\n  delete msg.kpiMeta;\n  delete msg.shiftRules;\n  return [null, null, null, msg];\n}\n\n// The values of one filter key, text only, every value once.\nfunction valuesOf(list, key) {\n  var found = list.filter(function (f) {\n    return f.key === key;\n  })[0];\n  var seen = [];\n  ((found && found.value) || []).forEach(function (v) {\n    var text = String(v);\n    if (text !== '' && seen.indexOf(text) < 0) {\n      seen.push(text);\n    }\n  });\n  return seen;\n}\n\nvar body = msg.payload;\nif (msg.statusCode !== 200 || !body || typeof body !== 'object') {\n  return toJoin(name + ': filterValues failed, HTTP ' + msg.statusCode);\n}\nvar list = body.filterValues || [];\nvar products = valuesOf(list, 'product');\nvar orders = valuesOf(list, 'order');\nif (products.length > MAX_VALUES || orders.length > MAX_VALUES) {\n  return toJoin(name + ': more than ' + MAX_VALUES + ' products or orders');\n}\nmsg.values = {\n  products: products,\n  orders: orders\n};\ndelete msg.payload;\nif (!products.length && !orders.length) {\n  return [null, null, msg, null];\n}\nif (!msg.productCollectionId) {\n  msg.productsCalled = false;\n  return [null, msg, null, null];\n}\n\nmsg.productsCalled = true;\nvar url = cfg.oeeBase + '/productCollections/';\nurl += encodeURIComponent(msg.productCollectionId) + '/products';\nmsg.method = 'GET';\nmsg.url = url;\nmsg.headers = {\n  'Authorization': 'Bearer ' + msg.token,\n  'Accept': 'application/json'\n};\nreturn [msg, null, null, null];\n",
     "outputs": 4,
     "language": "javascript",
     "noerr": 0,
-    "x": 1100,
+    "x": 780,
     "y": 2320,
     "wires": [
       [
@@ -1796,7 +1711,7 @@
     "links": [
       "7a15a.6050d6"
     ],
-    "x": 1500,
+    "x": 1180,
     "y": 2320,
     "wires": []
   },
@@ -1812,7 +1727,7 @@
     "mindspherePath": "",
     "useMindsphereAuth": false,
     "isAdmin": false,
-    "x": 1360,
+    "x": 1040,
     "y": 2260,
     "wires": [
       [
@@ -1843,23 +1758,6 @@
     "y": 2540,
     "wires": [
       [
-        "ac0f3.3db94a"
-      ]
-    ]
-  },
-  {
-    "z": "b6d0f.bee9f9",
-    "id": "ac0f3.3db94a",
-    "type": "function",
-    "name": "12.1 Note status: VALUE KPIs",
-    "func": "// Updates one small live status entry in global context.\n// In: a report message; out: the same message, unchanged.\n// running writes queued, running, an asset count, or an hourly-part count.\nvar FLOW_NAME = 'sih-hull';\nvar SITE_NAME = 'Hull';\nvar STEP = 'VALUE KPIs';\nvar ACTION = 'running';\nvar KEY = 'runStatus_' + FLOW_NAME;\nvar MAX_DAYS = 100;\nvar KEEP_DAYS_MS = 7 * 86400000;\n\nfunction finished(state) {\n  return state === 'written' || state === 'dry_run' ||\n    state === 'failed' || state === 'nothing';\n}\n\nfunction prune(status, now) {\n  var keys = Object.keys(status.days);\n  keys.forEach(function (day) {\n    var item = status.days[day];\n    var touched = Date.parse(item.stepAt || status.startedAt || now);\n    if (finished(item.state) && now - touched > KEEP_DAYS_MS) {\n      delete status.days[day];\n    }\n  });\n  keys = Object.keys(status.days);\n  if (keys.length > MAX_DAYS) {\n    keys.sort(function (a, b) {\n      return Date.parse(status.days[a].stepAt || '') -\n        Date.parse(status.days[b].stepAt || '');\n    });\n    keys.slice(0, keys.length - MAX_DAYS).forEach(function (day) {\n      delete status.days[day];\n    });\n  }\n}\n\nvar now = new Date().toISOString();\nvar nowMs = Date.parse(now);\nvar status = glob.get(KEY) || {\n  flow: FLOW_NAME,\n  site: SITE_NAME,\n  dryRun: true,\n  runId: '',\n  mode: '',\n  startedAt: now,\n  lastBeatAt: now,\n  days: {}\n};\nvar cfg = flow.get('cfg') || {};\nstatus.flow = FLOW_NAME;\nstatus.site = SITE_NAME;\nstatus.dryRun = cfg.dryRun !== false;\nstatus.lastBeatAt = now;\n\nif (ACTION === 'queue') {\n  status.state = 'running';\n  if (status.runId !== msg.runId) {\n    status.runId = msg.runId || now;\n    status.mode = msg.mode || '';\n    status.startedAt = msg.startedAt || now;\n  }\n  var queued = msg.day || msg.payload;\n  if (/^\\d{4}-\\d{2}-\\d{2}$/.test(String(queued))) {\n    status.days[queued] = {\n      state: 'queued',\n      step: 'queued',\n      stepAt: now,\n      detail: '',\n      assetsDone: 0,\n      assetsTotal: 0,\n      partsDone: 0,\n      partsTotal: 0\n    };\n  }\n} else {\n  var day = msg.day || (msg.topic === 'day' ? msg.payload : null);\n  var item = status.days[day];\n  if (day && !item) {\n    item = {\n      state: 'running',\n      step: STEP,\n      stepAt: now,\n      detail: '',\n      assetsDone: 0,\n      assetsTotal: 0,\n      partsDone: 0,\n      partsTotal: 0\n    };\n    status.days[day] = item;\n  }\n  if (item) {\n    status.state = 'running';\n  }\n  if (item && ACTION === 'running') {\n    item.state = 'running';\n    item.step = STEP;\n    item.stepAt = now;\n    item.detail = '';\n  }\n  if (item && ACTION === 'asset-done') {\n    item.assetsDone = (item.assetsDone || 0) + 1;\n    item.assetsTotal = msg.parts && msg.parts.count ?\n      msg.parts.count : item.assetsTotal;\n    item.step = STEP;\n    item.stepAt = now;\n  }\n  if (item && ACTION === 'part-done') {\n    item.partsDone = (item.partsDone || 0) + 1;\n    item.partsTotal = msg.parts && msg.parts.count ?\n      msg.parts.count : item.partsTotal;\n    item.step = STEP;\n    item.stepAt = now;\n  }\n}\n\nprune(status, nowMs);\nglob.set(KEY, status);\nreturn msg;\n",
-    "outputs": 1,
-    "language": "javascript",
-    "noerr": 0,
-    "x": 240,
-    "y": 2540,
-    "wires": [
-      [
         "879e3.6b8085"
       ]
     ]
@@ -1873,7 +1771,7 @@
     "links": [
       "7df38.638308"
     ],
-    "x": 680,
+    "x": 380,
     "y": 2540,
     "wires": []
   },
@@ -1886,7 +1784,7 @@
     "links": [
       "347be.26c952"
     ],
-    "x": 680,
+    "x": 380,
     "y": 2580,
     "wires": []
   },
@@ -1894,12 +1792,12 @@
     "z": "b6d0f.bee9f9",
     "id": "879e3.6b8085",
     "type": "function",
-    "name": "12.2 Build value messages",
+    "name": "12.1 Build value messages",
     "func": "// Keeps the products of the day and sends one message per product and\n// per order. In: the product list response (or none). Out 1: one message\n// per value. Out 2: nothing to ask. Out 3: asset result for the join.\nvar STALE_MS = 21600000;\nvar MIN_PER = {\n  SECOND: 60,\n  MINUTE: 1,\n  HOUR: 1 / 60,\n  DAY: 1 / 1440\n};\nvar name = msg.h.asset_name;\n\nfunction toJoin(text) {\n  msg.payload = {\n    assetId: msg.asset.id,\n    name: name,\n    failed: text,\n    skipped: null,\n    planRows: [],\n    utilRows: [],\n    lossRows: []\n  };\n  delete msg.hours;\n  delete msg.kpiMeta;\n  delete msg.shiftRules;\n  return [null, null, msg];\n}\n\n// Parts per minute of a product, null when the interval is not known.\nfunction perMinute(p) {\n  var factor = MIN_PER[String(p.designSpeedInterval).toUpperCase()];\n  var value = Number(p.designSpeedValue);\n  if (factor === undefined || !isFinite(value) || p.designSpeedValue === null) {\n    return null;\n  }\n  return value * factor;\n}\n\n// Step 1: keep the master data of the products that ran that day.\nvar wanted = msg.values.products;\nmsg.productList = [];\nif (msg.productsCalled) {\n  var body = msg.payload;\n  if (msg.statusCode !== 200 || !body || typeof body !== 'object') {\n    return toJoin(name + ': product list failed, HTTP ' + msg.statusCode);\n  }\n  var all = Array.isArray(body) ? body : body.products || [];\n  all.forEach(function (p) {\n    if (wanted.indexOf(String(p.name)) < 0) {\n      return;\n    }\n    msg.productList.push({\n      name: String(p.name),\n      code: p.code ? String(p.code) : null,\n      description: p.description ? String(p.description) : null,\n      perMinute: perMinute(p)\n    });\n  });\n}\ndelete msg.payload;\ndelete msg.productsCalled;\n\n// Step 2: one job per product and per order.\nvar jobs = [];\nmsg.values.products.forEach(function (v) {\n  jobs.push({ key: 'PRODUCT', value: v });\n});\nmsg.values.orders.forEach(function (v) {\n  jobs.push({ key: 'ORDER', value: v });\n});\nif (!jobs.length) {\n  return [null, msg, null];\n}\n\n// Step 3: forget runs that never finished, then clone one message per job.\nvar now = Date.now();\nvar runs = flow.get('valueRuns') || {};\nObject.keys(runs).forEach(function (k) {\n  if (now - runs[k].created > STALE_MS) {\n    delete runs[k];\n  }\n});\nflow.set('valueRuns', runs);\nvar run = msg.asset.id + '|' + msg.day + '|' + now + '|';\nrun += Math.floor(Math.random() * 1000000);\nvar out = jobs.map(function (job) {\n  var copy = JSON.parse(JSON.stringify(msg));\n  copy.job = job;\n  copy.jobRun = run;\n  copy.jobCount = jobs.length;\n  return copy;\n});\nreturn [out, null, null];\n",
     "outputs": 3,
     "language": "javascript",
     "noerr": 0,
-    "x": 520,
+    "x": 220,
     "y": 2540,
     "wires": [
       [
@@ -1929,7 +1827,7 @@
     "randomUnits": "seconds",
     "drop": false,
     "powerMode": false,
-    "x": 760,
+    "x": 460,
     "y": 2500,
     "wires": [
       [
@@ -1941,12 +1839,12 @@
     "z": "b6d0f.bee9f9",
     "id": "8f59f.71e4e9",
     "type": "function",
-    "name": "12.3 Build value KPI request",
+    "name": "12.2 Build value KPI request",
     "func": "// Builds the evaluateKPIs request of ONE product or order of the day.\n// In: msg.job = {key: PRODUCT or ORDER, value}, msg.asset, msg.day.\n// Out: the same POST as 3.2, filtered on that value, hourly.\nvar cfg = flow.get('cfg');\nvar DAY_MS = 86400000;\nvar HOUR_MS = 3600000;\nvar from = Date.parse(msg.day + 'T00:00:00.000Z') + cfg.dayStartHour * HOUR_MS;\nvar to = from + DAY_MS;\n// The shift report sets the exact window of the day (local day start).\nif (msg.dayFromMs !== undefined) {\n  from = msg.dayFromMs;\n  to = msg.dayToMs;\n}\n\nfunction filterFor(key) {\n  return { key: key, value: msg.job.key === key ? [msg.job.value] : [] };\n}\n\nmsg.method = 'POST';\nmsg.url = cfg.oeeBase + '/expressions/evaluateKPIs';\nmsg.headers = {\n  'Authorization': 'Bearer ' + msg.token,\n  'Content-Type': 'application/json',\n  'Accept': 'application/json'\n};\nmsg.payload = {\n  assetId: msg.asset.id,\n  scope: {\n    from: new Date(from).toISOString(),\n    to: new Date(to).toISOString(),\n    filter: [\n      filterFor('PRODUCT'),\n      filterFor('ORDER'),\n      { key: 'SHIFT', value: [] }\n    ],\n    recursive: false,\n    groupedByDateTime: true\n  }\n};\nreturn msg;\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 1020,
+    "x": 720,
     "y": 2540,
     "wires": [
       [
@@ -1966,7 +1864,7 @@
     "mindspherePath": "",
     "useMindsphereAuth": false,
     "isAdmin": false,
-    "x": 1300,
+    "x": 1000,
     "y": 2540,
     "wires": [
       [
@@ -1983,7 +1881,7 @@
     "links": [
       "9526c.76b034"
     ],
-    "x": 1700,
+    "x": 1400,
     "y": 2520,
     "wires": []
   },
@@ -1996,7 +1894,7 @@
     "links": [
       "9904a.79e266"
     ],
-    "x": 1700,
+    "x": 1400,
     "y": 2560,
     "wires": []
   },
@@ -2004,12 +1902,12 @@
     "z": "b6d0f.bee9f9",
     "id": "9337d.75171b",
     "type": "function",
-    "name": "12.4 Check day size",
+    "name": "12.3 Check day size",
     "func": "// Sends the answer of a day evaluateKPIs call on, or to the hourly parts.\n// In: the answer of the http request node. Out 1: the answer, to the check\n// node. Out 2: HTTP 413 (the day is too big for one call): to the hourly\n// parts, which ask the same KPIs hour by hour and merge them.\nif (msg.statusCode === 413) {\n  return [null, msg];\n}\nreturn [msg, null];\n",
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
-    "x": 1560,
+    "x": 1260,
     "y": 2540,
     "wires": [
       [
@@ -2042,23 +1940,6 @@
     "y": 2760,
     "wires": [
       [
-        "6c42b.31bd92"
-      ]
-    ]
-  },
-  {
-    "z": "b6d0f.bee9f9",
-    "id": "6c42b.31bd92",
-    "type": "function",
-    "name": "13.1 Note status: VALUE PARTS",
-    "func": "// Updates one small live status entry in global context.\n// In: a report message; out: the same message, unchanged.\n// running writes queued, running, an asset count, or an hourly-part count.\nvar FLOW_NAME = 'sih-hull';\nvar SITE_NAME = 'Hull';\nvar STEP = 'VALUE PARTS';\nvar ACTION = 'running';\nvar KEY = 'runStatus_' + FLOW_NAME;\nvar MAX_DAYS = 100;\nvar KEEP_DAYS_MS = 7 * 86400000;\n\nfunction finished(state) {\n  return state === 'written' || state === 'dry_run' ||\n    state === 'failed' || state === 'nothing';\n}\n\nfunction prune(status, now) {\n  var keys = Object.keys(status.days);\n  keys.forEach(function (day) {\n    var item = status.days[day];\n    var touched = Date.parse(item.stepAt || status.startedAt || now);\n    if (finished(item.state) && now - touched > KEEP_DAYS_MS) {\n      delete status.days[day];\n    }\n  });\n  keys = Object.keys(status.days);\n  if (keys.length > MAX_DAYS) {\n    keys.sort(function (a, b) {\n      return Date.parse(status.days[a].stepAt || '') -\n        Date.parse(status.days[b].stepAt || '');\n    });\n    keys.slice(0, keys.length - MAX_DAYS).forEach(function (day) {\n      delete status.days[day];\n    });\n  }\n}\n\nvar now = new Date().toISOString();\nvar nowMs = Date.parse(now);\nvar status = glob.get(KEY) || {\n  flow: FLOW_NAME,\n  site: SITE_NAME,\n  dryRun: true,\n  runId: '',\n  mode: '',\n  startedAt: now,\n  lastBeatAt: now,\n  days: {}\n};\nvar cfg = flow.get('cfg') || {};\nstatus.flow = FLOW_NAME;\nstatus.site = SITE_NAME;\nstatus.dryRun = cfg.dryRun !== false;\nstatus.lastBeatAt = now;\n\nif (ACTION === 'queue') {\n  status.state = 'running';\n  if (status.runId !== msg.runId) {\n    status.runId = msg.runId || now;\n    status.mode = msg.mode || '';\n    status.startedAt = msg.startedAt || now;\n  }\n  var queued = msg.day || msg.payload;\n  if (/^\\d{4}-\\d{2}-\\d{2}$/.test(String(queued))) {\n    status.days[queued] = {\n      state: 'queued',\n      step: 'queued',\n      stepAt: now,\n      detail: '',\n      assetsDone: 0,\n      assetsTotal: 0,\n      partsDone: 0,\n      partsTotal: 0\n    };\n  }\n} else {\n  var day = msg.day || (msg.topic === 'day' ? msg.payload : null);\n  var item = status.days[day];\n  if (day && !item) {\n    item = {\n      state: 'running',\n      step: STEP,\n      stepAt: now,\n      detail: '',\n      assetsDone: 0,\n      assetsTotal: 0,\n      partsDone: 0,\n      partsTotal: 0\n    };\n    status.days[day] = item;\n  }\n  if (item) {\n    status.state = 'running';\n  }\n  if (item && ACTION === 'running') {\n    item.state = 'running';\n    item.step = STEP;\n    item.stepAt = now;\n    item.detail = '';\n  }\n  if (item && ACTION === 'asset-done') {\n    item.assetsDone = (item.assetsDone || 0) + 1;\n    item.assetsTotal = msg.parts && msg.parts.count ?\n      msg.parts.count : item.assetsTotal;\n    item.step = STEP;\n    item.stepAt = now;\n  }\n  if (item && ACTION === 'part-done') {\n    item.partsDone = (item.partsDone || 0) + 1;\n    item.partsTotal = msg.parts && msg.parts.count ?\n      msg.parts.count : item.partsTotal;\n    item.step = STEP;\n    item.stepAt = now;\n  }\n}\n\nprune(status, nowMs);\nglob.set(KEY, status);\nreturn msg;\n",
-    "outputs": 1,
-    "language": "javascript",
-    "noerr": 0,
-    "x": 240,
-    "y": 2760,
-    "wires": [
-      [
         "9ed17.7eadb1"
       ]
     ]
@@ -2067,12 +1948,12 @@
     "z": "b6d0f.bee9f9",
     "id": "9ed17.7eadb1",
     "type": "function",
-    "name": "13.2 Build hour requests",
+    "name": "13.1 Build hour requests",
     "func": "// Splits a day evaluateKPIs call that answered 413 into hourly calls.\n// In: the 413 answer, msg.asset, msg.token, msg.dayFromMs, msg.dayToMs and\n// msg.job (a product or order call) or none (the day call). Out: one request\n// per hour of the day, all in one group (msg.parts) for the join.\nvar cfg = flow.get('cfg');\n// The length of one part. The day window is split into parts this long.\nvar PART_HOURS = 1;\nvar HOUR_MS = 3600000;\n\n// The filters of the original call: the product or order of msg.job (same\n// as the value KPI request), else the plain day call.\nfunction filters() {\n  if (!msg.job) {\n    return [{ key: 'PRODUCT', value: [] }];\n  }\n  function filterFor(key) {\n    return {\n      key: key,\n      value: msg.job.key === key ? [msg.job.value] : []\n    };\n  }\n  return [\n    filterFor('PRODUCT'),\n    filterFor('ORDER'),\n    { key: 'SHIFT', value: [] }\n  ];\n}\n\nvar windows = [];\nfor (var t = msg.dayFromMs; t < msg.dayToMs; t += PART_HOURS * HOUR_MS) {\n  windows.push([t, Math.min(t + PART_HOURS * HOUR_MS, msg.dayToMs)]);\n}\n\n// The day join of the flow uses msg.parts too: keep it aside.\nmsg.dayParts = msg.parts;\nvar group = msg.asset.id + '|' + msg.day + '|' + Date.now() + '|';\ngroup += Math.floor(Math.random() * 1000000);\ndelete msg.payload;\nvar out = windows.map(function (w, index) {\n  var copy = JSON.parse(JSON.stringify(msg));\n  copy.method = 'POST';\n  copy.url = cfg.oeeBase + '/expressions/evaluateKPIs';\n  copy.headers = {\n    'Authorization': 'Bearer ' + msg.token,\n    'Content-Type': 'application/json',\n    'Accept': 'application/json'\n  };\n  copy.payload = {\n    assetId: msg.asset.id,\n    scope: {\n      from: new Date(w[0]).toISOString(),\n      to: new Date(w[1]).toISOString(),\n      filter: filters(),\n      recursive: false,\n      groupedByDateTime: true\n    }\n  };\n  copy.parts = {\n    id: group,\n    index: index,\n    count: windows.length,\n    type: 'array'\n  };\n  return copy;\n});\nnode.status({\n  fill: 'yellow',\n  shape: 'dot',\n  text: msg.asset.name + ': 413, ' + out.length + ' hourly parts'\n});\nreturn [out];\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 520,
+    "x": 220,
     "y": 2760,
     "wires": [
       [
@@ -2096,7 +1977,7 @@
     "randomUnits": "seconds",
     "drop": false,
     "powerMode": false,
-    "x": 760,
+    "x": 460,
     "y": 2760,
     "wires": [
       [
@@ -2116,7 +1997,7 @@
     "mindspherePath": "",
     "useMindsphereAuth": false,
     "isAdmin": false,
-    "x": 1020,
+    "x": 720,
     "y": 2760,
     "wires": [
       [
@@ -2128,12 +2009,12 @@
     "z": "b6d0f.bee9f9",
     "id": "a49e4.8378fc",
     "type": "function",
-    "name": "13.3 Pack hour answer",
+    "name": "13.2 Pack hour answer",
     "func": "// Packs the answer of one hourly evaluateKPIs call with its status code, so\n// the join that follows keeps both.\n// In: the answer of the http request node. Out: msg.payload = {statusCode,\n// body}.\nmsg.payload = {\n  statusCode: msg.statusCode,\n  body: msg.payload\n};\nreturn msg;\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 1280,
+    "x": 980,
     "y": 2760,
     "wires": [
       [
@@ -2145,12 +2026,12 @@
     "z": "b6d0f.bee9f9",
     "id": "ac38b.4dba32",
     "type": "function",
-    "name": "13.4 Note status: VALUE hourly parts",
+    "name": "13.3 Note status: VALUE hourly parts",
     "func": "// Updates one small live status entry in global context.\n// In: a report message; out: the same message, unchanged.\n// part-done writes queued, running, an asset count, or an hourly-part count.\nvar FLOW_NAME = 'sih-hull';\nvar SITE_NAME = 'Hull';\nvar STEP = 'VALUE hourly parts';\nvar ACTION = 'part-done';\nvar KEY = 'runStatus_' + FLOW_NAME;\nvar MAX_DAYS = 100;\nvar KEEP_DAYS_MS = 7 * 86400000;\n\nfunction finished(state) {\n  return state === 'written' || state === 'dry_run' ||\n    state === 'failed' || state === 'nothing';\n}\n\nfunction prune(status, now) {\n  var keys = Object.keys(status.days);\n  keys.forEach(function (day) {\n    var item = status.days[day];\n    var touched = Date.parse(item.stepAt || status.startedAt || now);\n    if (finished(item.state) && now - touched > KEEP_DAYS_MS) {\n      delete status.days[day];\n    }\n  });\n  keys = Object.keys(status.days);\n  if (keys.length > MAX_DAYS) {\n    keys.sort(function (a, b) {\n      return Date.parse(status.days[a].stepAt || '') -\n        Date.parse(status.days[b].stepAt || '');\n    });\n    keys.slice(0, keys.length - MAX_DAYS).forEach(function (day) {\n      delete status.days[day];\n    });\n  }\n}\n\nvar now = new Date().toISOString();\nvar nowMs = Date.parse(now);\nvar status = glob.get(KEY) || {\n  flow: FLOW_NAME,\n  site: SITE_NAME,\n  dryRun: true,\n  runId: '',\n  mode: '',\n  startedAt: now,\n  lastBeatAt: now,\n  days: {}\n};\nvar cfg = flow.get('cfg') || {};\nstatus.flow = FLOW_NAME;\nstatus.site = SITE_NAME;\nstatus.dryRun = cfg.dryRun !== false;\nstatus.lastBeatAt = now;\n\nif (ACTION === 'queue') {\n  status.state = 'running';\n  if (status.runId !== msg.runId) {\n    status.runId = msg.runId || now;\n    status.mode = msg.mode || '';\n    status.startedAt = msg.startedAt || now;\n  }\n  var queued = msg.day || msg.payload;\n  if (/^\\d{4}-\\d{2}-\\d{2}$/.test(String(queued))) {\n    status.days[queued] = {\n      state: 'queued',\n      step: 'queued',\n      stepAt: now,\n      detail: '',\n      assetsDone: 0,\n      assetsTotal: 0,\n      partsDone: 0,\n      partsTotal: 0\n    };\n  }\n} else {\n  var day = msg.day || (msg.topic === 'day' ? msg.payload : null);\n  var item = status.days[day];\n  if (day && !item) {\n    item = {\n      state: 'running',\n      step: STEP,\n      stepAt: now,\n      detail: '',\n      assetsDone: 0,\n      assetsTotal: 0,\n      partsDone: 0,\n      partsTotal: 0\n    };\n    status.days[day] = item;\n  }\n  if (item) {\n    status.state = 'running';\n  }\n  if (item && ACTION === 'running') {\n    item.state = 'running';\n    item.step = STEP;\n    item.stepAt = now;\n    item.detail = '';\n  }\n  if (item && ACTION === 'asset-done') {\n    item.assetsDone = (item.assetsDone || 0) + 1;\n    item.assetsTotal = msg.parts && msg.parts.count ?\n      msg.parts.count : item.assetsTotal;\n    item.step = STEP;\n    item.stepAt = now;\n  }\n  if (item && ACTION === 'part-done') {\n    item.partsDone = (item.partsDone || 0) + 1;\n    item.partsTotal = msg.parts && msg.parts.count ?\n      msg.parts.count : item.partsTotal;\n    item.step = STEP;\n    item.stepAt = now;\n  }\n}\n\nprune(status, nowMs);\nglob.set(KEY, status);\nreturn msg;\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 1580,
+    "x": 1280,
     "y": 2760,
     "wires": [
       [
@@ -2173,7 +2054,7 @@
     "accumulate": false,
     "timeout": "",
     "count": "",
-    "x": 1860,
+    "x": 1560,
     "y": 2760,
     "wires": [
       [
@@ -2190,7 +2071,7 @@
     "links": [
       "9526c.76b034"
     ],
-    "x": 2260,
+    "x": 1960,
     "y": 2760,
     "wires": []
   },
@@ -2198,12 +2079,12 @@
     "z": "b6d0f.bee9f9",
     "id": "a87c2.86ab2e",
     "type": "function",
-    "name": "13.5 Merge hour answers",
+    "name": "13.4 Merge hour answers",
     "func": "// Merges the hourly evaluateKPIs answers into one answer of the whole day,\n// the same shape as the day call (results with their hourly groups).\n// In: msg.payload = [{statusCode, body}] in hour order (join). Out: the day\n// answer with msg.statusCode, to the same check node as the day call.\nvar parts = Array.isArray(msg.payload) ? msg.payload : [];\n\n// Short text of the API error (errors[0].message), else the raw body.\nfunction apiMessage(body) {\n  var list = body && (body.errors || (body.data && body.data.errors));\n  if (list && list.length && list[0].message) {\n    return String(list[0].message);\n  }\n  return JSON.stringify(body).slice(0, 200);\n}\n\n// The day join of the flow gets its msg.parts back.\nif (msg.dayParts === undefined) {\n  delete msg.parts;\n} else {\n  msg.parts = msg.dayParts;\n}\ndelete msg.dayParts;\n\nvar bad = parts.filter(function (p) {\n  return !p || p.statusCode !== 200 || !p.body || typeof p.body !== 'object';\n})[0];\nif (bad || !parts.length) {\n  msg.statusCode = bad ? bad.statusCode : 413;\n  var text = 'also on 1 h windows: ';\n  text += bad ? apiMessage(bad.body) : 'no hourly answer';\n  msg.payload = {\n    errors: [\n      {\n        message: text\n      }\n    ]\n  };\n  return msg;\n}\n\n// Step 1: the groups of every KPI, in the order the hours came.\nvar byName = {};\nvar order = [];\nparts.forEach(function (p) {\n  (p.body.results || []).forEach(function (r) {\n    if (!byName[r.name]) {\n      byName[r.name] = {\n        name: r.name,\n        groups: []\n      };\n      order.push(r.name);\n    }\n    byName[r.name].groups = byName[r.name].groups.concat(r.groups || []);\n  });\n});\n\n// Step 2: the day answer. Unit and missing mappings of the first hour.\nvar first = parts[0].body;\nvar body = {\n  productUnit: first.productUnit,\n  results: order.map(function (name) {\n    return byName[name];\n  })\n};\nif (first.missingMapping) {\n  body.missingMapping = first.missingMapping;\n}\nmsg.statusCode = 200;\nmsg.payload = body;\nif (!msg.job) {\n  msg.kpiHourParts = parts.length;\n}\nreturn msg;\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 2100,
+    "x": 1800,
     "y": 2760,
     "wires": [
       [
@@ -2234,23 +2115,6 @@
     "y": 2980,
     "wires": [
       [
-        "2794d.1500f4"
-      ]
-    ]
-  },
-  {
-    "z": "b6d0f.bee9f9",
-    "id": "2794d.1500f4",
-    "type": "function",
-    "name": "14.1 Note status: VALUE CHECK",
-    "func": "// Updates one small live status entry in global context.\n// In: a report message; out: the same message, unchanged.\n// running writes queued, running, an asset count, or an hourly-part count.\nvar FLOW_NAME = 'sih-hull';\nvar SITE_NAME = 'Hull';\nvar STEP = 'VALUE CHECK';\nvar ACTION = 'running';\nvar KEY = 'runStatus_' + FLOW_NAME;\nvar MAX_DAYS = 100;\nvar KEEP_DAYS_MS = 7 * 86400000;\n\nfunction finished(state) {\n  return state === 'written' || state === 'dry_run' ||\n    state === 'failed' || state === 'nothing';\n}\n\nfunction prune(status, now) {\n  var keys = Object.keys(status.days);\n  keys.forEach(function (day) {\n    var item = status.days[day];\n    var touched = Date.parse(item.stepAt || status.startedAt || now);\n    if (finished(item.state) && now - touched > KEEP_DAYS_MS) {\n      delete status.days[day];\n    }\n  });\n  keys = Object.keys(status.days);\n  if (keys.length > MAX_DAYS) {\n    keys.sort(function (a, b) {\n      return Date.parse(status.days[a].stepAt || '') -\n        Date.parse(status.days[b].stepAt || '');\n    });\n    keys.slice(0, keys.length - MAX_DAYS).forEach(function (day) {\n      delete status.days[day];\n    });\n  }\n}\n\nvar now = new Date().toISOString();\nvar nowMs = Date.parse(now);\nvar status = glob.get(KEY) || {\n  flow: FLOW_NAME,\n  site: SITE_NAME,\n  dryRun: true,\n  runId: '',\n  mode: '',\n  startedAt: now,\n  lastBeatAt: now,\n  days: {}\n};\nvar cfg = flow.get('cfg') || {};\nstatus.flow = FLOW_NAME;\nstatus.site = SITE_NAME;\nstatus.dryRun = cfg.dryRun !== false;\nstatus.lastBeatAt = now;\n\nif (ACTION === 'queue') {\n  status.state = 'running';\n  if (status.runId !== msg.runId) {\n    status.runId = msg.runId || now;\n    status.mode = msg.mode || '';\n    status.startedAt = msg.startedAt || now;\n  }\n  var queued = msg.day || msg.payload;\n  if (/^\\d{4}-\\d{2}-\\d{2}$/.test(String(queued))) {\n    status.days[queued] = {\n      state: 'queued',\n      step: 'queued',\n      stepAt: now,\n      detail: '',\n      assetsDone: 0,\n      assetsTotal: 0,\n      partsDone: 0,\n      partsTotal: 0\n    };\n  }\n} else {\n  var day = msg.day || (msg.topic === 'day' ? msg.payload : null);\n  var item = status.days[day];\n  if (day && !item) {\n    item = {\n      state: 'running',\n      step: STEP,\n      stepAt: now,\n      detail: '',\n      assetsDone: 0,\n      assetsTotal: 0,\n      partsDone: 0,\n      partsTotal: 0\n    };\n    status.days[day] = item;\n  }\n  if (item) {\n    status.state = 'running';\n  }\n  if (item && ACTION === 'running') {\n    item.state = 'running';\n    item.step = STEP;\n    item.stepAt = now;\n    item.detail = '';\n  }\n  if (item && ACTION === 'asset-done') {\n    item.assetsDone = (item.assetsDone || 0) + 1;\n    item.assetsTotal = msg.parts && msg.parts.count ?\n      msg.parts.count : item.assetsTotal;\n    item.step = STEP;\n    item.stepAt = now;\n  }\n  if (item && ACTION === 'part-done') {\n    item.partsDone = (item.partsDone || 0) + 1;\n    item.partsTotal = msg.parts && msg.parts.count ?\n      msg.parts.count : item.partsTotal;\n    item.step = STEP;\n    item.stepAt = now;\n  }\n}\n\nprune(status, nowMs);\nglob.set(KEY, status);\nreturn msg;\n",
-    "outputs": 1,
-    "language": "javascript",
-    "noerr": 0,
-    "x": 240,
-    "y": 2980,
-    "wires": [
-      [
         "ae48f.8b7679"
       ]
     ]
@@ -2264,7 +2128,7 @@
     "links": [
       "7df38.638308"
     ],
-    "x": 680,
+    "x": 380,
     "y": 2960,
     "wires": []
   },
@@ -2277,7 +2141,7 @@
     "links": [
       "347be.26c952"
     ],
-    "x": 680,
+    "x": 380,
     "y": 3000,
     "wires": []
   },
@@ -2285,12 +2149,12 @@
     "z": "b6d0f.bee9f9",
     "id": "ae48f.8b7679",
     "type": "function",
-    "name": "14.2 Collect value hours",
+    "name": "14.1 Collect value hours",
     "func": "// Collects the hours of every product and order of one asset and day.\n// In: one filtered evaluateKPIs response (msg.job, msg.jobRun, jobCount).\n// Out 1: when all are in, the asset message with msg.valueHours. Out 2:\n// the asset result for the join when one of the calls failed.\nvar name = msg.h.asset_name;\nvar runs = flow.get('valueRuns') || {};\nvar run = runs[msg.jobRun];\nif (!run) {\n  run = {\n    created: Date.now(),\n    done: 0,\n    failed: [],\n    hours: { PRODUCT: {}, ORDER: {} }\n  };\n  runs[msg.jobRun] = run;\n}\nrun.done += 1;\n\n// An hour belongs to the value when it has parts (total, else good).\nfunction partsOf(results) {\n  var wanted = ['Total parts', 'Good parts'];\n  var found = null;\n  wanted.forEach(function (n) {\n    (results || []).forEach(function (r) {\n      if (r.name === n && !found) {\n        found = r;\n      }\n    });\n  });\n  return found;\n}\n\nvar label = msg.job.key + ' ' + msg.job.value;\nvar body = msg.payload;\nif (msg.statusCode !== 200 || !body || typeof body !== 'object') {\n  run.failed.push(label + ' HTTP ' + msg.statusCode);\n} else {\n  var parts = partsOf(body.results);\n  var hours = [];\n  ((parts && parts.groups) || []).forEach(function (g) {\n    if (Number(g.value) > 0) {\n      hours.push(Date.parse(g.time));\n    }\n  });\n  run.hours[msg.job.key][msg.job.value] = hours;\n}\n\nif (run.done < msg.jobCount) {\n  flow.set('valueRuns', runs);\n  return null;\n}\ndelete runs[msg.jobRun];\nflow.set('valueRuns', runs);\ndelete msg.job;\ndelete msg.jobRun;\ndelete msg.jobCount;\ndelete msg.payload;\nif (run.failed.length) {\n  msg.payload = {\n    assetId: msg.asset.id,\n    name: name,\n    failed: name + ': value KPIs failed, ' + run.failed[0],\n    skipped: null,\n    planRows: [],\n    utilRows: [],\n    lossRows: []\n  };\n  delete msg.hours;\n  delete msg.kpiMeta;\n  delete msg.shiftRules;\n  return [null, msg];\n}\nmsg.valueHours = run.hours;\nreturn [msg, null];\n",
     "outputs": 2,
     "language": "javascript",
     "noerr": 0,
-    "x": 520,
+    "x": 220,
     "y": 2980,
     "wires": [
       [
@@ -2325,23 +2189,6 @@
     "y": 3200,
     "wires": [
       [
-        "564ab.821d12"
-      ]
-    ]
-  },
-  {
-    "z": "b6d0f.bee9f9",
-    "id": "564ab.821d12",
-    "type": "function",
-    "name": "15.1 Note status: ASSIGN & PLAN",
-    "func": "// Updates one small live status entry in global context.\n// In: a report message; out: the same message, unchanged.\n// running writes queued, running, an asset count, or an hourly-part count.\nvar FLOW_NAME = 'sih-hull';\nvar SITE_NAME = 'Hull';\nvar STEP = 'ASSIGN & PLAN';\nvar ACTION = 'running';\nvar KEY = 'runStatus_' + FLOW_NAME;\nvar MAX_DAYS = 100;\nvar KEEP_DAYS_MS = 7 * 86400000;\n\nfunction finished(state) {\n  return state === 'written' || state === 'dry_run' ||\n    state === 'failed' || state === 'nothing';\n}\n\nfunction prune(status, now) {\n  var keys = Object.keys(status.days);\n  keys.forEach(function (day) {\n    var item = status.days[day];\n    var touched = Date.parse(item.stepAt || status.startedAt || now);\n    if (finished(item.state) && now - touched > KEEP_DAYS_MS) {\n      delete status.days[day];\n    }\n  });\n  keys = Object.keys(status.days);\n  if (keys.length > MAX_DAYS) {\n    keys.sort(function (a, b) {\n      return Date.parse(status.days[a].stepAt || '') -\n        Date.parse(status.days[b].stepAt || '');\n    });\n    keys.slice(0, keys.length - MAX_DAYS).forEach(function (day) {\n      delete status.days[day];\n    });\n  }\n}\n\nvar now = new Date().toISOString();\nvar nowMs = Date.parse(now);\nvar status = glob.get(KEY) || {\n  flow: FLOW_NAME,\n  site: SITE_NAME,\n  dryRun: true,\n  runId: '',\n  mode: '',\n  startedAt: now,\n  lastBeatAt: now,\n  days: {}\n};\nvar cfg = flow.get('cfg') || {};\nstatus.flow = FLOW_NAME;\nstatus.site = SITE_NAME;\nstatus.dryRun = cfg.dryRun !== false;\nstatus.lastBeatAt = now;\n\nif (ACTION === 'queue') {\n  status.state = 'running';\n  if (status.runId !== msg.runId) {\n    status.runId = msg.runId || now;\n    status.mode = msg.mode || '';\n    status.startedAt = msg.startedAt || now;\n  }\n  var queued = msg.day || msg.payload;\n  if (/^\\d{4}-\\d{2}-\\d{2}$/.test(String(queued))) {\n    status.days[queued] = {\n      state: 'queued',\n      step: 'queued',\n      stepAt: now,\n      detail: '',\n      assetsDone: 0,\n      assetsTotal: 0,\n      partsDone: 0,\n      partsTotal: 0\n    };\n  }\n} else {\n  var day = msg.day || (msg.topic === 'day' ? msg.payload : null);\n  var item = status.days[day];\n  if (day && !item) {\n    item = {\n      state: 'running',\n      step: STEP,\n      stepAt: now,\n      detail: '',\n      assetsDone: 0,\n      assetsTotal: 0,\n      partsDone: 0,\n      partsTotal: 0\n    };\n    status.days[day] = item;\n  }\n  if (item) {\n    status.state = 'running';\n  }\n  if (item && ACTION === 'running') {\n    item.state = 'running';\n    item.step = STEP;\n    item.stepAt = now;\n    item.detail = '';\n  }\n  if (item && ACTION === 'asset-done') {\n    item.assetsDone = (item.assetsDone || 0) + 1;\n    item.assetsTotal = msg.parts && msg.parts.count ?\n      msg.parts.count : item.assetsTotal;\n    item.step = STEP;\n    item.stepAt = now;\n  }\n  if (item && ACTION === 'part-done') {\n    item.partsDone = (item.partsDone || 0) + 1;\n    item.partsTotal = msg.parts && msg.parts.count ?\n      msg.parts.count : item.partsTotal;\n    item.step = STEP;\n    item.stepAt = now;\n  }\n}\n\nprune(status, nowMs);\nglob.set(KEY, status);\nreturn msg;\n",
-    "outputs": 1,
-    "language": "javascript",
-    "noerr": 0,
-    "x": 240,
-    "y": 3200,
-    "wires": [
-      [
         "b604b.91dadd"
       ]
     ]
@@ -2350,12 +2197,12 @@
     "z": "b6d0f.bee9f9",
     "id": "b604b.91dadd",
     "type": "function",
-    "name": "15.2 Assign hours to products",
+    "name": "15.1 Assign hours to products",
     "func": "// Gives every hour of the day a product and an order.\n// In: msg.hours, msg.valueHours, msg.productList (absent when no values).\n// Out: hour.product and hour.order on every hour, and msg.hourInfo (hour\n// start in ms -> product and order) for the stop rows.\nvar valueHours = msg.valueHours || { PRODUCT: {}, ORDER: {} };\nvar master = msg.productList || [];\n\n// The value (a product name or an order) that has parts in this hour.\nfunction valueAt(kind, ms) {\n  var names = Object.keys(valueHours[kind]);\n  var found = null;\n  names.forEach(function (n) {\n    if (found === null && valueHours[kind][n].indexOf(ms) >= 0) {\n      found = n;\n    }\n  });\n  return found;\n}\n\n// An hour without parts takes the value of the hour before it. Hours\n// before the first value take the first value that follows.\nfunction fill(list) {\n  var last = null;\n  list.forEach(function (item, i) {\n    if (item === null) {\n      list[i] = last;\n    } else {\n      last = item;\n    }\n  });\n  var next = null;\n  for (var i = list.length - 1; i >= 0; i--) {\n    if (list[i] === null) {\n      list[i] = next;\n    } else {\n      next = list[i];\n    }\n  }\n  return list;\n}\n\n// Part name: the description when there is one, else the name. The key is\n// the product code, else the name.\nfunction productOf(productName) {\n  if (productName === null) {\n    return null;\n  }\n  var record = master.filter(function (p) {\n    return p.name === productName;\n  })[0];\n  var rec = record || {};\n  return {\n    part_name: rec.description || productName,\n    product_key: rec.code || productName,\n    per_minute: rec.perMinute === undefined ? null : rec.perMinute\n  };\n}\n\nvar times = msg.hours.map(function (h) {\n  return Date.parse(h.time);\n});\nvar products = fill(times.map(function (ms) {\n  return valueAt('PRODUCT', ms);\n}));\nvar orders = fill(times.map(function (ms) {\n  return valueAt('ORDER', ms);\n}));\n\nmsg.hourInfo = {};\nmsg.hours.forEach(function (hour, i) {\n  hour.product = productOf(products[i]);\n  hour.order = orders[i];\n  msg.hourInfo[String(times[i])] = {\n    product: hour.product,\n    order: hour.order\n  };\n});\ndelete msg.valueHours;\ndelete msg.productList;\ndelete msg.values;\nreturn msg;\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 540,
+    "x": 240,
     "y": 3200,
     "wires": [
       [
@@ -2372,7 +2219,7 @@
     "links": [
       "b9e29.950d0f"
     ],
-    "x": 940,
+    "x": 640,
     "y": 3200,
     "wires": []
   },
@@ -2380,12 +2227,12 @@
     "z": "b6d0f.bee9f9",
     "id": "b7f3a.9373f6",
     "type": "function",
-    "name": "15.3 Build plan rows",
+    "name": "15.2 Build plan rows",
     "func": "// Builds the Power BI rows of one asset and day from the hourly KPIs:\n// pbi_plan_opt (per shift and product), pbi_time_utilisation (per day).\n// In: msg.hours (with hour.product), msg.shiftRules, msg.h.\n// Out: msg.planRows, msg.utilRows.\nvar MIN_MS = 60000;\nvar DAY_MS = 86400000;\nvar HOUR_MS = 3600000;\nvar MINUTES_PER_DAY = 1440;\nvar cfg = flow.get('cfg') || {};\nvar loadedAt = msg.loadedAt || Date.now();\n\n// The shift of an instant: the event whose recurrence covers it, else null.\n// The calendar rules hold local wall clock times: compare the local time.\nfunction shiftOf(instant) {\n  var ms = instant + offsetHours(instant) * HOUR_MS;\n  var found = null;\n  msg.shiftRules.forEach(function (rule) {\n    if (found) {\n      return;\n    }\n    var days = 0;\n    if (rule.freq === 'DAILY') {\n      days = 1;\n    } else if (rule.freq === 'WEEKLY') {\n      days = 7;\n    }\n    var until = rule.until === null ? Infinity : rule.until;\n    if (!days || rule.start === null || ms < rule.start || ms > until) {\n      return;\n    }\n    var step = days * rule.interval * DAY_MS;\n    var occurrence = rule.start + Math.floor((ms - rule.start) / step) * step;\n    if (ms < occurrence + rule.duration) {\n      found = rule.name;\n    }\n  });\n  return found;\n}\n\n// Last Sunday of the month at 01:00 UTC. The month is 0-based.\nfunction lastSundayUtc(year, monthIndex) {\n  var d = new Date(Date.UTC(year, monthIndex + 1, 0, 1, 0, 0));\n  d.setUTCDate(d.getUTCDate() - d.getUTCDay());\n  return d.getTime();\n}\n\n// UTC offset of the site in hours: the standard offset of its time zone\n// plus one hour in EU summer time (from 1.1 CONFIG, via flow context cfg).\nfunction offsetHours(ms) {\n  var year = new Date(ms).getUTCFullYear();\n  var summer = !!cfg.euSummer && ms >= lastSundayUtc(year, 2) &&\n    ms < lastSundayUtc(year, 9);\n  return (cfg.utcHours || 0) + (summer ? 1 : 0);\n}\n\n// Adds a value to a sum. A sum with no value at all stays null.\nfunction addTo(sum, key, value) {\n  if (value === null || value === undefined) {\n    return;\n  }\n  sum[key] = (sum[key] || 0) + value;\n}\n\nfunction minutes(ms) {\n  return ms === null || ms === undefined ? null : ms / MIN_MS;\n}\n\nfunction sumOrNull(sum, key) {\n  return sum[key] === undefined ? null : sum[key];\n}\n\nvar groups = {};\nvar order = [];\nmsg.hours.forEach(function (hour) {\n  var shift = shiftOf(Date.parse(hour.time));\n  var product = hour.product || null;\n  var key = String(shift) + '|' + String(product && product.product_key);\n  var g = groups[key];\n  if (!g) {\n    g = {\n      shift: shift,\n      product: product,\n      sum: {},\n      hours: 0\n    };\n    groups[key] = g;\n    order.push(key);\n  }\n  var v = hour.values;\n  g.hours += 1;\n  addTo(g.sum, 'good', v.good_parts);\n  var planned = v.planned_stop_shift_plan_ms;\n  if (v.total_time_ms !== null && planned !== null) {\n    addTo(g.sum, 'total', minutes(v.total_time_ms - planned));\n  }\n  addTo(g.sum, 'opt', minutes(v.operational_time_ms));\n  addTo(g.sum, 'oee', minutes(v.used_operational_time_ms));\n  addTo(g.sum, 'down', minutes(v.downtime_ms));\n});\n\n// Parts that fit in a time at the design speed. Null without a speed.\nfunction unitsOf(g, minutesKey) {\n  var perMinute = g.product && g.product.per_minute;\n  var time = g.sum[minutesKey];\n  if (perMinute === null || perMinute === undefined || time === undefined) {\n    return null;\n  }\n  return perMinute * time;\n}\n\nvar daySum = {};\nmsg.planRows = order.map(function (key) {\n  var g = groups[key];\n  addTo(daySum, 'total', g.sum.total);\n  addTo(daySum, 'opt', g.sum.opt);\n  addTo(daySum, 'oee', g.sum.oee);\n  return {\n    site_name: msg.h.site,\n    area_name: msg.h.area,\n    machine_name: msg.h.asset_name,\n    unique_machine_name: msg.asset.id,\n    date: msg.day,\n    shift_name: g.shift,\n    part_name: g.product ? g.product.part_name : null,\n    product_key: g.product ? g.product.product_key : null,\n    good_parts: sumOrNull(g.sum, 'good'),\n    capacity: unitsOf(g, 'opt'),\n    downtime_units: unitsOf(g, 'down'),\n    total_time: sumOrNull(g.sum, 'total'),\n    planned_opt: sumOrNull(g.sum, 'opt'),\n    oee_time: sumOrNull(g.sum, 'oee'),\n    oee_target: null,\n    pdt_target: null,\n    updt_target: null,\n    source_hours: g.hours,\n    loaded_at: loadedAt\n  };\n});\n\nmsg.utilRows = [];\nif (order.length) {\n  msg.utilRows.push({\n    site_name: msg.h.site,\n    machine_name: msg.h.asset_name,\n    unique_machine_name: msg.asset.id,\n    date: msg.day,\n    total_time_total: sumOrNull(daySum, 'total'),\n    planned_opt_total: sumOrNull(daySum, 'opt'),\n    oee_time_total: sumOrNull(daySum, 'oee'),\n    all_time: MINUTES_PER_DAY,\n    loaded_at: loadedAt\n  });\n}\ndelete msg.hours;\ndelete msg.kpiMeta;\nreturn msg;\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 800,
+    "x": 500,
     "y": 3200,
     "wires": [
       [

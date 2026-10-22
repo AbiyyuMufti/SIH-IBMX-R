@@ -10,17 +10,16 @@ import {
 } from './lib-flow-builder.js';
 
 const FILE = 'vfc-run-monitor.json';
-const ROUTE = '/reports-monitor/:view?';
+const ROUTE = '/reports-monitor/';
 
 function buildFlow() {
   const b = makeBuilder(360);
   let row = 1;
 
   b.lane(row++, 'HTTP MONITOR',
-    'One access-key-protected route serves the page at /reports-monitor, ' +
-    'status JSON at /reports-monitor/status, and one-month log history at ' +
-    '/reports-monitor/history. Generate its access key in the VFC after ' +
-    'import. The page reuses the key for its two read requests.',
+    'One access-key-protected route serves page, status and history at ' +
+    '/reports-monitor/ using the view query parameter. Generate its access ' +
+    'key in the VFC after import. The page reuses it for all GET requests.',
     [
       rawStep('monitorIn', {
         type: 'http in',
@@ -36,7 +35,7 @@ function buildFlow() {
       fn(
         'route',
         'Route monitor request',
-        'm1-route.js',
+        'v1-route.js',
         ['PAGE', 'STATUS', 'HISTORY', 'ERROR'],
         {},
         true
@@ -48,7 +47,7 @@ function buildFlow() {
     'loads one month of CSV history only when requested.',
     [
       linkInStep('PAGE'),
-      fn('page', 'Build monitor page', 'm6-monitor-page.js', ['next']),
+      fn('page', 'Build monitor page', 'v6-monitor-page.js', ['next']),
       rawStep('pageResponse', {
         type: 'http response',
         name: 'Send page',
@@ -63,7 +62,7 @@ function buildFlow() {
     'minutes without a checkpoint.',
     [
       linkInStep('STATUS'),
-      fn('status', 'Build status JSON', 'm2-status-json.js', ['next']),
+      fn('status', 'Build status JSON', 'v2-status-json.js', ['next']),
       rawStep('statusResponse', {
         type: 'http response',
         name: 'Send status',
@@ -80,20 +79,20 @@ function buildFlow() {
       fn(
         'historyRequest',
         'Check history request',
-        'm3-history-request.js',
+        'v3-history-request.js',
         ['next', 'ERROR']
       ),
       listNode('historyList'),
       fn(
         'historyPick',
         'Find history file',
-        'm4-pick-history.js',
+        'v4-pick-history.js',
         ['next', 'NOT FOUND', 'ERROR'],
         {},
         true
       ),
       readStep('historyRead', 'Read history CSV'),
-      fn('historyJson', 'Build history JSON', 'm5-history-json.js', ['next']),
+      fn('historyJson', 'Build history JSON', 'v5-history-json.js', ['next']),
       rawStep('historyResponse', {
         type: 'http response',
         name: 'Send history',
@@ -164,7 +163,7 @@ function buildFlow() {
     id: commandFn,
     type: 'function',
     name: `${commandStage}.1 Validate backfill`,
-    func: code('m10-command.js'),
+    func: code('v10-command.js'),
     outputs: 5,
     language: 'javascript',
     noerr: 0,
@@ -225,7 +224,7 @@ function buildFlow() {
     'keys are never copied into the response.',
     [
       catchStep('monitorCatch', 'Catch monitor errors'),
-      fn('monitorError', 'Build error response', 'm7-error-response.js',
+      fn('monitorError', 'Build error response', 'v7-error-response.js',
         ['next']),
       rawStep('catchResponse', {
         type: 'http response',

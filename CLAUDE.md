@@ -8,7 +8,7 @@ Build and maintain Node-RED flows for Siemens Insights Hub (Reckitt OEE), based 
 - Done (mock tests pass; first VFC run found the missing-file read, fix built, to re-check in the VFC): CSV run log in the data lake plus `catch`, see `docs/logging.md`. Test: `node scripts/test-vfc-log.js`
 - Done (spike checked by the user in the VFC): Python reads parquet files of the data lake through an `http in` endpoint, `flows/vfc-lake-api.json`, see `docs/lake-api.md`. Final flow built, to re-check in the VFC
 - Done offline (mock proof passes, rebuilt flows to import and check in the VFC): platform switch. Config node `platform` (`legacy` or `xcelerator`, no default) and `IH_PLATFORM` in `.env` for scripts, see `docs/platform-switch.md`. Decision 2026-10-13: the VFC moves to xcelerator (imminent); legacy stays supported until the old setup is switched off. Test: `node scripts/test-platform-switch.js`; the test scripts take `platform=legacy|xcelerator`
-- Current work (branch `vfc-run-monitor`): live run status and backfill commands for the SIH report daily, shift report and PBI report tabs, see `docs/run-monitor.md`. Iterations 1a (report-day checkpoints) and 1b (monitor page, JSON, history, PBI/listener/Config status) are built and tested offline. Iteration 2 remains.
+- Current work (branch `vfc-run-monitor`): live run status and backfill commands for the SIH report daily, shift report and PBI report tabs, see `docs/run-monitor.md`. Iterations 1a (report-day checkpoints), 1b (monitor page, JSON, history, PBI/listener/Config status) and 2 (backfill commands) built and tested offline; checkpoints cut to fit 200 nodes per tab (2026-10-22). To import and check in the VFC
 - Done (run in the VFC for 14 and 15 Sep 2026, checked against the OEE app): shift report flow `flows/vfc-rpt-hull.json` (tables `rpt_window`, `rpt_hour`, `rpt_event` for the line and its machines), see `docs/shift-report-flow.md`, design `prompt-response/shift-report-data-map.md`, diagram `diagrams/shift-report-data-map.drawio` (`node scripts/build-drawio-shift-report.js`). Generator `scripts/build-vfc-rpt-flows.js`, code `scripts/vfc/q*.js`. Test: `node scripts/test-vfc-rpt.js platform=legacy|xcelerator`. Open: see the section "Open points and next steps" of that doc
 - Rules learnt in the shift report work: never keep rows in flow context (the VFC refuses a value over 2 MB, use the join node); the calendar rules hold local wall clock times with a Z; a file with quotes in a Bash heredoc can fail, use the Write tool; downloads: use a new `--out` folder each time
 - Done: draw.io map of every Power BI table (columns, examples, our column, differences), `diagrams/powerbi-data-map.drawio`, see `docs/powerbi-diagrams.md`. Refresh: `python scripts/helper-profile-parquet.py`, then `node scripts/build-drawio.js` and `node scripts/validate-drawio.js`
@@ -67,6 +67,7 @@ Checks (in `scripts/validate-flow.js`, must pass before every commit):
 - Fail on any function-node line over 80 characters
 - Fail on trailing comments and single-line `{ ... }` blocks
 - Fail on any cycle, any wire pointing to a missing node, and any debug node with more than one incoming wire
+- Fail on any tab (workspace) with more than 200 nodes: the VFC refuses it
 - Report the longest line and the number of link nodes
 
 ## Rules
