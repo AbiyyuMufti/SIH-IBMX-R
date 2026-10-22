@@ -9,7 +9,40 @@ var PBI_TABLES = [
 ];
 var MAX_DAYS = 31;
 var MAX_MONTHS = 12;
-var request = msg.payload;
+
+// The VFC http in node can hand the POST body over as an object, as JSON
+// text, as a Buffer (also serialised) or in msg.req.body: take all of them.
+function parseBody(value) {
+  var text = null;
+  if (typeof value === 'string') {
+    text = value;
+  } else if (Buffer.isBuffer(value)) {
+    text = value.toString('utf8');
+  } else if (value && value.type === 'Buffer' && value.data) {
+    text = Buffer.from(value.data).toString('utf8');
+  } else {
+    return value;
+  }
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    return undefined;
+  }
+}
+
+function describe(value) {
+  if (value === undefined || value === null) {
+    return 'nothing';
+  }
+  return Buffer.isBuffer(value) ? 'a Buffer' : typeof value;
+}
+
+var request = parseBody(msg.payload);
+var gotBody = describe(msg.payload);
+if (!request || typeof request !== 'object') {
+  request = parseBody(msg.req && msg.req.body);
+  gotBody += ', req.body ' + describe(msg.req && msg.req.body);
+}
 var acceptedFlow = '';
 var force = !!(request && request.force === true);
 var cfg = glob.get('cfg');
@@ -115,7 +148,12 @@ function busy(flowName) {
 }
 
 if (!request || typeof request !== 'object' || Array.isArray(request)) {
-  return refuse(400, 'payload must be a JSON object', '', '');
+  return refuse(
+    400,
+    'payload must be a JSON object (got ' + gotBody + ')',
+    '',
+    ''
+  );
 }
 if (request.force !== undefined && typeof request.force !== 'boolean') {
   return refuse(400, 'force must be a boolean', '', '');

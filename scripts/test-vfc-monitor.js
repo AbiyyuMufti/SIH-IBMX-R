@@ -626,6 +626,29 @@ check(
     globalData.runMonitorCommands[0].result === 'accepted',
   'accepted command reserves status and emits an audit log'
 );
+// The VFC http in node can give the POST body in other forms than an object.
+for (const [kind, build] of [
+  ['JSON text', (b) => ({ payload: JSON.stringify(b) })],
+  ['a Buffer', (b) => ({ payload: Buffer.from(JSON.stringify(b)) })],
+  ['a serialised Buffer', (b) => ({ payload: Buffer.from(JSON.stringify(b)).toJSON() })],
+  ['msg.req.body', (b) => ({ payload: undefined, req: { body: b } })]
+]) {
+  globalData['runStatus_sih-hull'] = undefined;
+  globalData.runMonitorCommands = [];
+  const forms = command(flow, node, build({
+    flow: 'sih-hull', start: '2026-09-05', end: '2026-09-05'
+  }), Buffer, Promise, glob);
+  check(forms[0].statusCode === 202 && forms[1].payload.start === '2026-09-05',
+    `command body as ${kind} is accepted`);
+}
+const noBody = command(flow, node, { payload: undefined }, Buffer, Promise, glob);
+check(noBody[0].statusCode === 400 &&
+  /got nothing, req.body nothing/.test(noBody[0].payload.error),
+  'a missing body says what the node received');
+globalData['runStatus_sih-hull'] = {
+  flow: 'sih-hull', state: 'queued', startedAt: dailyBody.start, days: {}
+};
+globalData.runMonitorCommands = [];
 const busyDaily = command(flow, node, {
   payload: {
     ...dailyBody,
