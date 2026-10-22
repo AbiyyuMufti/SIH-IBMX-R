@@ -10,7 +10,7 @@ import {
 } from './lib-flow-builder.js';
 
 const FILE = 'vfc-run-monitor.json';
-const ROUTE = '/reports-monitor/';
+const ROUTE = '/reports-monitor';
 
 function buildFlow() {
   const b = makeBuilder(360);
@@ -18,7 +18,7 @@ function buildFlow() {
 
   b.lane(row++, 'HTTP MONITOR',
     'One access-key-protected route serves page, status and history at ' +
-    '/reports-monitor/ using the view query parameter. Generate its access ' +
+    '/reports-monitor using the view query parameter. Generate its access ' +
     'key in the VFC after import. The page reuses it for all GET requests.',
     [
       rawStep('monitorIn', {

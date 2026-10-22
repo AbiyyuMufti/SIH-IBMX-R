@@ -7,8 +7,8 @@
 | **Status** | Iterations 1a, 1b and 2 built and mock-tested offline. Checkpoints cut on 2026-10-22 so every tab fits the VFC limit of 200 nodes (SIH report daily 196, shift report 175, PBI report build 165, monitor 64). Import and runtime checks in the VFC remain |
 | **Code** | Builder `scripts/build-vfc-monitor-flow.js`, monitor nodes `scripts/vfc/v*.js`, status nodes `scripts/vfc/u1-note-status.js` and `u2-log-to-status.js`. Test `node scripts/test-vfc-monitor.js platform=legacy\|xcelerator` |
 | **Access** | Generate separate access keys for the GET monitor route and POST command route |
-| **Status URL** | `GET /reports-monitor/?view=status` returns JSON |
-| **History URL** | `GET /reports-monitor/?view=history&flow=sih-hull&month=2026-10` returns one month's log |
+| **Status URL** | `GET /reports-monitor?view=status` returns JSON |
+| **History URL** | `GET /reports-monitor?view=history&flow=sih-hull&month=2026-10` returns one month's log |
 | **Writes** | Appends command outcomes to `logs/run-monitor`; report flow `DRY_RUN` settings are unchanged |
 | **History limit** | The newest 200 rows are returned; `count` and `truncated` report the total and omitted rows |
 | **Tests** | `node scripts/test-vfc-monitor.js platform=legacy|xcelerator`; `node scripts/validate-flow.js` |
@@ -23,7 +23,7 @@ second protects the POST command.
 The GET URL follows the lake API's VFC access-key convention:
 
 ```text
-https://<vfc-host>/public/<tenant>/reports-monitor/?key=<key>
+https://<vfc-host>/public/<tenant>/reports-monitor?key=<key>
 ```
 
 Copy the actual host, tenant and GET key URL from its HTTP In node. The POST
@@ -35,13 +35,13 @@ route every 10 seconds and carries the GET key into its history request.
 
 | Request | Response |
 |---|---|
-| `GET /reports-monitor/` | Self-contained page with status polling and a flow/month history form |
-| `GET /reports-monitor/?view=status` | JSON snapshot of SIH daily, shift, PBI build, PBI listener and Config status |
-| `GET /reports-monitor/?view=history&flow=<flow>&month=YYYY-MM` | Parsed rows from one monthly CSV log |
+| `GET /reports-monitor` | Self-contained page with status polling and a flow/month history form |
+| `GET /reports-monitor?view=status` | JSON snapshot of SIH daily, shift, PBI build, PBI listener and Config status |
+| `GET /reports-monitor?view=history&flow=<flow>&month=YYYY-MM` | Parsed rows from one monthly CSV log |
 | `POST /reports-monitor/command` | Validates and queues one report backfill; returns 202, 400, 409 or 503 |
 
 The GET routes are served by one access-key-protected endpoint,
-`/reports-monitor/`. The `view` query parameter selects the page (omitted),
+`/reports-monitor`. The `view` query parameter selects the page (omitted),
 status (`view=status`) or history (`view=history`), so the page and its read
 requests share one VFC key. Unknown view values return 404. The history flow
 must be one of `sih-hull`, `rpt-hull`, `pbi-report` or

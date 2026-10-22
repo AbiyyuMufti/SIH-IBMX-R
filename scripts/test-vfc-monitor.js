@@ -349,6 +349,22 @@ check(
     historyList.path === 'eu_report/logs/sih-hull/log_2026-10.csv',
   'history list chooses the exact requested month file'
 );
+// The VFC list objects node gives keys with data/ten=<tenant>/.
+const tenantList = {
+  payload: [
+    {
+      key: 'data/ten=reckitt/eu_report/logs/sih-hull/log_2026-10.csv'
+    }
+  ],
+  historyName: 'log_2026-10.csv',
+  historyFlow: 'sih-hull',
+  historyMonth: '2026-10'
+};
+pickHistory(flow, node, tenantList, Buffer, Promise, glob);
+check(
+  tenantList.path === 'eu_report/logs/sih-hull/log_2026-10.csv',
+  'history read path has no data/ten=<tenant>/ prefix (VFC list keys)'
+);
 const missingHistory = {
   payload: [],
   historyName: 'log_2026-10.csv',
@@ -388,6 +404,16 @@ const historyMessage = {
   historyMonth: '2026-10'
 };
 historyJson(flow, node, historyMessage, Buffer, Promise, glob);
+// The VFC read object node gives a Buffer, also serialised.
+for (const [kind, payload] of [
+  ['Buffer', Buffer.from(historyRows.join('\n'), 'utf8')],
+  ['serialised Buffer', Buffer.from(historyRows.join('\n'), 'utf8').toJSON()]
+]) {
+  const m = { payload, historyFlow: 'sih-hull', historyMonth: '2026-10' };
+  historyJson(flow, node, m, Buffer, Promise, glob);
+  check(m.statusCode === 200 && m.payload.count === 205,
+    `history JSON reads a ${kind} from the read node`);
+}
 check(
   historyMessage.statusCode === 200 &&
     historyMessage.payload.count === 205 &&
@@ -412,7 +438,7 @@ vmFunction('v6-monitor-page.js', {})(
 check(
   pageMessage.statusCode === 200 &&
     pageMessage.headers['content-type'].indexOf('text/html') === 0 &&
-    pageMessage.payload.indexOf('base+"/?view="') !== -1 &&
+    pageMessage.payload.indexOf('base+"?view="') !== -1 &&
     pageMessage.payload.indexOf('url("status")') !== -1 &&
     pageMessage.payload.indexOf('url("history",params)') !== -1 &&
     pageMessage.payload.indexOf('"/status"') === -1 &&
@@ -755,9 +781,9 @@ const getNode = monitorFlow.find((item) =>
   item.name === 'Get report monitor'
 );
 check(
-  getNode && getNode.endpoint === '/reports-monitor/' &&
+  getNode && getNode.endpoint === '/reports-monitor' &&
     getNode.method === 'get',
-  'monitor GET endpoint uses the fixed trailing-slash route'
+  'monitor GET endpoint has no trailing slash (the VFC key link refuses it)'
 );
 for (const [file, name, targetName] of [
   ['vfc-pbi-daily-hull.json', 'sih-hull BACKFILL', 'SITE SETTINGS'],

@@ -1,6 +1,8 @@
 // Finds the requested month file in the listed log folder.
 // In: msg.payload = list objects result; msg.historyName = exact filename.
-// Out: read object, 404 when absent, or 502 for an invalid list response.
+// Out: read object (path without data/ten=<tenant>/), 404 when absent, or
+// 502 for an invalid list response.
+var TENANT_PREFIX = /^\/?(data\/ten=[^\/]+\/)?/;
 if (!Array.isArray(msg.payload)) {
   msg.statusCode = 502;
   msg.headers = {
@@ -29,5 +31,5 @@ if (!found) {
   return [null, msg, null];
 }
 
-msg.path = found.key;
+msg.path = String(found.key).replace(TENANT_PREFIX, '');
 return [msg, null, null];

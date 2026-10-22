@@ -55,7 +55,7 @@ var html = [
   'var key=new URLSearchParams(location.search).get("key")||"";',
   'var base=location.pathname.replace(/\\/+$/,"");',
   'function url(view,params){',
-  '  var out=base+"/?view="+encodeURIComponent(view);',
+  '  var out=base+"?view="+encodeURIComponent(view);',
   '  out+="&key="+encodeURIComponent(key);',
   '  Object.keys(params||{}).forEach(function(name){',
   '    out+="&"+encodeURIComponent(name)+"=";',

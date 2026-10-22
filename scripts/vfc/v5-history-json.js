@@ -2,9 +2,23 @@
 // In: msg.payload = the CSV text from the data lake read-object node.
 // Out: JSON rows, or an explicit 502 for an unusable file.
 var MAX_ROWS = 200;
-var text = msg.payload;
 
-if (typeof text !== 'string') {
+// The read node gives a Buffer (or a serialised one) in the VFC, or text.
+function decode(payload) {
+  if (typeof payload === 'string') {
+    return payload;
+  }
+  if (Buffer.isBuffer(payload)) {
+    return payload.toString('utf8');
+  }
+  if (payload && payload.type === 'Buffer' && payload.data) {
+    return Buffer.from(payload.data).toString('utf8');
+  }
+  return null;
+}
+
+var text = decode(msg.payload);
+if (text === null) {
   msg.statusCode = 502;
   msg.headers = {
     'content-type': 'application/json'
