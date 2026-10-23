@@ -3,12 +3,11 @@
 // Out: JSON with a derived STUCK state after 30 minutes without a checkpoint.
 var STUCK_AFTER_MS = 30 * 60 * 1000;
 var now = Date.now();
-var keys = [
-  'runStatus_sih-hull',
-  'runStatus_rpt-hull',
-  'runStatus_pbi-report',
-  'runStatus_pbi-listener'
-];
+// The monitored flows: the builder fills in scripts/monitor-flows.js.
+var MONITOR_FLOWS = __MONITOR_FLOWS__;
+var keys = MONITOR_FLOWS.map(function (item) {
+  return 'runStatus_' + item.id;
+});
 var flows = {};
 
 function active(status) {

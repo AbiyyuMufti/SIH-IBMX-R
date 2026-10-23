@@ -13,6 +13,27 @@ var presetKey = JSON.stringify(COMMAND_KEY).replace(/</g, '\\u003c');
 // puts it here as text, so this node only builds a string: nothing of the
 // browser API is used by this node itself.
 var clientScript = __CLIENT_SCRIPT__;
+// The monitored flows: the builder fills in scripts/monitor-flows.js.
+var MONITOR_FLOWS = __MONITOR_FLOWS__;
+
+// One <option> per flow and line (value = flow id, text = label).
+function options(list) {
+  return list.map(function (item) {
+    return '<option value="' + item.id + '">' + item.label + '</option>';
+  }).join('\n');
+}
+// History: the flows with a run log, plus the command log of this monitor.
+var historyOptions = options(MONITOR_FLOWS.filter(function (item) {
+  return item.log;
+}).concat([
+  {
+    id: 'run-monitor',
+    label: 'Monitor command log'
+  }
+]));
+var commandOptions = options(MONITOR_FLOWS.filter(function (item) {
+  return item.backfill === 'days' || item.backfill === 'months';
+}));
 
 var css = [
   ':root{--bg:#f4f5f8;--card:#fff;--ink:#1b2230;--mute:#667085;',
@@ -166,10 +187,7 @@ var html = [
   '<section id="panel-history" role="tabpanel" hidden>',
   '<form id="historyForm" class="row">',
   '<label>Flow <select id="flow">',
-  '<option value="sih-hull">SIH report daily</option>',
-  '<option value="rpt-hull">Shift report</option>',
-  '<option value="pbi-report">PBI report build</option>',
-  '<option value="run-monitor">Monitor command log</option>',
+  historyOptions,
   '</select></label>',
   '<label>Month <input id="month" type="month" required></label>',
   '<button type="submit" class="primary">Load history</button>',
@@ -193,9 +211,7 @@ var html = [
   ' 12 months. Force may run a second backfill concurrently.</p>',
   '<form id="commandForm" class="row">',
   '<label>Flow <select id="commandFlow">',
-  '<option value="sih-hull">SIH report daily</option>',
-  '<option value="rpt-hull">Shift report</option>',
-  '<option value="pbi-report">PBI report build</option>',
+  commandOptions,
   '</select></label>',
   '<div id="dateFields" class="fields">',
   '<label>Start <input id="start" type="date"></label>',

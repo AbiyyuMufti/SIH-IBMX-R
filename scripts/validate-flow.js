@@ -1,11 +1,13 @@
 // Offline checks for a Node-RED / VFC flow export. No network, read only.
 // Usage: node scripts/validate-flow.js [flow.json ...]
-//   No arguments = every flows/*.json except the *.local.json copies.
+//   No arguments = every flows/*.json except the *.local.json copies, plus
+//   the monitor check (every flow of scripts/monitor-flows.js is wired).
 // Exit code 1 when a check fails. Warnings do not fail the run.
 // The rules are in CLAUDE.md, section "Flow readability".
 import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { measureSpacing } from './lib-flow-builder.js';
+import { MONITOR_FLOWS } from './monitor-flows.js';
 
 const MAX_LINE = 80;
 const MAX_ITEMS_ON_ONE_LINE = 3;
@@ -357,6 +359,32 @@ export function validateFlow(nodes) {
 }
 
 // ---------------------------------------------------------------------------
+// Monitor check: every flow of scripts/monitor-flows.js writes its status
+// (a function node with 'runStatus_<id>' or a status node with FLOW_NAME
+// '<id>') and, when it has a backfill, has its "<id> BACKFILL" link in.
+// ---------------------------------------------------------------------------
+export function checkMonitorFlows(allNodes) {
+  const errors = [];
+  const funcs = allNodes.filter((n) => n.type === 'function')
+    .map((n) => n.func || '');
+  for (const item of MONITOR_FLOWS) {
+    const writes = funcs.some((f) => f.includes(`'runStatus_${item.id}'`) ||
+      f.includes(`var FLOW_NAME = '${item.id}';`));
+    if (!writes) {
+      errors.push(`monitor flow ${item.id}: no node writes runStatus_${item.id} ` +
+        '(add statusStep checkpoints to its builder)');
+    }
+    const linked = allNodes.some((n) => n.type === 'link in' &&
+      n.name === `${item.id} BACKFILL`);
+    if (item.backfill && !linked) {
+      errors.push(`monitor flow ${item.id}: no link in "${item.id} BACKFILL" ` +
+        '(add it to its builder, wired to its settings node)');
+    }
+  }
+  return errors;
+}
+
+// ---------------------------------------------------------------------------
 // Command line
 // ---------------------------------------------------------------------------
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
@@ -367,8 +395,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         .filter((f) => f.endsWith('.json') && !f.endsWith('.local.json'))
         .map((f) => fileURLToPath(new URL(f, dir)));
   let failed = false;
+  const allNodes = [];
   for (const file of files) {
-    const { errors, warnings, stats } = validateFlow(JSON.parse(readFileSync(file, 'utf8')));
+    const nodes = JSON.parse(readFileSync(file, 'utf8'));
+    allNodes.push(...nodes);
+    const { errors, warnings, stats } = validateFlow(nodes);
     console.log(`\n${file}`);
     errors.forEach((e) => console.log(`  FAIL ${e}`));
     warnings.forEach((w) => console.log(`  warn ${w}`));
@@ -379,6 +410,15 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     );
     console.log(errors.length ? `  RESULT: FAIL (${errors.length})` : '  RESULT: PASS');
     if (errors.length) failed = true;
+  }
+  if (process.argv.length <= 2) {
+    const monitorErrors = checkMonitorFlows(allNodes);
+    console.log('\nMonitor flows (scripts/monitor-flows.js)');
+    monitorErrors.forEach((e) => console.log(`  FAIL ${e}`));
+    console.log(monitorErrors.length
+      ? `  RESULT: FAIL (${monitorErrors.length})`
+      : `  RESULT: PASS (${MONITOR_FLOWS.length} flows wired)`);
+    if (monitorErrors.length) failed = true;
   }
   process.exit(failed ? 1 : 0);
 }

@@ -26,20 +26,51 @@ var clientScript = [
   '  \'history\',\n',
   '  \'command\'\n',
   '];\n',
-  'var FLOW_ORDER = [\n',
-  '  \'sih-hull\',\n',
-  '  \'rpt-hull\',\n',
-  '  \'pbi-report\',\n',
-  '  \'pbi-listener\',\n',
-  '  \'config\'\n',
+  '// The monitored flows: the builder fills in scripts/monitor',
+  '-flows.js.\n',
+  'var MONITOR_FLOWS = [\n',
+  '  {\n',
+  '    id: \'sih-hull\',\n',
+  '    label: \'SIH report daily\',\n',
+  '    backfill: \'days\',\n',
+  '    log: true\n',
+  '  },\n',
+  '  {\n',
+  '    id: \'rpt-hull\',\n',
+  '    label: \'Shift report\',\n',
+  '    backfill: \'days\',\n',
+  '    log: true\n',
+  '  },\n',
+  '  {\n',
+  '    id: \'pbi-report\',\n',
+  '    label: \'PBI report build\',\n',
+  '    backfill: \'months\',\n',
+  '    log: true,\n',
+  '    tables: [\n',
+  '      \'Plan_OPT_EU\',\n',
+  '      \'Time_Utilisation_EU\',\n',
+  '      \'Daily_Losses_EU\'\n',
+  '    ],\n',
+  '    queueKey: \'jobQueue\'\n',
+  '  },\n',
+  '  {\n',
+  '    id: \'pbi-listener\',\n',
+  '    label: \'PBI listener\',\n',
+  '    backfill: null,\n',
+  '    log: false\n',
+  '  }\n',
   '];\n',
+  'var FLOW_ORDER = MONITOR_FLOWS.map(function (item) {\n',
+  '  return item.id;\n',
+  '}).concat([\'config\']);\n',
   'var FLOW_TITLES = {\n',
-  '  \'sih-hull\': \'SIH report daily\',\n',
-  '  \'rpt-hull\': \'Shift report\',\n',
-  '  \'pbi-report\': \'PBI report build\',\n',
-  '  \'pbi-listener\': \'PBI listener\',\n',
-  '  \'config\': \'Config\'\n',
+  '  config: \'Config\'\n',
   '};\n',
+  'var FLOW_BACKFILL = {};\n',
+  'MONITOR_FLOWS.forEach(function (item) {\n',
+  '  FLOW_TITLES[item.id] = item.label;\n',
+  '  FLOW_BACKFILL[item.id] = item.backfill;\n',
+  '});\n',
   'var TONES = {\n',
   '  running: \'run\',\n',
   '  queued: \'run\',\n',
@@ -491,9 +522,10 @@ var clientScript = [
   '// ---------- tab 3: backfill command ----------\n',
   '\n',
   'function updateCommandFields() {\n',
-  '  var pbi = $(\'commandFlow\').value === \'pbi-report\';\n',
-  '  $(\'dateFields\').hidden = pbi;\n',
-  '  $(\'monthFields\').hidden = !pbi;\n',
+  '  var months = FLOW_BACKFILL[$(\'commandFlow\').value] === \'mo',
+  'nths\';\n',
+  '  $(\'dateFields\').hidden = months;\n',
+  '  $(\'monthFields\').hidden = !months;\n',
   '}\n',
   '\n',
   'function renderCommand(data) {\n',
@@ -549,7 +581,7 @@ var clientScript = [
   '    flow: flow,\n',
   '    force: $(\'force\').checked\n',
   '  };\n',
-  '  if (flow === \'pbi-report\') {\n',
+  '  if (FLOW_BACKFILL[flow] === \'months\') {\n',
   '    payload.from = $(\'fromMonth\').value;\n',
   '    payload.to = $(\'toMonth\').value;\n',
   '  } else {\n',
@@ -657,6 +689,58 @@ var clientScript = [
   'refresh();\n',
   'setInterval(refresh, REFRESH_MS);\n'
 ].join('');
+// The monitored flows: the builder fills in scripts/monitor-flows.js.
+var MONITOR_FLOWS = [
+  {
+    id: 'sih-hull',
+    label: 'SIH report daily',
+    backfill: 'days',
+    log: true
+  },
+  {
+    id: 'rpt-hull',
+    label: 'Shift report',
+    backfill: 'days',
+    log: true
+  },
+  {
+    id: 'pbi-report',
+    label: 'PBI report build',
+    backfill: 'months',
+    log: true,
+    tables: [
+      'Plan_OPT_EU',
+      'Time_Utilisation_EU',
+      'Daily_Losses_EU'
+    ],
+    queueKey: 'jobQueue'
+  },
+  {
+    id: 'pbi-listener',
+    label: 'PBI listener',
+    backfill: null,
+    log: false
+  }
+];
+
+// One <option> per flow and line (value = flow id, text = label).
+function options(list) {
+  return list.map(function (item) {
+    return '<option value="' + item.id + '">' + item.label + '</option>';
+  }).join('\n');
+}
+// History: the flows with a run log, plus the command log of this monitor.
+var historyOptions = options(MONITOR_FLOWS.filter(function (item) {
+  return item.log;
+}).concat([
+  {
+    id: 'run-monitor',
+    label: 'Monitor command log'
+  }
+]));
+var commandOptions = options(MONITOR_FLOWS.filter(function (item) {
+  return item.backfill === 'days' || item.backfill === 'months';
+}));
 
 var css = [
   ':root{--bg:#f4f5f8;--card:#fff;--ink:#1b2230;--mute:#667085;',
@@ -810,10 +894,7 @@ var html = [
   '<section id="panel-history" role="tabpanel" hidden>',
   '<form id="historyForm" class="row">',
   '<label>Flow <select id="flow">',
-  '<option value="sih-hull">SIH report daily</option>',
-  '<option value="rpt-hull">Shift report</option>',
-  '<option value="pbi-report">PBI report build</option>',
-  '<option value="run-monitor">Monitor command log</option>',
+  historyOptions,
   '</select></label>',
   '<label>Month <input id="month" type="month" required></label>',
   '<button type="submit" class="primary">Load history</button>',
@@ -837,9 +918,7 @@ var html = [
   ' 12 months. Force may run a second backfill concurrently.</p>',
   '<form id="commandForm" class="row">',
   '<label>Flow <select id="commandFlow">',
-  '<option value="sih-hull">SIH report daily</option>',
-  '<option value="rpt-hull">Shift report</option>',
-  '<option value="pbi-report">PBI report build</option>',
+  commandOptions,
   '</select></label>',
   '<div id="dateFields" class="fields">',
   '<label>Start <input id="start" type="date"></label>',

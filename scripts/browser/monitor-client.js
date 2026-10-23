@@ -8,20 +8,19 @@ var TABS = [
   'history',
   'command'
 ];
-var FLOW_ORDER = [
-  'sih-hull',
-  'rpt-hull',
-  'pbi-report',
-  'pbi-listener',
-  'config'
-];
+// The monitored flows: the builder fills in scripts/monitor-flows.js.
+var MONITOR_FLOWS = __MONITOR_FLOWS__;
+var FLOW_ORDER = MONITOR_FLOWS.map(function (item) {
+  return item.id;
+}).concat(['config']);
 var FLOW_TITLES = {
-  'sih-hull': 'SIH report daily',
-  'rpt-hull': 'Shift report',
-  'pbi-report': 'PBI report build',
-  'pbi-listener': 'PBI listener',
-  'config': 'Config'
+  config: 'Config'
 };
+var FLOW_BACKFILL = {};
+MONITOR_FLOWS.forEach(function (item) {
+  FLOW_TITLES[item.id] = item.label;
+  FLOW_BACKFILL[item.id] = item.backfill;
+});
 var TONES = {
   running: 'run',
   queued: 'run',
@@ -424,9 +423,9 @@ function loadHistory() {
 // ---------- tab 3: backfill command ----------
 
 function updateCommandFields() {
-  var pbi = $('commandFlow').value === 'pbi-report';
-  $('dateFields').hidden = pbi;
-  $('monthFields').hidden = !pbi;
+  var months = FLOW_BACKFILL[$('commandFlow').value] === 'months';
+  $('dateFields').hidden = months;
+  $('monthFields').hidden = !months;
 }
 
 function renderCommand(data) {
@@ -474,7 +473,7 @@ function sendCommand(event) {
     flow: flow,
     force: $('force').checked
   };
-  if (flow === 'pbi-report') {
+  if (FLOW_BACKFILL[flow] === 'months') {
     payload.from = $('fromMonth').value;
     payload.to = $('toMonth').value;
   } else {

@@ -4,6 +4,7 @@
 // Usage: node scripts/build-vfc-monitor-flow.js
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { validateFlow } from './validate-flow.js';
+import { MONITOR_FLOWS } from './monitor-flows.js';
 import {
   makeBuilder, code, fn, linkInStep, readStep, listNode, catchStep, rawStep,
   addLogLanes, compactLanes
@@ -11,6 +12,8 @@ import {
 
 const FILE = 'vfc-run-monitor.json';
 const ROUTE = '/reports-monitor';
+// One "to <id> BACKFILL" link out per flow with a backfill, in list order.
+const BACKFILL_FLOWS = MONITOR_FLOWS.filter((item) => item.backfill);
 
 function buildFlow() {
   const b = makeBuilder(360);
@@ -132,17 +135,16 @@ function buildFlow() {
     `[${commandStage}] BACKFILL COMMAND`,
     'POST /reports-monitor/command validates one backfill, records an ' +
     'audit line, and returns 202 before the target starts. Generate this ' +
-    'HTTP In access key separately. Connect the three named BACKFILL link ' +
-    'outs to their matching report tabs after import. A force command can ' +
+    'HTTP In access key separately. Connect each named BACKFILL link ' +
+    'out to the matching link in of its report tab after import (the ' +
+    'flows come from scripts/monitor-flows.js). A force command can ' +
     'run concurrently with the same flow.',
     row
   );
   const commandIn = b.newId();
   const commandFn = b.newId();
   const commandResponse = b.newId();
-  const sihBackfill = b.newId();
-  const rptBackfill = b.newId();
-  const pbiBackfill = b.newId();
+  const backfillIds = BACKFILL_FLOWS.map(() => b.newId());
   const commandLog = b.linkOut('LOG', b.col(2), b.rowY(row) + 120);
   b.add({
     id: commandIn,
@@ -164,48 +166,28 @@ function buildFlow() {
     type: 'function',
     name: `${commandStage}.1 Validate backfill`,
     func: code('v10-command.js'),
-    outputs: 5,
+    outputs: BACKFILL_FLOWS.length + 2,
     language: 'javascript',
     noerr: 0,
     x: b.col(1),
     y: b.rowY(row),
     wires: [
       [commandResponse],
-      [sihBackfill],
-      [rptBackfill],
-      [pbiBackfill],
+      ...backfillIds.map((linkId) => [linkId]),
       [commandLog]
     ]
   });
-  b.add({
-    id: sihBackfill,
-    type: 'link out',
-    name: 'to sih-hull BACKFILL',
-    mode: 'link',
-    links: [],
-    x: b.col(2),
-    y: b.rowY(row) + 40,
-    wires: []
-  });
-  b.add({
-    id: rptBackfill,
-    type: 'link out',
-    name: 'to rpt-hull BACKFILL',
-    mode: 'link',
-    links: [],
-    x: b.col(2),
-    y: b.rowY(row) + 80,
-    wires: []
-  });
-  b.add({
-    id: pbiBackfill,
-    type: 'link out',
-    name: 'to pbi-report BACKFILL',
-    mode: 'link',
-    links: [],
-    x: b.col(2),
-    y: b.rowY(row) + 160,
-    wires: []
+  BACKFILL_FLOWS.forEach((item, index) => {
+    b.add({
+      id: backfillIds[index],
+      type: 'link out',
+      name: `to ${item.id} BACKFILL`,
+      mode: 'link',
+      links: [],
+      x: b.col(2),
+      y: b.rowY(row) + 40 * (index + 1),
+      wires: []
+    });
   });
   b.add({
     id: commandResponse,

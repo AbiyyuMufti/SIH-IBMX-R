@@ -2,13 +2,17 @@
 // code reader, the tab builder (nodes on a 20 px grid, link nodes) and the
 // lane steps. Used by build-vfc-reference-flows.js and build-vfc-site-flows.js.
 import { readFileSync } from 'node:fs';
+import { monitorFlowsSource } from './monitor-flows.js';
 
 // Windows checkouts may have CRLF line endings: the flow always gets LF.
 // The monitor page node holds the browser script as text: __CLIENT_SCRIPT__
 // becomes an array of short quoted pieces (no line over 80 characters).
+// __MONITOR_FLOWS__ (in node code and in the browser script) becomes the
+// flow list of scripts/monitor-flows.js.
 const clientScript = () => {
   const url = new URL('./browser/monitor-client.js', import.meta.url);
-  const text = readFileSync(url, 'utf8').replace(/\r\n/g, '\n');
+  const text = readFileSync(url, 'utf8').replace(/\r\n/g, '\n')
+    .replace('__MONITOR_FLOWS__', () => monitorFlowsSource());
   const quote = (piece) => `  '${piece
     .replace(/\\/g, '\\\\')
     .replace(/'/g, "\\'")
@@ -26,7 +30,8 @@ const clientScript = () => {
 export const code = (file) => {
   const url = new URL(`./vfc/${file}`, import.meta.url);
   const text = readFileSync(url, 'utf8').replace(/\r\n/g, '\n');
-  return text.replace('__CLIENT_SCRIPT__', clientScript);
+  return text.replace('__CLIENT_SCRIPT__', clientScript)
+    .replace('__MONITOR_FLOWS__', () => monitorFlowsSource());
 };
 
 // Types as saved by the VFC: UTF8 (shown as STRING), BOOLEAN, INT64, DOUBLE,

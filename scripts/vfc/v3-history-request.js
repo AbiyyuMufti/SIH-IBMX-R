@@ -1,12 +1,15 @@
 // Validates a history query and builds the one-month data-lake folder path.
 // In: query.flow and query.month from the authenticated history request.
 // Out: the list-objects request, or an explicit 400/503 JSON response.
-var FLOWS = [
-  'sih-hull',
-  'rpt-hull',
-  'pbi-report',
-  'run-monitor'
-];
+
+// The monitored flows: the builder fills in scripts/monitor-flows.js. The
+// flows with a run log, plus the log of this monitor (its commands).
+var MONITOR_FLOWS = __MONITOR_FLOWS__;
+var FLOWS = MONITOR_FLOWS.filter(function (item) {
+  return item.log;
+}).map(function (item) {
+  return item.id;
+}).concat(['run-monitor']);
 var query = msg.req && msg.req.query ? msg.req.query : {};
 var flowName = String(query.flow || '');
 var month = String(query.month || '');

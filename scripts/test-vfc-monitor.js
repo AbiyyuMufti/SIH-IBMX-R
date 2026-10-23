@@ -7,7 +7,8 @@ import vm from 'node:vm';
 import { runFlow, testPlatform } from './lib-vfc-runner.js';
 import { makeMockFetch } from './lib-mock-ih.js';
 import { code } from './lib-flow-builder.js';
-import { validateFlow } from './validate-flow.js';
+import { validateFlow, checkMonitorFlows } from './validate-flow.js';
+import { MONITOR_FLOWS } from './monitor-flows.js';
 
 const platform = testPlatform();
 const BASELINE_COMMIT = '358ddb162bd12970709e97f8083a175f779dcf4c';
@@ -1167,6 +1168,27 @@ check(
     newPbiResult.globalContext['runStatus_pbi-report'].state === 'running',
   'PBI build records a compact live job status'
 );
+// The flow list: every listed flow is wired in the built flows, and a flow
+// without checkpoints or BACKFILL link in is reported.
+const builtFlows = [
+  'vfc-pbi-daily-hull.json',
+  'vfc-rpt-hull.json',
+  'vfc-pbi-report.json',
+  'vfc-pbi-listener.json'
+].flatMap((file) => read(file));
+check(checkMonitorFlows(builtFlows).length === 0,
+  'monitor list: every listed flow writes its status and has its BACKFILL');
+const withoutShift = builtFlows.filter((n) => n.name !== 'rpt-hull BACKFILL' &&
+  !(n.func || '').includes("var FLOW_NAME = 'rpt-hull';"));
+const missing = checkMonitorFlows(withoutShift);
+check(missing.length === 2 && missing.every((e) => e.includes('rpt-hull')),
+  'monitor list: a flow without checkpoints and BACKFILL fails twice');
+const backfillLinks = monitorFlow.filter((n) => n.type === 'link out' &&
+  / BACKFILL$/.test(n.name)).map((n) => n.name);
+check(JSON.stringify(backfillLinks) === JSON.stringify(MONITOR_FLOWS
+  .filter((f) => f.backfill).map((f) => `to ${f.id} BACKFILL`)),
+  'monitor list: one BACKFILL link out per backfill flow, in list order');
+
 if (failures) {
   console.error(`${failures} check(s) failed`);
   process.exitCode = 1;

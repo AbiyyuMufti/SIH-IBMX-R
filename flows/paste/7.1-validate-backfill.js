@@ -1,22 +1,68 @@
 // Validates a backfill command, records its audit entry and emits one target.
 // In: JSON {flow, force, start/end} or {flow, force, from/to, tables, sites}.
-// Out: HTTP 202/400/409/503, one BACKFILL message, and a CSV log message.
-var DAILY_FLOWS = ['sih-hull', 'rpt-hull'];
-var PBI_TABLES = [
-  'Plan_OPT_EU',
-  'Time_Utilisation_EU',
-  'Daily_Losses_EU'
+// Out 1: HTTP 202/400/409/503. Then one output per backfill flow of the list
+// (its BACKFILL message), last a CSV log message.
+
+// The monitored flows: the builder fills in scripts/monitor-flows.js.
+var MONITOR_FLOWS = [
+  {
+    id: 'sih-hull',
+    label: 'SIH report daily',
+    backfill: 'days',
+    log: true
+  },
+  {
+    id: 'rpt-hull',
+    label: 'Shift report',
+    backfill: 'days',
+    log: true
+  },
+  {
+    id: 'pbi-report',
+    label: 'PBI report build',
+    backfill: 'months',
+    log: true,
+    tables: [
+      'Plan_OPT_EU',
+      'Time_Utilisation_EU',
+      'Daily_Losses_EU'
+    ],
+    queueKey: 'jobQueue'
+  },
+  {
+    id: 'pbi-listener',
+    label: 'PBI listener',
+    backfill: null,
+    log: false
+  }
 ];
+var BACKFILL_FLOWS = MONITOR_FLOWS.filter(function (item) {
+  return item.backfill === 'days' || item.backfill === 'months';
+});
 var MAX_DAYS = 31;
 var MAX_MONTHS = 12;
 var DUPLICATE_MS = 5000;
 // Same limit as the STUCK state of the status page.
 var STALE_MS = 30 * 60 * 1000;
-var CLEAR_FLOWS = [
-  'sih-hull',
-  'rpt-hull',
-  'pbi-report'
-];
+
+function findFlow(id) {
+  var found = BACKFILL_FLOWS.filter(function (item) {
+    return item.id === id;
+  });
+  return found.length ? found[0] : null;
+}
+
+// Output 1 the answer, then one output per backfill flow, last the log.
+function outputs(answer, target, payload, log) {
+  var out = [answer];
+  BACKFILL_FLOWS.forEach(function (item) {
+    out.push(item.id === target ? {
+      payload: payload
+    } : null);
+  });
+  out.push(log);
+  return out;
+}
 
 // The VFC http in node can hand the POST body over as an object, as JSON
 // text, as a Buffer (also serialised) or in msg.req.body: take all of them.
@@ -62,7 +108,7 @@ if (previous && previous.key === commandKey &&
     'cache-control': 'no-store'
   };
   again.payload = previous.body;
-  return [again, null, null, null, null];
+  return outputs(again, '', null, null);
 }
 var acceptedFlow = '';
 var force = !!(request && request.force === true);
@@ -120,16 +166,10 @@ function response(status, body) {
 function refuse(status, reason, flowName, range) {
   var name = flowName || 'unknown';
   var log = audit('rejected', name, range || '', force, reason);
-  return [
-    response(status, {
-      accepted: false,
-      error: reason
-    }),
-    null,
-    null,
-    null,
-    log
-  ];
+  return outputs(response(status, {
+    accepted: false,
+    error: reason
+  }), '', null, log);
 }
 
 function validDay(value) {
@@ -180,14 +220,15 @@ function clearItems(items) {
 
 function clearStuck() {
   var count = 0;
-  CLEAR_FLOWS.forEach(function (name) {
+  BACKFILL_FLOWS.forEach(function (item) {
+    var name = item.id;
     var status = glob.get('runStatus_' + name);
     if (!status || !stale(status)) {
       return;
     }
     count += clearItems(status.days) + clearItems(status.months);
     if (status.state === 'running' || status.state === 'queued') {
-      status.state = name === 'pbi-report' ? 'interrupted' : 'idle';
+      status.state = item.backfill === 'months' ? 'interrupted' : 'idle';
       count++;
     }
     glob.set('runStatus_' + name, status);
@@ -195,12 +236,11 @@ function clearStuck() {
   return count;
 }
 
-function busy(flowName) {
-  if (flowName === 'pbi-report' &&
-      (glob.get('jobQueue') || []).length > 0) {
+function busy(item) {
+  if (item.queueKey && (glob.get(item.queueKey) || []).length > 0) {
     return true;
   }
-  var status = glob.get('runStatus_' + flowName);
+  var status = glob.get('runStatus_' + item.id);
   if (!status || stale(status)) {
     return false;
   }
@@ -227,21 +267,15 @@ if (request.force !== undefined && typeof request.force !== 'boolean') {
 if (request.action === 'clear-stuck') {
   var cleared = clearStuck();
   var clearLog = audit('cleared', 'all', '', false, cleared + ' items');
-  return [
-    response(200, {
-      accepted: true,
-      action: 'clear-stuck',
-      cleared: cleared
-    }),
-    null,
-    null,
-    null,
-    clearLog
-  ];
+  return outputs(response(200, {
+    accepted: true,
+    action: 'clear-stuck',
+    cleared: cleared
+  }), '', null, clearLog);
 }
 var flowName = String(request.flow || '');
-if (DAILY_FLOWS.indexOf(flowName) === -1 &&
-    flowName !== 'pbi-report') {
+var target = findFlow(flowName);
+if (!target) {
   return refuse(400, 'flow must be a known report flow', '', '');
 }
 acceptedFlow = flowName;
@@ -252,8 +286,8 @@ if (!cfg || !cfg.root || !Array.isArray(cfg.sites)) {
 
 var range = '';
 var dailyPayload = null;
-var pbiPayload = null;
-if (DAILY_FLOWS.indexOf(flowName) !== -1) {
+var monthPayload = null;
+if (target.backfill === 'days') {
   var startMs = validDay(request.start);
   var endMs = validDay(request.end);
   if (startMs === null || endMs === null || endMs < startMs) {
@@ -301,19 +335,19 @@ if (DAILY_FLOWS.indexOf(flowName) !== -1) {
   var sites = cfg.sites.map(function (site) {
     return site.name;
   });
-  pbiPayload = {
+  monthPayload = {
     from: request.from,
     to: request.to
   };
   if (request.tables !== undefined) {
     if (!Array.isArray(request.tables) || !request.tables.length ||
         request.tables.some(function (table) {
-          return PBI_TABLES.indexOf(table) === -1;
+          return (target.tables || []).indexOf(table) === -1;
         })) {
       return refuse(400, 'tables must be known PBI report tables', flowName,
         '');
     }
-    pbiPayload.tables = request.tables.slice();
+    monthPayload.tables = request.tables.slice();
   }
   if (request.sites !== undefined) {
     if (!Array.isArray(request.sites) || !request.sites.length ||
@@ -322,12 +356,12 @@ if (DAILY_FLOWS.indexOf(flowName) !== -1) {
         })) {
       return refuse(400, 'sites must be present in Config', flowName, '');
     }
-    pbiPayload.sites = request.sites.slice();
+    monthPayload.sites = request.sites.slice();
   }
   range = request.from + '..' + request.to;
 }
 
-if (busy(flowName) && !force) {
+if (busy(target) && !force) {
   return refuse(
     409,
     'flow is busy; set force=true to allow a concurrent backfill',
@@ -349,10 +383,12 @@ if (dailyPayload) {
   current.days = {};
   glob.set('runStatus_' + flowName, current);
 } else {
-  var tableSummary = (pbiPayload.tables || ['all']).join(', ').slice(0, 120);
-  var siteSummary = (pbiPayload.sites || ['all']).join(', ').slice(0, 120);
-  glob.set('runStatus_pbi-report', {
-    flow: 'pbi-report',
+  var tableSummary = (monthPayload.tables || ['all']).join(', ')
+    .slice(0, 120);
+  var siteSummary = (monthPayload.sites || ['all']).join(', ')
+    .slice(0, 120);
+  glob.set('runStatus_' + flowName, {
+    flow: flowName,
     state: 'queued',
     source: 'monitor',
     startedAt: now,
@@ -360,8 +396,8 @@ if (dailyPayload) {
     job: {
       tables: tableSummary,
       sites: siteSummary,
-      from: pbiPayload.from,
-      to: pbiPayload.to
+      from: monthPayload.from,
+      to: monthPayload.to
     },
     lastLog: ''
   });
@@ -374,34 +410,4 @@ var result = response(202, {
   range: range,
   forced: force
 });
-if (flowName === 'sih-hull') {
-  return [
-    result,
-    {
-      payload: dailyPayload
-    },
-    null,
-    null,
-    log
-  ];
-}
-if (flowName === 'rpt-hull') {
-  return [
-    result,
-    null,
-    {
-      payload: dailyPayload
-    },
-    null,
-    log
-  ];
-}
-return [
-  result,
-  null,
-  null,
-  {
-    payload: pbiPayload
-  },
-  log
-];
+return outputs(result, flowName, dailyPayload || monthPayload, log);
