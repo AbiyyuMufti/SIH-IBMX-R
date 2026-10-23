@@ -109,6 +109,13 @@ Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `sc
 - eu_report (decided 2026-10-15): with your confirmation, upload `sharepoint/reference` to `eu_report/reference` (`node scripts/datalake-upload-tree.js`). Then build the 6 tables of `pbi_report` from `sharepoint/source` + `reference` (copy the load queries of the .pbit), staging local only. Decide how much history to download (only Aug, Sep, current month so far).
 
 
+## VFC test of the value join (2026-10-23)
+- SIH report daily, backfill 2026-10-01..10-10, dry run: PASS. 10 days `dry_run`, flow `quiet`, about 5 min, one log line per day. Day 10-05 waited about 2 min in the "One day per 30 s" queue and still ran: a long wait in a delay queue does NOT drop a message. One counter glitch: day 10-06 ended `dry_run` with assets 1/2 (a checkpoint lost, the day itself was fine).
+- Shift report, backfill 2026-10-02..10-04: 10-03 and 10-04 `dry_run` (8/8, about 50 s each); 10-02 stalled at 5/8. Rerun of 10-02 ALONE (force): stalled again at 6/8 (06 CasePacker and 07 Palletiser never reached ASSET STOPS). No error, no log line, no delay queue in the editor. So overlap is NOT the trigger, and the join fix did not cure it.
+- Same day replayed offline against the real API (`lib-vfc-runner`, dry run): all 8 assets, 146 calls, all HTTP 200, none over 3 s. The API is fine; the VFC drops the messages.
+- Pattern: in both VFC runs the day lost every asset still open about 60 to 70 s after its DAY SETUP checkpoint. Assets finish one per 10 s (about 10 product/order calls each through "One value per second"), so a day with 8 assets needs about 80 s. Days under about 50 s finish. Siemens documents a flow run cap of 30 s (2 min in power mode) that a delay node resets; how it applies to one day's messages is NOT proven.
+- Not proven, next: speed up the value calls (rate 1/s to 4/s) so a shift day ends in about 25 s, or power mode (msg._powerMode, 2 min, 2.5 x compute hours). Test first by changing the one delay node in the VFC and rerunning 10-02 alone.
+
 ## evaluateKPIs 413: hourly fallback (2026-10-21)
 - The user ran the SIH report daily and the shift report in the VFC (write mode): every day failed with `ERROR in POST evaluateKPIs: Error: Request Entity Too Large`. Reckitt / Siemens: a setup error, to be fixed "soon".
 - Decision of the user: try the day call first; on 413 ask hour by hour and merge, the result the same as the day call. Option A: KPI and product / order calls only; segments and stops over 5,000 rows only if they show up.
