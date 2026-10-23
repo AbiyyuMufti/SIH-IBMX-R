@@ -222,7 +222,7 @@ function buildDailyFlow(site, index) {
       end('VALUES')
     ]);
   lane(r++, 'VALUE KPIs',
-    'one asset. 6.1 keeps the master data of the products of the day and sends ONE MESSAGE PER PRODUCT AND PER ORDER (one per second). 6.2 builds the evaluateKPIs POST (read-style, hourly) filtered on that product or order. 6.3 keeps the hours that have parts and waits until every value of the asset is in (the state is kept in flow context under valueRuns, so no second split is needed). A failed call fails the day (link "to JOIN").',
+    'one asset. 6.1 keeps the master data of the products of the day and sends ONE MESSAGE PER PRODUCT AND PER ORDER (one per second). 6.2 builds the evaluateKPIs POST (read-style, hourly) filtered on that product or order. Every value message carries msg.parts of its asset group; the msg.parts of the asset (day join) waits in msg.assetParts. A failed call fails the day (link "to JOIN").',
     [
       linkInStep('VALUES'),
       fn('valMsgFn', 'Build value messages', 'd7-value-messages.js',
@@ -238,9 +238,11 @@ function buildDailyFlow(site, index) {
     'the same hourly fallback for the evaluateKPIs call of one product or order that answered 413: hour by hour, joined, merged, then on to the collect node of the value calls. A separate lane from the day KPIs: one shared lane would make a loop.',
     kpiPartsSteps('VALUE', 'VALUE CHECK', flowName, site.name));
   lane(r++, 'VALUE CHECK',
-    'the answer of one product or order call (from the call or merged from the hourly parts): its hours with parts are kept until every value of the asset is in (flow context valueRuns). A failed call fails the day (link "to JOIN").',
+    'the answer of one product or order call (from the call or merged from the hourly parts): 1 packs its hours with parts, the join waits for every value of the asset (no flow context: overlapping days lost updates there), 2 collects them and gives the asset its msg.parts back. A failed call fails the day (link "to JOIN").',
     [
       linkInStep('VALUE CHECK'),
+      fn('valPackFn', 'Pack value hours', 'd7-value-pack.js', ['next']),
+      join('valJoin', 'Wait for all values'),
       fn('valCollectFn', 'Collect value hours', 'd7-collect.js',
         ['next', 'JOIN']),
       end('ASSIGN')

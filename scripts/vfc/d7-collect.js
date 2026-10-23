@@ -1,65 +1,37 @@
 // Collects the hours of every product and order of one asset and day.
-// In: one filtered evaluateKPIs response (msg.job, msg.jobRun, jobCount).
-// Out 1: when all are in, the asset message with msg.valueHours. Out 2:
-// the asset result for the join when one of the calls failed.
+// In: msg.payload = [{key, value, failed, hours}] from the join of 6.4.
+// Out 1: the asset message with msg.valueHours. Out 2: the asset result
+// for the day join when one of the calls failed.
 var name = msg.h.asset_name;
-var runs = flow.get('valueRuns') || {};
-var run = runs[msg.jobRun];
-if (!run) {
-  run = {
-    created: Date.now(),
-    done: 0,
-    failed: [],
-    hours: { PRODUCT: {}, ORDER: {} }
-  };
-  runs[msg.jobRun] = run;
-}
-run.done += 1;
+var packs = Array.isArray(msg.payload) ? msg.payload : [];
 
-// An hour belongs to the value when it has parts (total, else good).
-function partsOf(results) {
-  var wanted = ['Total parts', 'Good parts'];
-  var found = null;
-  wanted.forEach(function (n) {
-    (results || []).forEach(function (r) {
-      if (r.name === n && !found) {
-        found = r;
-      }
-    });
-  });
-  return found;
-}
-
-var label = msg.job.key + ' ' + msg.job.value;
-var body = msg.payload;
-if (msg.statusCode !== 200 || !body || typeof body !== 'object') {
-  run.failed.push(label + ' HTTP ' + msg.statusCode);
+// The day join gets its msg.parts back.
+if (msg.assetParts === undefined) {
+  delete msg.parts;
 } else {
-  var parts = partsOf(body.results);
-  var hours = [];
-  ((parts && parts.groups) || []).forEach(function (g) {
-    if (Number(g.value) > 0) {
-      hours.push(Date.parse(g.time));
-    }
-  });
-  run.hours[msg.job.key][msg.job.value] = hours;
+  msg.parts = msg.assetParts;
 }
-
-if (run.done < msg.jobCount) {
-  flow.set('valueRuns', runs);
-  return null;
-}
-delete runs[msg.jobRun];
-flow.set('valueRuns', runs);
-delete msg.job;
-delete msg.jobRun;
-delete msg.jobCount;
+delete msg.assetParts;
 delete msg.payload;
-if (run.failed.length) {
+
+var hours = {
+  PRODUCT: {},
+  ORDER: {}
+};
+var failed = [];
+packs.forEach(function (p) {
+  if (p.failed) {
+    failed.push(p.failed);
+    return;
+  }
+  hours[p.key][p.value] = p.hours;
+});
+
+if (failed.length) {
   msg.payload = {
     assetId: msg.asset.id,
     name: name,
-    failed: name + ': value KPIs failed, ' + run.failed[0],
+    failed: name + ': value KPIs failed, ' + failed[0],
     skipped: null,
     planRows: [],
     utilRows: [],
@@ -70,5 +42,5 @@ if (run.failed.length) {
   delete msg.shiftRules;
   return [null, msg];
 }
-msg.valueHours = run.hours;
+msg.valueHours = hours;
 return [msg, null];

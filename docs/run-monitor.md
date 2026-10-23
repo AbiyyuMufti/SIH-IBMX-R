@@ -153,3 +153,10 @@ A deploy or restart kills the messages in flight, so a day can stay `running` or
 - Fixed in `build-vfc-rpt-flows.js`: `__ACTION__` was replaced in the header comment only, so the shift report never queued its days (`replaceAll` now).
 - Live status tab: one accordion row per flow, the flow with the most recent checkpoint first, flows that never ran last. The first row is open; the open rows stay open at the 10 second refresh.
 - To change one node without importing the flow: `node scripts/build-monitor-page-paste.js` writes the node code to `flows/paste/`.
+
+## Stalled multi-day runs (fixed 2026-10-23)
+A backfill of several days stopped after 1 to 2 minutes with no error and no checkpoint; one day alone finished. Both report tabs counted the product and order calls of an asset in flow context (`valueRuns`), read and written by every day in flight. Overlapping days left runs that never reached their count, so the asset and then the day waited for ever.
+- Now: each value message carries `msg.parts` of its asset group and a join node (`Wait for all values`, lane VALUE CHECK) collects them; the asset's parts for the day join wait in `msg.assetParts` (the same pattern as the hourly 413 fallback, `msg.dayParts`). No flow context is used for value runs any more.
+- Days still start one per 60 s (shift report) or 30 s (SIH report daily) as a second safety net.
+- Proof: old and new flows give the same requests, logs, errors and parquet rows on the mock (`node scripts/compare-flow-runs.js <flow.json> <out.json> platform=...`, scenarios ok, products, value-413-day, value-kpi-fail, products-fail, kpi-413-day, kpi-fail; only `loaded_at` differs).
+- Not done: a retry on HTTP 502/503/504. It needs a second http request node per call and the SIH report daily tab is at 198 of 200 nodes.

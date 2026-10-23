@@ -1300,7 +1300,7 @@
     "id": "dc2c2.7f182e",
     "type": "comment",
     "name": "[8] VALUE KPIs",
-    "info": "STAGE 8 - one asset. 6.1 keeps the master data of the products of the day and sends ONE MESSAGE PER PRODUCT AND PER ORDER (one per second). 6.2 builds the evaluateKPIs POST (read-style, hourly) filtered on that product or order. 6.3 keeps the hours that have parts and waits until every value of the asset is in (the state is kept in flow context under valueRuns, so no second split is needed). A failed call fails the day (link \"to JOIN\").",
+    "info": "STAGE 8 - one asset. 6.1 keeps the master data of the products of the day and sends ONE MESSAGE PER PRODUCT AND PER ORDER (one per second). 6.2 builds the evaluateKPIs POST (read-style, hourly) filtered on that product or order. Every value message carries msg.parts of its asset group; the msg.parts of the asset (day join) waits in msg.assetParts. A failed call fails the day (link \"to JOIN\").",
     "x": 120,
     "y": 1580,
     "wires": []
@@ -1353,7 +1353,7 @@
     "id": "de1b1.80b147",
     "type": "function",
     "name": "8.1 Build value messages",
-    "func": "// Keeps the products of the day and sends one message per product and\n// per order. In: the product list response (or none). Out 1: one message\n// per value. Out 2: nothing to ask. Out 3: asset result for the join.\nvar STALE_MS = 21600000;\nvar MIN_PER = {\n  SECOND: 60,\n  MINUTE: 1,\n  HOUR: 1 / 60,\n  DAY: 1 / 1440\n};\nvar name = msg.h.asset_name;\n\nfunction toJoin(text) {\n  msg.payload = {\n    assetId: msg.asset.id,\n    name: name,\n    failed: text,\n    skipped: null,\n    planRows: [],\n    utilRows: [],\n    lossRows: []\n  };\n  delete msg.hours;\n  delete msg.kpiMeta;\n  delete msg.shiftRules;\n  return [null, null, msg];\n}\n\n// Parts per minute of a product, null when the interval is not known.\nfunction perMinute(p) {\n  var factor = MIN_PER[String(p.designSpeedInterval).toUpperCase()];\n  var value = Number(p.designSpeedValue);\n  if (factor === undefined || !isFinite(value) || p.designSpeedValue === null) {\n    return null;\n  }\n  return value * factor;\n}\n\n// Step 1: keep the master data of the products that ran that day.\nvar wanted = msg.values.products;\nmsg.productList = [];\nif (msg.productsCalled) {\n  var body = msg.payload;\n  if (msg.statusCode !== 200 || !body || typeof body !== 'object') {\n    return toJoin(name + ': product list failed, HTTP ' + msg.statusCode);\n  }\n  var all = Array.isArray(body) ? body : body.products || [];\n  all.forEach(function (p) {\n    if (wanted.indexOf(String(p.name)) < 0) {\n      return;\n    }\n    msg.productList.push({\n      name: String(p.name),\n      code: p.code ? String(p.code) : null,\n      description: p.description ? String(p.description) : null,\n      perMinute: perMinute(p)\n    });\n  });\n}\ndelete msg.payload;\ndelete msg.productsCalled;\n\n// Step 2: one job per product and per order.\nvar jobs = [];\nmsg.values.products.forEach(function (v) {\n  jobs.push({ key: 'PRODUCT', value: v });\n});\nmsg.values.orders.forEach(function (v) {\n  jobs.push({ key: 'ORDER', value: v });\n});\nif (!jobs.length) {\n  return [null, msg, null];\n}\n\n// Step 3: forget runs that never finished, then clone one message per job.\nvar now = Date.now();\nvar runs = flow.get('valueRuns') || {};\nObject.keys(runs).forEach(function (k) {\n  if (now - runs[k].created > STALE_MS) {\n    delete runs[k];\n  }\n});\nflow.set('valueRuns', runs);\nvar run = msg.asset.id + '|' + msg.day + '|' + now + '|';\nrun += Math.floor(Math.random() * 1000000);\nvar out = jobs.map(function (job) {\n  var copy = JSON.parse(JSON.stringify(msg));\n  copy.job = job;\n  copy.jobRun = run;\n  copy.jobCount = jobs.length;\n  return copy;\n});\nreturn [out, null, null];\n",
+    "func": "// Keeps the products of the day and sends one message per product and\n// per order. In: the product list response (or none). Out 1: one message\n// per value. Out 2: nothing to ask. Out 3: asset result for the join.\nvar MIN_PER = {\n  SECOND: 60,\n  MINUTE: 1,\n  HOUR: 1 / 60,\n  DAY: 1 / 1440\n};\nvar name = msg.h.asset_name;\n\nfunction toJoin(text) {\n  msg.payload = {\n    assetId: msg.asset.id,\n    name: name,\n    failed: text,\n    skipped: null,\n    planRows: [],\n    utilRows: [],\n    lossRows: []\n  };\n  delete msg.hours;\n  delete msg.kpiMeta;\n  delete msg.shiftRules;\n  return [null, null, msg];\n}\n\n// Parts per minute of a product, null when the interval is not known.\nfunction perMinute(p) {\n  var factor = MIN_PER[String(p.designSpeedInterval).toUpperCase()];\n  var value = Number(p.designSpeedValue);\n  if (factor === undefined || !isFinite(value) || p.designSpeedValue === null) {\n    return null;\n  }\n  return value * factor;\n}\n\n// Step 1: keep the master data of the products that ran that day.\nvar wanted = msg.values.products;\nmsg.productList = [];\nif (msg.productsCalled) {\n  var body = msg.payload;\n  if (msg.statusCode !== 200 || !body || typeof body !== 'object') {\n    return toJoin(name + ': product list failed, HTTP ' + msg.statusCode);\n  }\n  var all = Array.isArray(body) ? body : body.products || [];\n  all.forEach(function (p) {\n    if (wanted.indexOf(String(p.name)) < 0) {\n      return;\n    }\n    msg.productList.push({\n      name: String(p.name),\n      code: p.code ? String(p.code) : null,\n      description: p.description ? String(p.description) : null,\n      perMinute: perMinute(p)\n    });\n  });\n}\ndelete msg.payload;\ndelete msg.productsCalled;\n\n// Step 2: one job per product and per order.\nvar jobs = [];\nmsg.values.products.forEach(function (v) {\n  jobs.push({ key: 'PRODUCT', value: v });\n});\nmsg.values.orders.forEach(function (v) {\n  jobs.push({ key: 'ORDER', value: v });\n});\nif (!jobs.length) {\n  return [null, msg, null];\n}\n\n// Step 3: one message per job, in one group (msg.parts) for the join of\n// 6.4. The day join uses msg.parts too: keep it aside in msg.assetParts.\nvar group = msg.asset.id + '|' + msg.day + '|' + Date.now() + '|';\ngroup += Math.floor(Math.random() * 1000000);\nmsg.assetParts = msg.parts;\nvar out = jobs.map(function (job, index) {\n  var copy = JSON.parse(JSON.stringify(msg));\n  copy.job = job;\n  copy.parts = {\n    id: group,\n    index: index,\n    count: jobs.length,\n    type: 'array'\n  };\n  return copy;\n});\nreturn [out, null, null];\n",
     "outputs": 3,
     "language": "javascript",
     "noerr": 0,
@@ -1657,7 +1657,7 @@
     "id": "02d6e.9f0e22",
     "type": "comment",
     "name": "[10] VALUE CHECK",
-    "info": "STAGE 10 - the answer of one product or order call (from the call or merged from the hourly parts): its hours with parts are kept until every value of the asset is in (flow context valueRuns). A failed call fails the day (link \"to JOIN\").",
+    "info": "STAGE 10 - the answer of one product or order call (from the call or merged from the hourly parts): 1 packs its hours with parts, the join waits for every value of the asset (no flow context: overlapping days lost updates there), 2 collects them and gives the asset its msg.parts back. A failed call fails the day (link \"to JOIN\").",
     "x": 140,
     "y": 2020,
     "wires": []
@@ -1681,37 +1681,11 @@
   },
   {
     "z": "474df.040ba9",
-    "id": "06b4c.a24054",
-    "type": "link out",
-    "name": "to ASSIGN",
-    "mode": "link",
-    "links": [
-      "d4706.78b3ca"
-    ],
-    "x": 380,
-    "y": 2080,
-    "wires": []
-  },
-  {
-    "z": "474df.040ba9",
-    "id": "08a3b.a3d96d",
-    "type": "link out",
-    "name": "to JOIN",
-    "mode": "link",
-    "links": [
-      "8af8c.3bfa14"
-    ],
-    "x": 380,
-    "y": 2120,
-    "wires": []
-  },
-  {
-    "z": "474df.040ba9",
     "id": "04c5d.a0a73b",
     "type": "function",
-    "name": "10.1 Collect value hours",
-    "func": "// Collects the hours of every product and order of one asset and day.\n// In: one filtered evaluateKPIs response (msg.job, msg.jobRun, jobCount).\n// Out 1: when all are in, the asset message with msg.valueHours. Out 2:\n// the asset result for the join when one of the calls failed.\nvar name = msg.h.asset_name;\nvar runs = flow.get('valueRuns') || {};\nvar run = runs[msg.jobRun];\nif (!run) {\n  run = {\n    created: Date.now(),\n    done: 0,\n    failed: [],\n    hours: { PRODUCT: {}, ORDER: {} }\n  };\n  runs[msg.jobRun] = run;\n}\nrun.done += 1;\n\n// An hour belongs to the value when it has parts (total, else good).\nfunction partsOf(results) {\n  var wanted = ['Total parts', 'Good parts'];\n  var found = null;\n  wanted.forEach(function (n) {\n    (results || []).forEach(function (r) {\n      if (r.name === n && !found) {\n        found = r;\n      }\n    });\n  });\n  return found;\n}\n\nvar label = msg.job.key + ' ' + msg.job.value;\nvar body = msg.payload;\nif (msg.statusCode !== 200 || !body || typeof body !== 'object') {\n  run.failed.push(label + ' HTTP ' + msg.statusCode);\n} else {\n  var parts = partsOf(body.results);\n  var hours = [];\n  ((parts && parts.groups) || []).forEach(function (g) {\n    if (Number(g.value) > 0) {\n      hours.push(Date.parse(g.time));\n    }\n  });\n  run.hours[msg.job.key][msg.job.value] = hours;\n}\n\nif (run.done < msg.jobCount) {\n  flow.set('valueRuns', runs);\n  return null;\n}\ndelete runs[msg.jobRun];\nflow.set('valueRuns', runs);\ndelete msg.job;\ndelete msg.jobRun;\ndelete msg.jobCount;\ndelete msg.payload;\nif (run.failed.length) {\n  msg.payload = {\n    assetId: msg.asset.id,\n    name: name,\n    failed: name + ': value KPIs failed, ' + run.failed[0],\n    skipped: null,\n    planRows: [],\n    utilRows: [],\n    lossRows: []\n  };\n  delete msg.hours;\n  delete msg.kpiMeta;\n  delete msg.shiftRules;\n  return [null, msg];\n}\nmsg.valueHours = run.hours;\nreturn [msg, null];\n",
-    "outputs": 2,
+    "name": "10.1 Pack value hours",
+    "func": "// Packs the answer of one product or order call for the join of 6.4.\n// In: one filtered evaluateKPIs response (msg.job, msg.parts of the value\n// group). Out: msg.payload = {key, value, failed, hours}: the hours (ms)\n// that have parts, or the failure text.\n\n// An hour belongs to the value when it has parts (total, else good).\nfunction partsOf(results) {\n  var wanted = ['Total parts', 'Good parts'];\n  var found = null;\n  wanted.forEach(function (n) {\n    (results || []).forEach(function (r) {\n      if (r.name === n && !found) {\n        found = r;\n      }\n    });\n  });\n  return found;\n}\n\nvar label = msg.job.key + ' ' + msg.job.value;\nvar body = msg.payload;\nvar packed = {\n  key: msg.job.key,\n  value: msg.job.value,\n  failed: null,\n  hours: []\n};\nif (msg.statusCode !== 200 || !body || typeof body !== 'object') {\n  packed.failed = label + ' HTTP ' + msg.statusCode;\n} else {\n  var parts = partsOf(body.results);\n  ((parts && parts.groups) || []).forEach(function (g) {\n    if (Number(g.value) > 0) {\n      packed.hours.push(Date.parse(g.time));\n    }\n  });\n}\ndelete msg.job;\nmsg.payload = packed;\nreturn msg;\n",
+    "outputs": 1,
     "language": "javascript",
     "noerr": 0,
     "x": 220,
@@ -1719,7 +1693,27 @@
     "wires": [
       [
         "06b4c.a24054"
-      ],
+      ]
+    ]
+  },
+  {
+    "z": "474df.040ba9",
+    "id": "06b4c.a24054",
+    "type": "join",
+    "name": "Wait for all values",
+    "mode": "auto",
+    "build": "array",
+    "property": "payload",
+    "propertyType": "msg",
+    "key": "topic",
+    "joiner": "\\n",
+    "joinerType": "str",
+    "accumulate": false,
+    "timeout": "",
+    "count": "",
+    "x": 460,
+    "y": 2100,
+    "wires": [
       [
         "08a3b.a3d96d"
       ]
@@ -1728,6 +1722,52 @@
   {
     "z": "474df.040ba9",
     "id": "0a92a.a57286",
+    "type": "link out",
+    "name": "to ASSIGN",
+    "mode": "link",
+    "links": [
+      "d4706.78b3ca"
+    ],
+    "x": 860,
+    "y": 2080,
+    "wires": []
+  },
+  {
+    "z": "474df.040ba9",
+    "id": "0c819.a70b9f",
+    "type": "link out",
+    "name": "to JOIN",
+    "mode": "link",
+    "links": [
+      "8af8c.3bfa14"
+    ],
+    "x": 860,
+    "y": 2120,
+    "wires": []
+  },
+  {
+    "z": "474df.040ba9",
+    "id": "08a3b.a3d96d",
+    "type": "function",
+    "name": "10.2 Collect value hours",
+    "func": "// Collects the hours of every product and order of one asset and day.\n// In: msg.payload = [{key, value, failed, hours}] from the join of 6.4.\n// Out 1: the asset message with msg.valueHours. Out 2: the asset result\n// for the day join when one of the calls failed.\nvar name = msg.h.asset_name;\nvar packs = Array.isArray(msg.payload) ? msg.payload : [];\n\n// The day join gets its msg.parts back.\nif (msg.assetParts === undefined) {\n  delete msg.parts;\n} else {\n  msg.parts = msg.assetParts;\n}\ndelete msg.assetParts;\ndelete msg.payload;\n\nvar hours = {\n  PRODUCT: {},\n  ORDER: {}\n};\nvar failed = [];\npacks.forEach(function (p) {\n  if (p.failed) {\n    failed.push(p.failed);\n    return;\n  }\n  hours[p.key][p.value] = p.hours;\n});\n\nif (failed.length) {\n  msg.payload = {\n    assetId: msg.asset.id,\n    name: name,\n    failed: name + ': value KPIs failed, ' + failed[0],\n    skipped: null,\n    planRows: [],\n    utilRows: [],\n    lossRows: []\n  };\n  delete msg.hours;\n  delete msg.kpiMeta;\n  delete msg.shiftRules;\n  return [null, msg];\n}\nmsg.valueHours = hours;\nreturn [msg, null];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 700,
+    "y": 2100,
+    "wires": [
+      [
+        "0a92a.a57286"
+      ],
+      [
+        "0c819.a70b9f"
+      ]
+    ]
+  },
+  {
+    "z": "474df.040ba9",
+    "id": "0e708.a8a4b8",
     "type": "comment",
     "name": "[11] ASSIGN & ROWS",
     "info": "STAGE 11 - one asset. 7.1 gives every hour its product and order: the value that has parts in that hour; an hour without parts takes the value of the hour before it (the first hours take the next value). 7.2 adds the shift and the design speed per minute to every hour. 7.3 builds the rpt_hour rows (one per hour, local date and time, minutes, speed, capacity). 7.4 builds the rpt_window rows: the production day and every run of hours in the same shift, from the SUMS of the hourly KPIs; the ratios (availability = net production time / operational time, performance = total / theoretical output, quality = good / total, OEE = the three multiplied) are calculated again from the sums, the same formulas as the OEE app, so no extra API call is needed.",
@@ -1743,43 +1783,9 @@
     "links": [
       "d65f5.7a4ce3",
       "e1f8f.83e379",
-      "06b4c.a24054"
+      "0a92a.a57286"
     ],
     "x": 60,
-    "y": 2320,
-    "wires": [
-      [
-        "0c819.a70b9f"
-      ]
-    ]
-  },
-  {
-    "z": "474df.040ba9",
-    "id": "0c819.a70b9f",
-    "type": "function",
-    "name": "11.1 Assign hours to products",
-    "func": "// Gives every hour of the day a product and an order.\n// In: msg.hours, msg.valueHours, msg.productList (absent when no values).\n// Out: hour.product and hour.order on every hour, and msg.hourInfo (hour\n// start in ms -> product and order) for the stop rows.\nvar valueHours = msg.valueHours || { PRODUCT: {}, ORDER: {} };\nvar master = msg.productList || [];\n\n// The value (a product name or an order) that has parts in this hour.\nfunction valueAt(kind, ms) {\n  var names = Object.keys(valueHours[kind]);\n  var found = null;\n  names.forEach(function (n) {\n    if (found === null && valueHours[kind][n].indexOf(ms) >= 0) {\n      found = n;\n    }\n  });\n  return found;\n}\n\n// An hour without parts takes the value of the hour before it. Hours\n// before the first value take the first value that follows.\nfunction fill(list) {\n  var last = null;\n  list.forEach(function (item, i) {\n    if (item === null) {\n      list[i] = last;\n    } else {\n      last = item;\n    }\n  });\n  var next = null;\n  for (var i = list.length - 1; i >= 0; i--) {\n    if (list[i] === null) {\n      list[i] = next;\n    } else {\n      next = list[i];\n    }\n  }\n  return list;\n}\n\n// Part name: the description when there is one, else the name. The key is\n// the product code, else the name.\nfunction productOf(productName) {\n  if (productName === null) {\n    return null;\n  }\n  var record = master.filter(function (p) {\n    return p.name === productName;\n  })[0];\n  var rec = record || {};\n  return {\n    part_name: rec.description || productName,\n    product_key: rec.code || productName,\n    per_minute: rec.perMinute === undefined ? null : rec.perMinute\n  };\n}\n\nvar times = msg.hours.map(function (h) {\n  return Date.parse(h.time);\n});\nvar products = fill(times.map(function (ms) {\n  return valueAt('PRODUCT', ms);\n}));\nvar orders = fill(times.map(function (ms) {\n  return valueAt('ORDER', ms);\n}));\n\nmsg.hourInfo = {};\nmsg.hours.forEach(function (hour, i) {\n  hour.product = productOf(products[i]);\n  hour.order = orders[i];\n  msg.hourInfo[String(times[i])] = {\n    product: hour.product,\n    order: hour.order\n  };\n});\ndelete msg.valueHours;\ndelete msg.productList;\ndelete msg.values;\nreturn msg;\n",
-    "outputs": 1,
-    "language": "javascript",
-    "noerr": 0,
-    "x": 240,
-    "y": 2320,
-    "wires": [
-      [
-        "0e708.a8a4b8"
-      ]
-    ]
-  },
-  {
-    "z": "474df.040ba9",
-    "id": "0e708.a8a4b8",
-    "type": "function",
-    "name": "11.2 Tag hours with shift and speed",
-    "func": "// Gives every hour its shift and its design speed.\n// In: msg.hours (with hour.product from node 7.1) and msg.shiftRules.\n// Out: hour.ms (start in ms), hour.shift (name or null) and\n// hour.perMinute (design speed per minute or null) on every hour.\nvar DAY_MS = 86400000;\nvar HOUR_MS = 3600000;\nvar cfg = flow.get('cfg') || {};\n\n// Last Sunday of the month at 01:00 UTC. The month is 0-based.\nfunction lastSundayUtc(year, monthIndex) {\n  var d = new Date(Date.UTC(year, monthIndex + 1, 0, 1, 0, 0));\n  d.setUTCDate(d.getUTCDate() - d.getUTCDay());\n  return d.getTime();\n}\n\n// UTC offset of the site in hours: the standard offset of its time zone\n// plus one hour in EU summer time (from 1.1 CONFIG, via flow context cfg).\nfunction offsetHours(ms) {\n  var year = new Date(ms).getUTCFullYear();\n  var summer = !!cfg.euSummer && ms >= lastSundayUtc(year, 2) &&\n    ms < lastSundayUtc(year, 9);\n  return (cfg.utcHours || 0) + (summer ? 1 : 0);\n}\n\n// The shift of an instant: the event whose recurrence covers it, else null.\n// The calendar rules hold local wall clock times written with a Z (a shift\n// of 06:00 local starts at 05:00 UTC in summer), so the instant is looked\n// up on its local wall clock time.\nfunction shiftOf(instant) {\n  var ms = instant + offsetHours(instant) * HOUR_MS;\n  var found = null;\n  msg.shiftRules.forEach(function (rule) {\n    if (found) {\n      return;\n    }\n    var days = 0;\n    if (rule.freq === 'DAILY') {\n      days = 1;\n    } else if (rule.freq === 'WEEKLY') {\n      days = 7;\n    }\n    var until = rule.until === null ? Infinity : rule.until;\n    if (!days || rule.start === null || ms < rule.start || ms > until) {\n      return;\n    }\n    var step = days * rule.interval * DAY_MS;\n    var occurrence = rule.start + Math.floor((ms - rule.start) / step) * step;\n    if (ms < occurrence + rule.duration) {\n      found = rule.name;\n    }\n  });\n  return found;\n}\n\nmsg.hours.forEach(function (hour) {\n  hour.ms = Date.parse(hour.time);\n  hour.shift = shiftOf(hour.ms);\n  var product = hour.product;\n  var speed = product ? product.per_minute : null;\n  hour.perMinute = speed === undefined ? null : speed;\n});\nreturn msg;\n",
-    "outputs": 1,
-    "language": "javascript",
-    "noerr": 0,
-    "x": 560,
     "y": 2320,
     "wires": [
       [
@@ -1791,12 +1797,12 @@
     "z": "474df.040ba9",
     "id": "105f7.aa3dd1",
     "type": "function",
-    "name": "11.3 Build hour rows",
-    "func": "// Builds the rpt_hour rows of one asset: one row per hour of the day.\n// In: msg.hours (tagged by node 7.2), msg.h, msg.asset, msg.day.\n// Out: msg.hourRows. Minutes are KPI milliseconds divided by 60000.\nvar MIN_MS = 60000;\nvar HOUR_MS = 3600000;\nvar cfg = flow.get('cfg') || {};\nvar loadedAt = msg.loadedAt || Date.now();\n\n// Last Sunday of the month at 01:00 UTC. The month is 0-based.\nfunction lastSundayUtc(year, monthIndex) {\n  var d = new Date(Date.UTC(year, monthIndex + 1, 0, 1, 0, 0));\n  d.setUTCDate(d.getUTCDate() - d.getUTCDay());\n  return d.getTime();\n}\n\n// UTC offset of the site in hours: the standard offset of its time zone\n// plus one hour in EU summer time (from 1.1 CONFIG, via flow context cfg).\nfunction offsetHours(ms) {\n  var year = new Date(ms).getUTCFullYear();\n  var summer = !!cfg.euSummer && ms >= lastSundayUtc(year, 2) &&\n    ms < lastSundayUtc(year, 9);\n  return (cfg.utcHours || 0) + (summer ? 1 : 0);\n}\n\nfunction minutes(ms) {\n  return ms === null || ms === undefined ? null : ms / MIN_MS;\n}\n\nfunction ratio(a, b) {\n  if (a === null || a === undefined || !b) {\n    return null;\n  }\n  return a / b;\n}\n\nvar line = msg.h.line || msg.h.asset_name;\nvar level = msg.h.machine ? 'machine' : 'line';\nmsg.hourRows = msg.hours.map(function (hour) {\n  var v = hour.values;\n  var local = new Date(hour.ms + offsetHours(hour.ms) * HOUR_MS);\n  var localIso = local.toISOString();\n  var product = hour.product || {};\n  var operational = minutes(v.operational_time_ms);\n  var net = minutes(v.net_production_time_ms);\n  var capacity = null;\n  if (hour.perMinute !== null && operational !== null) {\n    capacity = hour.perMinute * operational;\n  }\n  return {\n    site: msg.h.site,\n    line_id: msg.lineId || msg.asset.id,\n    line_name: line,\n    asset_id: msg.asset.id,\n    asset_name: msg.h.asset_name,\n    asset_level: level,\n    production_day: msg.day,\n    hour_start: hour.ms,\n    hour_end: hour.ms + HOUR_MS,\n    local_date: localIso.slice(0, 10),\n    local_time: localIso.slice(11, 16),\n    shift_name: hour.shift,\n    product_key: product.product_key || null,\n    part_name: product.part_name || null,\n    batch_id: hour.order || null,\n    total_parts: v.total_parts,\n    good_parts: v.good_parts,\n    rejected_parts: v.rejected_parts,\n    operational_min: operational,\n    net_production_min: net,\n    availability_loss_min: minutes(v.availability_losses_ms),\n    downtime_min: minutes(v.downtime_ms),\n    micro_stop_min: minutes(v.micro_stops_ms),\n    design_speed_per_min: hour.perMinute,\n    speed_per_min: ratio(v.total_parts, net),\n    capacity_units: capacity,\n    loaded_at: loadedAt\n  };\n});\nreturn msg;\n",
+    "name": "11.1 Assign hours to products",
+    "func": "// Gives every hour of the day a product and an order.\n// In: msg.hours, msg.valueHours, msg.productList (absent when no values).\n// Out: hour.product and hour.order on every hour, and msg.hourInfo (hour\n// start in ms -> product and order) for the stop rows.\nvar valueHours = msg.valueHours || { PRODUCT: {}, ORDER: {} };\nvar master = msg.productList || [];\n\n// The value (a product name or an order) that has parts in this hour.\nfunction valueAt(kind, ms) {\n  var names = Object.keys(valueHours[kind]);\n  var found = null;\n  names.forEach(function (n) {\n    if (found === null && valueHours[kind][n].indexOf(ms) >= 0) {\n      found = n;\n    }\n  });\n  return found;\n}\n\n// An hour without parts takes the value of the hour before it. Hours\n// before the first value take the first value that follows.\nfunction fill(list) {\n  var last = null;\n  list.forEach(function (item, i) {\n    if (item === null) {\n      list[i] = last;\n    } else {\n      last = item;\n    }\n  });\n  var next = null;\n  for (var i = list.length - 1; i >= 0; i--) {\n    if (list[i] === null) {\n      list[i] = next;\n    } else {\n      next = list[i];\n    }\n  }\n  return list;\n}\n\n// Part name: the description when there is one, else the name. The key is\n// the product code, else the name.\nfunction productOf(productName) {\n  if (productName === null) {\n    return null;\n  }\n  var record = master.filter(function (p) {\n    return p.name === productName;\n  })[0];\n  var rec = record || {};\n  return {\n    part_name: rec.description || productName,\n    product_key: rec.code || productName,\n    per_minute: rec.perMinute === undefined ? null : rec.perMinute\n  };\n}\n\nvar times = msg.hours.map(function (h) {\n  return Date.parse(h.time);\n});\nvar products = fill(times.map(function (ms) {\n  return valueAt('PRODUCT', ms);\n}));\nvar orders = fill(times.map(function (ms) {\n  return valueAt('ORDER', ms);\n}));\n\nmsg.hourInfo = {};\nmsg.hours.forEach(function (hour, i) {\n  hour.product = productOf(products[i]);\n  hour.order = orders[i];\n  msg.hourInfo[String(times[i])] = {\n    product: hour.product,\n    order: hour.order\n  };\n});\ndelete msg.valueHours;\ndelete msg.productList;\ndelete msg.values;\nreturn msg;\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,
-    "x": 840,
+    "x": 240,
     "y": 2320,
     "wires": [
       [
@@ -1806,12 +1812,46 @@
   },
   {
     "z": "474df.040ba9",
-    "id": "162c4.af091c",
+    "id": "124e6.abd6ea",
+    "type": "function",
+    "name": "11.2 Tag hours with shift and speed",
+    "func": "// Gives every hour its shift and its design speed.\n// In: msg.hours (with hour.product from node 7.1) and msg.shiftRules.\n// Out: hour.ms (start in ms), hour.shift (name or null) and\n// hour.perMinute (design speed per minute or null) on every hour.\nvar DAY_MS = 86400000;\nvar HOUR_MS = 3600000;\nvar cfg = flow.get('cfg') || {};\n\n// Last Sunday of the month at 01:00 UTC. The month is 0-based.\nfunction lastSundayUtc(year, monthIndex) {\n  var d = new Date(Date.UTC(year, monthIndex + 1, 0, 1, 0, 0));\n  d.setUTCDate(d.getUTCDate() - d.getUTCDay());\n  return d.getTime();\n}\n\n// UTC offset of the site in hours: the standard offset of its time zone\n// plus one hour in EU summer time (from 1.1 CONFIG, via flow context cfg).\nfunction offsetHours(ms) {\n  var year = new Date(ms).getUTCFullYear();\n  var summer = !!cfg.euSummer && ms >= lastSundayUtc(year, 2) &&\n    ms < lastSundayUtc(year, 9);\n  return (cfg.utcHours || 0) + (summer ? 1 : 0);\n}\n\n// The shift of an instant: the event whose recurrence covers it, else null.\n// The calendar rules hold local wall clock times written with a Z (a shift\n// of 06:00 local starts at 05:00 UTC in summer), so the instant is looked\n// up on its local wall clock time.\nfunction shiftOf(instant) {\n  var ms = instant + offsetHours(instant) * HOUR_MS;\n  var found = null;\n  msg.shiftRules.forEach(function (rule) {\n    if (found) {\n      return;\n    }\n    var days = 0;\n    if (rule.freq === 'DAILY') {\n      days = 1;\n    } else if (rule.freq === 'WEEKLY') {\n      days = 7;\n    }\n    var until = rule.until === null ? Infinity : rule.until;\n    if (!days || rule.start === null || ms < rule.start || ms > until) {\n      return;\n    }\n    var step = days * rule.interval * DAY_MS;\n    var occurrence = rule.start + Math.floor((ms - rule.start) / step) * step;\n    if (ms < occurrence + rule.duration) {\n      found = rule.name;\n    }\n  });\n  return found;\n}\n\nmsg.hours.forEach(function (hour) {\n  hour.ms = Date.parse(hour.time);\n  hour.shift = shiftOf(hour.ms);\n  var product = hour.product;\n  var speed = product ? product.per_minute : null;\n  hour.perMinute = speed === undefined ? null : speed;\n});\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 560,
+    "y": 2320,
+    "wires": [
+      [
+        "143d5.ad7003"
+      ]
+    ]
+  },
+  {
+    "z": "474df.040ba9",
+    "id": "143d5.ad7003",
+    "type": "function",
+    "name": "11.3 Build hour rows",
+    "func": "// Builds the rpt_hour rows of one asset: one row per hour of the day.\n// In: msg.hours (tagged by node 7.2), msg.h, msg.asset, msg.day.\n// Out: msg.hourRows. Minutes are KPI milliseconds divided by 60000.\nvar MIN_MS = 60000;\nvar HOUR_MS = 3600000;\nvar cfg = flow.get('cfg') || {};\nvar loadedAt = msg.loadedAt || Date.now();\n\n// Last Sunday of the month at 01:00 UTC. The month is 0-based.\nfunction lastSundayUtc(year, monthIndex) {\n  var d = new Date(Date.UTC(year, monthIndex + 1, 0, 1, 0, 0));\n  d.setUTCDate(d.getUTCDate() - d.getUTCDay());\n  return d.getTime();\n}\n\n// UTC offset of the site in hours: the standard offset of its time zone\n// plus one hour in EU summer time (from 1.1 CONFIG, via flow context cfg).\nfunction offsetHours(ms) {\n  var year = new Date(ms).getUTCFullYear();\n  var summer = !!cfg.euSummer && ms >= lastSundayUtc(year, 2) &&\n    ms < lastSundayUtc(year, 9);\n  return (cfg.utcHours || 0) + (summer ? 1 : 0);\n}\n\nfunction minutes(ms) {\n  return ms === null || ms === undefined ? null : ms / MIN_MS;\n}\n\nfunction ratio(a, b) {\n  if (a === null || a === undefined || !b) {\n    return null;\n  }\n  return a / b;\n}\n\nvar line = msg.h.line || msg.h.asset_name;\nvar level = msg.h.machine ? 'machine' : 'line';\nmsg.hourRows = msg.hours.map(function (hour) {\n  var v = hour.values;\n  var local = new Date(hour.ms + offsetHours(hour.ms) * HOUR_MS);\n  var localIso = local.toISOString();\n  var product = hour.product || {};\n  var operational = minutes(v.operational_time_ms);\n  var net = minutes(v.net_production_time_ms);\n  var capacity = null;\n  if (hour.perMinute !== null && operational !== null) {\n    capacity = hour.perMinute * operational;\n  }\n  return {\n    site: msg.h.site,\n    line_id: msg.lineId || msg.asset.id,\n    line_name: line,\n    asset_id: msg.asset.id,\n    asset_name: msg.h.asset_name,\n    asset_level: level,\n    production_day: msg.day,\n    hour_start: hour.ms,\n    hour_end: hour.ms + HOUR_MS,\n    local_date: localIso.slice(0, 10),\n    local_time: localIso.slice(11, 16),\n    shift_name: hour.shift,\n    product_key: product.product_key || null,\n    part_name: product.part_name || null,\n    batch_id: hour.order || null,\n    total_parts: v.total_parts,\n    good_parts: v.good_parts,\n    rejected_parts: v.rejected_parts,\n    operational_min: operational,\n    net_production_min: net,\n    availability_loss_min: minutes(v.availability_losses_ms),\n    downtime_min: minutes(v.downtime_ms),\n    micro_stop_min: minutes(v.micro_stops_ms),\n    design_speed_per_min: hour.perMinute,\n    speed_per_min: ratio(v.total_parts, net),\n    capacity_units: capacity,\n    loaded_at: loadedAt\n  };\n});\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 840,
+    "y": 2320,
+    "wires": [
+      [
+        "162c4.af091c"
+      ]
+    ]
+  },
+  {
+    "z": "474df.040ba9",
+    "id": "1a0a2.b23b4e",
     "type": "link out",
     "name": "to SEGMENTS",
     "mode": "link",
     "links": [
-      "143d5.ad7003"
+      "181b3.b0a235"
     ],
     "x": 1240,
     "y": 2320,
@@ -1819,7 +1859,7 @@
   },
   {
     "z": "474df.040ba9",
-    "id": "124e6.abd6ea",
+    "id": "162c4.af091c",
     "type": "function",
     "name": "11.4 Build window rows",
     "func": "// Builds the rpt_window rows of one asset: the production day and every\n// shift run of the day, from the hourly KPIs (sums, ratios recalculated).\n// In: msg.hours (tagged by node 7.2), msg.h, msg.asset, msg.day,\n// msg.dayFromMs, msg.dayToMs. Out: msg.windowRows. Drops msg.hours.\nvar MIN_MS = 60000;\nvar HOUR_MS = 3600000;\nvar loadedAt = msg.loadedAt || Date.now();\n\n// KPI column of an hour -> key of its sum in a window.\nvar SUMS = {\n  total_parts: 'total',\n  good_parts: 'good',\n  rejected_parts: 'rejected',\n  theoretical_output: 'theoretical',\n  total_time_ms: 'totalTime',\n  planned_stops_ms: 'plannedStops',\n  operational_time_ms: 'operational',\n  net_production_time_ms: 'net',\n  availability_losses_ms: 'availLoss',\n  downtime_ms: 'down',\n  micro_stops_ms: 'micro',\n  macro_stops_ms: 'macro',\n  downtime_count: 'downCount',\n  micro_stops_count: 'microCount',\n  macro_stops_count: 'macroCount'\n};\n\nfunction addTo(sum, key, value) {\n  if (value === null || value === undefined) {\n    return;\n  }\n  sum[key] = (sum[key] || 0) + value;\n}\n\nfunction get(sum, key) {\n  return sum[key] === undefined ? null : sum[key];\n}\n\nfunction minutes(sum, key) {\n  return sum[key] === undefined ? null : sum[key] / MIN_MS;\n}\n\nfunction count(sum, key) {\n  return sum[key] === undefined ? null : Math.round(sum[key]);\n}\n\nfunction ratio(a, b) {\n  if (a === null || b === null || !b) {\n    return null;\n  }\n  return a / b;\n}\n\n// Parts that fit in a time at the design speed of each hour.\nfunction units(hours, ms) {\n  var total = null;\n  hours.forEach(function (h) {\n    var time = h.values[ms];\n    if (h.perMinute === null || time === null || time === undefined) {\n      return;\n    }\n    total = (total || 0) + h.perMinute * time / MIN_MS;\n  });\n  return total;\n}\n\n// Hours of the day in runs of the same shift. A run ends at a shift change,\n// a gap in the hours or an hour outside every shift.\nfunction shiftRuns(hours) {\n  var runs = [];\n  var run = null;\n  hours.forEach(function (h) {\n    var continues = run && run.name === h.shift &&\n      run.hours[run.hours.length - 1].ms + HOUR_MS === h.ms;\n    if (continues) {\n      run.hours.push(h);\n      return;\n    }\n    run = null;\n    if (h.shift !== null) {\n      run = { name: h.shift, hours: [h] };\n      runs.push(run);\n    }\n  });\n  return runs;\n}\n\nvar line = msg.h.line || msg.h.asset_name;\nvar level = msg.h.machine ? 'machine' : 'line';\n\nfunction windowRow(kind, name, from, to, hours) {\n  var s = {};\n  hours.forEach(function (h) {\n    Object.keys(SUMS).forEach(function (column) {\n      addTo(s, SUMS[column], h.values[column]);\n    });\n  });\n  var availability = ratio(get(s, 'net'), get(s, 'operational'));\n  var performance = ratio(get(s, 'total'), get(s, 'theoretical'));\n  var quality = ratio(get(s, 'good'), get(s, 'total'));\n  var oee = null;\n  if (availability !== null && performance !== null && quality !== null) {\n    oee = availability * performance * quality;\n  }\n  var capacity = units(hours, 'operational_time_ms');\n  var operational = minutes(s, 'operational');\n  var speed = null;\n  if (capacity !== null && operational) {\n    speed = capacity / operational;\n  }\n  // The loss times of the OEE app are worked out on the window ratios, not\n  // summed per hour: performance loss = (1 - performance) x net production\n  // time, quality loss = (1 - quality) x (net - performance loss).\n  var net = get(s, 'net');\n  var perfLoss = null;\n  if (performance !== null && net !== null) {\n    perfLoss = (1 - performance) * net;\n  }\n  var netOperational = perfLoss === null ? null : net - perfLoss;\n  var qualLoss = null;\n  if (quality !== null && netOperational !== null) {\n    qualLoss = (1 - quality) * netOperational;\n  }\n  var used = qualLoss === null ? null : netOperational - qualLoss;\n  var perfLossMin = perfLoss === null ? null : perfLoss / MIN_MS;\n  var qualLossMin = qualLoss === null ? null : qualLoss / MIN_MS;\n  var perfLossUnits = null;\n  var qualLossUnits = null;\n  if (speed !== null && perfLossMin !== null) {\n    perfLossUnits = perfLossMin * speed;\n  }\n  if (speed !== null && qualLossMin !== null) {\n    qualLossUnits = qualLossMin * speed;\n  }\n  return {\n    site: msg.h.site,\n    line_id: msg.lineId || msg.asset.id,\n    line_name: line,\n    asset_id: msg.asset.id,\n    asset_name: msg.h.asset_name,\n    asset_level: level,\n    production_day: msg.day,\n    window_kind: kind,\n    window_name: name,\n    window_start: from,\n    window_end: to,\n    hours: hours.length,\n    oee: oee,\n    availability: availability,\n    performance: performance,\n    quality: quality,\n    total_parts: get(s, 'total'),\n    good_parts: get(s, 'good'),\n    rejected_parts: get(s, 'rejected'),\n    theoretical_output: get(s, 'theoretical'),\n    total_min: minutes(s, 'totalTime'),\n    planned_stop_min: minutes(s, 'plannedStops'),\n    operational_min: operational,\n    net_production_min: minutes(s, 'net'),\n    availability_loss_min: minutes(s, 'availLoss'),\n    performance_loss_min: perfLossMin,\n    quality_loss_min: qualLossMin,\n    used_operational_min: used === null ? null : used / MIN_MS,\n    downtime_min: minutes(s, 'down'),\n    micro_stop_min: minutes(s, 'micro'),\n    macro_stop_min: minutes(s, 'macro'),\n    downtime_count: count(s, 'downCount'),\n    micro_stop_count: count(s, 'microCount'),\n    macro_stop_count: count(s, 'macroCount'),\n    capacity_units: capacity,\n    availability_loss_units: units(hours, 'availability_losses_ms'),\n    performance_loss_units: perfLossUnits,\n    quality_loss_units: qualLossUnits,\n    design_speed_per_min: speed,\n    running_rate: ratio(get(s, 'total'), minutes(s, 'net')),\n    ran_min: null,\n    fault_min: null,\n    operator_min: null,\n    waiting_min: null,\n    planned_min: null,\n    other_min: null,\n    loaded_at: loadedAt\n  };\n}\n\nmsg.windowRows = [];\nif (msg.hours.length) {\n  msg.windowRows.push(\n    windowRow('day', msg.day, msg.dayFromMs, msg.dayToMs, msg.hours)\n  );\n}\nshiftRuns(msg.hours).forEach(function (run) {\n  var first = run.hours[0].ms;\n  var last = run.hours[run.hours.length - 1].ms;\n  msg.windowRows.push(\n    windowRow('shift', run.name, first, last + HOUR_MS, run.hours)\n  );\n});\ndelete msg.hours;\ndelete msg.kpiMeta;\nreturn msg;\n",
@@ -1830,13 +1870,13 @@
     "y": 2320,
     "wires": [
       [
-        "162c4.af091c"
+        "1a0a2.b23b4e"
       ]
     ]
   },
   {
     "z": "474df.040ba9",
-    "id": "181b3.b0a235",
+    "id": "1bf91.b3d467",
     "type": "comment",
     "name": "[12] ASSET SEGMENTS",
     "info": "STAGE 12 - one asset. A line goes straight on (\"to STOPS\"). A machine: 8.1 asks the time segments of the day (timeModelCategoryDistribution, read-style POST, one answer for the whole day), 8.2 adds the minutes per group to every window row: Run = ran, Unplanned Downtime = faults, Lack of resources = waiting, Planned Downtime = planned, everything else (also a segment without a category) = other. The segments are cut to the window (day and each shift run). operator_min stays empty: Insights Hub has no category for operator stops (the reason of a stop comes from the machine status mapping), so operator stops are counted in the groups above until Reckitt defines a rule. A failed call fails the day (link \"to JOIN\").",
@@ -1846,28 +1886,28 @@
   },
   {
     "z": "474df.040ba9",
-    "id": "143d5.ad7003",
+    "id": "181b3.b0a235",
     "type": "link in",
     "name": "SEGMENTS",
     "links": [
-      "162c4.af091c"
+      "1a0a2.b23b4e"
     ],
     "x": 60,
     "y": 2540,
     "wires": [
       [
-        "1a0a2.b23b4e"
+        "1de80.b56d80"
       ]
     ]
   },
   {
     "z": "474df.040ba9",
-    "id": "1fd6f.b70699",
+    "id": "23b4d.ba38cb",
     "type": "link out",
     "name": "to STOPS",
     "mode": "link",
     "links": [
-      "1de80.b56d80"
+      "21c5e.b89fb2"
     ],
     "x": 460,
     "y": 2560,
@@ -1875,7 +1915,7 @@
   },
   {
     "z": "474df.040ba9",
-    "id": "1a0a2.b23b4e",
+    "id": "1de80.b56d80",
     "type": "function",
     "name": "12.1 Build time segments request",
     "func": "// Builds the time segments request of one machine (the line needs none).\n// In: msg.asset, msg.token, msg.h, msg.dayFromMs, msg.dayToMs.\n// Out 1: msg.method, msg.url, msg.headers and the body for the http node.\n// Out 2: the message of a line, which goes straight on.\nvar cfg = flow.get('cfg');\nif (!msg.h.machine) {\n  return [null, msg];\n}\nmsg.method = 'POST';\nmsg.url = cfg.oeeBase + '/assets/' +\n  encodeURIComponent(msg.asset.id) + '/timeModelCategoryDistribution';\nmsg.headers = {\n  'Authorization': 'Bearer ' + msg.token,\n  'Content-Type': 'application/json',\n  'Accept': 'application/json'\n};\nmsg.payload = {\n  from: new Date(msg.dayFromMs).toISOString(),\n  to: new Date(msg.dayToMs).toISOString(),\n  filter: [\n    { key: 'PRODUCT', value: [] },\n    { key: 'ORDER', value: [] }\n  ],\n  force: true\n};\nreturn [msg, null];\n",
@@ -1886,16 +1926,16 @@
     "y": 2540,
     "wires": [
       [
-        "1bf91.b3d467"
+        "1fd6f.b70699"
       ],
       [
-        "1fd6f.b70699"
+        "23b4d.ba38cb"
       ]
     ]
   },
   {
     "z": "474df.040ba9",
-    "id": "1bf91.b3d467",
+    "id": "1fd6f.b70699",
     "type": "http request",
     "name": "POST timeModelCategoryDistribution",
     "method": "use",
@@ -1909,18 +1949,18 @@
     "y": 2520,
     "wires": [
       [
-        "21c5e.b89fb2"
+        "25a3c.bbd1e4"
       ]
     ]
   },
   {
     "z": "474df.040ba9",
-    "id": "23b4d.ba38cb",
+    "id": "2792b.bd6afd",
     "type": "link out",
     "name": "to STOPS",
     "mode": "link",
     "links": [
-      "1de80.b56d80"
+      "21c5e.b89fb2"
     ],
     "x": 1020,
     "y": 2520,
@@ -1928,7 +1968,7 @@
   },
   {
     "z": "474df.040ba9",
-    "id": "25a3c.bbd1e4",
+    "id": "2981a.bf0416",
     "type": "link out",
     "name": "to JOIN",
     "mode": "link",
@@ -1941,7 +1981,7 @@
   },
   {
     "z": "474df.040ba9",
-    "id": "21c5e.b89fb2",
+    "id": "25a3c.bbd1e4",
     "type": "function",
     "name": "12.2 Add group minutes",
     "func": "// Adds the minutes per group (ran, fault, waiting, planned, other) to the\n// window rows of one machine. In: the time segments response. Out 1:\n// msg.windowRows (operator_min stays null, there is no such category).\n// Out 2: the asset result for the join when the call failed (no half days).\nvar MIN_MS = 60000;\n// Time category of a segment -> column. Anything else (also a segment\n// without a category) is counted as other.\nvar GROUP_OF = {\n  'Run': 'ran_min',\n  'Unplanned Downtime': 'fault_min',\n  'Lack of resources': 'waiting_min',\n  'Planned Downtime': 'planned_min'\n};\nvar OTHER = 'other_min';\nvar name = msg.h.asset_name;\nvar body = msg.payload;\n\nif (msg.statusCode !== 200 || !body || !Array.isArray(body.distribution)) {\n  msg.payload = {\n    assetId: msg.asset.id,\n    name: name,\n    failed: name + ': time segments failed, HTTP ' + msg.statusCode,\n    skipped: null,\n    windowRows: [],\n    hourRows: [],\n    eventRows: []\n  };\n  delete msg.windowRows;\n  delete msg.hourRows;\n  delete msg.shiftRules;\n  delete msg.hourInfo;\n  return [null, msg];\n}\n\nvar segments = body.distribution.map(function (s) {\n  return {\n    from: Date.parse(s.from),\n    to: Date.parse(s.to),\n    column: GROUP_OF[s.timeCategoryName] || OTHER\n  };\n});\nmsg.windowRows.forEach(function (row) {\n  var sums = {\n    ran_min: 0,\n    fault_min: 0,\n    waiting_min: 0,\n    planned_min: 0,\n    other_min: 0\n  };\n  segments.forEach(function (s) {\n    var start = Math.max(s.from, row.window_start);\n    var end = Math.min(s.to, row.window_end);\n    if (end > start) {\n      sums[s.column] += (end - start) / MIN_MS;\n    }\n  });\n  Object.keys(sums).forEach(function (column) {\n    row[column] = sums[column];\n  });\n});\ndelete msg.payload;\nreturn [msg, null];\n",
@@ -1952,16 +1992,16 @@
     "y": 2540,
     "wires": [
       [
-        "23b4d.ba38cb"
+        "2792b.bd6afd"
       ],
       [
-        "25a3c.bbd1e4"
+        "2981a.bf0416"
       ]
     ]
   },
   {
     "z": "474df.040ba9",
-    "id": "2792b.bd6afd",
+    "id": "2b709.c09d2f",
     "type": "comment",
     "name": "[13] ASSET STOPS",
     "info": "STAGE 13 - one asset. 9.1 downtimeReasons GET over the exact window of the day (size 5000, one page), 9.2 checks the response, 9.3 builds the rpt_event rows (one per stop that starts inside the production day: UTC and local time, shift, kind microstop, planned or unplanned, reason and reason path, minutes, comment count, product and order of the hour of the stop, loss units = design speed per minute x minutes), 9.4 builds the result of the asset and sends it to the wait node (link \"to JOIN\").",
@@ -1971,12 +2011,12 @@
   },
   {
     "z": "474df.040ba9",
-    "id": "1de80.b56d80",
+    "id": "21c5e.b89fb2",
     "type": "link in",
     "name": "STOPS",
     "links": [
-      "1fd6f.b70699",
-      "23b4d.ba38cb"
+      "23b4d.ba38cb",
+      "2792b.bd6afd"
     ],
     "x": 60,
     "y": 2760,
@@ -1999,13 +2039,13 @@
     "y": 2760,
     "wires": [
       [
-        "2981a.bf0416"
+        "2d5f8.c23648"
       ]
     ]
   },
   {
     "z": "474df.040ba9",
-    "id": "2981a.bf0416",
+    "id": "2d5f8.c23648",
     "type": "function",
     "name": "13.2 Build stops request",
     "func": "// Builds the downtimeReasons request for one asset and one production day.\n// In: msg.kpiRows (already built). Out: msg.method, msg.url and msg.headers\n// for the http request node.\nvar cfg = flow.get('cfg');\nvar DAY_MS = 86400000;\nvar HOUR_MS = 3600000;\n// One page of 5000 holds every stop of a day (tested: 423 stops with\n// size 1000). More than one page makes the day fail in node 4.2.\nvar PAGE_SIZE = 5000;\n\n// A production day D runs from D start hour to D+1 start hour (UTC).\nvar from = Date.parse(msg.day + 'T00:00:00.000Z') + cfg.dayStartHour * HOUR_MS;\nvar to = from + DAY_MS;\n// The shift report sets the exact window of the day (local day start).\nif (msg.dayFromMs !== undefined) {\n  from = msg.dayFromMs;\n  to = msg.dayToMs;\n}\nvar fromIso = new Date(from).toISOString();\nvar toIso = new Date(to).toISOString();\nvar query = '?from=' + encodeURIComponent(fromIso) +\n  '&to=' + encodeURIComponent(toIso) +\n  '&size=' + PAGE_SIZE + '&page=0';\nmsg.method = 'GET';\nmsg.url = cfg.oeeBase + '/assets/' +\n  encodeURIComponent(msg.asset.id) + '/downtimeReasons' + query;\nmsg.headers = {\n  'Authorization': 'Bearer ' + msg.token,\n  'Accept': 'application/json'\n};\nreturn msg;\n",
@@ -2016,13 +2056,13 @@
     "y": 2760,
     "wires": [
       [
-        "2b709.c09d2f"
+        "2f4e7.c3cf61"
       ]
     ]
   },
   {
     "z": "474df.040ba9",
-    "id": "2b709.c09d2f",
+    "id": "2f4e7.c3cf61",
     "type": "http request",
     "name": "GET downtimeReasons",
     "method": "use",
@@ -2036,57 +2076,7 @@
     "y": 2760,
     "wires": [
       [
-        "2d5f8.c23648"
-      ]
-    ]
-  },
-  {
-    "z": "474df.040ba9",
-    "id": "313d6.c5687a",
-    "type": "link out",
-    "name": "to JOIN",
-    "mode": "link",
-    "links": [
-      "8af8c.3bfa14"
-    ],
-    "x": 1160,
-    "y": 2780,
-    "wires": []
-  },
-  {
-    "z": "474df.040ba9",
-    "id": "2d5f8.c23648",
-    "type": "function",
-    "name": "13.3 Check stops response",
-    "func": "// Checks the downtimeReasons response of one asset.\n// In: the response. Out 1: msg.stops = the list of stops.\n// Out 2: the asset result for the join when the call failed or has more\n// than one page. The KPI rows of the asset are dropped then (no half days).\nvar name = msg.h.asset_name;\n\nfunction failedResult(text) {\n  msg.payload = {\n    assetId: msg.asset.id,\n    name: name,\n    failed: text,\n    skipped: null,\n    kpiRows: [],\n    lossRows: [],\n    unmapped: msg.unmapped\n  };\n  delete msg.kpiRows;\n  delete msg.unmapped;\n  return [null, msg];\n}\n\nvar body = msg.payload;\n// Short text of the API error (errors[0].message), else the raw body.\nfunction apiMessage(payload) {\n  var list = payload && (payload.errors ||\n    (payload.data && payload.data.errors));\n  if (list && list.length && list[0].message) {\n    return String(list[0].message);\n  }\n  return JSON.stringify(payload).slice(0, 200);\n}\n\nif (msg.statusCode !== 200 || !body || typeof body !== 'object') {\n  var why = msg.statusCode === 200 ? '' : ': ' + apiMessage(body);\n  return failedResult(\n    name + ': downtimeReasons failed, HTTP ' + msg.statusCode + why\n  );\n}\nif (body.page && body.page.totalPages > 1) {\n  return failedResult(\n    name + ': downtimeReasons has more than one page (' +\n      body.page.totalElements + ' rows), raise PAGE_SIZE in node 4.1'\n  );\n}\n\nmsg.stops = (body._embedded && body._embedded.downtimeReasons) || [];\ndelete msg.payload;\nreturn [msg, null];\n",
-    "outputs": 2,
-    "language": "javascript",
-    "noerr": 0,
-    "x": 1000,
-    "y": 2760,
-    "wires": [
-      [
-        "2f4e7.c3cf61"
-      ],
-      [
         "313d6.c5687a"
-      ]
-    ]
-  },
-  {
-    "z": "474df.040ba9",
-    "id": "2f4e7.c3cf61",
-    "type": "function",
-    "name": "13.4 Build event rows",
-    "func": "// Builds the rpt_event rows of one asset: one row per stop of the day.\n// In: msg.stops, shiftRules, hourInfo, h, asset, day, dayFromMs, dayToMs.\n// Out: msg.eventRows and msg.droppedStops (stops that start outside the\n// day). Product and order come from the hour of the stop.\nvar MIN_MS = 60000;\nvar DAY_MS = 86400000;\nvar HOUR_MS = 3600000;\nvar MICROSTOPS = '##MICROSTOPS##';\nvar cfg = flow.get('cfg');\nvar loadedAt = msg.loadedAt || Date.now();\n\n// The shift of an instant: the event whose recurrence covers it, else null.\n// The calendar rules hold local wall clock times written with a Z (a shift\n// of 06:00 local starts at 05:00 UTC in summer), so the instant is looked\n// up on its local wall clock time.\nfunction shiftOf(instant) {\n  var ms = instant + offsetHours(instant) * HOUR_MS;\n  var found = null;\n  msg.shiftRules.forEach(function (rule) {\n    if (found) {\n      return;\n    }\n    var days = 0;\n    if (rule.freq === 'DAILY') {\n      days = 1;\n    } else if (rule.freq === 'WEEKLY') {\n      days = 7;\n    }\n    var until = rule.until === null ? Infinity : rule.until;\n    if (!days || rule.start === null || ms < rule.start || ms > until) {\n      return;\n    }\n    var step = days * rule.interval * DAY_MS;\n    var occurrence = rule.start + Math.floor((ms - rule.start) / step) * step;\n    if (ms < occurrence + rule.duration) {\n      found = rule.name;\n    }\n  });\n  return found;\n}\n\n// Last Sunday of the month at 01:00 UTC. The month is 0-based.\nfunction lastSundayUtc(year, monthIndex) {\n  var d = new Date(Date.UTC(year, monthIndex + 1, 0, 1, 0, 0));\n  d.setUTCDate(d.getUTCDate() - d.getUTCDay());\n  return d.getTime();\n}\n\n// UTC offset of the site in hours: the standard offset of its time zone\n// plus one hour in EU summer time (from 1.1 CONFIG, via flow context cfg).\nfunction offsetHours(ms) {\n  var year = new Date(ms).getUTCFullYear();\n  var summer = !!cfg.euSummer && ms >= lastSundayUtc(year, 2) &&\n    ms < lastSundayUtc(year, 9);\n  return (cfg.utcHours || 0) + (summer ? 1 : 0);\n}\n\nfunction numOrNull(v) {\n  if (v === null || v === undefined || v === '') {\n    return null;\n  }\n  var n = Number(v);\n  return isFinite(n) ? n : null;\n}\n\n// The first part of the reason path decides: planned or unplanned.\nfunction eventKind(stop) {\n  if (stop.reason === MICROSTOPS) {\n    return 'microstop';\n  }\n  var path = String(stop.reasonFullPath || stop.reason || '');\n  var root = path.split(' / ')[0];\n  return cfg.plannedRoots.indexOf(root) >= 0 ? 'planned' : 'unplanned';\n}\n\nvar line = msg.h.line || msg.h.asset_name;\nvar level = msg.h.machine ? 'machine' : 'line';\nvar hourInfo = msg.hourInfo || {};\nvar eventRows = [];\nvar dropped = 0;\nmsg.stops.forEach(function (r) {\n  var start = Date.parse(r.from);\n  if (!(start >= msg.dayFromMs && start < msg.dayToMs)) {\n    dropped++;\n    return;\n  }\n  var local = new Date(start + offsetHours(start) * HOUR_MS);\n  var localIso = local.toISOString();\n  var duration = numOrNull(r.duration);\n  var minutes = duration === null ? null : Math.round(duration) / MIN_MS;\n  var info = hourInfo[String(Math.floor(start / HOUR_MS) * HOUR_MS)] || {};\n  var product = info.product || {};\n  var perMinute = product.per_minute;\n  var units = null;\n  if (minutes !== null && perMinute !== null && perMinute !== undefined) {\n    units = minutes * perMinute;\n  }\n  eventRows.push({\n    site: msg.h.site,\n    line_id: msg.lineId || msg.asset.id,\n    line_name: line,\n    asset_id: msg.asset.id,\n    asset_name: msg.h.asset_name,\n    asset_level: level,\n    production_day: msg.day,\n    event_start: start,\n    event_end: r.to ? Date.parse(r.to) : null,\n    local_date: localIso.slice(0, 10),\n    local_time: localIso.slice(11, 19),\n    shift_name: shiftOf(start),\n    event_kind: eventKind(r),\n    reason: r.reason || null,\n    reason_path: r.reasonPath || null,\n    reason_full_path: r.reasonFullPath || null,\n    minutes: minutes,\n    occurrence: numOrNull(r.occurrence),\n    comment_count: numOrNull(r.commentCount),\n    batch_id: info.order || null,\n    part_name: product.part_name || null,\n    product_key: product.product_key || null,\n    loss_units: units,\n    loaded_at: loadedAt\n  });\n});\n\nmsg.eventRows = eventRows;\nmsg.droppedStops = dropped;\ndelete msg.stops;\ndelete msg.hourInfo;\nreturn msg;\n",
-    "outputs": 1,
-    "language": "javascript",
-    "noerr": 0,
-    "x": 1260,
-    "y": 2740,
-    "wires": [
-      [
-        "332c5.c70193"
       ]
     ]
   },
@@ -2099,13 +2089,63 @@
     "links": [
       "8af8c.3bfa14"
     ],
+    "x": 1160,
+    "y": 2780,
+    "wires": []
+  },
+  {
+    "z": "474df.040ba9",
+    "id": "313d6.c5687a",
+    "type": "function",
+    "name": "13.3 Check stops response",
+    "func": "// Checks the downtimeReasons response of one asset.\n// In: the response. Out 1: msg.stops = the list of stops.\n// Out 2: the asset result for the join when the call failed or has more\n// than one page. The KPI rows of the asset are dropped then (no half days).\nvar name = msg.h.asset_name;\n\nfunction failedResult(text) {\n  msg.payload = {\n    assetId: msg.asset.id,\n    name: name,\n    failed: text,\n    skipped: null,\n    kpiRows: [],\n    lossRows: [],\n    unmapped: msg.unmapped\n  };\n  delete msg.kpiRows;\n  delete msg.unmapped;\n  return [null, msg];\n}\n\nvar body = msg.payload;\n// Short text of the API error (errors[0].message), else the raw body.\nfunction apiMessage(payload) {\n  var list = payload && (payload.errors ||\n    (payload.data && payload.data.errors));\n  if (list && list.length && list[0].message) {\n    return String(list[0].message);\n  }\n  return JSON.stringify(payload).slice(0, 200);\n}\n\nif (msg.statusCode !== 200 || !body || typeof body !== 'object') {\n  var why = msg.statusCode === 200 ? '' : ': ' + apiMessage(body);\n  return failedResult(\n    name + ': downtimeReasons failed, HTTP ' + msg.statusCode + why\n  );\n}\nif (body.page && body.page.totalPages > 1) {\n  return failedResult(\n    name + ': downtimeReasons has more than one page (' +\n      body.page.totalElements + ' rows), raise PAGE_SIZE in node 4.1'\n  );\n}\n\nmsg.stops = (body._embedded && body._embedded.downtimeReasons) || [];\ndelete msg.payload;\nreturn [msg, null];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 1000,
+    "y": 2760,
+    "wires": [
+      [
+        "332c5.c70193"
+      ],
+      [
+        "351b4.c89aac"
+      ]
+    ]
+  },
+  {
+    "z": "474df.040ba9",
+    "id": "332c5.c70193",
+    "type": "function",
+    "name": "13.4 Build event rows",
+    "func": "// Builds the rpt_event rows of one asset: one row per stop of the day.\n// In: msg.stops, shiftRules, hourInfo, h, asset, day, dayFromMs, dayToMs.\n// Out: msg.eventRows and msg.droppedStops (stops that start outside the\n// day). Product and order come from the hour of the stop.\nvar MIN_MS = 60000;\nvar DAY_MS = 86400000;\nvar HOUR_MS = 3600000;\nvar MICROSTOPS = '##MICROSTOPS##';\nvar cfg = flow.get('cfg');\nvar loadedAt = msg.loadedAt || Date.now();\n\n// The shift of an instant: the event whose recurrence covers it, else null.\n// The calendar rules hold local wall clock times written with a Z (a shift\n// of 06:00 local starts at 05:00 UTC in summer), so the instant is looked\n// up on its local wall clock time.\nfunction shiftOf(instant) {\n  var ms = instant + offsetHours(instant) * HOUR_MS;\n  var found = null;\n  msg.shiftRules.forEach(function (rule) {\n    if (found) {\n      return;\n    }\n    var days = 0;\n    if (rule.freq === 'DAILY') {\n      days = 1;\n    } else if (rule.freq === 'WEEKLY') {\n      days = 7;\n    }\n    var until = rule.until === null ? Infinity : rule.until;\n    if (!days || rule.start === null || ms < rule.start || ms > until) {\n      return;\n    }\n    var step = days * rule.interval * DAY_MS;\n    var occurrence = rule.start + Math.floor((ms - rule.start) / step) * step;\n    if (ms < occurrence + rule.duration) {\n      found = rule.name;\n    }\n  });\n  return found;\n}\n\n// Last Sunday of the month at 01:00 UTC. The month is 0-based.\nfunction lastSundayUtc(year, monthIndex) {\n  var d = new Date(Date.UTC(year, monthIndex + 1, 0, 1, 0, 0));\n  d.setUTCDate(d.getUTCDate() - d.getUTCDay());\n  return d.getTime();\n}\n\n// UTC offset of the site in hours: the standard offset of its time zone\n// plus one hour in EU summer time (from 1.1 CONFIG, via flow context cfg).\nfunction offsetHours(ms) {\n  var year = new Date(ms).getUTCFullYear();\n  var summer = !!cfg.euSummer && ms >= lastSundayUtc(year, 2) &&\n    ms < lastSundayUtc(year, 9);\n  return (cfg.utcHours || 0) + (summer ? 1 : 0);\n}\n\nfunction numOrNull(v) {\n  if (v === null || v === undefined || v === '') {\n    return null;\n  }\n  var n = Number(v);\n  return isFinite(n) ? n : null;\n}\n\n// The first part of the reason path decides: planned or unplanned.\nfunction eventKind(stop) {\n  if (stop.reason === MICROSTOPS) {\n    return 'microstop';\n  }\n  var path = String(stop.reasonFullPath || stop.reason || '');\n  var root = path.split(' / ')[0];\n  return cfg.plannedRoots.indexOf(root) >= 0 ? 'planned' : 'unplanned';\n}\n\nvar line = msg.h.line || msg.h.asset_name;\nvar level = msg.h.machine ? 'machine' : 'line';\nvar hourInfo = msg.hourInfo || {};\nvar eventRows = [];\nvar dropped = 0;\nmsg.stops.forEach(function (r) {\n  var start = Date.parse(r.from);\n  if (!(start >= msg.dayFromMs && start < msg.dayToMs)) {\n    dropped++;\n    return;\n  }\n  var local = new Date(start + offsetHours(start) * HOUR_MS);\n  var localIso = local.toISOString();\n  var duration = numOrNull(r.duration);\n  var minutes = duration === null ? null : Math.round(duration) / MIN_MS;\n  var info = hourInfo[String(Math.floor(start / HOUR_MS) * HOUR_MS)] || {};\n  var product = info.product || {};\n  var perMinute = product.per_minute;\n  var units = null;\n  if (minutes !== null && perMinute !== null && perMinute !== undefined) {\n    units = minutes * perMinute;\n  }\n  eventRows.push({\n    site: msg.h.site,\n    line_id: msg.lineId || msg.asset.id,\n    line_name: line,\n    asset_id: msg.asset.id,\n    asset_name: msg.h.asset_name,\n    asset_level: level,\n    production_day: msg.day,\n    event_start: start,\n    event_end: r.to ? Date.parse(r.to) : null,\n    local_date: localIso.slice(0, 10),\n    local_time: localIso.slice(11, 19),\n    shift_name: shiftOf(start),\n    event_kind: eventKind(r),\n    reason: r.reason || null,\n    reason_path: r.reasonPath || null,\n    reason_full_path: r.reasonFullPath || null,\n    minutes: minutes,\n    occurrence: numOrNull(r.occurrence),\n    comment_count: numOrNull(r.commentCount),\n    batch_id: info.order || null,\n    part_name: product.part_name || null,\n    product_key: product.product_key || null,\n    loss_units: units,\n    loaded_at: loadedAt\n  });\n});\n\nmsg.eventRows = eventRows;\nmsg.droppedStops = dropped;\ndelete msg.stops;\ndelete msg.hourInfo;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 1260,
+    "y": 2740,
+    "wires": [
+      [
+        "370a3.ca33c5"
+      ]
+    ]
+  },
+  {
+    "z": "474df.040ba9",
+    "id": "38f92.cbccde",
+    "type": "link out",
+    "name": "to JOIN",
+    "mode": "link",
+    "links": [
+      "8af8c.3bfa14"
+    ],
     "x": 1660,
     "y": 2760,
     "wires": []
   },
   {
     "z": "474df.040ba9",
-    "id": "332c5.c70193",
+    "id": "370a3.ca33c5",
     "type": "function",
     "name": "13.5 Build asset result",
     "func": "// Builds the result of one asset and hands it to the join.\n// In: msg.windowRows, hourRows, eventRows, droppedStops and unmapped.\n// Out: msg.payload = {assetId, name, failed, skipped, windowRows, hourRows,\n// eventRows, unmapped, outside, note}. The note is one line for the day log.\nvar name = msg.h.asset_name;\n\nvar note = name + ': ' + msg.windowRows.length + ' windows, ' +\n  msg.hourRows.length + ' hours, ' + msg.eventRows.length + ' events';\nif (msg.droppedStops) {\n  note += ', ' + msg.droppedStops + ' stops outside the day ignored';\n}\nif (msg.kpiHourParts) {\n  note += ', KPIs in ' + msg.kpiHourParts + ' hourly parts (413 on the day)';\n}\n\nmsg.payload = {\n  assetId: msg.asset.id,\n  name: name,\n  failed: null,\n  skipped: null,\n  windowRows: msg.windowRows,\n  hourRows: msg.hourRows,\n  eventRows: msg.eventRows,\n  unmapped: msg.unmapped,\n  outside: msg.droppedStops,\n  note: note\n};\ndelete msg.windowRows;\ndelete msg.hourRows;\ndelete msg.eventRows;\ndelete msg.droppedStops;\ndelete msg.unmapped;\ndelete msg.shiftRules;\nreturn msg;\n",
@@ -2116,13 +2156,13 @@
     "y": 2760,
     "wires": [
       [
-        "351b4.c89aac"
+        "38f92.cbccde"
       ]
     ]
   },
   {
     "z": "474df.040ba9",
-    "id": "370a3.ca33c5",
+    "id": "3ae81.cd65f7",
     "type": "comment",
     "name": "[14] JOIN & BUILD TABLES",
     "info": "STAGE 14 - the join waits for all assets of the day (the lines and their machines). 10.1 collects the results, 10.2 decides: it writes NOTHING if any asset failed (no half days) and nothing in dry-run mode, 10.3 builds one message per table. Output 1 of 10.3 = rpt_window, 2 = rpt_hour, 3 = rpt_event, 4 = log.",
@@ -2142,10 +2182,10 @@
       "c4f8e.6beb02",
       "d84e4.7be5fc",
       "e3e7e.857c92",
-      "08a3b.a3d96d",
-      "25a3c.bbd1e4",
-      "313d6.c5687a",
-      "351b4.c89aac"
+      "0c819.a70b9f",
+      "2981a.bf0416",
+      "351b4.c89aac",
+      "38f92.cbccde"
     ],
     "x": 60,
     "y": 2980,
@@ -2168,13 +2208,13 @@
     "y": 2980,
     "wires": [
       [
-        "38f92.cbccde"
+        "3cd70.ceff10"
       ]
     ]
   },
   {
     "z": "474df.040ba9",
-    "id": "38f92.cbccde",
+    "id": "3cd70.ceff10",
     "type": "join",
     "name": "Wait for all assets of the day",
     "mode": "auto",
@@ -2191,13 +2231,13 @@
     "y": 2980,
     "wires": [
       [
-        "3ae81.cd65f7"
+        "3ec5f.d09829"
       ]
     ]
   },
   {
     "z": "474df.040ba9",
-    "id": "3ae81.cd65f7",
+    "id": "3ec5f.d09829",
     "type": "function",
     "name": "14.2 Collect results",
     "func": "// Collects the asset results that the join delivered.\n// In: msg.payload = array of asset results. Out: msg.windowRows,\n// msg.hourRows, msg.eventRows and msg.summary = {failed, notes, skipped,\n// unmapped}.\nvar results = Array.isArray(msg.payload) ? msg.payload : [msg.payload];\nvar failed = [];\nvar notes = [];\nvar skipped = (msg.planSkipped || []).slice();\nvar unmapped = [];\nvar windowRows = [];\nvar hourRows = [];\nvar eventRows = [];\n\nresults.forEach(function (r) {\n  if (!r) {\n    return;\n  }\n  if (r.failed) {\n    failed.push(r.failed);\n  }\n  if (r.skipped) {\n    skipped.push(r.skipped);\n  }\n  if (r.note) {\n    notes.push(r.note);\n  }\n  (r.unmapped || []).forEach(function (u) {\n    if (unmapped.indexOf(u) < 0) {\n      unmapped.push(u);\n    }\n  });\n  windowRows = windowRows.concat(r.windowRows || []);\n  hourRows = hourRows.concat(r.hourRows || []);\n  eventRows = eventRows.concat(r.eventRows || []);\n});\n\nmsg.summary = {\n  failed: failed,\n  notes: notes,\n  skipped: skipped,\n  unmapped: unmapped\n};\nmsg.windowRows = windowRows;\nmsg.hourRows = hourRows;\nmsg.eventRows = eventRows;\ndelete msg.payload;\ndelete msg.planSkipped;\nreturn msg;\n",
@@ -2208,13 +2248,13 @@
     "y": 2980,
     "wires": [
       [
-        "3cd70.ceff10"
+        "40b4e.d23142"
       ]
     ]
   },
   {
     "z": "474df.040ba9",
-    "id": "40b4e.d23142",
+    "id": "4492c.d56374",
     "type": "link out",
     "name": "to LOG",
     "mode": "link",
@@ -2227,7 +2267,7 @@
   },
   {
     "z": "474df.040ba9",
-    "id": "3cd70.ceff10",
+    "id": "40b4e.d23142",
     "type": "function",
     "name": "14.3 Decide day",
     "func": "// Decides what happens with the day.\n// In: msg.windowRows, hourRows, eventRows and summary. Out 1: the message\n// goes on to the table node (write). Out 2: a log line (failed, nothing to\n// write, dry run). Any failed asset means nothing is written for the day.\nvar cfg = flow.get('cfg');\nvar day = msg.day;\nvar summary = msg.summary;\nvar notes = summary.notes.join(' | ');\nvar sizes = 'rpt_window ' + msg.windowRows.length + ' rows, ' +\n  'rpt_hour ' + msg.hourRows.length + ' rows, ' +\n  'rpt_event ' + msg.eventRows.length + ' rows';\nvar empty = !msg.hourRows.length && !msg.eventRows.length;\n\n// Text added to the end of every log line.\nvar tail = '';\nif (summary.skipped.length) {\n  tail += ' | skipped: ' + summary.skipped.join('; ');\n}\nif (summary.unmapped.length) {\n  tail += ' | KPI without column: ' + summary.unmapped.join(', ');\n}\n\nfunction logOnly(text) {\n  var line = { topic: 'log', payload: day + ' [' + msg.mode + '] ' + text };\n  return [null, line];\n}\n\nif (summary.failed.length) {\n  node.status({\n    fill: 'red',\n    shape: 'ring',\n    text: day + ' FAILED, nothing written'\n  });\n  return logOnly(\n    'FAILED, NOTHING WRITTEN: ' + summary.failed.join(' | ') + tail\n  );\n}\nif (empty) {\n  node.status({\n    fill: 'grey',\n    shape: 'ring',\n    text: day + ' nothing to write'\n  });\n  return logOnly(notes + ' | NOTHING TO WRITE' + tail);\n}\nif (cfg.dryRun) {\n  node.status({\n    fill: 'yellow',\n    shape: 'dot',\n    text: day + ' dry run ' + msg.hourRows.length + '/' +\n      msg.eventRows.length\n  });\n  return logOnly(notes + ' | DRY RUN: ' + sizes + tail);\n}\n\nmsg.writeNote = notes + ' | WRITING ' + sizes + tail;\nreturn [msg, null];\n",
@@ -2238,21 +2278,21 @@
     "y": 2980,
     "wires": [
       [
-        "3ec5f.d09829"
+        "42a3d.d3ca5b"
       ],
       [
-        "40b4e.d23142"
+        "4492c.d56374"
       ]
     ]
   },
   {
     "z": "474df.040ba9",
-    "id": "4492c.d56374",
+    "id": "4870a.d895a6",
     "type": "link out",
     "name": "to WRITE rpt_window",
     "mode": "link",
     "links": [
-      "42a3d.d3ca5b"
+      "4681b.d6fc8d"
     ],
     "x": 1460,
     "y": 2900,
@@ -2260,12 +2300,12 @@
   },
   {
     "z": "474df.040ba9",
-    "id": "4870a.d895a6",
+    "id": "4c4e8.dbc7d8",
     "type": "link out",
     "name": "to WRITE rpt_hour",
     "mode": "link",
     "links": [
-      "4681b.d6fc8d"
+      "4a5f9.da2ebf"
     ],
     "x": 1460,
     "y": 2940,
@@ -2273,12 +2313,12 @@
   },
   {
     "z": "474df.040ba9",
-    "id": "4c4e8.dbc7d8",
+    "id": "502c6.defa0a",
     "type": "link out",
     "name": "to WRITE rpt_event",
     "mode": "link",
     "links": [
-      "4a5f9.da2ebf"
+      "4e3d7.dd60f1"
     ],
     "x": 1460,
     "y": 2980,
@@ -2286,7 +2326,7 @@
   },
   {
     "z": "474df.040ba9",
-    "id": "4e3d7.dd60f1",
+    "id": "521b5.e09323",
     "type": "link out",
     "name": "to LOG",
     "mode": "link",
@@ -2299,7 +2339,7 @@
   },
   {
     "z": "474df.040ba9",
-    "id": "3ec5f.d09829",
+    "id": "42a3d.d3ca5b",
     "type": "function",
     "name": "14.4 Build table messages",
     "func": "// Builds one message per table for the parquet nodes.\n// In: msg.windowRows, msg.hourRows, msg.eventRows and msg.writeNote.\n// Out 1: rpt_window. Out 2: rpt_hour. Out 3: rpt_event. Out 4: log line.\n// A table without rows sends nothing.\nvar day = msg.day;\n\nfunction table(name, rows) {\n  if (!rows.length) {\n    return null;\n  }\n  return { topic: name, day: day, payload: rows };\n}\n\nnode.status({\n  fill: 'green',\n  shape: 'dot',\n  text: day + ' ' + msg.hourRows.length + '/' + msg.eventRows.length\n});\nvar line = {\n  topic: 'log',\n  payload: day + ' [' + msg.mode + '] ' + msg.writeNote\n};\nreturn [\n  table('rpt_window', msg.windowRows),\n  table('rpt_hour', msg.hourRows),\n  table('rpt_event', msg.eventRows),\n  line\n];\n",
@@ -2310,22 +2350,22 @@
     "y": 2960,
     "wires": [
       [
-        "4492c.d56374"
-      ],
-      [
         "4870a.d895a6"
       ],
       [
         "4c4e8.dbc7d8"
       ],
       [
-        "4e3d7.dd60f1"
+        "502c6.defa0a"
+      ],
+      [
+        "521b5.e09323"
       ]
     ]
   },
   {
     "z": "474df.040ba9",
-    "id": "502c6.defa0a",
+    "id": "540a4.e22c3c",
     "type": "comment",
     "name": "[15] WRITE rpt_window",
     "info": "STAGE 15 - parquet node, path and write object for rpt_window (asset x window: the day and each shift run). The path is <root>/shift_report/rpt_window/site=<site>/rpt_window_<production day>.parquet, the same on every rerun, so a rerun replaces the day. Types: UTF8 (STRING), INT64, DOUBLE, TIMESTAMP_MILLIS. Days are text YYYY-MM-DD.",
@@ -2335,23 +2375,23 @@
   },
   {
     "z": "474df.040ba9",
-    "id": "42a3d.d3ca5b",
+    "id": "4681b.d6fc8d",
     "type": "link in",
     "name": "WRITE rpt_window",
     "links": [
-      "4492c.d56374"
+      "4870a.d895a6"
     ],
     "x": 60,
     "y": 3200,
     "wires": [
       [
-        "521b5.e09323"
+        "55f93.e3c555"
       ]
     ]
   },
   {
     "z": "474df.040ba9",
-    "id": "521b5.e09323",
+    "id": "55f93.e3c555",
     "type": "parquet",
     "name": "Write rpt_window parquet",
     "option": "write",
@@ -2554,13 +2594,13 @@
     "y": 3200,
     "wires": [
       [
-        "540a4.e22c3c"
+        "57e82.e55e6e"
       ]
     ]
   },
   {
     "z": "474df.040ba9",
-    "id": "540a4.e22c3c",
+    "id": "57e82.e55e6e",
     "type": "function",
     "name": "15.1 Set rpt_window path",
     "func": "// Sets the file path in the data lake for the table rpt_window.\n// In: the output of the parquet node (msg.payload is passed on unchanged).\n// Out: the same message with msg.path and msg.filename. The text YYYY-MM-DD\n// in the path becomes the production day, so a rerun replaces the file.\nvar cfg = flow.get('cfg');\nmsg.path = cfg.paths.rpt_window.replace('YYYY-MM-DD', msg.day);\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
@@ -2571,13 +2611,13 @@
     "y": 3200,
     "wires": [
       [
-        "55f93.e3c555"
+        "59d71.e6f787"
       ]
     ]
   },
   {
     "z": "474df.040ba9",
-    "id": "55f93.e3c555",
+    "id": "59d71.e6f787",
     "type": "write object",
     "name": "rpt_window to data lake",
     "path": "",
@@ -2588,7 +2628,7 @@
   },
   {
     "z": "474df.040ba9",
-    "id": "57e82.e55e6e",
+    "id": "5bc60.e890a0",
     "type": "comment",
     "name": "[16] WRITE rpt_hour",
     "info": "STAGE 16 - parquet node, path and write object for rpt_hour (asset x hour). The path is <root>/shift_report/rpt_hour/site=<site>/rpt_hour_<production day>.parquet, the same on every rerun, so a rerun replaces the day. Types: UTF8 (STRING), INT64, DOUBLE, TIMESTAMP_MILLIS. Days are text YYYY-MM-DD.",
@@ -2598,23 +2638,23 @@
   },
   {
     "z": "474df.040ba9",
-    "id": "4681b.d6fc8d",
+    "id": "4a5f9.da2ebf",
     "type": "link in",
     "name": "WRITE rpt_hour",
     "links": [
-      "4870a.d895a6"
+      "4c4e8.dbc7d8"
     ],
     "x": 60,
     "y": 3420,
     "wires": [
       [
-        "59d71.e6f787"
+        "5db4f.ea29b9"
       ]
     ]
   },
   {
     "z": "474df.040ba9",
-    "id": "59d71.e6f787",
+    "id": "5db4f.ea29b9",
     "type": "parquet",
     "name": "Write rpt_hour parquet",
     "option": "write",
@@ -2737,13 +2777,13 @@
     "y": 3420,
     "wires": [
       [
-        "5bc60.e890a0"
+        "5fa3e.ebc2d2"
       ]
     ]
   },
   {
     "z": "474df.040ba9",
-    "id": "5bc60.e890a0",
+    "id": "5fa3e.ebc2d2",
     "type": "function",
     "name": "16.1 Set rpt_hour path",
     "func": "// Sets the file path in the data lake for the table rpt_hour.\n// In: the output of the parquet node (msg.payload is passed on unchanged).\n// Out: the same message with msg.path and msg.filename. The text YYYY-MM-DD\n// in the path becomes the production day, so a rerun replaces the file.\nvar cfg = flow.get('cfg');\nmsg.path = cfg.paths.rpt_hour.replace('YYYY-MM-DD', msg.day);\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
@@ -2754,13 +2794,13 @@
     "y": 3420,
     "wires": [
       [
-        "5db4f.ea29b9"
+        "6192d.ed5beb"
       ]
     ]
   },
   {
     "z": "474df.040ba9",
-    "id": "5db4f.ea29b9",
+    "id": "6192d.ed5beb",
     "type": "write object",
     "name": "rpt_hour to data lake",
     "path": "",
@@ -2771,7 +2811,7 @@
   },
   {
     "z": "474df.040ba9",
-    "id": "5fa3e.ebc2d2",
+    "id": "6381c.eef504",
     "type": "comment",
     "name": "[17] WRITE rpt_event",
     "info": "STAGE 17 - parquet node, path and write object for rpt_event (one row per stop). The path is <root>/shift_report/rpt_event/site=<site>/rpt_event_<production day>.parquet, the same on every rerun, so a rerun replaces the day. Types: UTF8 (STRING), INT64, DOUBLE, TIMESTAMP_MILLIS. Days are text YYYY-MM-DD.",
@@ -2781,23 +2821,23 @@
   },
   {
     "z": "474df.040ba9",
-    "id": "4a5f9.da2ebf",
+    "id": "4e3d7.dd60f1",
     "type": "link in",
     "name": "WRITE rpt_event",
     "links": [
-      "4c4e8.dbc7d8"
+      "502c6.defa0a"
     ],
     "x": 60,
     "y": 3640,
     "wires": [
       [
-        "6192d.ed5beb"
+        "6570b.f08e1d"
       ]
     ]
   },
   {
     "z": "474df.040ba9",
-    "id": "6192d.ed5beb",
+    "id": "6570b.f08e1d",
     "type": "parquet",
     "name": "Write rpt_event parquet",
     "option": "write",
@@ -2908,13 +2948,13 @@
     "y": 3640,
     "wires": [
       [
-        "6381c.eef504"
+        "675fa.f22736"
       ]
     ]
   },
   {
     "z": "474df.040ba9",
-    "id": "6381c.eef504",
+    "id": "675fa.f22736",
     "type": "function",
     "name": "17.1 Set rpt_event path",
     "func": "// Sets the file path in the data lake for the table rpt_event.\n// In: the output of the parquet node (msg.payload is passed on unchanged).\n// Out: the same message with msg.path and msg.filename. The text YYYY-MM-DD\n// in the path becomes the production day, so a rerun replaces the file.\nvar cfg = flow.get('cfg');\nmsg.path = cfg.paths.rpt_event.replace('YYYY-MM-DD', msg.day);\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
@@ -2925,13 +2965,13 @@
     "y": 3640,
     "wires": [
       [
-        "6570b.f08e1d"
+        "694e9.f3c04f"
       ]
     ]
   },
   {
     "z": "474df.040ba9",
-    "id": "6570b.f08e1d",
+    "id": "694e9.f3c04f",
     "type": "write object",
     "name": "rpt_event to data lake",
     "path": "",
@@ -2942,7 +2982,7 @@
   },
   {
     "z": "474df.040ba9",
-    "id": "675fa.f22736",
+    "id": "6b3d8.f55968",
     "type": "comment",
     "name": "[18] ERRORS",
     "info": "STAGE 18 - a catch node takes every error raised by a node of this tab and turns it into a log line with the name of the node and the message of the API (for example the limit message of evaluateKPIs). Errors of the log nodes themselves are not logged again.",
@@ -2952,7 +2992,7 @@
   },
   {
     "z": "474df.040ba9",
-    "id": "6b3d8.f55968",
+    "id": "6f1b6.f88b9a",
     "type": "catch",
     "name": "Catch errors",
     "scope": null,
@@ -2961,13 +3001,13 @@
     "y": 3860,
     "wires": [
       [
-        "694e9.f3c04f"
+        "6d2c7.f6f281"
       ]
     ]
   },
   {
     "z": "474df.040ba9",
-    "id": "6d2c7.f6f281",
+    "id": "710a5.fa24b3",
     "type": "link out",
     "name": "to LOG",
     "mode": "link",
@@ -2980,7 +3020,7 @@
   },
   {
     "z": "474df.040ba9",
-    "id": "694e9.f3c04f",
+    "id": "6d2c7.f6f281",
     "type": "function",
     "name": "18.1 Describe error",
     "func": "// Turns an error caught by the catch node into a log line.\n// In: the message of a catch node (msg.error).\n// Out: a log line for the shared log. Errors of the log nodes themselves\n// are dropped (no log loop).\nvar err = msg.error || {};\nvar source = (err.source && err.source.name) || 'unknown node';\n\nfunction textOf(value) {\n  if (value === undefined || value === null) {\n    return '';\n  }\n  if (typeof value === 'string') {\n    return value;\n  }\n  return JSON.stringify(value);\n}\n\n// Takes the API message out of an error body when there is one.\nfunction apiMessage(value) {\n  var body = value;\n  if (typeof value === 'string') {\n    try {\n      body = JSON.parse(value);\n    } catch (e) {\n      return value;\n    }\n  }\n  var data = body && body.data;\n  var list = (data && data.errors) || (body && body.errors);\n  if (list && list.length && list[0].message) {\n    return list[0].message;\n  }\n  return textOf(value);\n}\n\nif (msg.logBatch) {\n  node.status({\n    fill: 'red',\n    shape: 'ring',\n    text: 'log write failed'\n  });\n  return null;\n}\n\nvar text = '';\nif (msg.day) {\n  text += msg.day + ' [' + msg.mode + '] ';\n}\ntext += 'ERROR in ' + source + ': ' + apiMessage(err.message);\nreturn {\n  topic: 'log',\n  payload: text,\n  level: 'error',\n  source: source\n};\n",
@@ -2991,13 +3031,13 @@
     "y": 3860,
     "wires": [
       [
-        "6d2c7.f6f281"
+        "710a5.fa24b3"
       ]
     ]
   },
   {
     "z": "474df.040ba9",
-    "id": "6f1b6.f88b9a",
+    "id": "72f94.fbbdcc",
     "type": "comment",
     "name": "[19] LOG",
     "info": "STAGE 19 - every log line arrives here through the link \"to LOG\". 1 turns a line into a row (time, flow, site, production day, level) and shows it in the debug sidebar. The join collects the rows for 30 s, the delay lets one batch pass every 10 s so two writes do not overlap, 3 sets the file of the month and the read node loads the old file. A read of a file that does not exist answers nothing (only a warning), so the same batch also goes through a 10 s wait to the append step. The log is written whatever the dry-run switch says.",
@@ -3014,21 +3054,21 @@
       "644e0.1c0420",
       "6c09c.226884",
       "7b814.2f314c",
-      "40b4e.d23142",
-      "4e3d7.dd60f1",
-      "6d2c7.f6f281"
+      "4492c.d56374",
+      "521b5.e09323",
+      "710a5.fa24b3"
     ],
     "x": 60,
     "y": 4080,
     "wires": [
       [
-        "710a5.fa24b3"
+        "74e83.fd56e5"
       ]
     ]
   },
   {
     "z": "474df.040ba9",
-    "id": "710a5.fa24b3",
+    "id": "74e83.fd56e5",
     "type": "function",
     "name": "19.1 Format log line",
     "func": "// Turns one log message into a row for the log file.\n// In: msg.payload = log text (optional msg.level and msg.source).\n// Out: msg.payload = the row, msg.line = the text for the debug node.\nvar FLOW_NAME = 'rpt-hull';\nvar cfg = flow.get('cfg') || {};\nvar text = String(msg.payload);\n\nvar seq = (flow.get('logSeq') || 0) + 1;\nflow.set('logSeq', seq);\n\n// Most lines start with the production day and the mode: \"2026-09-01 [x] \".\nvar day = '';\nvar mode = '';\nvar message = text;\nvar parts = /^(\\d{4}-\\d{2}-\\d{2}) \\[([^\\]]*)\\] ([\\s\\S]*)$/.exec(text);\nif (parts) {\n  day = parts[1];\n  mode = parts[2];\n  message = parts[3];\n}\n\nvar level = msg.level;\nif (!level) {\n  if (/FAILED/.test(message)) {\n    level = 'failed';\n  } else if (/NOTHING TO WRITE/.test(message)) {\n    level = 'warn';\n  } else {\n    level = 'info';\n  }\n}\n\nmsg.line = text;\nmsg.payload = {\n  ts_utc: new Date().toISOString(),\n  seq: seq,\n  flow: FLOW_NAME,\n  site: cfg.site || 'all',\n  production_day: day,\n  mode: mode,\n  level: level,\n  source: msg.source || 'flow',\n  message: message\n};\nreturn msg;\n",
@@ -3039,14 +3079,14 @@
     "y": 4080,
     "wires": [
       [
-        "72f94.fbbdcc",
-        "74e83.fd56e5"
+        "76d72.feeffe",
+        "78c61.008917"
       ]
     ]
   },
   {
     "z": "474df.040ba9",
-    "id": "72f94.fbbdcc",
+    "id": "76d72.feeffe",
     "type": "function",
     "name": "19.2 Update run status",
     "func": "// Maps one formatted run-log message to its day outcome.\n// In: msg.line and the formatted log row in msg.payload.\n// Out: the same message, unchanged.\nvar FLOW_NAME = 'rpt-hull';\nvar SITE_NAME = 'Hull';\nvar KEY = 'runStatus_' + FLOW_NAME;\nvar KIND = 'day';\nvar status = glob.get(KEY);\nvar row = msg.payload || {};\nvar text = String(row.message || msg.line || '');\nvar day = row.production_day;\nvar now = new Date().toISOString();\n\nif (status) {\n  status.lastBeatAt = now;\n  var item;\n  if (KIND === 'month') {\n    var monthMatch = /(?:^|\\s)(\\d{4}-\\d{2})(?:\\s|:)/.exec(text);\n    var monthAt = monthMatch ? text.indexOf(monthMatch[1]) : -1;\n    var site = row.site || text.slice(0, monthAt).trim();\n    if (monthMatch && site) {\n      item = status.months[monthMatch[1] + '|' + site];\n      day = monthMatch[1] + '|' + site;\n    }\n  } else {\n    item = status.days && status.days[day];\n  }\n  if (item) {\n    if (/\\bWRITING\\b/.test(text)) {\n      item.state = 'written';\n      item.detail = '';\n    } else if (/\\bDRY RUN\\b/.test(text)) {\n      item.state = 'dry_run';\n      item.detail = '';\n    } else if (/FAILED, NOTHING WRITTEN:\\s*/.test(text)) {\n      item.state = 'failed';\n      var failedAt = text.indexOf('FAILED, NOTHING WRITTEN:');\n      item.detail = text.slice(failedAt + 25).trim().slice(0, 240);\n    } else if (/NOTHING TO WRITE\\b/.test(text)) {\n      item.state = 'nothing';\n      item.detail = '';\n    } else if (/ERROR in /.test(text)) {\n      item.detail = text.slice(text.indexOf('ERROR in '), 240);\n    }\n    if (item.state !== 'running' && item.state !== 'queued') {\n      delete item.trail;\n    }\n    if (item.state !== 'running' || /ERROR in /.test(text)) {\n      item.stepAt = now;\n    }\n    var dayKeys = Object.keys(status.days || {});\n    var active = dayKeys.some(function (key) {\n      return status.days[key].state === 'running' ||\n        status.days[key].state === 'queued';\n    });\n    if (dayKeys.length && !active) {\n      var failed = dayKeys.some(function (key) {\n        return status.days[key].state === 'failed';\n      });\n      status.state = failed ? 'failed' : 'quiet';\n      status.finishedAt = now;\n    }\n  }\n  glob.set(KEY, status);\n}\nreturn msg;\n",
@@ -3057,13 +3097,13 @@
     "y": 4060,
     "wires": [
       [
-        "76d72.feeffe"
+        "7ab50.022230"
       ]
     ]
   },
   {
     "z": "474df.040ba9",
-    "id": "76d72.feeffe",
+    "id": "7ab50.022230",
     "type": "join",
     "name": "Collect log lines",
     "mode": "custom",
@@ -3086,13 +3126,13 @@
     "y": 4080,
     "wires": [
       [
-        "78c61.008917"
+        "7ca3f.03bb49"
       ]
     ]
   },
   {
     "z": "474df.040ba9",
-    "id": "74e83.fd56e5",
+    "id": "78c61.008917",
     "type": "debug",
     "name": "Run log",
     "active": true,
@@ -3107,7 +3147,7 @@
   },
   {
     "z": "474df.040ba9",
-    "id": "78c61.008917",
+    "id": "7ca3f.03bb49",
     "type": "delay",
     "name": "One log batch per 10 s",
     "pauseType": "rate",
@@ -3125,13 +3165,13 @@
     "y": 4080,
     "wires": [
       [
-        "7ab50.022230"
+        "7e92e.055462"
       ]
     ]
   },
   {
     "z": "474df.040ba9",
-    "id": "7ab50.022230",
+    "id": "7e92e.055462",
     "type": "function",
     "name": "19.3 Build log write",
     "func": "// Prepares the write of one batch of log rows (the read node runs next).\n// In: msg.payload = array of log rows from the join node.\n// Out: msg.path = file of the month, msg.logRows, msg.logBatchId, no payload.\n// msg.logBatch keeps errors of the log nodes themselves out of the log.\nvar FLOW_NAME = 'rpt-hull';\nvar cfg = flow.get('cfg') || {};\nvar root = cfg.root || 'logs_without_root';\nvar rows = msg.payload;\nvar month = rows[0].ts_utc.slice(0, 7);\n\nvar batchNo = (flow.get('logBatchNo') || 0) + 1;\nflow.set('logBatchNo', batchNo);\n\nmsg.logRows = rows;\nmsg.path = root + '/logs/' + FLOW_NAME + '/log_' + month + '.csv';\nmsg.logBatch = true;\nmsg.logBatchId = rows[0].ts_utc + '#' + batchNo;\ndelete msg.payload;\nreturn msg;\n",
@@ -3142,19 +3182,19 @@
     "y": 4080,
     "wires": [
       [
-        "7ca3f.03bb49",
-        "7e92e.055462"
+        "8081d.06ed7b",
+        "8270c.088694"
       ]
     ]
   },
   {
     "z": "474df.040ba9",
-    "id": "8270c.088694",
+    "id": "864ea.0bb8c6",
     "type": "link out",
     "name": "to APPEND",
     "mode": "link",
     "links": [
-      "8081d.06ed7b"
+      "845fb.0a1fad"
     ],
     "x": 1480,
     "y": 4080,
@@ -3162,7 +3202,7 @@
   },
   {
     "z": "474df.040ba9",
-    "id": "7ca3f.03bb49",
+    "id": "8081d.06ed7b",
     "type": "read object",
     "name": "Read log file",
     "path": "",
@@ -3171,18 +3211,18 @@
     "y": 4060,
     "wires": [
       [
-        "8270c.088694"
+        "864ea.0bb8c6"
       ]
     ]
   },
   {
     "z": "474df.040ba9",
-    "id": "845fb.0a1fad",
+    "id": "883d9.0d51df",
     "type": "link out",
     "name": "to APPEND",
     "mode": "link",
     "links": [
-      "8081d.06ed7b"
+      "845fb.0a1fad"
     ],
     "x": 1480,
     "y": 4160,
@@ -3190,7 +3230,7 @@
   },
   {
     "z": "474df.040ba9",
-    "id": "7e92e.055462",
+    "id": "8270c.088694",
     "type": "delay",
     "name": "Wait for read 10 s",
     "pauseType": "delay",
@@ -3208,13 +3248,13 @@
     "y": 4100,
     "wires": [
       [
-        "845fb.0a1fad"
+        "883d9.0d51df"
       ]
     ]
   },
   {
     "z": "474df.040ba9",
-    "id": "864ea.0bb8c6",
+    "id": "8a2c8.0eeaf8",
     "type": "comment",
     "name": "[20] LOG WRITE",
     "info": "STAGE 20 - adds the rows of the batch to the old file and writes the whole file back (the data lake has no append). Columns: ts_utc, seq, flow, site, production_day, mode, level, source, message. Every field is quoted, line breaks become a space. The batch arrives twice (read answer and the wait) and is written once. If the read gives no answer for a file this flow wrote before, a new file with a time stamp is written, so the history is never replaced.",
@@ -3224,24 +3264,24 @@
   },
   {
     "z": "474df.040ba9",
-    "id": "8081d.06ed7b",
+    "id": "845fb.0a1fad",
     "type": "link in",
     "name": "APPEND",
     "links": [
-      "8270c.088694",
-      "845fb.0a1fad"
+      "864ea.0bb8c6",
+      "883d9.0d51df"
     ],
     "x": 60,
     "y": 4300,
     "wires": [
       [
-        "883d9.0d51df"
+        "8c1b7.108411"
       ]
     ]
   },
   {
     "z": "474df.040ba9",
-    "id": "883d9.0d51df",
+    "id": "8c1b7.108411",
     "type": "function",
     "name": "20.1 Append log rows",
     "func": "// Adds the rows of one batch to the log file of the month.\n// In: msg.payload = the old file (read answered) or nothing (no answer).\n// Out: msg.payload = the whole new file, the data lake has no append.\n// The same batch can arrive twice (read answer, then the wait): once only.\nvar SEPARATOR = ',';\nvar KEEP_IDS = 50;\nvar COLUMNS = [\n  'ts_utc',\n  'seq',\n  'flow',\n  'site',\n  'production_day',\n  'mode',\n  'level',\n  'source',\n  'message'\n];\n\n// Quotes inside a field are doubled, line breaks become a space.\nfunction quote(value) {\n  var text = (value === undefined || value === null) ? '' : String(value);\n  text = text.replace(/\"/g, '\"\"').replace(/[\\r\\n]+/g, ' ');\n  return '\"' + text + '\"';\n}\n\nfunction lineOf(row) {\n  return COLUMNS.map(function (name) {\n    return quote(row[name]);\n  }).join(SEPARATOR);\n}\n\n// The read node gives text, or a serialised buffer.\nfunction decode(payload) {\n  if (typeof payload === 'string') {\n    return payload;\n  }\n  if (payload && payload.type === 'Buffer' && payload.data) {\n    var bin = '';\n    payload.data.forEach(function (byte) {\n      bin += String.fromCharCode(byte);\n    });\n    try {\n      return decodeURIComponent(escape(bin));\n    } catch (e) {\n      return bin;\n    }\n  }\n  return null;\n}\n\nvar rows = msg.logRows.slice();\nrows.sort(function (a, b) {\n  if (a.ts_utc !== b.ts_utc) {\n    return a.ts_utc < b.ts_utc ? -1 : 1;\n  }\n  return a.seq - b.seq;\n});\n\nvar done = flow.get('logDone') || [];\nvar known = flow.get('logKnown') || [];\nif (done.indexOf(msg.logBatchId) >= 0) {\n  return null;\n}\n\nvar path = msg.path;\nvar old = '';\nvar problem = '';\nif (msg.payload === undefined || msg.payload === null) {\n  if (known.indexOf(path) >= 0) {\n    problem = 'read gave no answer for a file written before';\n  }\n} else {\n  old = decode(msg.payload);\n  if (old === null) {\n    old = '';\n    problem = 'old file is not text';\n  }\n}\nif (problem) {\n  // Never replace the old file: write a new one with a time stamp.\n  var stamp = new Date().toISOString().replace(/[-:.TZ]/g, '');\n  path = path.replace(/\\.csv$/, '_' + stamp + '.csv');\n  rows.push({\n    ts_utc: new Date().toISOString(),\n    seq: 0,\n    flow: rows[0].flow,\n    site: rows[0].site,\n    production_day: '',\n    mode: '',\n    level: 'error',\n    source: 'log',\n    message: problem + ', wrote ' + path\n  });\n} else if (known.indexOf(path) < 0) {\n  known.push(path);\n  flow.set('logKnown', known);\n}\n\nvar lines = [];\nif (!old) {\n  lines.push(COLUMNS.map(quote).join(SEPARATOR));\n} else if (old.slice(-1) !== '\\n') {\n  old += '\\n';\n}\nrows.forEach(function (row) {\n  lines.push(lineOf(row));\n});\n\ndone.push(msg.logBatchId);\nflow.set('logDone', done.slice(-KEEP_IDS));\n\nmsg.payload = old + lines.join('\\n') + '\\n';\nmsg.path = path;\ndelete msg.logRows;\nreturn msg;\n",
@@ -3252,13 +3292,13 @@
     "y": 4300,
     "wires": [
       [
-        "8a2c8.0eeaf8"
+        "8e0a6.121d2a"
       ]
     ]
   },
   {
     "z": "474df.040ba9",
-    "id": "8a2c8.0eeaf8",
+    "id": "8e0a6.121d2a",
     "type": "write object",
     "name": "Log to data lake",
     "path": "",

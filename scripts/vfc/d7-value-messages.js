@@ -1,7 +1,6 @@
 // Keeps the products of the day and sends one message per product and
 // per order. In: the product list response (or none). Out 1: one message
 // per value. Out 2: nothing to ask. Out 3: asset result for the join.
-var STALE_MS = 21600000;
 var MIN_PER = {
   SECOND: 60,
   MINUTE: 1,
@@ -72,22 +71,20 @@ if (!jobs.length) {
   return [null, msg, null];
 }
 
-// Step 3: forget runs that never finished, then clone one message per job.
-var now = Date.now();
-var runs = flow.get('valueRuns') || {};
-Object.keys(runs).forEach(function (k) {
-  if (now - runs[k].created > STALE_MS) {
-    delete runs[k];
-  }
-});
-flow.set('valueRuns', runs);
-var run = msg.asset.id + '|' + msg.day + '|' + now + '|';
-run += Math.floor(Math.random() * 1000000);
-var out = jobs.map(function (job) {
+// Step 3: one message per job, in one group (msg.parts) for the join of
+// 6.4. The day join uses msg.parts too: keep it aside in msg.assetParts.
+var group = msg.asset.id + '|' + msg.day + '|' + Date.now() + '|';
+group += Math.floor(Math.random() * 1000000);
+msg.assetParts = msg.parts;
+var out = jobs.map(function (job, index) {
   var copy = JSON.parse(JSON.stringify(msg));
   copy.job = job;
-  copy.jobRun = run;
-  copy.jobCount = jobs.length;
+  copy.parts = {
+    id: group,
+    index: index,
+    count: jobs.length,
+    type: 'array'
+  };
   return copy;
 });
 return [out, null, null];
