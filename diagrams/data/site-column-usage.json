@@ -1,0 +1,548 @@
+{
+ "Plan_OPT_EU": {
+  "Capacity": [
+   "EU: EU-Level Overview",
+   "EU: Site-Level Overview",
+   "EU: Planned Losses",
+   "EU: Unplanned Losses",
+   "N: Homepage",
+   "N: Loss Tree",
+   "N: L2/L3 FIT View",
+   "N: Planned Losses",
+   "N: Unplanned Losses",
+   "N: Maintenance (BETA)",
+   "N: Loss Trending",
+   "N: By Shift Breakdown",
+   "N: By Format Breakdown",
+   "N: VSU Homepage",
+   "N: VSU Losses",
+   "N: OEE Trending",
+   "N: Volume Trending",
+   "H: Unplanned Losses (frequency)",
+   "H: Unplanned Losses Daily Report",
+   "H: OEE/LOSS GRAPH",
+   "H: Monthyly breakdown"
+  ],
+  "PDT Target": [
+   "EU: EU-Level Overview",
+   "EU: Site-Level Overview",
+   "EU: Planned Losses",
+   "EU: Unplanned Losses",
+   "N: Homepage",
+   "N: VSU Homepage",
+   "N: VSU Losses"
+  ],
+  "Good Parts": [
+   "EU: EU-Level Overview",
+   "EU: Site-Level Overview",
+   "N: Homepage",
+   "N: L2/L3 FIT View",
+   "N: Volume Trending",
+   "N: VSU Homepage",
+   "N: By Shift Breakdown",
+   "N: By Format Breakdown",
+   "N: OEE Trending",
+   "N: Loss Tree",
+   "H: Monthyly breakdown",
+   "H: OEE/LOSS GRAPH"
+  ],
+  "UPDT Target": [
+   "EU: EU-Level Overview",
+   "EU: Site-Level Overview",
+   "N: Homepage",
+   "N: VSU Homepage",
+   "N: Planned Losses",
+   "N: Unplanned Losses",
+   "N: VSU Losses",
+   "H: Unplanned Losses (frequency)"
+  ],
+  "OEE Target": [
+   "EU: EU-Level Overview",
+   "EU: Site-Level Overview",
+   "N: Homepage",
+   "N: OEE Trending",
+   "N: Volume Trending",
+   "N: VSU Homepage",
+   "N: L2/L3 FIT View",
+   "N: By Shift Breakdown",
+   "N: By Format Breakdown",
+   "H: Monthyly breakdown"
+  ],
+  "Planned OpT": [
+   "EU: Site-Level Overview",
+   "N: Homepage",
+   "N: Planned Losses",
+   "N: Unplanned Losses",
+   "N: Maintenance (BETA)",
+   "N: Loss Trending",
+   "N: By Shift Breakdown",
+   "N: By Format Breakdown",
+   "N: VSU Homepage",
+   "N: VSU Losses",
+   "H: Unplanned Losses Daily Report",
+   "H: Unplanned Losses (frequency)"
+  ],
+  "Date": [
+   "N: OEE Trending",
+   "N: Volume Trending"
+  ],
+  "PartName": [
+   "N: OEE Trending",
+   "N: Volume Trending"
+  ]
+ },
+ "Daily_Losses_EU": {
+  "Loss Units": [
+   "EU: EU-Level Overview",
+   "EU: Planned Losses",
+   "EU: Unplanned Losses",
+   "EU: Site-Level Overview",
+   "N: Homepage",
+   "N: Loss Tree",
+   "N: L2/L3 FIT View",
+   "N: Planned Losses",
+   "N: Unplanned Losses",
+   "N: Maintenance (BETA)",
+   "N: Loss Trending",
+   "N: By Shift Breakdown",
+   "N: By Format Breakdown",
+   "N: VSU Homepage",
+   "N: VSU Losses",
+   "H: Unplanned Losses (frequency)",
+   "H: Unplanned Losses Daily Report",
+   "H: OEE/LOSS GRAPH",
+   "H: Monthyly breakdown"
+  ],
+  "OEELossLvl3Group": [
+   "EU: EU-Level Overview",
+   "EU: Site-Level Overview",
+   "EU: Planned Losses",
+   "EU: Unplanned Losses",
+   "N: Unplanned Loss Tree",
+   "N: Homepage",
+   "N: Loss Tree",
+   "N: L2/L3 FIT View",
+   "N: Planned Losses",
+   "N: Unplanned Losses",
+   "N: Maintenance (BETA)",
+   "N: Loss Trending",
+   "N: By Shift Breakdown",
+   "N: By Format Breakdown",
+   "N: VSU Homepage",
+   "N: VSU Losses",
+   "H: Unplanned Losses Daily Report",
+   "H: OEE/LOSS GRAPH",
+   "H: Unplanned Losses (frequency)",
+   "H: Monthyly breakdown"
+  ],
+  "Duration": [
+   "EU: EU-Level Overview",
+   "EU: Site-Level Overview",
+   "EU: Planned Losses",
+   "EU: Unplanned Losses",
+   "N: Homepage",
+   "N: Loss Tree",
+   "N: L2/L3 FIT View",
+   "N: Planned Losses",
+   "N: Unplanned Losses",
+   "N: Maintenance (BETA)",
+   "N: Loss Trending",
+   "N: By Shift Breakdown",
+   "N: By Format Breakdown",
+   "N: VSU Homepage",
+   "N: VSU Losses",
+   "N: Unplanned Loss Tree",
+   "H: Unplanned Losses (frequency)",
+   "H: Unplanned Losses Daily Report",
+   "H: OEE/LOSS GRAPH",
+   "H: Monthyly breakdown"
+  ],
+  "Time in Mins": [
+   "EU: EU-Level Overview",
+   "EU: Site-Level Overview",
+   "EU: Planned Losses",
+   "N: Homepage",
+   "N: Loss Tree",
+   "N: L2/L3 FIT View",
+   "N: Planned Losses",
+   "N: Unplanned Losses",
+   "N: Maintenance (BETA)",
+   "N: Loss Trending",
+   "N: By Shift Breakdown",
+   "N: By Format Breakdown",
+   "N: VSU Homepage",
+   "N: VSU Losses",
+   "H: Unplanned Losses (frequency)",
+   "H: Unplanned Losses Daily Report",
+   "H: OEE/LOSS GRAPH",
+   "H: Monthyly breakdown"
+  ],
+  "OEELossLvl3SubGroup": [
+   "EU: EU-Level Overview",
+   "EU: Site-Level Overview",
+   "EU: Planned Losses",
+   "EU: Unplanned Losses",
+   "N: Homepage",
+   "N: Loss Tree",
+   "N: Unplanned Loss Tree",
+   "N: L2/L3 FIT View",
+   "N: Planned Losses",
+   "N: Unplanned Losses",
+   "N: Maintenance (BETA)",
+   "N: Loss Trending",
+   "N: By Shift Breakdown",
+   "N: By Format Breakdown",
+   "N: VSU Homepage",
+   "N: VSU Losses",
+   "H: Unplanned Losses Daily Report",
+   "H: OEE/LOSS GRAPH",
+   "H: Unplanned Losses (frequency)",
+   "H: Monthyly breakdown"
+  ],
+  "Value": [
+   "EU: EU-Level Overview",
+   "EU: Site-Level Overview",
+   "EU: Planned Losses",
+   "EU: Unplanned Losses",
+   "N: Homepage",
+   "N: VSU Homepage",
+   "N: Planned Losses",
+   "N: Unplanned Losses",
+   "N: Maintenance (BETA)",
+   "N: Loss Trending",
+   "N: By Format Breakdown",
+   "N: VSU Losses",
+   "N: L2/L3 FIT View",
+   "H: Unplanned Losses (frequency)",
+   "H: Monthyly breakdown"
+  ],
+  "Volume Total": [
+   "EU: EU-Level Overview",
+   "EU: Site-Level Overview",
+   "EU: Planned Losses",
+   "EU: Unplanned Losses",
+   "N: Homepage",
+   "N: VSU Homepage",
+   "N: Planned Losses",
+   "N: Unplanned Losses",
+   "N: Maintenance (BETA)",
+   "N: Loss Trending",
+   "N: By Format Breakdown",
+   "N: VSU Losses",
+   "N: L2/L3 FIT View",
+   "H: Unplanned Losses (frequency)",
+   "H: Monthyly breakdown"
+  ],
+  "OEELossLvl3Desc": [
+   "EU: Site-Level Overview",
+   "EU: Planned Losses",
+   "EU: Unplanned Losses",
+   "N: Homepage",
+   "N: Loss Tree",
+   "N: Unplanned Loss Tree",
+   "N: L2/L3 FIT View",
+   "N: Planned Losses",
+   "N: Unplanned Losses",
+   "N: Maintenance (BETA)",
+   "N: Loss Trending",
+   "N: By Shift Breakdown",
+   "N: By Format Breakdown",
+   "N: VSU Homepage",
+   "N: VSU Losses",
+   "H: Unplanned Losses Daily Report",
+   "H: OEE/LOSS GRAPH",
+   "H: Unplanned Losses (frequency)"
+  ],
+  "Comment": [
+   "EU: Planned Losses",
+   "EU: Unplanned Losses",
+   "N: Planned Losses",
+   "N: Unplanned Losses",
+   "N: Maintenance (BETA)",
+   "N: VSU Losses",
+   "H: Unplanned Losses Daily Report",
+   "H: Unplanned Losses (frequency)"
+  ],
+  "Date": [
+   "EU: Planned Losses",
+   "EU: Unplanned Losses",
+   "N: Planned Losses",
+   "N: Unplanned Losses",
+   "N: Maintenance (BETA)",
+   "N: VSU Losses",
+   "H: Unplanned Losses Daily Report",
+   "H: Unplanned Losses (frequency)"
+  ],
+  "MachineName": [
+   "EU: Planned Losses",
+   "N: Planned Losses",
+   "N: Unplanned Losses",
+   "N: Maintenance (BETA)",
+   "N: VSU Losses",
+   "H: Unplanned Losses Daily Report",
+   "H: Unplanned Losses (frequency)"
+  ],
+  "Equipment": [
+   "EU: Planned Losses",
+   "EU: Unplanned Losses",
+   "N: Loss Tree",
+   "N: Unplanned Loss Tree",
+   "N: Unplanned Losses",
+   "N: Maintenance (BETA)",
+   "N: Loss Trending",
+   "N: By Format Breakdown",
+   "N: VSU Losses",
+   "H: Unplanned Losses (frequency)"
+  ],
+  "Loss Final Level": [
+   "EU: Planned Losses",
+   "EU: Unplanned Losses",
+   "N: Unplanned Losses",
+   "N: Maintenance (BETA)",
+   "N: Loss Trending",
+   "N: By Format Breakdown",
+   "N: VSU Losses",
+   "H: Unplanned Losses (frequency)"
+  ],
+  "Breakdown Types": [
+   "N: Maintenance (BETA)"
+  ],
+  "Product Key": [
+   "N: By Format Breakdown"
+  ],
+  "Lvl 3 Loss Name": [
+   "H: Unplanned Losses Daily Report"
+  ]
+ },
+ "Machine Names (lookup)": {
+  "MachineName": [
+   "EU: EU-Level Overview",
+   "EU: Planned Losses",
+   "EU: Unplanned Losses",
+   "EU: Site-Level Overview",
+   "N: Homepage",
+   "N: Loss Tree",
+   "N: Unplanned Loss Tree",
+   "N: L2/L3 FIT View",
+   "N: Planned Losses",
+   "N: Unplanned Losses",
+   "N: Maintenance (BETA)",
+   "N: Loss Trending",
+   "N: By Shift Breakdown",
+   "N: By Format Breakdown",
+   "N: OEE Trending",
+   "N: Volume Trending",
+   "N: VSU Homepage",
+   "N: VSU Losses",
+   "N: Historical OEE",
+   "H: Unplanned Losses Daily Report",
+   "H: OEE/LOSS GRAPH",
+   "H: Monthyly breakdown",
+   "H: Unplanned Losses (frequency)"
+  ],
+  "SiteName": [
+   "EU: EU-Level Overview",
+   "EU: Site-Level Overview",
+   "EU: Planned Losses",
+   "EU: Unplanned Losses"
+  ],
+  "Dept": [
+   "EU: EU-Level Overview",
+   "EU: Site-Level Overview",
+   "EU: Planned Losses",
+   "EU: Unplanned Losses",
+   "N: Homepage",
+   "N: L2/L3 FIT View",
+   "N: Planned Losses",
+   "N: Unplanned Losses",
+   "N: Maintenance (BETA)",
+   "N: Loss Trending",
+   "N: By Shift Breakdown",
+   "N: By Format Breakdown",
+   "N: OEE Trending",
+   "N: Volume Trending",
+   "N: VSU Homepage",
+   "N: VSU Losses",
+   "N: Historical OEE",
+   "H: Unplanned Losses Daily Report",
+   "H: OEE/LOSS GRAPH",
+   "H: Monthyly breakdown",
+   "H: Unplanned Losses (frequency)"
+  ],
+  "Product Type": [
+   "EU: EU-Level Overview",
+   "EU: Site-Level Overview",
+   "EU: Planned Losses",
+   "EU: Unplanned Losses",
+   "N: Homepage",
+   "N: L2/L3 FIT View",
+   "N: Planned Losses",
+   "N: Unplanned Losses",
+   "N: Maintenance (BETA)",
+   "N: Loss Trending",
+   "N: By Shift Breakdown",
+   "N: By Format Breakdown",
+   "N: OEE Trending",
+   "N: Volume Trending",
+   "N: VSU Homepage",
+   "N: VSU Losses",
+   "N: Historical OEE",
+   "H: Unplanned Losses Daily Report",
+   "H: OEE/LOSS GRAPH",
+   "H: Monthyly breakdown",
+   "H: Unplanned Losses (frequency)"
+  ]
+ },
+ "Calendar (Tableau)": {
+  "Month": [
+   "EU: EU-Level Overview",
+   "EU: Site-Level Overview",
+   "EU: Planned Losses",
+   "EU: Unplanned Losses",
+   "N: Homepage",
+   "N: VSU Homepage",
+   "N: Planned Losses",
+   "N: Unplanned Losses",
+   "N: Maintenance (BETA)",
+   "N: Loss Trending",
+   "N: By Format Breakdown",
+   "N: VSU Losses",
+   "N: L2/L3 FIT View",
+   "H: Unplanned Losses (frequency)",
+   "H: Monthyly breakdown"
+  ],
+  "Date": [
+   "EU: EU-Level Overview",
+   "EU: Site-Level Overview",
+   "EU: Planned Losses",
+   "EU: Unplanned Losses",
+   "N: Homepage",
+   "N: Unplanned Loss Tree",
+   "N: L2/L3 FIT View",
+   "N: Planned Losses",
+   "N: Unplanned Losses",
+   "N: Maintenance (BETA)",
+   "N: Loss Trending",
+   "N: By Shift Breakdown",
+   "N: By Format Breakdown",
+   "N: OEE Trending",
+   "N: Volume Trending",
+   "N: VSU Homepage",
+   "N: VSU Losses",
+   "N: Loss Tree",
+   "H: Unplanned Losses Daily Report",
+   "H: OEE/LOSS GRAPH",
+   "H: Unplanned Losses (frequency)",
+   "H: Monthyly breakdown"
+  ],
+  "MonthNumber": [
+   "EU: Site-Level Overview",
+   "N: Homepage",
+   "N: By Shift Breakdown",
+   "N: VSU Homepage"
+  ],
+  "Quarter": [
+   "N: OEE Trending",
+   "N: Volume Trending"
+  ],
+  "Day": [
+   "N: Volume Trending"
+  ],
+  "Year": [
+   "H: Monthyly breakdown"
+  ]
+ },
+ "Shift (lookup)": {
+  "Shift": [
+   "EU: EU-Level Overview",
+   "EU: Site-Level Overview",
+   "EU: Planned Losses",
+   "EU: Unplanned Losses",
+   "N: Homepage",
+   "N: L2/L3 FIT View",
+   "N: Planned Losses",
+   "N: Unplanned Losses",
+   "N: Maintenance (BETA)",
+   "N: Loss Trending",
+   "N: By Shift Breakdown",
+   "N: By Format Breakdown",
+   "N: OEE Trending",
+   "N: Volume Trending",
+   "N: VSU Homepage",
+   "N: VSU Losses",
+   "H: Unplanned Losses Daily Report",
+   "H: OEE/LOSS GRAPH",
+   "H: Monthyly breakdown",
+   "H: Unplanned Losses (frequency)"
+  ]
+ },
+ "Time_Utilisation_EU": {
+  "Total Time Total": [
+   "EU: EU-Level Overview",
+   "EU: Site-Level Overview",
+   "N: Homepage",
+   "N: VSU Homepage"
+  ],
+  "Planned OPT Total": [
+   "EU: EU-Level Overview",
+   "EU: Site-Level Overview",
+   "N: Homepage",
+   "N: VSU Homepage"
+  ],
+  "OEE Time Total": [
+   "EU: EU-Level Overview",
+   "EU: Site-Level Overview",
+   "N: Homepage",
+   "N: VSU Homepage"
+  ]
+ },
+ "Volume_CoV_EU": {
+  "Good Parts Sum": [
+   "N: By Shift Breakdown"
+  ],
+  "Cap Max": [
+   "N: By Shift Breakdown"
+  ]
+ },
+ "Run_Rates_EU": {
+  "Good Parts": [
+   "N: By Shift Breakdown",
+   "N: By Format Breakdown"
+  ],
+  "Capacity": [
+   "N: By Shift Breakdown",
+   "N: By Format Breakdown"
+  ],
+  "PartName": [
+   "N: By Shift Breakdown"
+  ]
+ },
+ "Format_List_EU": {
+  "Product Name": [
+   "N: By Format Breakdown"
+  ],
+  "Unit Size": [
+   "N: By Format Breakdown"
+  ],
+  "Brand": [
+   "N: By Format Breakdown"
+  ],
+  "Unit Count/Format": [
+   "N: By Format Breakdown"
+  ],
+  "MachineName": [
+   "N: By Format Breakdown"
+  ],
+  "Extra Info": [
+   "N: By Format Breakdown"
+  ]
+ },
+ "Historical_OEE_EU": {
+  "OEE": [
+   "N: Historical OEE"
+  ],
+  "Date": [
+   "N: Historical OEE"
+  ]
+ }
+}

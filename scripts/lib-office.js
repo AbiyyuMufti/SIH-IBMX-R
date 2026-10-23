@@ -131,15 +131,40 @@ export function readPbitModel(path) {
   return { tables, relationships: model.relationships };
 }
 
-// Reads a .pbix: page names and, per table, the pages that use it.
-export function readPbixUsage(path) {
+// Report pages as units of JSON text: [page name, text] for every visual and
+// filter list. Reads the new format (Report/definition/...) and the old one
+// (one Report/Layout file). Also returns the page order and hidden pages.
+export function readReportUnits(path) {
   const zip = readZip(path);
-  const pageNames = {};
+  const units = [];
   const pageOrder = [];
+  const hidden = new Set();
+  const layout = zip.read('Report/Layout');
+  if (layout) {
+    const doc = JSON.parse(decode(layout));
+    units.push(['(report filter)', doc.filters ?? '']);
+    for (const s of doc.sections) {
+      pageOrder.push(s.displayName);
+      if (/"visibility":1/.test(s.config ?? '')) {
+        hidden.add(s.displayName);
+      }
+      units.push([s.displayName, s.filters ?? '']);
+      for (const v of s.visualContainers ?? []) {
+        units.push([s.displayName, `${v.config ?? ''}${v.filters ?? ''}`]);
+      }
+    }
+    return { units, pageOrder, hidden };
+  }
+  const pageNames = {};
   for (const n of zip.names) {
     const m = n.match(/^Report\/definition\/pages\/(\w+)\/page\.json$/);
     if (m) {
-      pageNames[m[1]] = JSON.parse(zip.read(n).toString('utf8')).displayName;
+      const page = JSON.parse(zip.read(n).toString('utf8'));
+      pageNames[m[1]] = page.displayName;
+      if (page.visibility === 'HiddenInViewMode') {
+        hidden.add(page.displayName);
+      }
+      units.push([page.displayName, JSON.stringify(page.filterConfig ?? {})]);
     }
   }
   const order = zip.read('Report/definition/pages/pages.json');
@@ -148,24 +173,40 @@ export function readPbixUsage(path) {
       pageOrder.push(pageNames[id]);
     }
   }
-  const field = /"(Column|Measure)":\{"Expression":\{"SourceRef":\{"Entity":"([^"]+)"\}\},"Property":"([^"]+)"/g;
-  const tablePages = new Map();
-  const columnPages = new Map();
+  const report = zip.read('Report/definition/report.json');
+  units.push(['(report filter)', report ? report.toString('utf8') : '']);
   for (const n of zip.names) {
     const m = n.match(/^Report\/definition\/pages\/(\w+)\/visuals\/\w+\/visual\.json$/);
-    if (!m) {
-      continue;
+    if (m) {
+      units.push([pageNames[m[1]], zip.read(n).toString('utf8')]);
     }
-    for (const f of zip.read(n).toString('utf8').matchAll(field)) {
-      const page = pageNames[m[1]];
-      const table = tablePages.get(f[2]) ?? new Set();
+  }
+  return { units, pageOrder, hidden };
+}
+
+// Reads a .pbix or .pbit: page names and, per table and per column or
+// measure ("Table|Name"), the pages that use it (visuals and filters).
+export function readPbixUsage(path) {
+  const { units, pageOrder, hidden } = readReportUnits(path);
+  const field = /"(Column|Measure)":\{"Expression":\{"SourceRef":\{"(Entity|Source)":"([^"]+)"\}\},"Property":"([^"]+)"/g;
+  const tablePages = new Map();
+  const columnPages = new Map();
+  for (const [page, json] of units) {
+    // The old format points to a table alias, defined in the query's From.
+    const alias = new Map();
+    for (const a of json.matchAll(/"Name":"([^"]+)","Entity":"([^"]+)"/g)) {
+      alias.set(a[1], a[2]);
+    }
+    for (const f of json.matchAll(field)) {
+      const name = f[2] === 'Source' ? alias.get(f[3]) ?? `?${f[3]}` : f[3];
+      const table = tablePages.get(name) ?? new Set();
       table.add(page);
-      tablePages.set(f[2], table);
-      const key = `${f[2]}|${f[3]}`;
+      tablePages.set(name, table);
+      const key = `${name}|${f[4]}`;
       const col = columnPages.get(key) ?? new Set();
       col.add(page);
       columnPages.set(key, col);
     }
   }
-  return { pageOrder, tablePages, columnPages };
+  return { pageOrder, hidden, tablePages, columnPages };
 }

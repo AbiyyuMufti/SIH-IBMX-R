@@ -7,7 +7,7 @@
 | **Steps** | 1 data model (this version), 2 what the agreed pages read, 3 comparison with the EU model and our tables, 4 what SIH can give |
 | **Status** | Steps 1 to 4 done (2026-10-23). Nothing built (decision of the user): all open decisions are in section 5 |
 | **Files** | Outside the repo (customer paths and names). Re-read with `node scripts/helper-pbit-outline.js <file.pbit>` |
-| **Diagram** | `diagrams/site-dashboards-map.drawio`: 6 pages (agreed pages, EU filters, sources and tables, SIH coverage, open decisions, parked differences) plus every page of `powerbi-data-map.drawio` copied unchanged (prefix `PBI map:`). Rebuild: `node scripts/build-drawio-site-dashboards.js`, then `node scripts/validate-drawio.js diagrams/site-dashboards-map.drawio` |
+| **Diagram** | `diagrams/site-dashboards-map.drawio`, the current data map: agreed pages, current map overview, one page per table (3 existing + 4 proposed: every column with an example from Segun's extracts, the Provideam rule, the SIH rule, a status and the agreed pages that use it), EU scope (idea C1), SIH coverage, open decisions, parked differences, and 8 "Background" pages (the still-valid explanation pages of the old map, with a "since then" note). `powerbi-data-map.drawio` stays as the snapshot of 2026-10-13/15. Rebuild: `node scripts/helper-site-column-usage.js` (column usage from the three templates), `python -I scripts/helper-profile-parquet.py downloads/eu_oee_latest diagrams/data/eu-extract-profile.json` (examples), `node scripts/build-drawio-site-dashboards.js`, then `node scripts/validate-drawio.js diagrams/site-dashboards-map.drawio` |
 
 ## Step 1: data model of each file
 
@@ -206,7 +206,9 @@ Class: (a) the same as an EU table, (b) a site query the EU changes, (c) new.
 | Calendar, Period, Last Refresh, Metrics | helper tables | Calendar | none | Tableau |
 
 ### 3.3 Proposed build changes
-**C1. EU scope as a column, not a filter (plan, time utilisation, losses).**
+**C1. EU scope as a column, not a filter (plan, time utilisation, losses). Still an idea, for the meeting with Segun and then Reckitt.**
+- Today's EU rules, checked against the Machine Names files (2026-10-23): rows are dropped by machine only, never by product. Hull uses one rule in every table (the 19 dropped machines are exactly Dept `Dries Process` / `Liquids Process`). Nottingham uses a different rule per table: Plan OPT the two packing areas without S14 (24 machines), Time Utilisation a fixed list of 23 (the same without `T1`), losses drop only 9 names (33 of the 41 non-packing machines stay in the rows), Volume CoV drops 14 names, Run Rates only S14. The intent is one rule per machine ("packing lines, not S14"); applying it everywhere moves the EU numbers slightly where the Nottingham rules differ.
+- Where the scope could live: A) a rule per site in Config on the Machine Names columns (Nottingham Area, Hull Dept, plus exceptions such as S14), recommended; B) a column in the Machine Names file (Reckitt's file: our copy is overwritten unless Reckitt adds it); C) our own scope list file.
 - The rules stay in the build exactly as now (Nottingham: plan by area and not `S14`, time utilisation by the 23-line list, losses without the 9 names; Hull: the 19 machines; Machine Names: Nottingham areas `SD Packing`, ` Strepsils Packing`, Hull Dept `Dries Pack`, `Liquids Pack`), but they set a new column `In EU Report` (true / false) instead of dropping the row. The EU pages filter `In EU Report = true` and show the same numbers as today; the site pages do not filter.
 - The Machine Names lookup is no longer filtered, so Dept, Area and Product Type are filled for every machine in the file.
 - Still dropped, as in both reports: Nottingham `N11 Auto` (plan side), `B1 - Auto`, `B4 Auto`, `B5 Auto` (losses); Hull `GT4 - Auto`.
@@ -301,10 +303,19 @@ Status: **have** (SIH writes it today), **fetched** (the API data is already rea
 3. **Loss reasons are the weak point for SIH lines.** The loss pages (trees, top losses, maintenance, sub group cards, targets per sub group) all group by sub group and stop. On SIH lines these come from the reason tree and the alarm texts, and 68 % of the stops have no category. The pages will work but show different groupings until the reason tree is mapped to the report sub groups (already open with Reckitt).
 4. **The reference files stay the bridge.** Glidepaths, Machine Names, Shift Patterns (and the Format List, once added) are needed for both sources. They are copied by hand today; the listener rebuilds the tables when they change.
 
+## 4a. Daily Losses: filters in the site and EU reports (2026-10-23)
+Question from Segun: the sum of `Value` differs between the EU and the site reports. Read from the query steps of the three templates (Power Query, table `Daily Line Losses H` / `N` of the EU file, `Daily Line Losses N` / `New Daily Line Losses` of the site files). No numbers compared yet.
+- **Same in site and EU, Hull and Nottingham, in this order:** MachineName not empty; **duplicates removed** on machine + stop start time (first row kept); group not empty and not `0.Review Data`; MachineName not `B1 - Auto`, `B4 Auto`, `B5 Auto`; after the lookups only the groups `Not Logged`, `Planned Loss`, `Unplanned Loss`.
+- **Only in the EU report (last step `Filtered Rows`):** Hull drops 19 machines (4 Tonne, 6 Tonne, 6000L, Analgesics Processing, Analgesics X Press, Bosch Capsulator with a trailing space, Dettol 1, Evolution, Fitten, Gaviscon TPR, Gaviscon XP700(A), GG4 to GG7, Lemsip Process, Senokot Press, Symex suite, Vacumix). Nottingham drops 9 (Bosch, Fette 23, Fette12, Fette2, Fette20, Fette4, Fette5, Gran0, S14).
+- **Why `Value` differs even on shared machines:** it is a glidepath target looked up per row, so the sum depends on the row count and on which key matched. The key is machine + sub group + month in the site reports and machine-site + sub group + month in the EU report; the glidepath file differs (Hull site V7 against regional: 524 cells in 2026); the EU Hull query rewrites the sub group names (Text.Proper and 13 renames) while the Hull site report keeps them raw.
+- **Hull only:** the site query sorts the files by "Date created" (newest first) before the duplicate removal, the EU query does not: a stop in two files keeps the newest copy in the site report and the first listed copy in the EU report.
+- **Where to see it in Power BI Desktop:** Transform data, query `Daily Line Losses H` or `N`, Applied Steps, last step `Filtered Rows` (formula bar, gear icon, or Advanced Editor).
+- **To find the actual cause:** ask which number is compared (`Value`, `Volume Total` or Weighted Target %), then compare both reports on one machine and one month that both keep: row count and sum of `Duration` first, then the lookup.
+
 ## 5. Open decisions (nothing is built yet)
 | # | Decision | Who | Recommendation |
 |---|---|---|---|
-| D1 | EU filters become an `In EU Report` column, and the Machine Names lookup is no longer filtered (C1) | User, Segun | Yes: the EU pages keep their numbers by filtering the column |
+| D1 | Idea: EU filters become an `In EU Report` column, and the Machine Names lookup is no longer filtered (C1). Also: where the scope lives (Config rule, Machine Names column, own file) and one rule per machine instead of today's per-table rules | User, Segun, then Reckitt | A Config rule on Area / Dept; accept the small EU changes of one rule per machine |
 | D2 | New tables `Run_Rates_EU` and `Volume_CoV_EU` in the PBI report build (C2, C3) | User, Segun | Yes; Run Rates history from Aug 2026 unless more is asked |
 | D3 | New table `Format_List_EU` from the reference Format List files (C4) | User, Segun | Yes |
 | D4 | Nottingham Format List: who fills it (we can generate the starter list of machine + part names) | Reckitt (Nottingham) | We make the starter list, Nottingham fills Brand, Unit Size, Unit Count/Format |

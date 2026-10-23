@@ -1,0 +1,731 @@
+{
+  "Daily_Losses_EU": {
+    "rows": 629393,
+    "columns": [
+      {
+        "name": "Date",
+        "type": "object",
+        "filled": 629393,
+        "filled_share": 1.0,
+        "distinct": 650,
+        "examples": [
+          "2025-06-03",
+          "2026-08-11",
+          "2026-02-19"
+        ]
+      },
+      {
+        "name": "Time",
+        "type": "datetime64[us]",
+        "filled": 629393,
+        "filled_share": 1.0,
+        "distinct": 1440,
+        "examples": [
+          "1899-12-30 06:00:00",
+          "1899-12-30 14:00:00",
+          "1899-12-30 18:00:00"
+        ]
+      },
+      {
+        "name": "MachineName",
+        "type": "object",
+        "filled": 629393,
+        "filled_share": 1.0,
+        "distinct": 100,
+        "examples": [
+          "B2 Auto",
+          "S12",
+          "N3"
+        ]
+      },
+      {
+        "name": "PartName",
+        "type": "object",
+        "filled": 629232,
+        "filled_share": 0.9997441979812295,
+        "distinct": 648,
+        "examples": [
+          "3 x 12's Blister",
+          "Corsa 12 x 24 x 10 ML",
+          "2x 12's Blisters w/ Standard outer"
+        ]
+      },
+      {
+        "name": "ShiftName",
+        "type": "object",
+        "filled": 629264,
+        "filled_share": 0.9997950406185007,
+        "distinct": 10,
+        "examples": [
+          "Day",
+          "Night",
+          "Afternoon"
+        ]
+      },
+      {
+        "name": "OEELossLvl3Group",
+        "type": "object",
+        "filled": 629393,
+        "filled_share": 1.0,
+        "distinct": 4,
+        "examples": [
+          "Unplanned Loss",
+          "Planned Loss",
+          "Not Logged"
+        ]
+      },
+      {
+        "name": "OEELossLvl3SubGroup",
+        "type": "object",
+        "filled": 629393,
+        "filled_share": 1.0,
+        "distinct": 18,
+        "examples": [
+          "Minor Stops",
+          "Refilling Materials",
+          "Adjustments"
+        ]
+      },
+      {
+        "name": "OEELossLvl3Desc",
+        "type": "object",
+        "filled": 629393,
+        "filled_share": 1.0,
+        "distinct": 2607,
+        "examples": [
+          "Reel Change",
+          "Functionality Checks",
+          "Bulk Quality"
+        ]
+      },
+      {
+        "name": "Duration",
+        "type": "float64",
+        "filled": 629392,
+        "filled_share": 0.9999984111675853,
+        "distinct": 487,
+        "examples": [
+          "3.0",
+          "5.0",
+          "10.0"
+        ]
+      },
+      {
+        "name": "SiteName",
+        "type": "object",
+        "filled": 629393,
+        "filled_share": 1.0,
+        "distinct": 4,
+        "examples": [
+          "Nottingham",
+          "Hull",
+          "Mira"
+        ]
+      },
+      {
+        "name": "Unique Machine Name",
+        "type": "object",
+        "filled": 629393,
+        "filled_share": 1.0,
+        "distinct": 100,
+        "examples": [
+          "B2 Auto-Hull",
+          "S12-Nottingham",
+          "N3-Nottingham"
+        ]
+      },
+      {
+        "name": "Breakdown Types",
+        "type": "object",
+        "filled": 605525,
+        "filled_share": 0.962077747925382,
+        "distinct": 30,
+        "examples": [
+          "Minor Stop",
+          "Refilling Materials",
+          "Adjustment"
+        ]
+      },
+      {
+        "name": "ShiftStartDate",
+        "type": "object",
+        "filled": 629393,
+        "filled_share": 1.0,
+        "distinct": 648,
+        "examples": [
+          "2026-02-18",
+          "2025-06-03",
+          "2026-08-24"
+        ]
+      },
+      {
+        "name": "Comment",
+        "type": "object",
+        "filled": 297363,
+        "filled_share": 0.4724599733393921,
+        "distinct": 124783,
+        "examples": [
+          "jam",
+          "foil",
+          "PVC"
+        ]
+      },
+      {
+        "name": "Merged",
+        "type": "object",
+        "filled": 579961,
+        "filled_share": 0.9214608360753933,
+        "distinct": 579102,
+        "examples": [
+          "N3 14/06/2025 22:45:00",
+          "SP8 14/09/2026 14:45:00",
+          "SP8 03/05/2026 23:00:00"
+        ]
+      },
+      {
+        "name": "ShiftName - Copy",
+        "type": "object",
+        "filled": 629393,
+        "filled_share": 1.0,
+        "distinct": 137,
+        "examples": [
+          "Wednesday Early Shift",
+          "Tuesday Early Shift",
+          "1"
+        ]
+      },
+      {
+        "name": "Product Key",
+        "type": "object",
+        "filled": 629393,
+        "filled_share": 1.0,
+        "distinct": 867,
+        "examples": [
+          "S12-Nottingham 2x 12's Blisters w/ Standard outer",
+          "N4-Nottingham Gaviscon 6 blister",
+          "S10-Nottingham 3 x 12's Blister"
+        ]
+      },
+      {
+        "name": "Volume Key",
+        "type": "object",
+        "filled": 629393,
+        "filled_share": 1.0,
+        "distinct": 333102,
+        "examples": [
+          "30/08/2025 B2 Auto Unplanned Loss Quality Issues Component ...",
+          "03/06/2025 B2 Auto Unplanned Loss Breakdown Cartoner - Cart...",
+          "08/09/2025 B2 Auto Unplanned Loss Quality Issues Component ..."
+        ]
+      },
+      {
+        "name": "Loss Units",
+        "type": "float64",
+        "filled": 628849,
+        "filled_share": 0.9991356751663905,
+        "distinct": 7492,
+        "examples": [
+          "600.0",
+          "420.0",
+          "300.0"
+        ]
+      },
+      {
+        "name": "Equipment",
+        "type": "object",
+        "filled": 613698,
+        "filled_share": 0.9750632752509164,
+        "distinct": 238,
+        "examples": [
+          "Unclassed",
+          "Reel Change",
+          "Cartoner"
+        ]
+      },
+      {
+        "name": "Loss Target Key",
+        "type": "object",
+        "filled": 629393,
+        "filled_share": 1.0,
+        "distinct": 16982,
+        "examples": [
+          "B2 Auto-Hull Adjustments 01/01/2025",
+          "B2 Auto-Hull Adjustments 01/07/2025",
+          "B2 Auto-Hull Adjustments 01/02/2025"
+        ]
+      },
+      {
+        "name": "Value",
+        "type": "object",
+        "filled": 336114,
+        "filled_share": 0.5340288182423383,
+        "distinct": 195,
+        "examples": [
+          "6.6",
+          "3.9",
+          "4.6"
+        ]
+      },
+      {
+        "name": "Volume Key.1",
+        "type": "object",
+        "filled": 0,
+        "filled_share": 0.0,
+        "distinct": 0,
+        "examples": []
+      },
+      {
+        "name": "Volume Total",
+        "type": "float64",
+        "filled": 629038,
+        "filled_share": 0.9994359644927732,
+        "distinct": 9065,
+        "examples": [
+          "216000.0",
+          "72000.0",
+          "115200.0"
+        ]
+      },
+      {
+        "name": "Loss Final Level",
+        "type": "object",
+        "filled": 629393,
+        "filled_share": 1.0,
+        "distinct": 2608,
+        "examples": [
+          "Reel Change",
+          "Functionality Checks",
+          "Bulk Quality"
+        ]
+      },
+      {
+        "name": "Batch ID",
+        "type": "object",
+        "filled": 49432,
+        "filled_share": 0.07853916392460672,
+        "distinct": 452,
+        "examples": [
+          "3086223",
+          "3315538",
+          "3288464"
+        ]
+      },
+      {
+        "name": "Dept",
+        "type": "object",
+        "filled": 588325,
+        "filled_share": 0.9347498303921398,
+        "distinct": 9,
+        "examples": [
+          "Solid Dose",
+          "Liquids Pack",
+          "Strepsils"
+        ]
+      },
+      {
+        "name": "Area",
+        "type": "object",
+        "filled": 588325,
+        "filled_share": 0.9347498303921398,
+        "distinct": 9,
+        "examples": [
+          "SD Packing",
+          "Liquids",
+          "Strepsils Packing"
+        ]
+      },
+      {
+        "name": "Product Type",
+        "type": "object",
+        "filled": 588325,
+        "filled_share": 0.9347498303921398,
+        "distinct": 15,
+        "examples": [
+          "Blisters",
+          "Strepsils Blisters",
+          "Bottles"
+        ]
+      }
+    ]
+  },
+  "Plan_OPT_EU": {
+    "rows": 44686,
+    "columns": [
+      {
+        "name": "Date",
+        "type": "object",
+        "filled": 44686,
+        "filled_share": 1.0,
+        "distinct": 656,
+        "examples": [
+          "2026-04-09",
+          "2026-02-19",
+          "2026-03-10"
+        ]
+      },
+      {
+        "name": "AreaName",
+        "type": "object",
+        "filled": 44686,
+        "filled_share": 1.0,
+        "distinct": 10,
+        "examples": [
+          "SD Packing",
+          "Hull Liquids",
+          " Strepsils Packing"
+        ]
+      },
+      {
+        "name": "MachineName",
+        "type": "object",
+        "filled": 44686,
+        "filled_share": 1.0,
+        "distinct": 72,
+        "examples": [
+          "B2 Auto",
+          "N3",
+          "N12"
+        ]
+      },
+      {
+        "name": "ShiftName",
+        "type": "object",
+        "filled": 44671,
+        "filled_share": 0.9996643243969028,
+        "distinct": 10,
+        "examples": [
+          "Day",
+          "Night",
+          "Afternoon"
+        ]
+      },
+      {
+        "name": "PartName",
+        "type": "object",
+        "filled": 44686,
+        "filled_share": 1.0,
+        "distinct": 551,
+        "examples": [
+          "Corsa 12 x 24 x 10 ML",
+          "36's",
+          "DADA 12 x 24 x 10 ML"
+        ]
+      },
+      {
+        "name": "Good Parts",
+        "type": "int64",
+        "filled": 44686,
+        "filled_share": 1.0,
+        "distinct": 15239,
+        "examples": [
+          "0",
+          "43200",
+          "41472"
+        ]
+      },
+      {
+        "name": "Capacity",
+        "type": "float64",
+        "filled": 44686,
+        "filled_share": 1.0,
+        "distinct": 6090,
+        "examples": [
+          "57600.0",
+          "36000.0",
+          "108000.0"
+        ]
+      },
+      {
+        "name": "Total Time",
+        "type": "float64",
+        "filled": 44684,
+        "filled_share": 0.9999552432529204,
+        "distinct": 563,
+        "examples": [
+          "480.0",
+          "720.0",
+          "450.0"
+        ]
+      },
+      {
+        "name": "Planned OpT",
+        "type": "float64",
+        "filled": 44684,
+        "filled_share": 0.9999552432529204,
+        "distinct": 719,
+        "examples": [
+          "480.0",
+          "720.0",
+          "240.0"
+        ]
+      },
+      {
+        "name": "OEE Time",
+        "type": "int64",
+        "filled": 44686,
+        "filled_share": 1.0,
+        "distinct": 695,
+        "examples": [
+          "0",
+          "288",
+          "360"
+        ]
+      },
+      {
+        "name": "Downtime Units",
+        "type": "float64",
+        "filled": 44686,
+        "filled_share": 1.0,
+        "distinct": 14116,
+        "examples": [
+          "0.0",
+          "10800.0",
+          "36000.0"
+        ]
+      },
+      {
+        "name": "SiteName",
+        "type": "object",
+        "filled": 44686,
+        "filled_share": 1.0,
+        "distinct": 4,
+        "examples": [
+          "Nottingham",
+          "Hull",
+          "Mira"
+        ]
+      },
+      {
+        "name": "Unique Machine Name",
+        "type": "object",
+        "filled": 44686,
+        "filled_share": 1.0,
+        "distinct": 72,
+        "examples": [
+          "B2 Auto-Hull",
+          "N3-Nottingham",
+          "N12-Nottingham"
+        ]
+      },
+      {
+        "name": "Product Key",
+        "type": "object",
+        "filled": 44686,
+        "filled_share": 1.0,
+        "distinct": 701,
+        "examples": [
+          "Infant Gaviscon-Hull Infant Sachets 12x15x2",
+          "S12-Nottingham 24's Standard outer",
+          "SP1-Hull DADA 12 x 12 x 10 ML"
+        ]
+      },
+      {
+        "name": "UPDT Target",
+        "type": "float64",
+        "filled": 29144,
+        "filled_share": 0.6521953184442555,
+        "distinct": 286,
+        "examples": [
+          "0.0",
+          "17.8",
+          "9.4"
+        ]
+      },
+      {
+        "name": "PDT Target",
+        "type": "float64",
+        "filled": 29144,
+        "filled_share": 0.6521953184442555,
+        "distinct": 178,
+        "examples": [
+          "15.8",
+          "21.7",
+          "0.0"
+        ]
+      },
+      {
+        "name": "OEE Target",
+        "type": "float64",
+        "filled": 28361,
+        "filled_share": 0.6346730519625834,
+        "distinct": 348,
+        "examples": [
+          "68.7",
+          "35.5",
+          "42.6"
+        ]
+      },
+      {
+        "name": "Dept",
+        "type": "object",
+        "filled": 44686,
+        "filled_share": 1.0,
+        "distinct": 9,
+        "examples": [
+          "Solid Dose",
+          "Liquids Pack",
+          "Strepsils"
+        ]
+      },
+      {
+        "name": "Area",
+        "type": "object",
+        "filled": 44686,
+        "filled_share": 1.0,
+        "distinct": 9,
+        "examples": [
+          "SD Packing",
+          "Liquids",
+          "Strepsils Packing"
+        ]
+      },
+      {
+        "name": "Product Type",
+        "type": "object",
+        "filled": 44686,
+        "filled_share": 1.0,
+        "distinct": 15,
+        "examples": [
+          "Blisters",
+          "Bottles",
+          "Strepsils Blisters"
+        ]
+      }
+    ]
+  },
+  "Time_Utilisation_EU": {
+    "rows": 49961,
+    "columns": [
+      {
+        "name": "Date",
+        "type": "object",
+        "filled": 49961,
+        "filled_share": 1.0,
+        "distinct": 656,
+        "examples": [
+          "2026-03-27",
+          "2026-04-09",
+          "2026-06-25"
+        ]
+      },
+      {
+        "name": "MachineName",
+        "type": "object",
+        "filled": 49961,
+        "filled_share": 1.0,
+        "distinct": 72,
+        "examples": [
+          "B2 Auto",
+          "SP6",
+          "B6"
+        ]
+      },
+      {
+        "name": "OEE Time Total",
+        "type": "float64",
+        "filled": 49961,
+        "filled_share": 1.0,
+        "distinct": 12944,
+        "examples": [
+          "0.0",
+          "360.0",
+          "270.0"
+        ]
+      },
+      {
+        "name": "Total Time Total",
+        "type": "float64",
+        "filled": 49953,
+        "filled_share": 0.99983987510258,
+        "distinct": 461,
+        "examples": [
+          "1440.0",
+          "480.0",
+          "960.0"
+        ]
+      },
+      {
+        "name": "Planned OPT Total",
+        "type": "float64",
+        "filled": 49953,
+        "filled_share": 0.99983987510258,
+        "distinct": 1476,
+        "examples": [
+          "1440.0",
+          "480.0",
+          "960.0"
+        ]
+      },
+      {
+        "name": "SiteName",
+        "type": "object",
+        "filled": 49961,
+        "filled_share": 1.0,
+        "distinct": 7,
+        "examples": [
+          "Nottingham",
+          "Hull",
+          "Chartes"
+        ]
+      },
+      {
+        "name": "Unique Machine Name",
+        "type": "object",
+        "filled": 49961,
+        "filled_share": 1.0,
+        "distinct": 72,
+        "examples": [
+          "B2 Auto-Hull",
+          "SP6-Hull",
+          "B6-Hull"
+        ]
+      },
+      {
+        "name": "All Time",
+        "type": "int64",
+        "filled": 49961,
+        "filled_share": 1.0,
+        "distinct": 1,
+        "examples": [
+          "1440"
+        ]
+      },
+      {
+        "name": "Dept",
+        "type": "object",
+        "filled": 49961,
+        "filled_share": 1.0,
+        "distinct": 9,
+        "examples": [
+          "Liquids Pack",
+          "Dries Pack",
+          "Solid Dose"
+        ]
+      },
+      {
+        "name": "Area",
+        "type": "object",
+        "filled": 49961,
+        "filled_share": 1.0,
+        "distinct": 9,
+        "examples": [
+          "Liquids",
+          "Dries",
+          "SD Packing"
+        ]
+      },
+      {
+        "name": "Product Type",
+        "type": "object",
+        "filled": 49961,
+        "filled_share": 1.0,
+        "distinct": 15,
+        "examples": [
+          "Bottles",
+          "Blisters",
+          "Sticks"
+        ]
+      }
+    ]
+  }
+}

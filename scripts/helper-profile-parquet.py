@@ -11,7 +11,12 @@ import json
 import sys
 from pathlib import Path
 
-import polars as pl
+try:
+    import polars as pl
+except ImportError:
+    # Fallback when polars is not installed (same output, pandas types).
+    pl = None
+    import pandas as pd
 
 folder = Path(sys.argv[1] if len(sys.argv) > 1 else "parquet")
 output = Path(sys.argv[2] if len(sys.argv) > 2 else "diagrams/data/ours-profile.json")
@@ -33,22 +38,29 @@ def short(value):
 
 profile = {}
 for path in sorted(folder.glob("*.parquet")):
-    frame = pl.read_parquet(path)
-    rows = frame.height
+    frame = pl.read_parquet(path) if pl else pd.read_parquet(path)
+    rows = frame.height if pl else len(frame)
     columns = []
     for name in frame.columns:
         series = frame[name]
-        filled = rows - series.null_count()
-        non_null = series.drop_nulls()
-        distinct = non_null.n_unique() if filled > 0 else 0
-        counts = (
-            non_null.value_counts(sort=True).head(MAX_EXAMPLES)
-            if filled > 0
-            else None
-        )
-        examples = []
-        if counts is not None:
-            examples = [short(v) for v in counts[name].to_list()]
+        if pl:
+            filled = rows - series.null_count()
+            non_null = series.drop_nulls()
+            distinct = non_null.n_unique() if filled > 0 else 0
+            counts = (
+                non_null.value_counts(sort=True).head(MAX_EXAMPLES)
+                if filled > 0
+                else None
+            )
+            examples = []
+            if counts is not None:
+                examples = [short(v) for v in counts[name].to_list()]
+        else:
+            non_null = series.dropna()
+            filled = len(non_null)
+            distinct = non_null.nunique()
+            top = non_null.value_counts().head(MAX_EXAMPLES).index
+            examples = [short(v) for v in top]
         columns.append(
             {
                 "name": name,
