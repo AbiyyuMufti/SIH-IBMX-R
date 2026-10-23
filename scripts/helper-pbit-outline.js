@@ -68,32 +68,64 @@ const redact = (s) => String(s).replace(/https?:\/\/[^"\s)]+/g, '<URL>');
 const lines = (e) => (Array.isArray(e) ? e.join('\n') : String(e ?? ''));
 const zip = readZip(file);
 
-// Report pages: which columns and measures each page uses.
+// Report pages: which columns and measures each page uses (visuals and
+// filters). Reads the new format (Report/definition/...) and the old one
+// (one Report/Layout file, where fields point to a table alias).
 if (flag('--report') >= 0) {
-  const pages = {};
-  const used = new Map();
-  for (const n of zip.names) {
-    const p = n.match(/^Report\/definition\/pages\/(\w+)\/page\.json$/);
-    if (p) {
-      pages[p[1]] = JSON.parse(zip.read(n).toString('utf8')).displayName;
+  // units: [page name, JSON text of one visual or filter list]
+  const units = [];
+  const pageNames = [];
+  const layout = zip.read('Report/Layout');
+  if (layout) {
+    const doc = JSON.parse(text(layout));
+    units.push(['(report filter)', doc.filters ?? '']);
+    for (const s of doc.sections) {
+      const hidden = /"visibility":1/.test(s.config ?? '') ? ' (hidden)' : '';
+      pageNames.push(s.displayName + hidden);
+      units.push([s.displayName, s.filters ?? '']);
+      for (const v of s.visualContainers ?? []) {
+        units.push([s.displayName, `${v.config ?? ''}${v.filters ?? ''}`]);
+      }
+    }
+  } else {
+    const pages = {};
+    for (const n of zip.names) {
+      const p = n.match(/^Report\/definition\/pages\/(\w+)\/page\.json$/);
+      if (p) {
+        const page = JSON.parse(zip.read(n).toString('utf8'));
+        pages[p[1]] = page.displayName;
+        const hidden = page.visibility === 'HiddenInViewMode' ? ' (hidden)' : '';
+        pageNames.push(page.displayName + hidden);
+        units.push([page.displayName, JSON.stringify(page.filterConfig ?? {})]);
+      }
+    }
+    const report = zip.read('Report/definition/report.json');
+    units.push(['(report filter)', report ? report.toString('utf8') : '']);
+    for (const n of zip.names) {
+      const m = n.match(/^Report\/definition\/pages\/(\w+)\/visuals\/\w+\/visual\.json$/);
+      if (m) {
+        units.push([pages[m[1]], zip.read(n).toString('utf8')]);
+      }
     }
   }
-  const field = /"(Column|Measure)":\{"Expression":\{"SourceRef":\{"Entity":"([^"]+)"\}\},"Property":"([^"]+)"/g;
-  for (const n of zip.names) {
-    const m = n.match(/^Report\/definition\/pages\/(\w+)\/visuals\/\w+\/visual\.json$/);
-    if (!m) {
-      continue;
+  const field = /"(Column|Measure)":\{"Expression":\{"SourceRef":\{"(Entity|Source)":"([^"]+)"\}\},"Property":"([^"]+)"/g;
+  const used = new Map();
+  for (const [page, json] of units) {
+    const alias = new Map();
+    for (const a of json.matchAll(/"Name":"([^"]+)","Entity":"([^"]+)"/g)) {
+      alias.set(a[1], a[2]);
     }
-    for (const f of zip.read(n).toString('utf8').matchAll(field)) {
-      const key = `${f[1]} | ${f[2]} | ${f[3]}`;
+    for (const f of json.matchAll(field)) {
+      const table = f[2] === 'Source' ? alias.get(f[3]) ?? `?${f[3]}` : f[3];
+      const key = `${f[1]} | ${table} | ${f[4]}`;
       const set = used.get(key) ?? new Set();
-      set.add(pages[m[1]]);
+      set.add(page);
       used.set(key, set);
     }
   }
-  console.log(`Pages: ${Object.values(pages).join(', ')}`);
+  console.log(`Pages: ${pageNames.join(', ')}`);
   for (const [key, set] of [...used].sort()) {
-    console.log(`${key}  (${set.size} pages)`);
+    console.log(`${key}  (${set.size} pages: ${[...set].join(', ')})`);
   }
   process.exit(0);
 }
