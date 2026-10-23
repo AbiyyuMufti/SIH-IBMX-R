@@ -25,6 +25,9 @@ import { windowSchema, hourSchema, eventSchema } from './lib-rpt-schemas.js';
 // run stall in the VFC (2026-10-22: a backfill of 2 days 5 s apart stopped
 // after 80 s with no error, the same day alone finished in 40 s). A day
 // takes 40 s or more, so the next day starts after the previous one.
+// Value KPI calls released per second. 1 per second lost assets in the VFC
+// (2026-10-23, shift day 2026-10-02); 4 per second ran it in 28 s.
+const VALUES_PER_SECOND = 4;
 const DAY_PACE_SECONDS = 60;
 
 // One entry per site. The tab runs at runHourLocal of the site in 1.1
@@ -183,12 +186,13 @@ function buildFlow(site, index) {
       end('VALUES')
     ]);
   lane(r++, 'VALUE KPIs',
-    'one asset. 6.1 keeps the master data of the products of the day and sends ONE MESSAGE PER PRODUCT AND PER ORDER (one per second). 6.2 builds the evaluateKPIs POST (read-style, hourly) filtered on that product or order. Every value message carries msg.parts of its asset group; the msg.parts of the asset (day join) waits in msg.assetParts. A failed call fails the day (link "to JOIN").',
+    'one asset. 6.1 keeps the master data of the products of the day and sends ONE MESSAGE PER PRODUCT AND PER ORDER (4 per second: the VFC drops the messages of a day that runs too long, about 60 s, with no error; at 1 per second a shift day of 8 assets needed about 80 s). 6.2 builds the evaluateKPIs POST (read-style, hourly) filtered on that product or order. Every value message carries msg.parts of its asset group; the msg.parts of the asset (day join) waits in msg.assetParts. A failed call fails the day (link "to JOIN").',
     [
       linkInStep('VALUES'),
       fn('valMsgFn', 'Build value messages', 'd7-value-messages.js',
         ['next', 'ASSIGN', 'JOIN']),
-      delay('valDelay', 'One value per second'),
+      delay('valDelay', `${VALUES_PER_SECOND} values per second`, 1,
+        VALUES_PER_SECOND),
       fn('valKpiFn', 'Build value KPI request', 'd7-value-request.js',
         ['next']),
       http('valKpiHttp', 'POST evaluateKPIs (one value)'),

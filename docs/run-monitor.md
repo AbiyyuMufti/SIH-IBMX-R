@@ -154,9 +154,16 @@ A deploy or restart kills the messages in flight, so a day can stay `running` or
 - Live status tab: one accordion row per flow, the flow with the most recent checkpoint first, flows that never ran last. The first row is open; the open rows stay open at the 10 second refresh.
 - To change one node without importing the flow: `node scripts/build-monitor-page-paste.js` writes the node code to `flows/paste/`.
 
-## Stalled multi-day runs (fixed 2026-10-23)
+## Stalled multi-day runs (2026-10-23)
 A backfill of several days stopped after 1 to 2 minutes with no error and no checkpoint; one day alone finished. Both report tabs counted the product and order calls of an asset in flow context (`valueRuns`), read and written by every day in flight. Overlapping days left runs that never reached their count, so the asset and then the day waited for ever.
 - Now: each value message carries `msg.parts` of its asset group and a join node (`Wait for all values`, lane VALUE CHECK) collects them; the asset's parts for the day join wait in `msg.assetParts` (the same pattern as the hourly 413 fallback, `msg.dayParts`). No flow context is used for value runs any more.
 - Days still start one per 60 s (shift report) or 30 s (SIH report daily) as a second safety net.
 - Proof: old and new flows give the same requests, logs, errors and parquet rows on the mock (`node scripts/compare-flow-runs.js <flow.json> <out.json> platform=...`, scenarios ok, products, value-413-day, value-kpi-fail, products-fail, kpi-413-day, kpi-fail; only `loaded_at` differs).
 - Not done: a retry on HTTP 502/503/504. It needs a second http request node per call and the SIH report daily tab is at 198 of 200 nodes.
+
+### Real cause: a shift day that runs too long (proven in the VFC, 2026-10-23)
+The value join did not cure it: shift day 2026-10-02 ALONE still stalled at 5 to 6 of 8 assets, with no error. The same day replayed offline against the real API finished (146 calls, all 200, none over 3 s).
+- Every asset sends about 10 product/order calls, released by one shared delay node. At 1 per second a day of 8 assets needs about 80 s, and the VFC dropped every asset still open about 60 s after the day started (Siemens documents a 30 s run cap that delay nodes reset, 2 min in power mode; the exact rule is not documented for this case). A long wait in a delay queue alone is fine: a SIH day waited 2 min in the day queue and ran.
+- Fix: the value delay releases 4 calls per second (`VALUES_PER_SECOND` in `build-vfc-rpt-flows.js` and `build-vfc-pbi-flows.js`). Checked in the VFC: 10-02 alone 8/8 in 28 s; backfill 10-02..10-04 all `dry_run`, flow `quiet`, 17 to 28 s per day, no HTTP error, 192 hour rows per day.
+- Rule: keep one day's work under about 50 s. A slower rate or more assets per day (more lines, other sites) can bring the stall back.
+- Known monitor glitch: the asset counter of a finished day can show fewer assets (6/8) than joined. Checkpoints read and write the whole `runStatus_<flow>` object in global context and two close checkpoints can overwrite each other. The day state (`dry_run`, `written`, `failed`) is set by the join and is right.

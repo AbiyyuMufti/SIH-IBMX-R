@@ -182,7 +182,7 @@ export function makeBuilder(flowIndex) {
       } else if (step.t === 'delay') {
         add({
           id: id(step.key), type: 'delay', name: step.name, pauseType: 'rate',
-          timeout: '1', timeoutUnits: 'seconds', rate: '1', nbRateUnits: String(step.seconds || 1),
+          timeout: '1', timeoutUnits: 'seconds', rate: String(step.perSecond || 1), nbRateUnits: String(step.seconds || 1),
           rateUnits: 'second',
           randomFirst: '1', randomLast: '1', randomUnits: 'seconds', drop: false,
           powerMode: false, ...pos, wires: [[nextId]]
@@ -286,7 +286,7 @@ export const http = (key, name) => ({ t: 'http', key, name });
 export const linkInStep = (key) => ({ t: 'linkin', key });
 export const end = (key) => ({ t: 'end', key });
 export const split = (key) => ({ t: 'split', key });
-export const delay = (key, name, seconds) => ({ t: 'delay', key, name, seconds });
+export const delay = (key, name, seconds, perSecond) => ({ t: 'delay', key, name, seconds, perSecond });
 export const join = (key, name) => ({ t: 'join', key, name });
 
 export const catchStep = (key, name) => ({ t: 'catch', key, name });

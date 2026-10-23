@@ -31,6 +31,9 @@ import {
 // Seconds between two days of a run (SIH report daily). A day takes about
 // 20 s; days that overlap lost an asset now and then (2026-10-22), see the
 // same constant in build-vfc-rpt-flows.js.
+// Value KPI calls released per second. 1 per second lost assets in the VFC
+// (2026-10-23, shift day 2026-10-02); 4 per second ran it in 28 s.
+const VALUES_PER_SECOND = 4;
 const DAY_PACE_SECONDS = 30;
 
 const SITES = [{ name: 'Hull' }];
@@ -222,12 +225,13 @@ function buildDailyFlow(site, index) {
       end('VALUES')
     ]);
   lane(r++, 'VALUE KPIs',
-    'one asset. 6.1 keeps the master data of the products of the day and sends ONE MESSAGE PER PRODUCT AND PER ORDER (one per second). 6.2 builds the evaluateKPIs POST (read-style, hourly) filtered on that product or order. Every value message carries msg.parts of its asset group; the msg.parts of the asset (day join) waits in msg.assetParts. A failed call fails the day (link "to JOIN").',
+    'one asset. 6.1 keeps the master data of the products of the day and sends ONE MESSAGE PER PRODUCT AND PER ORDER (4 per second: the VFC drops the messages of a day that runs too long, about 60 s, with no error; at 1 per second a shift day of 8 assets needed about 80 s). 6.2 builds the evaluateKPIs POST (read-style, hourly) filtered on that product or order. Every value message carries msg.parts of its asset group; the msg.parts of the asset (day join) waits in msg.assetParts. A failed call fails the day (link "to JOIN").',
     [
       linkInStep('VALUES'),
       fn('valMsgFn', 'Build value messages', 'd7-value-messages.js',
         ['next', 'ASSIGN', 'JOIN']),
-      delay('valDelay', 'One value per second'),
+      delay('valDelay', `${VALUES_PER_SECOND} values per second`, 1,
+        VALUES_PER_SECOND),
       fn('valKpiFn', 'Build value KPI request', 'd7-value-request.js',
         ['next']),
       http('valKpiHttp', 'POST evaluateKPIs (one value)'),
