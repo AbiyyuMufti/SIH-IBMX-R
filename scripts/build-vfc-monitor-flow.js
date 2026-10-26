@@ -7,7 +7,7 @@ import { validateFlow } from './validate-flow.js';
 import { MONITOR_FLOWS } from './monitor-flows.js';
 import {
   makeBuilder, code, fn, linkInStep, readStep, listNode, catchStep, rawStep,
-  addLogLanes, compactLanes
+  csvNode, end, addLogLanes, compactLanes
 } from './lib-flow-builder.js';
 
 const FILE = 'vfc-run-monitor.json';
@@ -39,7 +39,7 @@ function buildFlow() {
         'route',
         'Route monitor request',
         'v1-route.js',
-        ['PAGE', 'STATUS', 'HISTORY', 'ERROR'],
+        ['PAGE', 'STATUS', 'HISTORY', 'ERROR', 'CONFIG'],
         {},
         true
       )
@@ -99,6 +99,36 @@ function buildFlow() {
       rawStep('historyResponse', {
         type: 'http response',
         name: 'Send history',
+        statusCode: '',
+        headers: {}
+      })
+    ]);
+
+  b.lane(row++, 'CONFIG REQUEST',
+    'view=config: lists the report scope folder <root>/reference/' +
+    'report_scope/site=All/ and reads the newest .csv. Without a file the ' +
+    'view is answered anyway (a read of a missing file would wait).',
+    [
+      linkInStep('CONFIG'),
+      fn('configRequest', 'Set scope folder', 'v11-config-request.js',
+        ['next', 'ERROR']),
+      listNode('configList'),
+      fn('configPick', 'Pick scope file', 'v12-pick-scope.js',
+        ['next', 'CONFIG JSON']),
+      readStep('configRead', 'Read scope file'),
+      csvNode('configCsv'),
+      end('CONFIG JSON')
+    ]);
+
+  b.lane(row++, 'CONFIG VIEW',
+    'Answers the settings of 1.1 CONFIG without clientId and clientSecret, ' +
+    'and the rules of the report scope file (docs/report-scope.md).',
+    [
+      linkInStep('CONFIG JSON'),
+      fn('configJson', 'Build config JSON', 'v13-config-json.js', ['next']),
+      rawStep('configResponse', {
+        type: 'http response',
+        name: 'Send config',
         statusCode: '',
         headers: {}
       })

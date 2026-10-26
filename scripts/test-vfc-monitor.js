@@ -273,6 +273,46 @@ check(
   'unknown monitor route returns 404 JSON'
 );
 
+// Configuration view: route, request, missing scope file, JSON without
+// credentials.
+const configRoute = { req: { query: { view: 'config' } } };
+check(route(flow, node, configRoute, Buffer, Promise, glob)[4] === configRoute,
+  'view=config goes to the CONFIG output');
+const configRequest = vmFunction('v11-config-request.js', {});
+const savedCfg = globalData.cfg;
+delete globalData.cfg;
+const noCfg = configRequest(flow, node, {}, Buffer, Promise, glob);
+check(noCfg[0] === null && noCfg[1].statusCode === 503, 'config view: 503 without the Config tab');
+globalData.cfg = {
+  root: 'eu_report',
+  platform: 'xcelerator',
+  clientId: 'id-value',
+  clientSecret: 'secret-value',
+  sites: [{ name: 'Hull', reportSource: 'provideam', lines: [] }]
+};
+const asked = configRequest(flow, node, {}, Buffer, Promise, glob);
+check(asked[0].path === 'eu_report/reference/report_scope/site=All/', 'config view: lists the scope folder');
+const pickScope = vmFunction('v12-pick-scope.js', {});
+const none = pickScope(flow, node, { payload: [], scopeFolder: 'x/' }, Buffer, Promise, glob);
+check(none[0] === null && /no .csv file/.test(none[1].scopeMissing), 'config view: no scope file is answered, not read');
+const pickedScope = pickScope(flow, node, {
+  payload: [
+    { key: 'data/ten=t/eu_report/reference/report_scope/site=All/old.csv', lastModified: '2025-01-01' },
+    { key: 'data/ten=t/eu_report/reference/report_scope/site=All/new.csv', lastModified: '2026-10-27' }
+  ]
+}, Buffer, Promise, glob);
+check(pickedScope[0].path === 'eu_report/reference/report_scope/site=All/new.csv', 'config view: the newest scope file, without the tenant folder');
+const configJson = vmFunction('v13-config-json.js', {});
+const answerMsg = configJson(flow, node, {
+  payload: [{ '﻿Site': 'Hull', Tables: 'Plan_OPT_EU', Rule: 'drop', Column: 'MachineName', Value: 'GG4' }]
+}, Buffer, Promise, glob);
+const configText = JSON.stringify(answerMsg.payload);
+check(answerMsg.statusCode === 200 && !/secret-value|id-value/.test(configText) &&
+  answerMsg.payload.config.root === 'eu_report' && answerMsg.payload.scope.rules[0].Site === 'Hull' &&
+  answerMsg.payload.scope.rules[0].Why === '',
+'config view: settings without clientId and clientSecret, scope rules with the byte order mark handled');
+globalData.cfg = savedCfg;
+
 const statusFn = vmFunction('v2-status-json.js', {});
 const staleAt = new Date(Date.now() - 31 * 60 * 1000).toISOString();
 globalData['runStatus_sih-hull'] = {

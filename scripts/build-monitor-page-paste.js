@@ -25,7 +25,10 @@ TABS.forEach(([flowFile, prefix]) => {
 });
 NODES.forEach(([flowFile, name, out]) => {
   const flow = JSON.parse(readFileSync(`flows/${flowFile}.json`, 'utf8'));
-  const node = flow.find((n) => n.type === 'function' && n.name === name);
+  // Matched without the stage number: stages move when a lane is added.
+  const bare = name.replace(/^[0-9.]+ /, '');
+  const node = flow.find((n) => n.type === 'function' &&
+    n.name.replace(/^[0-9.]+ /, '') === bare);
   if (!node) throw new Error(`node not found: ${name}`);
   writeFileSync(`flows/paste/${out}.js`, node.func);
   console.log(`written flows/paste/${out}.js (node "${name}")`);

@@ -1,12 +1,13 @@
 // Browser code of the monitor page (tabs, status cards, history table,
-// backfill form). Not a function node: the builder embeds it as text in
+// backfill form, configuration view). Not a function node: the builder embeds it as text in
 // node 2.1 (scripts/vfc/v6-monitor-page.js), inside a function that sets
 // presetKey first. Plain ES5 for the browser.
 var REFRESH_MS = 10000;
 var TABS = [
   'status',
   'history',
-  'command'
+  'command',
+  'config'
 ];
 // The monitored flows: the builder fills in scripts/monitor-flows.js.
 var MONITOR_FLOWS = __MONITOR_FLOWS__;
@@ -45,6 +46,7 @@ var TONES = {
 };
 var lastHistory = null;
 var historyLoaded = false;
+var configLoaded = false;
 var openFlows = null;
 var key = new URLSearchParams(location.search).get('key') || '';
 var base = location.pathname.replace(/\/+$/, '');
@@ -420,6 +422,108 @@ function loadHistory() {
   });
 }
 
+// ---------- tab 4: configuration ----------
+
+// One table from a list of objects and the columns to show.
+function simpleTable(rows, columns) {
+  if (!rows.length) {
+    return '<p class="mute">None.</p>';
+  }
+  var out = '<div class="scroll"><table><thead><tr>';
+  columns.forEach(function (column) {
+    out += '<th>' + esc(column[1]) + '</th>';
+  });
+  out += '</tr></thead><tbody>';
+  rows.forEach(function (row) {
+    out += '<tr>';
+    columns.forEach(function (column) {
+      var value = row[column[0]];
+      if (value !== null && typeof value === 'object') {
+        value = JSON.stringify(value);
+      }
+      out += '<td class="wrap">' + esc(value === undefined ? '' : value);
+      out += '</td>';
+    });
+    out += '</tr>';
+  });
+  return out + '</tbody></table></div>';
+}
+
+function renderConfig(data) {
+  var cfg = data.config || {};
+  var sites = cfg.sites || [];
+  var general = {};
+  Object.keys(cfg).forEach(function (name) {
+    if (name !== 'sites') {
+      general[name] = cfg[name];
+    }
+  });
+  var lines = [];
+  sites.forEach(function (site) {
+    (site.lines || []).forEach(function (line) {
+      lines.push({
+        site: site.name,
+        report: line.report,
+        sih: line.sih,
+        id: line.id,
+        source: line.reportSource || site.reportSource,
+        shiftReport: line.shiftReport ? 'yes' : ''
+      });
+    });
+  });
+  var scope = data.scope || {};
+  var out = '<h2>General</h2>' + kvList(general);
+  out += '<p class="mute">Not shown: ' + esc((data.hidden || []).join(', '));
+  out += '. Edit in node 1.1 CONFIG of the Config tab.</p>';
+  out += '<h2>Sites</h2>' + simpleTable(sites, [
+    ['name', 'Site'],
+    ['reportSource', 'Source'],
+    ['timeZone', 'Time zone'],
+    ['dayStartLocal', 'Day start (local)'],
+    ['runHourLocal', 'Run hour (local)'],
+    ['reportExcludeNames', 'Excluded names']
+  ]);
+  out += '<h2>SIH lines</h2>' + simpleTable(lines, [
+    ['site', 'Site'],
+    ['report', 'Report name'],
+    ['sih', 'SIH name'],
+    ['source', 'Source'],
+    ['shiftReport', 'Shift report'],
+    ['id', 'Asset id']
+  ]);
+  out += '<h2>Report scope (In EU Report)</h2>';
+  if (scope.missing) {
+    out += '<p class="error">' + esc(scope.missing) + '</p>';
+  } else if (scope.file) {
+    out += '<p class="mute">' + esc(scope.file.path) + ', changed ';
+    out += esc(clock(scope.file.lastModified)) + '. Edit ';
+    out += 'config/report_scope.csv in the repo and upload it.</p>';
+  }
+  out += simpleTable(scope.rules || [], [
+    ['Site', 'Site'],
+    ['Tables', 'Tables'],
+    ['Rule', 'Rule'],
+    ['Column', 'Column'],
+    ['Value', 'Value'],
+    ['Why', 'Why']
+  ]);
+  $('configView').innerHTML = out;
+}
+
+function loadConfig() {
+  configLoaded = true;
+  $('configError').textContent = '';
+  $('configView').innerHTML = '<p class="mute">Loading...</p>';
+  fetch(url('config')).then(answer).then(function (data) {
+    $('configRaw').textContent = JSON.stringify(data, null, 2);
+    renderConfig(data);
+  }).catch(function (error) {
+    $('configView').innerHTML = '';
+    $('configError').textContent = 'Configuration not loaded: ' +
+      error.message;
+  });
+}
+
 // ---------- tab 3: backfill command ----------
 
 function updateCommandFields() {
@@ -516,6 +620,9 @@ function showTab(name) {
   if (name === 'history' && !historyLoaded) {
     loadHistory();
   }
+  if (name === 'config' && !configLoaded) {
+    loadConfig();
+  }
 }
 
 function applyRaw(name) {
@@ -559,6 +666,7 @@ TABS.forEach(function (tab) {
   });
 });
 $('clearStuck').addEventListener('click', clearStuck);
+$('reloadConfig').addEventListener('click', loadConfig);
 $('historyForm').addEventListener('submit', function (event) {
   event.preventDefault();
   loadHistory();

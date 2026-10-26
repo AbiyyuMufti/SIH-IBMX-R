@@ -1,5 +1,5 @@
-// Builds the self-contained monitor page: three tabs (live status, run log
-// history, backfill command), each with a visual view and a raw JSON view.
+// Builds the self-contained monitor page: four tabs (live status, run log
+// history, backfill, configuration), each with a visual and a raw view.
 // In: an authenticated GET for the base monitor route.
 // Out: HTML that polls status and lets the user inspect one month's log.
 
@@ -171,7 +171,9 @@ var html = [
   '<button id="tab-history" class="tab" role="tab" type="button">',
   'Run log history</button>',
   '<button id="tab-command" class="tab" role="tab" type="button">',
-  'Backfill</button></nav>',
+  'Backfill</button>',
+  '<button id="tab-config" class="tab" role="tab" type="button">',
+  'Configuration</button></nav>',
   '<main>',
   '<section id="panel-status" role="tabpanel">',
   rawBar(
@@ -232,6 +234,16 @@ var html = [
   rawBar('command', 'Answer of the last command.'),
   '<div id="commandView"><p class="mute">No command sent.</p></div>',
   '<pre id="commandResult" hidden>No command sent.</pre>',
+  '</section>',
+  '<section id="panel-config" role="tabpanel" hidden>',
+  rawBar(
+    'config',
+    'Config tab settings and the report scope file.',
+    '<button id="reloadConfig" type="button" class="ghost">Reload</button>'
+  ),
+  '<p id="configError" class="error"></p>',
+  '<div id="configView"></div>',
+  '<pre id="configRaw" hidden></pre>',
   '</section></main>',
   '<script>',
   '(function () {',
