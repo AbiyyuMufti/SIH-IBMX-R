@@ -353,10 +353,13 @@ Question of Segun: the sum of `Value` differs between the EU and the site report
 | EU union step reads times as hours:minutes (seconds dropped) | Plan OPT times; Nottingham losses union | Hull OEE Time -0.13 %, Nottingham about -0.1 %; Good Parts and Capacity unchanged |
 | Refresh date | all tables | only 7 to 15 Sep; e.g. Hull Capacity 35,900 (0.004 %) |
 
-**Hull `Value` in detail.** Same rows, different value: the EU renames the loss sub groups (Text.Proper plus 12 renames) before the key, uses machine-site and the regional glidepath; the Hull site keeps raw names, key machine, own glidepath file (V7). Each effect alone is about 52,000 and they nearly cancel in the first replica run. Redoing the lookup the site way on the EU rows reproduces the site `Value` except 36 of 224,885 stops.
+**Hull `Value` in detail.** Same rows, different value: the EU renames the loss sub groups (Text.Proper plus 12 renames) before the key, uses machine-site and the regional glidepath; the Hull site keeps raw names, key machine, own glidepath file (V7). Each effect alone is about 52,000 and they nearly cancel in the first replica run. Redoing the lookup the site way on the EU rows reproduces the site `Value` except 36 of 224,885 stops (explained below).
 
 **Not explained yet (small).**
-- 36 Hull stops with another `Value` after the site-way lookup. Spread over 2025 and 2026. Hypothesis: sub group spelling that differs only by case ("Lack of Resources" / "Lack of resources"); Power BI keeps one spelling per text value. Not confirmed row by row.
+- 36 Hull stops with another `Value` after the site-way lookup: explained row by row (2026-10-27), none is a report difference.
+  - 29 B6 `In process Quality Control` stops (2026, `Loss Final Level` "240 Bottle Functionality Check"): same key and the glidepath has 5.6, but both reports leave `Value` empty (`Loss Units` empty). The replica takes the glidepath alone. The exact rule was not found (257 other site rows have a `Value` with `Loss Units` empty).
+  - 4 T1 stops (Feb to Apr 2025) spelt `Lack of Resources` in the source: the site rename matches case, so they keep that name and find no glidepath row. The loaded model shows one spelling per text value, so the replica must rename ignoring case (244 other stops are renamed); with a case-sensitive rename 276 stops differ.
+  - 3 SP7 stops (15 Sep 2026) re-classed from `Breakdown - Electrical` to `Adjustment` after the EU refresh: refresh date.
 - `Daily Losses EU` has 6 more Nottingham stops (278 min) than the EU Nottingham part before the union.
 - Nottingham losses: 2,651 EU stops (28 machines, September) have no match in the EU Machine Names (losses drop 9 names, Machine Names keeps only packing areas). They count in a plain total but drop out of visuals that use Dept / Area / machine.
 - `Volume Total` is repeated on every stop of a machine and day: its plain sum is not meaningful.
