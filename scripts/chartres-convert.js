@@ -260,6 +260,7 @@ for (const f of files.filter((x) => YEARS.includes(x.year))) {
         'OEE Target': oeeTarget,
         ...machineCols,
         'Data Source': DATA_SOURCE,
+        'In EU Report': true,
         source_hours: null,
         loaded_at: LOADED_AT,
       });
@@ -277,6 +278,7 @@ for (const f of files.filter((x) => YEARS.includes(x.year))) {
       'All Time': 1440,
       ...machineCols,
       'Data Source': DATA_SOURCE,
+      'In EU Report': true,
       loaded_at: LOADED_AT,
     });
     sum.util += 1;
@@ -325,6 +327,7 @@ for (const f of files.filter((x) => YEARS.includes(x.year))) {
         'Loss Final Level': lv.l3,
         ...machineCols,
         'Data Source': DATA_SOURCE,
+        'In EU Report': true,
         target: null,
         batch_id: null,
         comment_count: null,

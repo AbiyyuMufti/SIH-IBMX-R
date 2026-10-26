@@ -7,13 +7,17 @@
 // DATE columns are written from a day number (days since 1970-01-01), times
 // of day from the milliseconds of the day on 1970-01-01 (the parquet node
 // cannot write dates before 1970). Spike results: docs/pbi-report-build.md.
-import { S, I, D, TS } from './lib-flow-builder.js';
+import { S, B, I, D, TS } from './lib-flow-builder.js';
 
 const DATE = 'DATE';
 const str = (names) => names.map((n) => [n, S]);
 
-// The machine columns and the source, after the report columns.
-const machineCols = str(['Dept', 'Area', 'Product Type', 'Data Source']);
+// The machine columns, the source and the EU scope (false: a row the EU
+// pages leave out, the site pages keep), after the report columns.
+const machineCols = [
+  ...str(['Dept', 'Area', 'Product Type', 'Data Source']),
+  ['In EU Report', B]
+];
 
 export const reportPlanSchema = [
   ['Date', DATE],

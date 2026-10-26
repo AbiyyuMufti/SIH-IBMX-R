@@ -94,7 +94,7 @@ function shiftOf(name) {
   return name;
 }
 
-// Dept, Area, Product Type of the machine and the source.
+// Dept, Area, Product Type of the machine, the source and the EU scope.
 function addMachine(row, name) {
   var info = machines[name];
   if (!info) {
@@ -104,6 +104,8 @@ function addMachine(row, name) {
   row['Area'] = info ? info.Area : null;
   row['Product Type'] = info ? info['Product Type'] : null;
   row['Data Source'] = DATA_SOURCE;
+  // The SIH lines of Config are packing lines: all in the EU report.
+  row['In EU Report'] = true;
   return row;
 }
 

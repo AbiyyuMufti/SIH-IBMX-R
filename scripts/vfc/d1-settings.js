@@ -92,7 +92,6 @@ node.status({
 });
 msg.trigger = p;
 msg.payload = site.name;
-msg.allMachines = true;
 msg.day = new Date().toISOString().slice(0, 10);
 msg.mode = backfill ? 'backfill' : 'schedule';
 return msg;

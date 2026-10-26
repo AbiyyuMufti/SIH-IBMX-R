@@ -2,38 +2,9 @@
 // the report queries (Daily Line Losses H, N, W and Daily Losses Provideam).
 // In: msg.payload = parsed line loss file; flow context vc_, cap_, equip_,
 // targets_, shiftMap. Out 1: the table message, out 2: a check log line.
-var HULL_SKIP = [
-  '4 Tonne',
-  '6 Tonne',
-  '6000L',
-  'Analgesics Processing',
-  'Analgesics X Press',
-  'Bosch Capsulator ',
-  'Dettol 1',
-  'Evolution',
-  'Fitten',
-  'Gaviscon TPR',
-  'Gaviscon XP700(A)',
-  'GG4',
-  'GG5',
-  'GG6',
-  'GG7',
-  'Lemsip Process',
-  'Senokot Press',
-  'Symex suite',
-  'Vacumix'
-];
-var NOTTS_SKIP = [
-  'Bosch',
-  'Fette 23',
-  'Fette12',
-  'Fette2',
-  'Fette20',
-  'Fette4',
-  'Fette5',
-  'Gran0',
-  'S14'
-];
+
+// Machines both the EU and the site reports drop. The EU scope (In EU
+// Report) comes from the report scope file in a later node.
 var EARLY_SKIP = [
   'B1 - Auto',
   'B4 Auto',
@@ -79,8 +50,7 @@ var RULES = {
     groups: GROUPS,
     groupAfter: [],
     proper: true,
-    final: HULL_FINAL,
-    skip: HULL_SKIP
+    final: HULL_FINAL
   },
   Nottingham: {
     breakdownTypes: true,
@@ -104,8 +74,7 @@ var RULES = {
       ['Meals & Breakss', 'Breaks / Meals'],
       ['In Process Quality Control', 'In Process Quality'],
       ['Start up & Sanitisation', 'Start up and Sanitisation']
-    ],
-    skip: NOTTS_SKIP
+    ]
   },
   Weinheim: {
     breakdownTypes: false,
@@ -130,8 +99,7 @@ var RULES = {
       ['Changeover', 'Product Changeover'],
       ['In Process Control', 'In Process Quality'],
       ['Rework', 'In Process Quality']
-    ],
-    skip: []
+    ]
   }
 };
 
@@ -150,7 +118,6 @@ var count = {
   dupes: 0,
   early: 0,
   group: 0,
-  last: 0,
   noUnits: 0,
   noEquip: 0,
   noTarget: 0,
@@ -262,10 +229,6 @@ rows.forEach(function (row) {
   group = replaceAll(group, rule.groupAfter);
   sub = rule.proper ? proper(sub) : sub;
   sub = replaceAll(sub, rule.final);
-  if (rule.skip.indexOf(machine) !== -1) {
-    count.last++;
-    return;
-  }
   var unique = machine + '-' + site;
   var part = rule.cutPart ? asText(row.PartName).slice(rule.cutPart) :
     asText(row.PartName);
@@ -336,9 +299,9 @@ flow.set('cap_' + site + '_' + msg.month, undefined);
 
 var text = site + ' ' + msg.month + ': read ' + count.read + ' rows, kept ' +
   out.length + ' (duplicate starts ' + count.dupes + ', early filter ' +
-  count.early + ', group filter ' + count.group + ', machine list ' +
-  count.last + '), no loss units ' + count.noUnits + ', no equipment ' +
-  count.noEquip + ', no target ' + count.noTarget;
+  count.early + ', group filter ' + count.group + '), no loss units ' +
+  count.noUnits + ', no equipment ' + count.noEquip + ', no target ' +
+  count.noTarget;
 var noShift = Object.keys(count.noShift);
 if (noShift.length) {
   text += ', shift not mapped: ' + noShift.slice(0, 5).join(' / ');

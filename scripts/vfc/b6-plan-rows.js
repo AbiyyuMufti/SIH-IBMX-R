@@ -2,71 +2,25 @@
 // the rules of the report queries. In: msg.payload = parsed month file, flow
 // context shiftMap and targets_<site>. Out 1: plan table, out 2: time
 // utilisation table (for the decide nodes), out 3: a check log line.
-var HULL_SKIP = [
-  'GT4 - Auto',
-  '4 Tonne',
-  '6 Tonne',
-  '6000L',
-  'Analgesics Processing',
-  'Analgesics X Press',
-  'Bosch Capsulator ',
-  'Dettol 1',
-  'Evolution',
-  'Fitten',
-  'Gaviscon TPR',
-  'Gaviscon XP700(A)',
-  'GG4',
-  'GG5',
-  'GG6',
-  'GG7',
-  'Lemsip Process',
-  'Senokot Press',
-  'Symex suite',
-  'Vacumix'
-];
-var NOTTS_UTIL_KEEP = [
-  'N1',
-  'N10',
-  'N11',
-  'N12',
-  'N3',
-  'N4',
-  'N5',
-  'N6',
-  'N7',
-  'N8',
-  'N9 Auto',
-  'O5',
-  'O6',
-  'S04',
-  'S05',
-  'S06',
-  'S08',
-  'S10',
-  'S11',
-  'S12',
-  'S13',
-  'T2',
-  'T7'
-];
+
+// Machines both the EU and the site reports drop. The EU scope (In EU
+// Report) comes from the report scope file in a later node.
 var RULES = {
   Hull: {
-    planSkip: HULL_SKIP,
-    utilSkip: HULL_SKIP,
+    planSkip: [
+      'GT4 - Auto'
+    ],
+    utilSkip: [
+      'GT4 - Auto'
+    ],
     replaceText: [
       ['Gavi 12 X 150 Russian Crypto', 'Gavi 12 x 150 russian Crypto']
     ]
   },
   Nottingham: {
-    planAreas: [
-      ' Strepsils Packing',
-      'SD Packing'
-    ],
     planSkip: [
-      'N11 Auto',
-      'S14'
+      'N11 Auto'
     ],
-    utilKeep: NOTTS_UTIL_KEEP,
     utilSkip: [
       'N11 Auto'
     ]
@@ -157,8 +111,7 @@ rows.forEach(function (row) {
   var unique = machine + '-' + site;
 
   // Time utilisation: its own machine rules, sums per machine and day.
-  if (inList(rule.utilSkip, machine) ||
-      (rule.utilKeep && !inList(rule.utilKeep, machine))) {
+  if (inList(rule.utilSkip, machine)) {
     count.utilSkipped++;
   } else {
     var key = date + '|' + machine;
@@ -181,9 +134,8 @@ rows.forEach(function (row) {
     utilByKey[key]['OEE Time Total'] += used ? used.exact : 0;
   }
 
-  // Plan OPT: the machine and area rules of the site.
-  if (inList(rule.planSkip, machine) ||
-      (rule.planAreas && !inList(rule.planAreas, row.AreaName))) {
+  // Plan OPT: the machines the site drops.
+  if (inList(rule.planSkip, machine)) {
     count.planSkipped++;
     return;
   }

@@ -23,8 +23,12 @@ const check = (ok, text) => {
   if (!ok) failures++;
 };
 
-// A small lake: the three Machine Names files and the Shift Patterns file.
+// A small lake: the three Machine Names files, the Shift Patterns file and
+// the report scope file of the repo (config/report_scope.csv).
+const SCOPE_FILE = `${REF}/report_scope/site=All/report_scope.csv`;
+const SCOPE_CSV = readFileSync(new URL('../config/report_scope.csv', import.meta.url), 'utf8');
 const makeLake = () => new Map([
+  [SCOPE_FILE, SCOPE_CSV],
   [`${REF}/machine_names/site=Hull/Hull_MachineNames.csv`, [
     'MachineName,Dept,Area,Product Type',
     'B2 Auto,Liquids Pack,Liquids,Bottles',
@@ -75,12 +79,14 @@ const RENAME = {
     PartName: 'part_name', 'Good Parts': 'good_parts', Capacity: 'capacity', 'Total Time': 'total_time',
     'Planned OpT': 'planned_opt', 'OEE Time': 'oee_time', 'Downtime Units': 'downtime_units',
     SiteName: 'site_name', 'Unique Machine Name': 'unique_machine_name', 'Product Key': 'product_key',
-    'UPDT Target': 'updt_target', 'PDT Target': 'pdt_target', 'OEE Target': 'oee_target'
+    'UPDT Target': 'updt_target', 'PDT Target': 'pdt_target', 'OEE Target': 'oee_target',
+    'In EU Report': 'in_eu'
   },
   'Write Time_Utilisation_EU parquet': {
     Date: ['date', dayText], MachineName: 'machine_name', 'OEE Time Total': 'oee_time_total',
     'Total Time Total': 'total_time_total', 'Planned OPT Total': 'planned_opt_total',
-    SiteName: 'site_name', 'Unique Machine Name': 'unique_machine_name', 'All Time': 'all_time'
+    SiteName: 'site_name', 'Unique Machine Name': 'unique_machine_name', 'All Time': 'all_time',
+    'In EU Report': 'in_eu'
   },
   'Write Daily_Losses_EU parquet': {
     Date: ['date', dayText], Time: ['time', timeText], MachineName: 'machine_name', PartName: 'part_name',
@@ -90,7 +96,8 @@ const RENAME = {
     ShiftStartDate: ['shift_start_date', dayText], Comment: 'comment', 'Product Key': 'product_key',
     'Volume Key': 'volume_key', 'Loss Units': 'loss_units', Equipment: 'equipment',
     'Loss Target Key': 'loss_target_key', Value: ['value', (v) => (v === null ? null : Number(v))],
-    'Volume Total': 'volume_total', 'Loss Final Level': 'loss_final_level'
+    'Volume Total': 'volume_total', 'Loss Final Level': 'loss_final_level',
+    'In EU Report': 'in_eu'
   }
 };
 const rowsOf = (stats, name) => {
@@ -201,7 +208,12 @@ check(JSON.stringify(tableWrites(stats).sort()) === JSON.stringify([
   'reportSource sih: the Provideam months of Hull go to candidate/provideam: ' + files.join(', '));
 }
 let plan = rowsOf(stats, PLAN);
-check(plan.length === 3, `plan rows 3 (4 Tonne, GT4 - Auto, Bosch Capsulator and the blank machine are left out): ${plan.length}`);
+check(plan.length === 5, `plan rows 5 (GT4 - Auto and the blank machine are left out): ${plan.length}`);
+check(JSON.stringify(plan.filter((r) => !r.in_eu).map((r) => r.machine_name).sort()) ===
+  JSON.stringify(['4 Tonne', 'Bosch Capsulator ']),
+'scope: 4 Tonne and Bosch Capsulator (trailing space in the source) are In EU Report false, the rest true');
+plan = plan.filter((r) => r.in_eu);
+check(/In EU Report false: 2 rows/.test(logText(stats)), 'scope: the log counts the rows outside the EU report');
 const first = plan.find((r) => r.date === '2026-09-01' && r.part_name.startsWith('NFC'));
 check(first.unique_machine_name === 'B2 Auto-Hull' && first.product_key === 'B2 Auto-Hull NFC 12 X 100ML',
   'plan: unique machine name, product key; trailing spaces of the part name are removed: ' + JSON.stringify(first.product_key));
@@ -218,7 +230,7 @@ check(gavi.part_name === 'Gavi 12 x 150 russian Crypto', 'plan: Hull part name t
 const mystery = plan.find((r) => r.date === '2026-09-02');
 check(mystery.shift_name === null, 'plan: a shift name that is not in the file gives an empty shift');
 check(/shift not mapped: Mystery Shift/.test(logText(stats)), 'plan: the check log names the unmapped shift');
-const util = rowsOf(stats, UTIL);
+const util = rowsOf(stats, UTIL).filter((r) => r.in_eu);
 const u1 = util.find((r) => r.date === '2026-09-01');
 check(util.length === 2 && u1.machine_name === 'B2 Auto', 'time utilisation: one row per machine and day: ' + util.length);
 check(Math.abs(u1.total_time_total - 750.5) < 1e-9 && Math.abs(u1.planned_opt_total - 721.25) < 1e-9 &&
@@ -240,12 +252,16 @@ check(oct.oee_target === null && oct.pdt_target === 13 && oct.updt_target === nu
 // 10. Nottingham rules
 stats = await run({ tables: STEP2, sites: ['Nottingham'], from: '2026-09', to: '2026-09' }, { lake: planLake() });
 plan = rowsOf(stats, PLAN);
-check(JSON.stringify(plan.map((r) => r.machine_name).sort()) === JSON.stringify(['N11', 'S06']),
-  'Nottingham plan: only the two areas; S14, N11 Auto and the area without the leading space are left out: ' + plan.map((r) => r.machine_name));
+check(JSON.stringify(plan.map((r) => r.machine_name).sort()) === JSON.stringify(['N11', 'S06', 'S07', 'S14', 'X99']),
+  'Nottingham plan: only N11 Auto is left out: ' + plan.map((r) => r.machine_name));
+check(JSON.stringify(plan.filter((r) => r.in_eu).map((r) => r.machine_name).sort()) === JSON.stringify(['N11', 'S06', 'S07']),
+  'Nottingham plan scope: the two packing areas (with or without the leading space), not S14: ' +
+  plan.filter((r) => r.in_eu).map((r) => r.machine_name));
 check(plan.find((r) => r.machine_name === 'S06').area_name === ' Strepsils Packing' &&
   plan.find((r) => r.machine_name === 'S06').oee_target === 40, 'Nottingham plan: the area keeps its leading space, target found');
-const nu = rowsOf(stats, UTIL).map((r) => r.machine_name).sort();
-check(JSON.stringify(nu) === JSON.stringify(['N11', 'S06']), 'Nottingham time utilisation: only the machines of its list: ' + nu);
+const nu = rowsOf(stats, UTIL).filter((r) => r.in_eu).map((r) => r.machine_name).sort();
+check(JSON.stringify(nu) === JSON.stringify(['N11', 'S06']), 'Nottingham time utilisation scope: only the machines of its list: ' + nu);
+check(rowsOf(stats, UTIL).length === 5, 'Nottingham time utilisation: every machine but N11 Auto has rows');
 
 // 11. no glidepaths file for a site: nothing for that site, others unaffected
 const noGlide = planLake();
@@ -257,7 +273,7 @@ check(/FAILED, NOTHING WRITTEN: glidepaths Nottingham/.test(logText(stats)), 'no
 
 // 12. dry run and one table
 stats = await run({ tables: STEP2, sites: ['Hull'], from: '2026-09', to: '2026-09' }, { lake: planLake(), write: false });
-check(tableWrites(stats).length === 0 && /DRY RUN: Plan_OPT_EU 3 rows/.test(logText(stats)), 'plan dry run: nothing written, rows counted in the log');
+check(tableWrites(stats).length === 0 && /DRY RUN: Plan_OPT_EU 5 rows/.test(logText(stats)), 'plan dry run: nothing written, rows counted in the log');
 stats = await run({ tables: ['Time_Utilisation_EU'], sites: ['Hull'], from: '2026-09', to: '2026-09' }, { lake: planLake() });
 check(JSON.stringify(tableWrites(stats)) === JSON.stringify([outPath('Time_Utilisation_EU', 'Hull', '2026-09')]),
   'job with one table writes only that table');
@@ -344,7 +360,9 @@ check(stats.errors.length === 0, 'losses: no error: ' + stats.errors.join(' | ')
 check(JSON.stringify(tableWrites(stats)) === JSON.stringify([outPath('Daily_Losses_EU', 'Hull', '2026-09')]),
   'losses: one file per site and month: ' + tableWrites(stats).join(', '));
 let loss = rowsOf(stats, LOSS);
-check(loss.length === 5, `losses: 5 rows (duplicate start, Micro Stoppage, B1 - Auto and 4 Tonne are left out; the duplicate equipment key doubles one row): ${loss.length}`);
+check(loss.length === 6, `losses: 6 rows (duplicate start, Micro Stoppage and B1 - Auto are left out; the duplicate equipment key doubles one row): ${loss.length}`);
+check(loss.filter((r) => !r.in_eu).map((r) => r.machine_name).join() === '4 Tonne', 'losses scope: 4 Tonne is In EU Report false');
+loss = loss.filter((r) => r.in_eu);
 const cap = loss.find((r) => r.loss_lvl3_desc === 'Capper');
 check(cap.loss_lvl3_sub_group === 'Breakdown' && cap.breakdown_types === 'Breakdown - Mechanical',
   'losses: subgroup Breakdown, the raw subgroup kept in breakdown_types: ' + cap.loss_lvl3_sub_group);
@@ -373,11 +391,13 @@ check(minorRow.loss_lvl3_sub_group === 'Minor Stops' && minorRow.loss_units === 
   'losses: Text.Proper and the list give Minor Stops, no correction gives no loss units, an unknown shift is empty');
 const lack = loss.find((r) => r.date === '2026-09-02');
 check(lack.loss_lvl3_sub_group === 'Lack Of Resources' && lack.value === 8, 'losses: Lack of resources becomes Lack Of Resources, target found: ' + lack.loss_lvl3_sub_group);
-check(/CHECK Hull 2026-09: read 8 rows, kept 5/.test(logText(stats)) && /duplicate starts 1/.test(logText(stats)), 'losses: the check log counts rows and duplicates');
+check(/CHECK Hull 2026-09: read 8 rows, kept 6/.test(logText(stats)) && /duplicate starts 1/.test(logText(stats)), 'losses: the check log counts rows and duplicates');
 
 stats = await run(lossJob(['Nottingham']), { lake: lossLake() });
 loss = rowsOf(stats, LOSS);
-check(loss.length === 1 && loss[0].machine_name === 'S06', 'Nottingham losses: the machine list drops Bosch: ' + loss.map((r) => r.machine_name));
+check(loss.length === 2 && loss.filter((r) => r.in_eu).map((r) => r.machine_name).join() === 'S06',
+  'Nottingham losses: Bosch is kept, In EU Report false: ' + loss.map((r) => r.machine_name + ' ' + r.in_eu));
+loss = loss.filter((r) => r.in_eu);
 check(loss[0].loss_lvl3_group === 'Planned Loss' && loss[0].loss_lvl3_sub_group === 'Breaks / Meals' && loss[0].equipment === 'Cooler',
   'Nottingham losses: group Planned Losses becomes Planned Loss, Breaks and Meals becomes Breaks / Meals: ' + loss[0].loss_lvl3_sub_group);
 check(loss[0].value === 2 && loss[0].breakdown_types === 'Breaks and Meals', 'Nottingham losses: target by subgroup, raw subgroup in breakdown_types');
@@ -395,7 +415,7 @@ noVc.delete(`${SRC}/volume_loss_correction/site=Hull/volume_loss_correction_2026
 noVc.delete(`${SRC}/plan_opt/site=Hull/plan_opt_2026-09.csv`);
 stats = await run(lossJob(['Hull']), { lake: noVc });
 loss = rowsOf(stats, LOSS);
-check(loss.length === 5 && loss.every((r) => r.loss_units === null && r.volume_total === null),
+check(loss.length === 6 && loss.every((r) => r.loss_units === null && r.volume_total === null),
   'losses: without a correction and a plan OPT file the rows are still built, loss units and volume total empty');
 const noEq = lossLake();
 noEq.delete(`${REF}/equipment_coding/site=Hull/Hull_Equipment.csv`);
@@ -403,7 +423,7 @@ stats = await run(lossJob(['Hull', 'Weinheim']), { lake: noEq });
 check(tableWrites(stats).length === 1 && /FAILED, NOTHING WRITTEN: equipment_coding Hull/.test(logText(stats)),
   'losses: no equipment file for a site: that site is skipped and logged, the other is built');
 stats = await run(lossJob(['Hull']), { lake: lossLake(), write: false });
-check(tableWrites(stats).length === 0 && /DRY RUN: Daily_Losses_EU 5 rows/.test(logText(stats)), 'losses dry run: nothing written');
+check(tableWrites(stats).length === 0 && /DRY RUN: Daily_Losses_EU 6 rows/.test(logText(stats)), 'losses dry run: nothing written');
 stats = await run({ tables: ['Plan_OPT_EU', 'Daily_Losses_EU'], sites: ['Hull'], from: '2026-09', to: '2026-09' }, { lake: lossLake() });
 check(tableWrites(stats).length === 2, 'plan OPT and losses in one job: both written (the shared setup is run once per site)');
 
@@ -417,13 +437,13 @@ const TABLEAU = {
     ['PartName', 'UTF8'], ['Good Parts', 'INT64'], ['Capacity', 'DOUBLE'], ['Total Time', 'INT64'],
     ['Planned OpT', 'INT64'], ['OEE Time', 'INT64'], ['Downtime Units', 'DOUBLE'], ['SiteName', 'UTF8'],
     ['Unique Machine Name', 'UTF8'], ['Product Key', 'UTF8'], ['UPDT Target', 'DOUBLE'],
-    ['PDT Target', 'DOUBLE'], ['OEE Target', 'DOUBLE'], ['Dept', 'UTF8'], ['Area', 'UTF8'], ['Product Type', 'UTF8'], ['Data Source', 'UTF8'], ['source_hours', 'INT64'],
+    ['PDT Target', 'DOUBLE'], ['OEE Target', 'DOUBLE'], ['Dept', 'UTF8'], ['Area', 'UTF8'], ['Product Type', 'UTF8'], ['Data Source', 'UTF8'], ['In EU Report', 'BOOLEAN'], ['source_hours', 'INT64'],
     ['loaded_at', 'TIMESTAMP_MILLIS']
   ],
   [UTIL]: [
     ['Date', 'DATE'], ['MachineName', 'UTF8'], ['OEE Time Total', 'DOUBLE'], ['Total Time Total', 'DOUBLE'],
     ['Planned OPT Total', 'DOUBLE'], ['SiteName', 'UTF8'], ['Unique Machine Name', 'UTF8'],
-    ['All Time', 'INT64'], ['Dept', 'UTF8'], ['Area', 'UTF8'], ['Product Type', 'UTF8'], ['Data Source', 'UTF8'], ['loaded_at', 'TIMESTAMP_MILLIS']
+    ['All Time', 'INT64'], ['Dept', 'UTF8'], ['Area', 'UTF8'], ['Product Type', 'UTF8'], ['Data Source', 'UTF8'], ['In EU Report', 'BOOLEAN'], ['loaded_at', 'TIMESTAMP_MILLIS']
   ],
   [LOSS]: [
     ['Date', 'DATE'], ['Time', 'TIMESTAMP_MILLIS'], ['MachineName', 'UTF8'], ['PartName', 'UTF8'],
@@ -433,7 +453,7 @@ const TABLEAU = {
     ['ShiftStartDate', 'DATE'], ['Comment', 'UTF8'], ['Product Key', 'UTF8'], ['Volume Key', 'UTF8'],
     ['Loss Units', 'DOUBLE'], ['Time in Mins', 'DOUBLE'], ['Equipment Loss Key', 'UTF8'],
     ['Equipment', 'UTF8'], ['Lvl 3 Loss Name', 'UTF8'], ['Loss Target Key', 'UTF8'], ['Value', 'UTF8'],
-    ['Volume Total', 'DOUBLE'], ['Loss Final Level', 'UTF8'], ['Dept', 'UTF8'], ['Area', 'UTF8'], ['Product Type', 'UTF8'], ['Data Source', 'UTF8'], ['target', 'DOUBLE'], ['batch_id', 'UTF8'],
+    ['Volume Total', 'DOUBLE'], ['Loss Final Level', 'UTF8'], ['Dept', 'UTF8'], ['Area', 'UTF8'], ['Product Type', 'UTF8'], ['Data Source', 'UTF8'], ['In EU Report', 'BOOLEAN'], ['target', 'DOUBLE'], ['batch_id', 'UTF8'],
     ['comment_count', 'INT64'], ['loaded_at', 'TIMESTAMP_MILLIS']
   ]
 };
@@ -471,7 +491,7 @@ check(lossRaw['Shift Time'] === 'Day' && lossRaw.ShiftName === 'Day' && lossRaw[
 const HULL_MN = `${REF}/machine_names/site=Hull/Hull_MachineNames.csv`;
 const PLAN_JOB = { tables: ['Plan_OPT_EU'], sites: ['Hull'], from: '2026-09', to: '2026-09' };
 stats = await run(PLAN_JOB, { lake: planLake() });
-let raw = rawRowsOf(stats, PLAN);
+let raw = rawRowsOf(stats, PLAN).filter((r) => r.MachineName === 'B2 Auto');
 check(raw.length === 3 && raw.every((r) => r.Dept === 'Liquids Pack' && r.Area === 'Liquids' &&
   r['Product Type'] === 'Bottles' && r['Data Source'] === 'Provideam'),
 'machine columns: Dept, Area, Product Type from the Machine Names file, Data Source Provideam');
@@ -479,7 +499,7 @@ check(raw.length === 3 && raw.every((r) => r.Dept === 'Liquids Pack' && r.Area =
   const lake = planLake();
   lake.set(HULL_MN, 'MachineName,Dept,Area,Product Type\nGT4,Dries Pack,Dries,Blisters\n');
   stats = await run(PLAN_JOB, { lake });
-  raw = rawRowsOf(stats, PLAN);
+  raw = rawRowsOf(stats, PLAN).filter((r) => r.MachineName === 'B2 Auto');
   check(raw.length === 3 && raw.every((r) => r.Dept === null && r['Product Type'] === null) &&
     /not in Machine Names[^\n]*B2 Auto/.test(logText(stats)),
   'machine columns: a machine not in the file gets empty columns and a log note');
@@ -498,7 +518,8 @@ check(raw.length === 3 && raw.every((r) => r.Dept === 'Liquids Pack' && r.Area =
   stats = await run(PLAN_JOB, {
     lake, lakeTimes: { [old]: '2025-01-01T00:00:00.000Z', [HULL_MN]: '2026-10-01T00:00:00.000Z' }
   });
-  check(rawRowsOf(stats, PLAN).every((r) => r.Area === 'Liquids'), 'two Machine Names files: the newest one is read');
+  check(rawRowsOf(stats, PLAN).filter((r) => r.MachineName === 'B2 Auto').every((r) => r.Area === 'Liquids'),
+    'two Machine Names files: the newest one is read');
 }
 stats = await run(PLAN_JOB, { lake: planLake(), listKeyPrefix: '/' });
 check(tableWrites(stats).length === 1, 'keys with a leading slash are read');
@@ -516,9 +537,33 @@ check(tableWrites(stats).length === 1, 'keys with a leading slash are read');
     outPath('Plan_OPT_EU', 'Hull', '2026-09', CANDIDATE), outPath('Plan_OPT_EU', 'Hull', '2026-09')]),
   'line on sih: two files of the month, report/ and candidate/provideam: ' + files.join(', '));
   const parts = stats.parquetPayloads[PLAN].map((rows) => rows.map((r) => r.MachineName).join());
-  check(JSON.stringify(parts.sort()) === JSON.stringify(['B2 Auto,B2 Auto,B2 Auto', 'GT4']),
+  check(JSON.stringify(parts.sort()) === JSON.stringify(['4 Tonne,Bosch Capsulator ,GT4', 'B2 Auto,B2 Auto,B2 Auto']),
     'line on sih: the B2 Auto rows go to candidate, GT4 stays in report');
   check(/to eu_report\/candidate\/provideam: B2 Auto/.test(logText(stats)), 'line on sih: the log names the moved line');
+}
+
+// ---- 15. the report scope file ----
+{
+  const lake = planLake();
+  lake.delete(SCOPE_FILE);
+  stats = await run(PLAN_JOB, { lake });
+  check(tableWrites(stats).length === 0 && /no csv file in eu_report\/reference\/report_scope\/site=All/.test(logText(stats)),
+    'no report scope file: nothing is written, the log names the folder');
+}
+{
+  const lake = planLake();
+  lake.set(SCOPE_FILE, 'Site,Tables,Rule,Column,Value,Why\nHull,Plan_OPT_EU;Daily_Losses_EU,keep,MachineName,B2 Auto,test\n');
+  stats = await run({ ...PLAN_JOB, tables: ['Plan_OPT_EU', 'Time_Utilisation_EU'] }, { lake });
+  const inEu = rawRowsOf(stats, PLAN).filter((r) => r['In EU Report']).map((r) => r.MachineName);
+  check(inEu.length === 3 && inEu.every((m) => m === 'B2 Auto'), 'scope keep rule: only the kept machine is In EU Report');
+  check(rawRowsOf(stats, UTIL).every((r) => r['In EU Report'] === true), 'scope: a table without rules is fully In EU Report');
+}
+{
+  const lake = planLake();
+  lake.set(SCOPE_FILE, 'Site,Tables\n');
+  stats = await run(PLAN_JOB, { lake });
+  check(tableWrites(stats).length === 0 && /report scope: no Tables/.test(logText(stats)),
+    'scope file without rules: the site fails, the log says why');
 }
 
 // 7b. real plan OPT and time utilisation (optional): `real plan dir=<dir>`
@@ -537,6 +582,7 @@ if (process.argv.includes('real') && process.argv.includes('plan')) {
   load('reference', 'glidepaths');
   load('reference', 'shift_naming');
   load('reference', 'machine_names');
+  lake.set(SCOPE_FILE, SCOPE_CSV);
   load('source', 'plan_opt');
   const real = await run({ tables: STEP2, from: '2024-12', to: '2026-10' }, { lake });
   console.log('real run: errors', real.errors.length, '| files', tableWrites(real).length);
@@ -578,6 +624,7 @@ if (process.argv.includes('real') && process.argv.includes('loss')) {
   load('reference', 'shift_naming');
   load('reference', 'machine_names');
   load('reference', 'equipment_coding');
+  lake.set(SCOPE_FILE, SCOPE_CSV);
   for (const type of ['plan_opt', 'line_losses', 'volume_loss_correction']) {
     load('source', type, true);
   }

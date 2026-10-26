@@ -22,11 +22,11 @@ import {
 const TABLES = ['Plan_OPT_EU', 'Time_Utilisation_EU', 'Daily_Losses_EU'];
 const FILE = 'vfc-pbi-report.json';
 
-// The end of a table lane: machine columns, split by source, decide (one
+// The end of a table lane: machine and scope columns, split by source, decide (one
 // message per folder), parquet, month path and write object.
 const monthEnd = (table, schema) => [
-  fn(`${table}_cols`, 'Add machine columns', 'b8-machine-columns.js',
-    ['next']),
+  fn(`${table}_cols`, 'Add machine and scope columns',
+    'b8-machine-columns.js', ['next']),
   fn(`${table}_split`, 'Split by source', 'b8-split-source.js', ['next']),
   fn(`${table}_decide`, `Decide ${table}`, 'r5-decide.js', ['next', 'LOG'],
     { __TABLE__: table }),
@@ -43,7 +43,7 @@ function buildFlow() {
   const stage1 = b.nextStage();
   comment(
     `[${stage1}] TRIGGER & TASK SETTINGS`,
-    `STAGE ${stage1} - TRIGGER AND TASK SETTINGS. Builds the three Tableau tables Plan_OPT_EU, Time_Utilisation_EU and Daily_Losses_EU from the Provideam CSV files in the data lake, one file per site and month, with Dept, Area and Product Type from the Machine Names file of the site and Data Source = Provideam. The rows of a line whose source in 1.1 CONFIG is Provideam go to <root>/report (what Tableau reads), the rows of a line on another source to <root>/candidate/provideam. The inject payload is the job: {"tables": [...], "sites": [...], "from": "YYYY-MM", "to": "YYYY-MM"}; a missing list means all, missing months mean last month and this month. Nothing is written while the table is true in DRY_RUN of 1.1.`,
+    `STAGE ${stage1} - TRIGGER AND TASK SETTINGS. Builds the three Tableau tables Plan_OPT_EU, Time_Utilisation_EU and Daily_Losses_EU from the Provideam CSV files in the data lake, one file per site and month, with Dept, Area and Product Type from the Machine Names file of the site, Data Source = Provideam and In EU Report from the report scope file (false: rows the EU pages leave out). The rows of a line whose source in 1.1 CONFIG is Provideam go to <root>/report (what Tableau reads), the rows of a line on another source to <root>/candidate/provideam. The inject payload is the job: {"tables": [...], "sites": [...], "from": "YYYY-MM", "to": "YYYY-MM"}; a missing list means all, missing months mean last month and this month. Nothing is written while the table is true in DRY_RUN of 1.1.`,
     r
   );
   add({
@@ -112,7 +112,7 @@ function buildFlow() {
       end('SITE MACHINES')
     ]);
   lane(r++, 'SITE SETUP: MACHINE NAMES',
-    'the Machine Names file of the site (<root>/reference/machine_names/site=<Site>/, newest .csv) is listed, read and parsed, and the lookup MachineName to Dept, Area and Product Type is stored in flow context, with the filters of the report queries (Hull: no "GT4 - Auto", Dept Dries Pack or Liquids Pack; Nottingham: Area SD Packing or Strepsils Packing; Weinheim: all). A machine left out has empty Dept, Area and Product Type in the tables, as in the report. A site without a file stops here and the log says so.',
+    'the Machine Names file of the site (<root>/reference/machine_names/site=<Site>/, newest .csv) is listed, read and parsed, and the lookup MachineName to Dept, Area and Product Type is stored in flow context, for every machine of the file (the EU scope is the column In EU Report, from the report scope file). A machine missing from the file has empty Dept, Area and Product Type. A site without a file stops here and the log says so.',
     [
       linkInStep('SITE MACHINES'),
       fn('mnFolder', 'Set machine names folder', 'b3-site-folder.js',
@@ -127,7 +127,7 @@ function buildFlow() {
       end('PLAN SHIFTS')
     ]);
   lane(r++, 'SITE SETUP: SHIFT PATTERNS',
-    'the Shift Patterns file (eu_report/reference/shift_naming/site=All/) is listed, read and parsed, and the lookup raw shift name to Shift is stored in flow context (the report joins ShiftName to the Shift Type column and keeps the Shift; an unknown name gives an empty shift). Then the site goes to the plan OPT months and/or the daily losses, as the job asks.',
+    'the Shift Patterns file (eu_report/reference/shift_naming/site=All/) is listed, read and parsed, and the lookup raw shift name to Shift is stored in flow context (the report joins ShiftName to the Shift Type column and keeps the Shift; an unknown name gives an empty shift).',
     [
       linkInStep('PLAN SHIFTS'),
       fn('plShiftFolder', 'Set shift folder', 'b5-plan-shift-folder.js',
@@ -138,6 +138,21 @@ function buildFlow() {
       readStep('plShiftRead', 'Read Shift Patterns file'),
       csvNode('plShiftCsv'),
       fn('plShiftLookup', 'Build shift lookup', 'b5-shift-lookup.js',
+        ['next', 'PLAN FAILED']),
+      end('SITE SCOPE')
+    ]);
+  lane(r++, 'SITE SETUP: REPORT SCOPE',
+    'the report scope file (<root>/reference/report_scope/site=All/, newest .csv, one row per rule: Site, Tables, Rule keep or drop, Column, Value) is listed, read and parsed, and the rules of the site are stored in flow context. They set the column In EU Report of every table (false: a row the EU pages leave out, the site pages keep). Then the site goes to the plan OPT months and/or the daily losses, as the job asks.',
+    [
+      linkInStep('SITE SCOPE'),
+      fn('scFolder', 'Set report scope folder', 'b5-scope-folder.js',
+        ['next']),
+      listNode('scList'),
+      fn('scPick', 'Pick the file', 'b3-pick-file.js',
+        ['next', 'PLAN FAILED']),
+      readStep('scRead', 'Read report scope file'),
+      csvNode('scCsv'),
+      fn('scLookup', 'Build scope lookup', 'b5-scope-lookup.js',
         ['next', 'PLAN FAILED']),
       fn('siteRoute', 'Route the site', 'b7-route-site.js',
         ['PLAN MONTHS', 'LOSS EQUIP'], {}, true)
@@ -155,7 +170,7 @@ function buildFlow() {
       end('PLAN FILE')
     ]);
   lane(r++, 'PLAN OPT: ROWS',
-    'one month of one site: the file is read and parsed, then Plan_OPT_EU rows (machine and area rules of the site, shift name from the Shift Patterns file, minutes without seconds, Unique Machine Name, Product Key, the three targets of the month) and Time_Utilisation_EU rows (own machine rules, sum per machine and day, minutes with seconds) are built. Out 3 is a check line: rows read, kept, left out, shifts without a mapping, machines without a target.',
+    'one month of one site: the file is read and parsed, then Plan_OPT_EU rows (only the machines both reports drop are left out, shift name from the Shift Patterns file, minutes without seconds, Unique Machine Name, Product Key, the three targets of the month) and Time_Utilisation_EU rows (sum per machine and day, minutes with seconds) are built. Out 3 is a check line: rows read, kept, left out, shifts without a mapping, machines without a target.',
     [
       linkInStep('PLAN FILE'),
       fn('plMonthFile', 'Set month file', 'b5-month-file.js', ['next']),
@@ -165,7 +180,7 @@ function buildFlow() {
         ['PLAN TABLE', 'UTIL TABLE', 'LOG'], {}, true)
     ]);
   lane(r++, 'Plan_OPT_EU',
-    'Dept, Area, Product Type from the machine lookup of the site and Data Source = Provideam are added, the rows are split by the source of their line in 1.1 CONFIG (a line on Provideam: <root>/report, any other: <root>/candidate/provideam, one message per folder), then decide (nothing is written in dry-run mode or for an empty month), parquet, the month path <folder>/Plan_OPT_EU/site=<Site>/Plan_OPT_EU_<YYYY-MM>_provideam.parquet and write object. A rerun replaces the month.',
+    'Dept, Area, Product Type from the machine lookup of the site, Data Source = Provideam and In EU Report from the scope rules are added, the rows are split by the source of their line in 1.1 CONFIG (a line on Provideam: <root>/report, any other: <root>/candidate/provideam, one message per folder), then decide (nothing is written in dry-run mode or for an empty month), parquet, the month path <folder>/Plan_OPT_EU/site=<Site>/Plan_OPT_EU_<YYYY-MM>_provideam.parquet and write object. A rerun replaces the month.',
     [
       linkInStep('PLAN TABLE'),
       ...monthEnd('Plan_OPT_EU', reportPlanSchema)
@@ -240,7 +255,7 @@ function buildFlow() {
       end('LOSS FILE')
     ]);
   lane(r++, 'LOSSES: ROWS',
-    'the line loss file of the month is read and the rows are built with the steps of the report queries of the site (duplicate stops, group and machine filters, shift name, volume key and loss units from the correction, equipment, text replacements of the subgroup, loss target key and value from Glidepaths, volume total). Out 2 is a check line: rows read, kept, filtered, without loss units, equipment or target.',
+    'the line loss file of the month is read and the rows are built with the steps of the report queries of the site (duplicate stops, group filter, the machines both reports drop, shift name, volume key and loss units from the correction, equipment, text replacements of the subgroup, loss target key and value from Glidepaths, volume total). Out 2 is a check line: rows read, kept, filtered, without loss units, equipment or target.',
     [
       linkInStep('LOSS FILE'),
       fn('lsLossFile', 'Set line loss file', 'b7-loss-file.js', ['next']),
@@ -256,7 +271,7 @@ function buildFlow() {
       ...monthEnd('Daily_Losses_EU', reportLossSchema)
     ]);
   lane(r++, 'SITE SETUP: FAILED',
-    'a Glidepaths, Machine Names, Shift Patterns or Equipment Coding file that is missing or empty: one log line, nothing is built for that site.',
+    'a Glidepaths, Machine Names, Shift Patterns, report scope or Equipment Coding file that is missing or empty: one log line, nothing is built for that site.',
     [
       linkInStep('PLAN FAILED'),
       fn('plFailed', 'Describe failure', 'b5-pick-failed.js', ['LOG'])
