@@ -148,7 +148,7 @@ const LOOKUP_USE = {
   'Shift Time': ['Shift (lookup)', 'Shift'],
   Shift: ['Shift (lookup)', 'Shift'],
 };
-const IDEA = ['In EU Report', 'BOOLEAN', 'the EU rules of the site (idea C1)', 'the same rule through the Machine Names lookup', 'idea'];
+const IDEA = ['In EU Report', 'BOOLEAN', 'report scope file config/report_scope.csv (built 2026-10-27)', 'true (SIH lines are packing lines)', 'new'];
 const NEW_COMMON = {
   Dept: ['Machine Names lookup', 'Machine Names lookup', 'ref'],
   Area: ['Machine Names lookup', 'Machine Names lookup', 'ref'],
@@ -239,8 +239,8 @@ const INFO = {
 };
 const NEW_TABLES = {
   Run_Rates_EU: {
-    title: 'Run_Rates_EU (new, C2)',
-    about: 'One row per hour, machine and part. Provideam: the Run Rates month export (same format as Plan OPT). Rules from the EU query: no machine out, Good Parts = 0 out, shift mapped by Shift Patterns. SIH: a new output of the hourly KPIs the SIH report daily tab already reads (no new API call; the tab is full: D9).',
+    title: 'Run_Rates_EU (built 2026-10-27, tab PBI report build 2)',
+    about: 'One row per hour, machine and part. Provideam: the Run Rates month export, normalizer type run_rates. Rules from the EU query: no machine out, Good Parts = 0 out, shift mapped by Shift Patterns, Weinheim part code cut. Checked against the EU table: 99.4 % of rows matched. SIH: not built yet (D9, the SIH tab is full).',
     cols: [
       ['Date', 'TIMESTAMP', 'export hour (YYYY-MM-DD HH)', 'KPI hour'],
       ['AreaName', 'UTF8', 'export AreaName', 'empty'],
@@ -248,30 +248,31 @@ const NEW_TABLES = {
       ['PartName', 'UTF8', 'export PartName', 'product of the hour'],
       ['ShiftName', 'UTF8', 'mapped by Shift Patterns', 'calendar event name'],
       ['Good Parts', 'INT64', 'export (rows with 0 dropped)', 'KPI good parts of the hour'],
-      ['Capacity', 'INT64', 'export', 'design speed per minute x minutes of the hour'],
+      ['Capacity', 'DOUBLE', 'export', 'design speed per minute x minutes of the hour'],
       ['SiteName', 'UTF8'],
       ['Unique Machine Name', 'UTF8'],
       ['Product Key', 'UTF8', 'Unique Machine Name + space + PartName', 'the same'],
+      ['Good Parts - Copy', 'INT64', 'Good Parts (as the EU table)', 'the same'],
       ['Dept', 'UTF8'], ['Area', 'UTF8'], ['Product Type', 'UTF8'], ['Data Source', 'UTF8'],
     ],
   },
   Volume_CoV_EU: {
-    title: 'Volume_CoV_EU (new, C3)',
-    about: 'One row per day, shift and machine, built from the plan rows of the month job (both sources): only groups with more than 1,000 good parts. In Tableau: Capacity Checker = Good Parts Sum > 0.7 x Cap Max, AVG Volume, CoV Aggregate = STDEV / AVG.',
+    title: 'Volume_CoV_EU (built 2026-10-27, tab PBI report build 2)',
+    about: 'One row per day, shift and machine, built from the plan OPT month files: only groups with more than 1,000 good parts (Hull groups on the mapped shift, the other sites on the raw shift name). Checked against the EU table: 99.7 % of rows matched. In Tableau: Capacity Checker = Good Parts Sum > 0.7 x Cap Max, AVG Volume, CoV Aggregate = STDEV / AVG.',
     cols: [
       ['Date', 'DATE', 'plan date', 'plan date'],
       ['Shift', 'UTF8', 'mapped shift of the plan rows', 'the same'],
       ['MachineName', 'UTF8', 'plan MachineName', 'the same'],
       ['Good Parts Sum', 'DOUBLE', 'sum of Good Parts', 'the same'],
       ['Cap Max', 'DOUBLE', 'max Capacity', 'the same'],
-      ['Time on Shift', 'DOUBLE', 'sum of Total Time (minutes)', 'the same'],
-      ['SiteName', 'UTF8'], ['Unique Machine Name', 'UTF8'],
+      ['Shift Machine Key', 'UTF8', 'Shift + space + MachineName', 'the same'],
+      ['Unique Machine Name', 'UTF8'], ['SiteName', 'UTF8'],
       ['Dept', 'UTF8'], ['Area', 'UTF8'], ['Product Type', 'UTF8'], ['Data Source', 'UTF8'],
     ],
   },
   Format_List_EU: {
-    title: 'Format_List_EU (new, C4)',
-    about: 'One row per machine and product, from the reference Format List files (copied by hand). Nottingham file missing: we can make a starter list of machine + part names (D4). For SIH lines the Product Name must be the SIH product name (D12).',
+    title: 'Format_List_EU (built 2026-10-27, tab PBI report build 2)',
+    about: 'One row per machine and product, from the reference Format List files (Hull, Weinheim, Mira; equal to the EU table). NOTTINGHAM HAS NO FILE: starter list with node scripts/helper-format-list-starter.js Nottingham (D4). For SIH lines the Product Name must be the SIH product name (D12).',
     cols: [
       ['Site Name', 'UTF8', 'file', 'file'],
       ['MachineName', 'UTF8', 'file', 'file'],
@@ -285,8 +286,8 @@ const NEW_TABLES = {
     ],
   },
   Historical_OEE_EU: {
-    title: 'Historical_OEE_EU (new, C5, one-time)',
-    about: 'One row per machine and day, Jan 2022 to Nov 2024 (Hull to Oct 2024), old OEE method, from the two archive files. Never changes: one conversion and upload, no flow. The page shows a simple average of daily OEE.',
+    title: 'Historical_OEE_EU (converted 2026-10-27, upload by the user)',
+    about: 'One row per machine and day, Jan 2022 to Nov 2024 (Hull to Oct 2024), old OEE method, from the two archive files: 71,345 rows. Never changes: one conversion (scripts/historical-oee-convert.js) and upload (scripts/historical-oee-upload.js), no flow. The page shows a simple average of daily OEE.',
     cols: [
       ['Date', 'DATE', 'archive YYYY-MM-DD', 'none (before SIH)'],
       ['MachineName', 'UTF8', 'archive (old machines kept)', 'none'],
@@ -299,6 +300,7 @@ const NEW_TABLES = {
       ['Area', 'UTF8', 'Machine Names lookup', 'none'],
       ['Product Type', 'UTF8', 'Machine Names lookup', 'none'],
       ['Data Source', 'UTF8', 'Provideam archive', 'none'],
+      ['In EU Report', 'BOOLEAN', 'report scope file (no rule: true)', 'none'],
     ],
   },
 };
@@ -324,14 +326,14 @@ const SIH = [
 // ---- Content: decisions -------------------------------------------------------------
 // [id, group, decision, who, recommendation, note of the user (2026-10-23)]
 const DECISIONS = [
-  ['D1', 'segun', 'Idea: the EU filters become a column In EU Report; Machine Names lookup unfiltered. Where the scope lives (Config rule, Machine Names column, own file) and one rule per machine instead of today\'s per-table rules', 'User, Segun, then Reckitt', 'Config rule on Area / Dept; accept the small EU changes of one rule per machine', 'Still an idea, for the meeting with Segun and then Reckitt'],
-  ['D2', 'segun', 'New tables Run_Rates_EU and Volume_CoV_EU in the PBI report build', 'User, Segun', 'Yes; Run Rates from Aug 2026 unless more history is needed', 'Run Rates is a new lane of the PBI report build (room: 164 of 200 nodes)'],
-  ['D3', 'segun', 'New table Format_List_EU from the reference Format List files', 'User, Segun', 'Yes', ''],
-  ['D5', 'segun', 'Historical OEE as a one-time upload; simple average in Tableau', 'User, Segun', 'Yes', ''],
+  ['D1', 'segun', 'Idea: the EU filters become a column In EU Report; Machine Names lookup unfiltered. Where the scope lives (Config rule, Machine Names column, own file) and one rule per machine instead of today\'s per-table rules', 'User, Segun, then Reckitt', 'Config rule on Area / Dept; accept the small EU changes of one rule per machine', 'AGREED 2026-10-27, BUILT: own file config/report_scope.csv (today\'s per-table rules, EU numbers unchanged), shown on the Configuration tab of the run monitor'],
+  ['D2', 'segun', 'New tables Run_Rates_EU and Volume_CoV_EU in the PBI report build', 'User, Segun', 'Yes; Run Rates from Aug 2026 unless more history is needed', 'AGREED, BUILT 2026-10-27 in a second tab PBI report build 2 (the first tab is at 176 of 200 nodes after the scope lane)'],
+  ['D3', 'segun', 'New table Format_List_EU from the reference Format List files', 'User, Segun', 'Yes', 'AGREED, BUILT (Hull first). Nottingham has no Format List file: remember to ask'],
+  ['D5', 'segun', 'Historical OEE as a one-time upload; simple average in Tableau', 'User, Segun', 'Yes', 'AGREED, converted locally 2026-10-27; the user uploads after a look'],
   ['D8', 'segun', 'Hull Availability / Performance gauges (Hull Homepage only)', 'User, Segun, Reckitt', 'Skip for now; SIH has the values', ''],
   ['D9', 'segun', 'Run Rates for SIH lines', 'User', 'Yes with D2; the Hull SIH tab is full (195 of 200 nodes): a second tab or a split', ''],
   ['D13', 'segun', 'EU and site views in one workbook: In EU Report, S14 (VSU) and packing-only filters', 'Segun', 'Page filters in Tableau', ''],
-  ['D4', 'reckitt', 'Nottingham Format List: who fills it', 'Reckitt (Nottingham)', 'We make the starter list (machine + part names), Nottingham fills brand, size, count', 'Nottingham said there is a way to make it: ask again'],
+  ['D4', 'reckitt', 'Nottingham Format List: who fills it', 'Reckitt (Nottingham)', 'We make the starter list (machine + part names), Nottingham fills brand, size, count', 'Starter ready: helper-format-list-starter.js Nottingham (584 machine + part pairs). Ask Nottingham again'],
   ['D6', 'reckitt', 'Volume target: source and grain', 'Reckitt', 'Tableau parameter until a source exists', ''],
   ['D7', 'reckitt', 'Hull glidepath master: regional file (used now) or site V7 file (524 cells differ in 2026)', 'Reckitt (Hull)', 'Keep the regional file meanwhile', 'Glidepaths are updated during the year (Nottingham): agree who updates which file and how it reaches the lake'],
   ['D12', 'reckitt', 'Format List for SIH lines: SIH product names against Provideam part names', 'Reckitt, user', 'A mapping per line when it switches', ''],
@@ -600,9 +602,64 @@ for (const [name, def] of Object.entries(NEW_TABLES)) {
   tablePage(def.title, def.about, rows);
 }
 
+// ---- Page: the build (2026-10-27) -----------------------------------------------------
+const pb = newPage('Build: what runs where (2026-10-27)');
+title = bold('Built on 2026-10-27: the scope file, a second build tab, the Configuration tab and the archive');
+title += `<br>${small('Green: existed before. Orange: new. Every table gets In EU Report from config/report_scope.csv. Docs: report-scope.md, pbi-report-build-2.md, historical-oee.md, run-monitor.md.')}`;
+pb.text(40, 20, 1400, 50, title);
+const inX = 40;
+const tabX = 470;
+const outX = 960;
+const inputs = [
+  ['source/plan_opt', 'have'],
+  ['source/line_losses, volume_loss_correction', 'have'],
+  ['source/run_rates (normalizer type, new)', 'table'],
+  ['reference/machine_names, shift_naming', 'have'],
+  ['reference/glidepaths, equipment_coding', 'have'],
+  ['reference/report_scope (config/report_scope.csv)', 'table'],
+  ['reference/format_list (Nottingham: none)', 'table'],
+  ['downloads: Historical OEE archives', 'archive'],
+];
+const inBox = {};
+let iy = 100;
+for (const [label, level] of inputs) {
+  inBox[label] = pb.box(inX, iy, 360, 44, esc(label), level);
+  iy += 60;
+}
+const listener = pb.box(tabX, 100, 380, 70, `${bold('PBI report listener')}<br>${small('file events -> jobQueue (tab 1) / jobQueue_2 (tab 2); JOB DONE per tab')}`, 'have');
+const tab1 = pb.box(tabX, 200, 380, 80, `${bold('PBI report build (176 nodes)')}<br>${small('+ lane REPORT SCOPE; machine lookup unfiltered')}`, 'have');
+const tab2 = pb.box(tabX, 310, 380, 80, `${bold('PBI report build 2 (137 nodes, new)')}<br>${small('machine names, shift, scope setup; run rates, Volume CoV, Format List')}`, 'table');
+const sihTab = pb.box(tabX, 420, 380, 60, `${bold('SIH report daily (Hull)')}<br>${small('In EU Report = true on its rows')}`, 'have');
+const script = pb.box(tabX, 510, 380, 60, `${bold('historical-oee-convert.js + upload.js')}<br>${small('one time, run by hand')}`, 'archive');
+const monitor = pb.box(tabX, 600, 380, 70, `${bold('Run monitor')}<br>${small('new tab Configuration: Config settings + scope rules; flow pbi-report-2 listed')}`, 'table');
+const outs = [
+  ['Plan_OPT_EU', tab1, 'have'],
+  ['Time_Utilisation_EU', tab1, 'have'],
+  ['Daily_Losses_EU', tab1, 'have'],
+  ['Run_Rates_EU', tab2, 'table'],
+  ['Volume_CoV_EU', tab2, 'table'],
+  ['Format_List_EU', tab2, 'table'],
+  ['Historical_OEE_EU', script, 'archive'],
+];
+let oy = 100;
+for (const [name, from, level] of outs) {
+  const box = pb.box(outX, oy, 300, 44, `${bold(name)}<br>${small('report/' + name + '/site=...')}`, level);
+  pb.edge(from, box, '#666666');
+  oy += 60;
+}
+pb.edge(sihTab, pb.box(outX + 340, 160, 220, 60, `${bold('SIH rows')}<br>${small('Plan, Time Utilisation, Losses')}`, 'have'), '#6c8ebf', true);
+pb.edge(listener, tab1, '#666666');
+pb.edge(listener, tab2, '#666666');
+pb.edge(inBox['reference/report_scope (config/report_scope.csv)'], tab1, '#d79b00');
+pb.edge(inBox['reference/report_scope (config/report_scope.csv)'], tab2, '#d79b00');
+pb.edge(inBox['reference/report_scope (config/report_scope.csv)'], monitor, '#d79b00', true);
+pb.edge(inBox['source/run_rates (normalizer type, new)'], tab2, '#d79b00');
+pb.edge(inBox['reference/format_list (Nottingham: none)'], tab2, '#d79b00');
+pb.edge(inBox['downloads: Historical OEE archives'], script, '#9673a6');
+
 // ---- Page: EU scope (idea C1) ----------------------------------------------------------
 const p2 = newPage('EU scope (idea C1)');
-title = bold('Idea for discussion: keep the rows the EU report drops, and mark them with a column In EU Report');
+title = bold('Built 2026-10-27 (C1): the rows the EU report drops are kept and marked with the column In EU Report, rules in config/report_scope.csv');
 title += `<br>${small('The site dashboards use the same Provideam files and query steps as the EU report, without the EU filters. Our build copies the EU filters today. For the meeting with Segun, then Reckitt.')}`;
 p2.text(40, 20, 1300, 50, title);
 const left = 40;
@@ -671,7 +728,7 @@ for (const [need, prov, sih, level, gap] of SIH) {
 
 // ---- Page: decisions -------------------------------------------------------------------
 const p5 = newPage('Discussion: open decisions');
-title = bold('Open decisions for the discussion (nothing is built yet)');
+title = bold('Decisions: D1, D2, D3, D5 agreed and built on 2026-10-27, the others open');
 title += `<br>${small('Grouped by who decides. Green note = remark of the user (2026-10-23). Numbers as in prompt-response/site-dashboards-analysis.md section 5.')}`;
 p5.text(40, 20, 1300, 50, title);
 const W5 = [60, 380, 160, 330, 330];

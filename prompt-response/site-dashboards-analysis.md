@@ -312,7 +312,9 @@ Question from Segun: the sum of `Value` differs between the EU and the site repo
 - **Where to see it in Power BI Desktop:** Transform data, query `Daily Line Losses H` or `N`, Applied Steps, last step `Filtered Rows` (formula bar, gear icon, or Advanced Editor).
 - **To find the actual cause:** ask which number is compared (`Value`, `Volume Total` or Weighted Target %), then compare both reports on one machine and one month that both keep: row count and sum of `Duration` first, then the lookup.
 
-## 5. Open decisions (nothing is built yet)
+## 5. Decisions (D1, D2, D3, D5 agreed and built on 2026-10-27)
+**Outcome 2026-10-27 (the user):** D1 yes, the scope lives in its own file (`config/report_scope.csv`, shown on the Configuration tab of the run monitor; the rules are today's per-table rules, so the EU numbers do not move). D2 yes for both tables; built in a second tab (the first is full). D3 yes, Hull first; **Nottingham has no Format List file** (starter list script ready). D5 (Historical OEE) yes: converted locally, the user uploads. The raw shift column stays dropped: `ShiftName` keeps the mapped shift / colour (Segun uses it). What was built: `docs/report-scope.md`, `docs/pbi-report-build-2.md`, `docs/historical-oee.md`.
+
 | # | Decision | Who | Recommendation |
 |---|---|---|---|
 | D1 | Idea: EU filters become an `In EU Report` column, and the Machine Names lookup is no longer filtered (C1). Also: where the scope lives (Config rule, Machine Names column, own file) and one rule per machine instead of today's per-table rules | User, Segun, then Reckitt | A Config rule on Area / Dept; accept the small EU changes of one rule per machine |
