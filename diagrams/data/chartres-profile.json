@@ -1,0 +1,3821 @@
+{
+ "files": [
+  {
+   "group": "CREAM Chartres",
+   "year": "2025",
+   "line": "CUMULUS",
+   "file": "OEE CUMULUS - 2025.xlsm",
+   "baseColumns": 383,
+   "sheets": [
+    "Data",
+    "Base",
+    "OEE",
+    "Presentation"
+   ],
+   "dysfParts": [
+    {
+     "fr": "BOL FLACONS",
+     "en": ""
+    },
+    {
+     "fr": "REMPLISSEUSE",
+     "en": ""
+    },
+    {
+     "fr": "VISSEUSE",
+     "en": ""
+    },
+    {
+     "fr": "VISSEUSE BOL POMPES",
+     "en": ""
+    },
+    {
+     "fr": "DOMINO FLACONS",
+     "en": ""
+    },
+    {
+     "fr": "ÉTIQUETEUSE",
+     "en": ""
+    },
+    {
+     "fr": "SPATULEUSE",
+     "en": ""
+    },
+    {
+     "fr": "BECK - SLEEVEUSE",
+     "en": ""
+    },
+    {
+     "fr": "BECK - FOUR",
+     "en": ""
+    },
+    {
+     "fr": "SCOTCHEUSE",
+     "en": ""
+    },
+    {
+     "fr": "ÉTIQUETEUSE IMAJE",
+     "en": ""
+    },
+    {
+     "fr": "AUTRES (Non Identifié)",
+     "en": ""
+    }
+   ],
+   "dysfSpare": 20,
+   "blockSizes": {
+    "dysf": 32,
+    "panne": 32,
+    "reglages": 33
+   },
+   "peopleZac": 0,
+   "wasteByMachine": 0,
+   "hasCategory": false,
+   "categoryRows": 0,
+   "categoryAnomalies": [],
+   "planSheet": false,
+   "planDay": "",
+   "planRows": 0,
+   "lossRows": 0,
+   "firstDay": "2025-01-06",
+   "lastDay": "2026-01-04"
+  },
+  {
+   "group": "CREAM Chartres",
+   "year": "2025",
+   "line": "CUPIDON",
+   "file": "OEE CUPIDON - 2025.xlsm",
+   "baseColumns": 383,
+   "sheets": [
+    "Data",
+    "OEE",
+    "Base",
+    "Presentation"
+   ],
+   "dysfParts": [
+    {
+     "fr": "ETUYEUSE BARILLET",
+     "en": ""
+    },
+    {
+     "fr": "ETUYEUSE",
+     "en": ""
+    },
+    {
+     "fr": "ETUYEUSE - VERIN SORTIE",
+     "en": ""
+    },
+    {
+     "fr": "DOMINO ÉTUIS",
+     "en": ""
+    },
+    {
+     "fr": "BALANCE SARTORIUS",
+     "en": ""
+    },
+    {
+     "fr": "EMPILEUR FOUR BFB",
+     "en": ""
+    },
+    {
+     "fr": "SCOTCHEUSE SOCO",
+     "en": ""
+    },
+    {
+     "fr": "DOMINO - ÉTIQUETTES CAISSES",
+     "en": ""
+    },
+    {
+     "fr": "AUTRES (Non Identifié)",
+     "en": ""
+    }
+   ],
+   "dysfSpare": 23,
+   "blockSizes": {
+    "dysf": 32,
+    "panne": 32,
+    "reglages": 33
+   },
+   "peopleZac": 0,
+   "wasteByMachine": 0,
+   "hasCategory": false,
+   "categoryRows": 0,
+   "categoryAnomalies": [],
+   "planSheet": false,
+   "planDay": "",
+   "planRows": 0,
+   "lossRows": 0,
+   "firstDay": "2025-01-06",
+   "lastDay": "2025-09-22"
+  },
+  {
+   "group": "CREAM Chartres",
+   "year": "2025",
+   "line": "DAISY",
+   "file": "OEE DAISY - 2025.xlsm",
+   "baseColumns": 383,
+   "sheets": [
+    "Base",
+    "OEE",
+    "Data",
+    "Presentation"
+   ],
+   "dysfParts": [
+    {
+     "fr": "TGM",
+     "en": ""
+    },
+    {
+     "fr": "DOMINO TUBES",
+     "en": ""
+    },
+    {
+     "fr": "METTLER TRIEUSE",
+     "en": ""
+    },
+    {
+     "fr": "CIM ROBOT TUBES",
+     "en": ""
+    },
+    {
+     "fr": "MÉCA PLASTIQUE",
+     "en": ""
+    },
+    {
+     "fr": "APEX",
+     "en": ""
+    },
+    {
+     "fr": "DOMINO BLISTER",
+     "en": ""
+    },
+    {
+     "fr": "CERMEX",
+     "en": ""
+    },
+    {
+     "fr": "VIMCO",
+     "en": ""
+    },
+    {
+     "fr": "DOMINO - Étiquettes Caisses",
+     "en": ""
+    },
+    {
+     "fr": "Palettiseur NEWTEC",
+     "en": ""
+    },
+    {
+     "fr": "CAMÉRA ISI VISION",
+     "en": ""
+    },
+    {
+     "fr": "BOL ÉPONGES",
+     "en": ""
+    },
+    {
+     "fr": "ROBOT Dépose Éponges",
+     "en": ""
+    },
+    {
+     "fr": "AUTRES (Non Identifié)",
+     "en": ""
+    }
+   ],
+   "dysfSpare": 17,
+   "blockSizes": {
+    "dysf": 32,
+    "panne": 32,
+    "reglages": 33
+   },
+   "peopleZac": 0,
+   "wasteByMachine": 0,
+   "hasCategory": false,
+   "categoryRows": 0,
+   "categoryAnomalies": [],
+   "planSheet": false,
+   "planDay": "",
+   "planRows": 0,
+   "lossRows": 0,
+   "firstDay": "2025-01-06",
+   "lastDay": "2025-11-06"
+  },
+  {
+   "group": "CREAM Chartres",
+   "year": "2025",
+   "line": "IWKA 1",
+   "file": "OEE IWKA 1 - 2025.xlsm",
+   "baseColumns": 383,
+   "sheets": [
+    "Data",
+    "OEE",
+    "Base",
+    "Presentation"
+   ],
+   "dysfParts": [
+    {
+     "fr": "TZ",
+     "en": ""
+    },
+    {
+     "fr": "REMPLISSEUSE (Débordement Crème / Niveau cuve)",
+     "en": ""
+    },
+    {
+     "fr": "REMPLISSEUSE (Orientation Tubes)",
+     "en": ""
+    },
+    {
+     "fr": "REMPLISSEUSE (Scellage Tubes)",
+     "en": ""
+    },
+    {
+     "fr": "REMPLISSEUSE (Bouchon Coincés Dans Les Godets)",
+     "en": ""
+    },
+    {
+     "fr": "REMPLISSEUSE - Autre",
+     "en": ""
+    },
+    {
+     "fr": "DOMINO Tubes",
+     "en": ""
+    },
+    {
+     "fr": "DISTRIBUTEUR Spatules",
+     "en": ""
+    },
+    {
+     "fr": "ETUYEUSE (Transfert Tubes)",
+     "en": ""
+    },
+    {
+     "fr": "ETUYEUSE (Dépose Étuis)",
+     "en": ""
+    },
+    {
+     "fr": "ETUYEUSE (Introduction Tubes / Spatules)",
+     "en": ""
+    },
+    {
+     "fr": "ETUYEUSE (Fermeture Étuis)",
+     "en": ""
+    },
+    {
+     "fr": "DOMINO Étuis",
+     "en": ""
+    },
+    {
+     "fr": "GARVENS - Trieuse Pondérale",
+     "en": ""
+    },
+    {
+     "fr": "CAMÉRA",
+     "en": ""
+    },
+    {
+     "fr": "ENCAISSEUSE Cermex",
+     "en": ""
+    },
+    {
+     "fr": "DOMINO Étiquette Caisse",
+     "en": ""
+    },
+    {
+     "fr": "Palettiseur NEW TEC",
+     "en": ""
+    },
+    {
+     "fr": "Autre",
+     "en": ""
+    }
+   ],
+   "dysfSpare": 13,
+   "blockSizes": {
+    "dysf": 32,
+    "panne": 32,
+    "reglages": 33
+   },
+   "peopleZac": 0,
+   "wasteByMachine": 0,
+   "hasCategory": false,
+   "categoryRows": 0,
+   "categoryAnomalies": [],
+   "planSheet": false,
+   "planDay": "",
+   "planRows": 0,
+   "lossRows": 0,
+   "firstDay": "2025-01-05",
+   "lastDay": "2025-12-23"
+  },
+  {
+   "group": "CREAM Chartres",
+   "year": "2025",
+   "line": "IWKA 2",
+   "file": "OEE IWKA 2 - 2025.xlsm",
+   "baseColumns": 383,
+   "sheets": [
+    "Data",
+    "OEE",
+    "Base",
+    "Presentation"
+   ],
+   "dysfParts": [
+    {
+     "fr": "REMPLISSEUSE - Magasin Tubes",
+     "en": ""
+    },
+    {
+     "fr": "REMPLISSEUSE - Orientation Tubes",
+     "en": ""
+    },
+    {
+     "fr": "REMPLISSEUSE - Domino Tubes",
+     "en": ""
+    },
+    {
+     "fr": "REMPLISSEUSE - Scellage Tubes",
+     "en": ""
+    },
+    {
+     "fr": "REMPLISSEUSE - Autre",
+     "en": ""
+    },
+    {
+     "fr": "SPATULEUSE - Magasin spatules",
+     "en": ""
+    },
+    {
+     "fr": "SPATULEUSE - Clapet",
+     "en": ""
+    },
+    {
+     "fr": "SPATULEUSE - Dépose spatule",
+     "en": ""
+    },
+    {
+     "fr": "ETUYEUSE - Introduction Tubes",
+     "en": ""
+    },
+    {
+     "fr": "ETUYEUSE - Prise Étuis",
+     "en": ""
+    },
+    {
+     "fr": "ETUYEUSE - Fermeture Étuis",
+     "en": ""
+    },
+    {
+     "fr": "ETUYEUSE - Ejection Tubes",
+     "en": ""
+    },
+    {
+     "fr": "ETUYEUSE - Autres",
+     "en": ""
+    },
+    {
+     "fr": "DOMINO Étuis",
+     "en": ""
+    },
+    {
+     "fr": "METTLER- Trieuse Pondérale",
+     "en": ""
+    },
+    {
+     "fr": "Tapis Rétractable",
+     "en": ""
+    },
+    {
+     "fr": "ENCAISSEUSE - Prise étuis",
+     "en": ""
+    },
+    {
+     "fr": "ENCAISSEUSE - Bourrage étuis",
+     "en": ""
+    },
+    {
+     "fr": "ENCAISSEUSE - Point de colle caisses",
+     "en": ""
+    },
+    {
+     "fr": "ENCAISSEUSE - évacuation caisses",
+     "en": ""
+    },
+    {
+     "fr": "ENCAISSEUSE - Autres",
+     "en": ""
+    },
+    {
+     "fr": "DOMINO - Étiquettes Caisses",
+     "en": ""
+    },
+    {
+     "fr": "DOMINO - Lecteur code barres",
+     "en": ""
+    },
+    {
+     "fr": "Autre",
+     "en": ""
+    }
+   ],
+   "dysfSpare": 8,
+   "blockSizes": {
+    "dysf": 32,
+    "panne": 32,
+    "reglages": 33
+   },
+   "peopleZac": 0,
+   "wasteByMachine": 0,
+   "hasCategory": false,
+   "categoryRows": 0,
+   "categoryAnomalies": [],
+   "planSheet": false,
+   "planDay": "",
+   "planRows": 0,
+   "lossRows": 0,
+   "firstDay": "2025-01-05",
+   "lastDay": "2025-12-23"
+  },
+  {
+   "group": "CREAM Chartres",
+   "year": "2025",
+   "line": "IWKA 3",
+   "file": "OEE IWKA 3 - 2025.xlsm",
+   "baseColumns": 353,
+   "sheets": [
+    "Base",
+    "OEE",
+    "Data",
+    "Presentation"
+   ],
+   "dysfParts": [
+    {
+     "fr": "TZ",
+     "en": ""
+    },
+    {
+     "fr": "REMPLISSEUSE (Débordement Crème / Niveau cuve)",
+     "en": ""
+    },
+    {
+     "fr": "REMPLISSEUSE (Orientation Tubes)",
+     "en": ""
+    },
+    {
+     "fr": "REMPLISSEUSE (Scellage Tubes)",
+     "en": ""
+    },
+    {
+     "fr": "REMPLISSEUSE (Bouchon Coincés Dans Les Godets)",
+     "en": ""
+    },
+    {
+     "fr": "REMPLISSEUSE - Autre",
+     "en": ""
+    },
+    {
+     "fr": "DOMINO Tubes",
+     "en": ""
+    },
+    {
+     "fr": "DISTRIBUTEUR Spatules",
+     "en": ""
+    },
+    {
+     "fr": "ETUYEUSE (Transfert Tubes)",
+     "en": ""
+    },
+    {
+     "fr": "ETUYEUSE (Dépose Étuis)",
+     "en": ""
+    },
+    {
+     "fr": "ETUYEUSE (Introduction Tubes / Spatules)",
+     "en": ""
+    },
+    {
+     "fr": "ETUYEUSE (Fermeture Étuis)",
+     "en": ""
+    },
+    {
+     "fr": "DOMINO Étuis",
+     "en": ""
+    },
+    {
+     "fr": "GARVENS - Trieuse Pondérale",
+     "en": ""
+    },
+    {
+     "fr": "CAMÉRA",
+     "en": ""
+    },
+    {
+     "fr": "ENCAISSEUSE Cermex",
+     "en": ""
+    },
+    {
+     "fr": "DOMINO Étiquette Caisse",
+     "en": ""
+    },
+    {
+     "fr": "Palettiseur NEW TEC",
+     "en": ""
+    },
+    {
+     "fr": "Autre",
+     "en": ""
+    }
+   ],
+   "dysfSpare": 3,
+   "blockSizes": {
+    "dysf": 22,
+    "panne": 22,
+    "reglages": 23
+   },
+   "peopleZac": 0,
+   "wasteByMachine": 0,
+   "hasCategory": false,
+   "categoryRows": 0,
+   "categoryAnomalies": [],
+   "planSheet": false,
+   "planDay": "",
+   "planRows": 0,
+   "lossRows": 0,
+   "firstDay": "2025-01-06",
+   "lastDay": "2025-12-23"
+  },
+  {
+   "group": "CREAM Chartres",
+   "year": "2026",
+   "line": "CUMULUS",
+   "file": "OEE CUMULUS - 2026.xlsm",
+   "baseColumns": 383,
+   "sheets": [
+    "Base",
+    "Data",
+    "OEE",
+    "Presentation",
+    "Feuil2",
+    "Feuil1",
+    "Category",
+    "OEE global report",
+    "LineLosses",
+    "PlanOPT"
+   ],
+   "dysfParts": [
+    {
+     "fr": "BOL FLACONS",
+     "en": "Bottle dispenser"
+    },
+    {
+     "fr": "REMPLISSEUSE",
+     "en": "Filling machine"
+    },
+    {
+     "fr": "VISSEUSE",
+     "en": "Screwing machine"
+    },
+    {
+     "fr": "VISSEUSE BOL POMPES",
+     "en": "Pump dispenser"
+    },
+    {
+     "fr": "DOMINO FLACONS",
+     "en": "Bottle dater"
+    },
+    {
+     "fr": "ÉTIQUETEUSE",
+     "en": "Bottle labeller"
+    },
+    {
+     "fr": "SPATULEUSE",
+     "en": "Spatula dispenser"
+    },
+    {
+     "fr": "BECK - SLEEVEUSE",
+     "en": "Sleever"
+    },
+    {
+     "fr": "BECK - FOUR",
+     "en": "Oven"
+    },
+    {
+     "fr": "SCOTCHEUSE",
+     "en": "Case packer"
+    },
+    {
+     "fr": "ÉTIQUETEUSE IMAJE",
+     "en": "Case labeller"
+    },
+    {
+     "fr": "AUTRES (Non Identifié)",
+     "en": "Other"
+    }
+   ],
+   "dysfSpare": 20,
+   "blockSizes": {
+    "dysf": 32,
+    "panne": 32,
+    "reglages": 33
+   },
+   "peopleZac": 0,
+   "wasteByMachine": 0,
+   "hasCategory": true,
+   "categoryRows": 69,
+   "categoryAnomalies": [],
+   "planSheet": true,
+   "planDay": "",
+   "planRows": 0,
+   "lossRows": 0,
+   "firstDay": "2026-01-03",
+   "lastDay": "2026-10-23"
+  },
+  {
+   "group": "CREAM Chartres",
+   "year": "2026",
+   "line": "CUPIDON",
+   "file": "OEE CUPIDON - 2026.xlsm",
+   "baseColumns": 383,
+   "sheets": [
+    "Data",
+    "OEE",
+    "Base",
+    "Presentation"
+   ],
+   "dysfParts": [
+    {
+     "fr": "ETUYEUSE BARILLET",
+     "en": ""
+    },
+    {
+     "fr": "ETUYEUSE",
+     "en": ""
+    },
+    {
+     "fr": "ETUYEUSE - VERIN SORTIE",
+     "en": ""
+    },
+    {
+     "fr": "DOMINO ÉTUIS",
+     "en": ""
+    },
+    {
+     "fr": "BALANCE SARTORIUS",
+     "en": ""
+    },
+    {
+     "fr": "EMPILEUR FOUR BFB",
+     "en": ""
+    },
+    {
+     "fr": "SCOTCHEUSE SOCO",
+     "en": ""
+    },
+    {
+     "fr": "DOMINO - ÉTIQUETTES CAISSES",
+     "en": ""
+    },
+    {
+     "fr": "AUTRES (Non Identifié)",
+     "en": ""
+    }
+   ],
+   "dysfSpare": 23,
+   "blockSizes": {
+    "dysf": 32,
+    "panne": 32,
+    "reglages": 33
+   },
+   "peopleZac": 0,
+   "wasteByMachine": 0,
+   "hasCategory": false,
+   "categoryRows": 0,
+   "categoryAnomalies": [],
+   "planSheet": false,
+   "planDay": "",
+   "planRows": 0,
+   "lossRows": 0,
+   "firstDay": "",
+   "lastDay": ""
+  },
+  {
+   "group": "CREAM Chartres",
+   "year": "2026",
+   "line": "DAISY",
+   "file": "OEE DAISY - 2026.xlsm",
+   "baseColumns": 383,
+   "sheets": [
+    "Base",
+    "OEE",
+    "Data",
+    "Presentation"
+   ],
+   "dysfParts": [
+    {
+     "fr": "TGM",
+     "en": ""
+    },
+    {
+     "fr": "DOMINO TUBES",
+     "en": ""
+    },
+    {
+     "fr": "METTLER TRIEUSE",
+     "en": ""
+    },
+    {
+     "fr": "CIM ROBOT TUBES",
+     "en": ""
+    },
+    {
+     "fr": "MÉCA PLASTIQUE",
+     "en": ""
+    },
+    {
+     "fr": "APEX",
+     "en": ""
+    },
+    {
+     "fr": "DOMINO BLISTER",
+     "en": ""
+    },
+    {
+     "fr": "CERMEX",
+     "en": ""
+    },
+    {
+     "fr": "VIMCO",
+     "en": ""
+    },
+    {
+     "fr": "DOMINO - Étiquettes Caisses",
+     "en": ""
+    },
+    {
+     "fr": "Palettiseur NEWTEC",
+     "en": ""
+    },
+    {
+     "fr": "CAMÉRA ISI VISION",
+     "en": ""
+    },
+    {
+     "fr": "BOL ÉPONGES",
+     "en": ""
+    },
+    {
+     "fr": "ROBOT Dépose Éponges",
+     "en": ""
+    },
+    {
+     "fr": "AUTRES (Non Identifié)",
+     "en": ""
+    }
+   ],
+   "dysfSpare": 17,
+   "blockSizes": {
+    "dysf": 32,
+    "panne": 32,
+    "reglages": 33
+   },
+   "peopleZac": 0,
+   "wasteByMachine": 0,
+   "hasCategory": false,
+   "categoryRows": 0,
+   "categoryAnomalies": [],
+   "planSheet": false,
+   "planDay": "",
+   "planRows": 0,
+   "lossRows": 0,
+   "firstDay": "",
+   "lastDay": ""
+  },
+  {
+   "group": "CREAM Chartres",
+   "year": "2026",
+   "line": "IWKA 1",
+   "file": "OEE IWKA 1 - 2026.xlsm",
+   "baseColumns": 383,
+   "sheets": [
+    "Base",
+    "Data",
+    "OEE",
+    "Presentation",
+    "Category",
+    "OEE global report",
+    "LineLosses",
+    "PlanOPT"
+   ],
+   "dysfParts": [
+    {
+     "fr": "TZ",
+     "en": "Tube dispenser"
+    },
+    {
+     "fr": "REMPLISSEUSE (Débordement Crème / Niveau cuve)",
+     "en": "Filling machine"
+    },
+    {
+     "fr": "REMPLISSEUSE (Orientation Tubes)",
+     "en": "Filling machine"
+    },
+    {
+     "fr": "REMPLISSEUSE (Scellage Tubes)",
+     "en": "Filling machine"
+    },
+    {
+     "fr": "REMPLISSEUSE (Bouchon Coincés Dans Les Godets)",
+     "en": "Filling machine"
+    },
+    {
+     "fr": "REMPLISSEUSE - Autre",
+     "en": "Filling machine"
+    },
+    {
+     "fr": "DOMINO Tubes",
+     "en": "Tube dater"
+    },
+    {
+     "fr": "DISTRIBUTEUR Spatules",
+     "en": "Spatula dispenser"
+    },
+    {
+     "fr": "ETUYEUSE (Transfert Tubes)",
+     "en": "Skiletting machine"
+    },
+    {
+     "fr": "ETUYEUSE (Dépose Étuis)",
+     "en": "Skiletting machine"
+    },
+    {
+     "fr": "ETUYEUSE (Introduction Tubes / Spatules)",
+     "en": "Skiletting machine"
+    },
+    {
+     "fr": "ETUYEUSE (Fermeture Étuis)",
+     "en": "Skiletting machine"
+    },
+    {
+     "fr": "DOMINO Étuis",
+     "en": "Skillet dater"
+    },
+    {
+     "fr": "GARVENS - Trieuse Pondérale",
+     "en": "Weigher"
+    },
+    {
+     "fr": "CAMÉRA",
+     "en": "Camera"
+    },
+    {
+     "fr": "ENCAISSEUSE Cermex",
+     "en": "Case packer"
+    },
+    {
+     "fr": "DOMINO Étiquette Caisse",
+     "en": "Case labeller"
+    },
+    {
+     "fr": "Palettiseur NEW TEC",
+     "en": "Paletizer"
+    },
+    {
+     "fr": "Autre",
+     "en": "Other"
+    }
+   ],
+   "dysfSpare": 13,
+   "blockSizes": {
+    "dysf": 32,
+    "panne": 32,
+    "reglages": 33
+   },
+   "peopleZac": 0,
+   "wasteByMachine": 0,
+   "hasCategory": true,
+   "categoryRows": 89,
+   "categoryAnomalies": [],
+   "planSheet": true,
+   "planDay": "2026-10-23",
+   "planRows": 6,
+   "lossRows": 89,
+   "firstDay": "2026-01-05",
+   "lastDay": "2026-10-23"
+  },
+  {
+   "group": "CREAM Chartres",
+   "year": "2026",
+   "line": "IWKA 2",
+   "file": "OEE IWKA 2 - 2026.xlsm",
+   "baseColumns": 383,
+   "sheets": [
+    "Base",
+    "Data",
+    "OEE",
+    "Presentation",
+    "Category",
+    "OEE global report",
+    "LineLosses",
+    "PlanOPT"
+   ],
+   "dysfParts": [
+    {
+     "fr": "REMPLISSEUSE - Magasin Tubes",
+     "en": "Filling machine"
+    },
+    {
+     "fr": "REMPLISSEUSE - Orientation Tubes",
+     "en": "Filling machine"
+    },
+    {
+     "fr": "REMPLISSEUSE - Domino Tubes",
+     "en": "Filling machine"
+    },
+    {
+     "fr": "REMPLISSEUSE - Scellage Tubes",
+     "en": "Filling machine"
+    },
+    {
+     "fr": "REMPLISSEUSE - Autre",
+     "en": "Filling machine"
+    },
+    {
+     "fr": "SPATULEUSE - Magasin spatules",
+     "en": "Spatula dispenser"
+    },
+    {
+     "fr": "SPATULEUSE - Clapet",
+     "en": "Spatula dispenser"
+    },
+    {
+     "fr": "SPATULEUSE - Dépose spatule",
+     "en": "Spatula dispenser"
+    },
+    {
+     "fr": "ETUYEUSE - Introduction Tubes",
+     "en": "Skilleting machine"
+    },
+    {
+     "fr": "ETUYEUSE - Prise Étuis",
+     "en": "Skilleting machine"
+    },
+    {
+     "fr": "ETUYEUSE - Fermeture Étuis",
+     "en": "Skilleting machine"
+    },
+    {
+     "fr": "ETUYEUSE - Ejection Tubes",
+     "en": "Skilleting machine"
+    },
+    {
+     "fr": "ETUYEUSE - Autres",
+     "en": "Skilleting machine"
+    },
+    {
+     "fr": "DOMINO Étuis",
+     "en": "Skillet dater"
+    },
+    {
+     "fr": "METTLER- Trieuse Pondérale",
+     "en": "Weigher"
+    },
+    {
+     "fr": "Tapis Rétractable",
+     "en": "Conveyor"
+    },
+    {
+     "fr": "ENCAISSEUSE - Prise étuis",
+     "en": "Case packer"
+    },
+    {
+     "fr": "ENCAISSEUSE - Bourrage étuis",
+     "en": "Case packer"
+    },
+    {
+     "fr": "ENCAISSEUSE - Point de colle caisses",
+     "en": "Case packer"
+    },
+    {
+     "fr": "ENCAISSEUSE - évacuation caisses",
+     "en": "Case packer"
+    },
+    {
+     "fr": "ENCAISSEUSE - Autres",
+     "en": "Case packer"
+    },
+    {
+     "fr": "DOMINO - Étiquettes Caisses",
+     "en": "Case labeller"
+    },
+    {
+     "fr": "DOMINO - Lecteur code barres",
+     "en": "Case labeller"
+    },
+    {
+     "fr": "Autre",
+     "en": "Other"
+    }
+   ],
+   "dysfSpare": 8,
+   "blockSizes": {
+    "dysf": 32,
+    "panne": 32,
+    "reglages": 33
+   },
+   "peopleZac": 0,
+   "wasteByMachine": 0,
+   "hasCategory": true,
+   "categoryRows": 105,
+   "categoryAnomalies": [],
+   "planSheet": true,
+   "planDay": "2026-10-23",
+   "planRows": 5,
+   "lossRows": 105,
+   "firstDay": "2026-01-05",
+   "lastDay": "2026-10-23"
+  },
+  {
+   "group": "CREAM Chartres",
+   "year": "2026",
+   "line": "IWKA 3",
+   "file": "OEE IWKA 3 - 2026.xlsm",
+   "baseColumns": 353,
+   "sheets": [
+    "Base",
+    "OEE",
+    "Data",
+    "Presentation",
+    "Category",
+    "OEE global report",
+    "LineLosses",
+    "PlanOPT"
+   ],
+   "dysfParts": [
+    {
+     "fr": "TZ",
+     "en": "Tube dispenser"
+    },
+    {
+     "fr": "REMPLISSEUSE (Débordement Crème / Niveau cuve)",
+     "en": "Filling machine"
+    },
+    {
+     "fr": "REMPLISSEUSE (Orientation Tubes)",
+     "en": "Filling machine"
+    },
+    {
+     "fr": "REMPLISSEUSE (Scellage Tubes)",
+     "en": "Filling machine"
+    },
+    {
+     "fr": "REMPLISSEUSE (Bouchon Coincés Dans Les Godets)",
+     "en": "Filling machine"
+    },
+    {
+     "fr": "REMPLISSEUSE - Autre",
+     "en": "Filling machine"
+    },
+    {
+     "fr": "DOMINO Tubes",
+     "en": "Tube dater"
+    },
+    {
+     "fr": "DISTRIBUTEUR Spatules",
+     "en": "Spatula dispenser"
+    },
+    {
+     "fr": "ETUYEUSE (Transfert Tubes)",
+     "en": "Skiletting machine"
+    },
+    {
+     "fr": "ETUYEUSE (Dépose Étuis)",
+     "en": "Skiletting machine"
+    },
+    {
+     "fr": "ETUYEUSE (Introduction Tubes / Spatules)",
+     "en": "Skiletting machine"
+    },
+    {
+     "fr": "ETUYEUSE (Fermeture Étuis)",
+     "en": "Skiletting machine"
+    },
+    {
+     "fr": "DOMINO Étuis",
+     "en": "Skillet dater"
+    },
+    {
+     "fr": "GARVENS - Trieuse Pondérale",
+     "en": "Weigher"
+    },
+    {
+     "fr": "CAMÉRA",
+     "en": "Camera"
+    },
+    {
+     "fr": "ENCAISSEUSE Cermex",
+     "en": "Case packer"
+    },
+    {
+     "fr": "DOMINO Étiquette Caisse",
+     "en": "Case labeller"
+    },
+    {
+     "fr": "Palettiseur NEW TEC",
+     "en": "Paletizer"
+    },
+    {
+     "fr": "Autre",
+     "en": "Other"
+    }
+   ],
+   "dysfSpare": 3,
+   "blockSizes": {
+    "dysf": 22,
+    "panne": 22,
+    "reglages": 23
+   },
+   "peopleZac": 0,
+   "wasteByMachine": 0,
+   "hasCategory": true,
+   "categoryRows": 90,
+   "categoryAnomalies": [],
+   "planSheet": true,
+   "planDay": "2026-10-23",
+   "planRows": 5,
+   "lossRows": 90,
+   "firstDay": "2026-01-05",
+   "lastDay": "2026-10-23"
+  },
+  {
+   "group": "NON TISSE",
+   "year": "2025",
+   "line": "HOME 1",
+   "file": "OEE HOME 1 - 2025.xlsm",
+   "baseColumns": 404,
+   "sheets": [
+    "OEE",
+    "Data",
+    "Base",
+    "Presentation"
+   ],
+   "dysfParts": [
+    {
+     "fr": "VIDE FÛT",
+     "en": ""
+    },
+    {
+     "fr": "BAC MELTEX",
+     "en": ""
+    },
+    {
+     "fr": "NORDSON - ENDUCTION",
+     "en": ""
+    },
+    {
+     "fr": "NORDSON - DÉCOUPE",
+     "en": ""
+    },
+    {
+     "fr": "NORDSON - Autres",
+     "en": ""
+    },
+    {
+     "fr": "SIEREM - Plateau / Courroies Divergentes",
+     "en": ""
+    },
+    {
+     "fr": "SIEREM - Éjecteur",
+     "en": ""
+    },
+    {
+     "fr": "SIEREM - Autres",
+     "en": ""
+    },
+    {
+     "fr": "CAM - Notices",
+     "en": ""
+    },
+    {
+     "fr": "CAM - Distribution Sachets",
+     "en": ""
+    },
+    {
+     "fr": "CAM - Mise en étuis",
+     "en": ""
+    },
+    {
+     "fr": "CAM - Autres",
+     "en": ""
+    },
+    {
+     "fr": "LASER",
+     "en": ""
+    },
+    {
+     "fr": "CAMÉRA",
+     "en": ""
+    },
+    {
+     "fr": "GARVENS",
+     "en": ""
+    },
+    {
+     "fr": "CERMEX - Prise Caisses",
+     "en": ""
+    },
+    {
+     "fr": "CERMEX - Encaissage",
+     "en": ""
+    },
+    {
+     "fr": "CERMEX - Collage Caisses",
+     "en": ""
+    },
+    {
+     "fr": "CERMEX - Autres",
+     "en": ""
+    },
+    {
+     "fr": "Étiqueteuse",
+     "en": ""
+    },
+    {
+     "fr": "Autres (Non identifié)",
+     "en": ""
+    }
+   ],
+   "dysfSpare": 11,
+   "blockSizes": {
+    "dysf": 32,
+    "panne": 32,
+    "reglages": 33
+   },
+   "peopleZac": 12,
+   "wasteByMachine": 15,
+   "hasCategory": false,
+   "categoryRows": 0,
+   "categoryAnomalies": [],
+   "planSheet": false,
+   "planDay": "",
+   "planRows": 0,
+   "lossRows": 0,
+   "firstDay": "2025-01-06",
+   "lastDay": "2025-12-23"
+  },
+  {
+   "group": "NON TISSE",
+   "year": "2025",
+   "line": "HOME 2",
+   "file": "OEE HOME 2 - 2025.xlsm",
+   "baseColumns": 404,
+   "sheets": [
+    "OEE",
+    "Data",
+    "Base",
+    "Presentation"
+   ],
+   "dysfParts": [
+    {
+     "fr": "VIDE FÛT",
+     "en": ""
+    },
+    {
+     "fr": "BAC MELTEX",
+     "en": ""
+    },
+    {
+     "fr": "NORDSON - ENDUCTION",
+     "en": ""
+    },
+    {
+     "fr": "NORDSON - DÉCOUPE",
+     "en": ""
+    },
+    {
+     "fr": "NORDSON - Autres",
+     "en": ""
+    },
+    {
+     "fr": "SIEREM - Plateau / Courroies Divergentes",
+     "en": ""
+    },
+    {
+     "fr": "SIEREM - Éjecteur",
+     "en": ""
+    },
+    {
+     "fr": "SIEREM - Autres",
+     "en": ""
+    },
+    {
+     "fr": "CAM - Notices",
+     "en": ""
+    },
+    {
+     "fr": "CAM - Distribution Sachets",
+     "en": ""
+    },
+    {
+     "fr": "CAM - Mise en étuis",
+     "en": ""
+    },
+    {
+     "fr": "CAM - Autres",
+     "en": ""
+    },
+    {
+     "fr": "LASER",
+     "en": ""
+    },
+    {
+     "fr": "CAMÉRA",
+     "en": ""
+    },
+    {
+     "fr": "GARVENS",
+     "en": ""
+    },
+    {
+     "fr": "CERMEX - Prise Caisses",
+     "en": ""
+    },
+    {
+     "fr": "CERMEX - Encaissage",
+     "en": ""
+    },
+    {
+     "fr": "CERMEX - Collage Caisses",
+     "en": ""
+    },
+    {
+     "fr": "CERMEX - Autres",
+     "en": ""
+    },
+    {
+     "fr": "Étiqueteuse",
+     "en": ""
+    },
+    {
+     "fr": "Autres (Non identifié)",
+     "en": ""
+    }
+   ],
+   "dysfSpare": 11,
+   "blockSizes": {
+    "dysf": 32,
+    "panne": 32,
+    "reglages": 33
+   },
+   "peopleZac": 12,
+   "wasteByMachine": 15,
+   "hasCategory": false,
+   "categoryRows": 0,
+   "categoryAnomalies": [],
+   "planSheet": false,
+   "planDay": "",
+   "planRows": 0,
+   "lossRows": 0,
+   "firstDay": "2025-01-06",
+   "lastDay": "2025-12-23"
+  },
+  {
+   "group": "NON TISSE",
+   "year": "2025",
+   "line": "HOME 3",
+   "file": "OEE HOME 3 - 2025.xlsm",
+   "baseColumns": 404,
+   "sheets": [
+    "Data",
+    "OEE",
+    "Base",
+    "Presentation"
+   ],
+   "dysfParts": [
+    {
+     "fr": "VIDE FÛT",
+     "en": ""
+    },
+    {
+     "fr": "BAC MELTEX",
+     "en": ""
+    },
+    {
+     "fr": "NORDSON - ENDUCTION",
+     "en": ""
+    },
+    {
+     "fr": "NORDSON - DÉCOUPE",
+     "en": ""
+    },
+    {
+     "fr": "NORDSON - Autres",
+     "en": ""
+    },
+    {
+     "fr": "SIEREM - Plateau / Courroies Divergentes",
+     "en": ""
+    },
+    {
+     "fr": "SIEREM - Éjecteur",
+     "en": ""
+    },
+    {
+     "fr": "SIEREM - Autres",
+     "en": ""
+    },
+    {
+     "fr": "CAM - Notices",
+     "en": ""
+    },
+    {
+     "fr": "CAM - Distribution Sachets",
+     "en": ""
+    },
+    {
+     "fr": "CAM - Mise en étuis",
+     "en": ""
+    },
+    {
+     "fr": "CAM - Autres",
+     "en": ""
+    },
+    {
+     "fr": "LASER",
+     "en": ""
+    },
+    {
+     "fr": "CAMÉRA",
+     "en": ""
+    },
+    {
+     "fr": "GARVENS",
+     "en": ""
+    },
+    {
+     "fr": "CERMEX - Prise Caisses",
+     "en": ""
+    },
+    {
+     "fr": "CERMEX - Encaissage",
+     "en": ""
+    },
+    {
+     "fr": "CERMEX - Collage Caisses",
+     "en": ""
+    },
+    {
+     "fr": "CERMEX - Autres",
+     "en": ""
+    },
+    {
+     "fr": "Étiqueteuse",
+     "en": ""
+    },
+    {
+     "fr": "Autres (Non identifié)",
+     "en": ""
+    }
+   ],
+   "dysfSpare": 11,
+   "blockSizes": {
+    "dysf": 32,
+    "panne": 32,
+    "reglages": 33
+   },
+   "peopleZac": 12,
+   "wasteByMachine": 15,
+   "hasCategory": false,
+   "categoryRows": 0,
+   "categoryAnomalies": [],
+   "planSheet": false,
+   "planDay": "",
+   "planRows": 0,
+   "lossRows": 0,
+   "firstDay": "2025-01-06",
+   "lastDay": "2025-12-23"
+  },
+  {
+   "group": "NON TISSE",
+   "year": "2025",
+   "line": "HOME 4",
+   "file": "OEE HOME 4 - 2025.xlsm",
+   "baseColumns": 404,
+   "sheets": [
+    "Data",
+    "OEE",
+    "Base",
+    "Presentation"
+   ],
+   "dysfParts": [
+    {
+     "fr": "VIDE FÛT",
+     "en": ""
+    },
+    {
+     "fr": "BAC MELTEX",
+     "en": ""
+    },
+    {
+     "fr": "NORDSON - ENDUCTION",
+     "en": ""
+    },
+    {
+     "fr": "NORDSON - DÉCOUPE",
+     "en": ""
+    },
+    {
+     "fr": "NORDSON - Autres",
+     "en": ""
+    },
+    {
+     "fr": "SIEREM - Plateau / Courroies Divergentes",
+     "en": ""
+    },
+    {
+     "fr": "SIEREM - Éjecteur",
+     "en": ""
+    },
+    {
+     "fr": "SIEREM - Autres",
+     "en": ""
+    },
+    {
+     "fr": "CAM - Notices",
+     "en": ""
+    },
+    {
+     "fr": "CAM - Distribution Sachets",
+     "en": ""
+    },
+    {
+     "fr": "CAM - Mise en étuis",
+     "en": ""
+    },
+    {
+     "fr": "CAM - Autres",
+     "en": ""
+    },
+    {
+     "fr": "LASER",
+     "en": ""
+    },
+    {
+     "fr": "CAMÉRA",
+     "en": ""
+    },
+    {
+     "fr": "GARVENS",
+     "en": ""
+    },
+    {
+     "fr": "CERMEX - Prise Caisses",
+     "en": ""
+    },
+    {
+     "fr": "CERMEX - Encaissage",
+     "en": ""
+    },
+    {
+     "fr": "CERMEX - Collage Caisses",
+     "en": ""
+    },
+    {
+     "fr": "CERMEX - Autres",
+     "en": ""
+    },
+    {
+     "fr": "Étiqueteuse",
+     "en": ""
+    },
+    {
+     "fr": "Autres (Non identifié)",
+     "en": ""
+    }
+   ],
+   "dysfSpare": 11,
+   "blockSizes": {
+    "dysf": 32,
+    "panne": 32,
+    "reglages": 33
+   },
+   "peopleZac": 12,
+   "wasteByMachine": 15,
+   "hasCategory": false,
+   "categoryRows": 0,
+   "categoryAnomalies": [],
+   "planSheet": false,
+   "planDay": "",
+   "planRows": 0,
+   "lossRows": 0,
+   "firstDay": "2025-01-06",
+   "lastDay": "2025-12-23"
+  },
+  {
+   "group": "NON TISSE",
+   "year": "2025",
+   "line": "SACHA 1",
+   "file": "OEE SACHA 1 - 2025.xlsm",
+   "baseColumns": 404,
+   "sheets": [
+    "Data",
+    "OEE",
+    "Base",
+    "Presentation"
+   ],
+   "dysfParts": [
+    {
+     "fr": "DÉCOUPE NON TISSÉ (Piste 1/2)",
+     "en": ""
+    },
+    {
+     "fr": "CONFORMATEUR (Piste 1/2)",
+     "en": ""
+    },
+    {
+     "fr": "INTRO NON TISSÉ (Piste 1/2)",
+     "en": ""
+    },
+    {
+     "fr": "DÉCENTRAGE (Piste 1/2)",
+     "en": ""
+    },
+    {
+     "fr": "SOUDURE (FUITE) (Piste 1/2)",
+     "en": ""
+    },
+    {
+     "fr": "DÉCOUPE LAMINÉ (Piste 1/2)",
+     "en": ""
+    },
+    {
+     "fr": "REMPLISSAGE (Exemple POIDS) (Piste 1/2)",
+     "en": ""
+    },
+    {
+     "fr": "DÉCOUPE NON TISSÉ (Piste 3/4)",
+     "en": ""
+    },
+    {
+     "fr": "CONFORMATEUR (Piste 3/4)",
+     "en": ""
+    },
+    {
+     "fr": "INTRO NON TISSÉ (Piste 3/4)",
+     "en": ""
+    },
+    {
+     "fr": "DÉCENTRAGE (Piste 3/4)",
+     "en": ""
+    },
+    {
+     "fr": "SOUDURE (FUITE) (Piste 3/4)",
+     "en": ""
+    },
+    {
+     "fr": "DÉCOUPE LAMINÉ (Piste 3/4)",
+     "en": ""
+    },
+    {
+     "fr": "REMPLISSAGE (Exemple POIDS) (Piste 3/4)",
+     "en": ""
+    },
+    {
+     "fr": "POUSSOIR (Poumon)",
+     "en": ""
+    },
+    {
+     "fr": "BOURRAGE TRAPPES (Poumon)",
+     "en": ""
+    },
+    {
+     "fr": "Autres (Non identifié) (Poumon)",
+     "en": ""
+    }
+   ],
+   "dysfSpare": 15,
+   "blockSizes": {
+    "dysf": 32,
+    "panne": 32,
+    "reglages": 33
+   },
+   "peopleZac": 12,
+   "wasteByMachine": 5,
+   "hasCategory": false,
+   "categoryRows": 0,
+   "categoryAnomalies": [],
+   "planSheet": false,
+   "planDay": "",
+   "planRows": 0,
+   "lossRows": 0,
+   "firstDay": "2025-01-06",
+   "lastDay": "2025-12-23"
+  },
+  {
+   "group": "NON TISSE",
+   "year": "2025",
+   "line": "SACHA 2",
+   "file": "OEE SACHA 2 - 2025.xlsm",
+   "baseColumns": 404,
+   "sheets": [
+    "Data",
+    "OEE",
+    "Base",
+    "Presentation"
+   ],
+   "dysfParts": [
+    {
+     "fr": "DÉCOUPE NON TISSÉ (Piste 5/6)",
+     "en": ""
+    },
+    {
+     "fr": "CONFORMATEUR (Piste 5/6)",
+     "en": ""
+    },
+    {
+     "fr": "INTRO NON TISSÉ (Piste 5/6)",
+     "en": ""
+    },
+    {
+     "fr": "DÉCENTRAGE (Piste 5/6)",
+     "en": ""
+    },
+    {
+     "fr": "SOUDURE (FUITE) (Piste 5/6)",
+     "en": ""
+    },
+    {
+     "fr": "DÉCOUPE LAMINÉ (Piste 5/6)",
+     "en": ""
+    },
+    {
+     "fr": "REMPLISSAGE (Exemple POIDS) (Piste 5/6)",
+     "en": ""
+    },
+    {
+     "fr": "DÉCOUPE NON TISSÉ (Piste 7/8)",
+     "en": ""
+    },
+    {
+     "fr": "CONFORMATEUR (Piste 7/8)",
+     "en": ""
+    },
+    {
+     "fr": "INTRO NON TISSÉ (Piste 7/8)",
+     "en": ""
+    },
+    {
+     "fr": "DÉCENTRAGE (Piste 7/8)",
+     "en": ""
+    },
+    {
+     "fr": "SOUDURE (FUITE) (Piste 7/8)",
+     "en": ""
+    },
+    {
+     "fr": "DÉCOUPE LAMINÉ (Piste 7/8)",
+     "en": ""
+    },
+    {
+     "fr": "REMPLISSAGE (Exemple POIDS) (Piste 7/8)",
+     "en": ""
+    },
+    {
+     "fr": "POUSSOIR (Poumon)",
+     "en": ""
+    },
+    {
+     "fr": "BOURRAGE TRAPPES (Poumon)",
+     "en": ""
+    },
+    {
+     "fr": "Autres (Non identifié) (Poumon)",
+     "en": ""
+    }
+   ],
+   "dysfSpare": 15,
+   "blockSizes": {
+    "dysf": 32,
+    "panne": 32,
+    "reglages": 33
+   },
+   "peopleZac": 12,
+   "wasteByMachine": 5,
+   "hasCategory": false,
+   "categoryRows": 0,
+   "categoryAnomalies": [],
+   "planSheet": false,
+   "planDay": "",
+   "planRows": 0,
+   "lossRows": 0,
+   "firstDay": "2025-01-06",
+   "lastDay": "2025-12-23"
+  },
+  {
+   "group": "NON TISSE",
+   "year": "2025",
+   "line": "SUGAR",
+   "file": "OEE SUGAR - 2025.xlsm",
+   "baseColumns": 383,
+   "sheets": [
+    "Data",
+    "OEE",
+    "Base",
+    "Presentation"
+   ],
+   "dysfParts": [
+    {
+     "fr": "PROCESS",
+     "en": ""
+    },
+    {
+     "fr": "REMPLISSEUSE",
+     "en": ""
+    },
+    {
+     "fr": "OPERCULEUSE",
+     "en": ""
+    },
+    {
+     "fr": "DOMINO 1 - POTS",
+     "en": ""
+    },
+    {
+     "fr": "VISSEUSE",
+     "en": ""
+    },
+    {
+     "fr": "ÉTIQUETEUSE",
+     "en": ""
+    },
+    {
+     "fr": "ÉTUYEUSE",
+     "en": ""
+    },
+    {
+     "fr": "DOMINO 2 - ÉTUIS",
+     "en": ""
+    },
+    {
+     "fr": "ENCAISSEUSE",
+     "en": ""
+    },
+    {
+     "fr": "DOMINO M200 (CAISSES)",
+     "en": ""
+    },
+    {
+     "fr": "Autres (Non Identifié)",
+     "en": ""
+    }
+   ],
+   "dysfSpare": 21,
+   "blockSizes": {
+    "dysf": 32,
+    "panne": 32,
+    "reglages": 33
+   },
+   "peopleZac": 0,
+   "wasteByMachine": 0,
+   "hasCategory": false,
+   "categoryRows": 0,
+   "categoryAnomalies": [],
+   "planSheet": false,
+   "planDay": "",
+   "planRows": 0,
+   "lossRows": 0,
+   "firstDay": "2025-01-08",
+   "lastDay": "2025-12-23"
+  },
+  {
+   "group": "NON TISSE",
+   "year": "2026",
+   "line": "HOME 1",
+   "file": "OEE HOME 1 - 2026.xlsm",
+   "baseColumns": 404,
+   "sheets": [
+    "OEE",
+    "Data",
+    "Base",
+    "Presentation",
+    "Category",
+    "OEE global report",
+    "LineLosses",
+    "PlanOPT"
+   ],
+   "dysfParts": [
+    {
+     "fr": "VIDE FÛT",
+     "en": "Barrel unloader"
+    },
+    {
+     "fr": "BAC MELTEX",
+     "en": "Mixing tank"
+    },
+    {
+     "fr": "NORDSON - ENDUCTION",
+     "en": "Coating dispenser"
+    },
+    {
+     "fr": "NORDSON - DÉCOUPE",
+     "en": "Coating dispenser"
+    },
+    {
+     "fr": "NORDSON - Autres",
+     "en": "Coating dispenser"
+    },
+    {
+     "fr": "SIEREM - Plateau / Courroies Divergentes",
+     "en": "Wax strip dispenser"
+    },
+    {
+     "fr": "SIEREM - Éjecteur",
+     "en": "Wax strip dispenser"
+    },
+    {
+     "fr": "SIEREM - Autres",
+     "en": "Wax strip dispenser"
+    },
+    {
+     "fr": "CAM - Notices",
+     "en": "Skilleting machine"
+    },
+    {
+     "fr": "CAM - Distribution Sachets",
+     "en": "Skilleting machine"
+    },
+    {
+     "fr": "CAM - Mise en étuis",
+     "en": "Skilleting machine"
+    },
+    {
+     "fr": "CAM - Autres",
+     "en": "Skilleting machine"
+    },
+    {
+     "fr": "LASER",
+     "en": "Laser"
+    },
+    {
+     "fr": "CAMÉRA",
+     "en": "Camera"
+    },
+    {
+     "fr": "GARVENS",
+     "en": "Weigher"
+    },
+    {
+     "fr": "CERMEX - Prise Caisses",
+     "en": "Case packer"
+    },
+    {
+     "fr": "CERMEX - Encaissage",
+     "en": "Case packer"
+    },
+    {
+     "fr": "CERMEX - Collage Caisses",
+     "en": "Case packer"
+    },
+    {
+     "fr": "CERMEX - Autres",
+     "en": "Case packer"
+    },
+    {
+     "fr": "Étiqueteuse",
+     "en": "Case labeller"
+    },
+    {
+     "fr": "Autres (Non identifié)",
+     "en": "Other"
+    }
+   ],
+   "dysfSpare": 11,
+   "blockSizes": {
+    "dysf": 32,
+    "panne": 32,
+    "reglages": 33
+   },
+   "peopleZac": 12,
+   "wasteByMachine": 15,
+   "hasCategory": true,
+   "categoryRows": 96,
+   "categoryAnomalies": [],
+   "planSheet": true,
+   "planDay": "2026-10-23",
+   "planRows": 2,
+   "lossRows": 96,
+   "firstDay": "2026-01-05",
+   "lastDay": "2026-10-23"
+  },
+  {
+   "group": "NON TISSE",
+   "year": "2026",
+   "line": "HOME 2",
+   "file": "OEE HOME 2 - 2026.xlsm",
+   "baseColumns": 404,
+   "sheets": [
+    "OEE",
+    "Data",
+    "Base",
+    "Presentation",
+    "Category",
+    "OEE global report",
+    "LineLosses",
+    "PlanOPT"
+   ],
+   "dysfParts": [
+    {
+     "fr": "VIDE FÛT",
+     "en": "Barrel unloader"
+    },
+    {
+     "fr": "BAC MELTEX",
+     "en": "Mixing tank"
+    },
+    {
+     "fr": "NORDSON - ENDUCTION",
+     "en": "Coating dispenser"
+    },
+    {
+     "fr": "NORDSON - DÉCOUPE",
+     "en": "Coating dispenser"
+    },
+    {
+     "fr": "NORDSON - Autres",
+     "en": "Coating dispenser"
+    },
+    {
+     "fr": "SIEREM - Plateau / Courroies Divergentes",
+     "en": "Wax strip dispenser"
+    },
+    {
+     "fr": "SIEREM - Éjecteur",
+     "en": "Wax strip dispenser"
+    },
+    {
+     "fr": "SIEREM - Autres",
+     "en": "Wax strip dispenser"
+    },
+    {
+     "fr": "CAM - Notices",
+     "en": "Skilleting machine"
+    },
+    {
+     "fr": "CAM - Distribution Sachets",
+     "en": "Skilleting machine"
+    },
+    {
+     "fr": "CAM - Mise en étuis",
+     "en": "Skilleting machine"
+    },
+    {
+     "fr": "CAM - Autres",
+     "en": "Skilleting machine"
+    },
+    {
+     "fr": "LASER",
+     "en": "Laser"
+    },
+    {
+     "fr": "CAMÉRA",
+     "en": "Camera"
+    },
+    {
+     "fr": "GARVENS",
+     "en": "Weigher"
+    },
+    {
+     "fr": "CERMEX - Prise Caisses",
+     "en": "Case packer"
+    },
+    {
+     "fr": "CERMEX - Encaissage",
+     "en": "Case packer"
+    },
+    {
+     "fr": "CERMEX - Collage Caisses",
+     "en": "Case packer"
+    },
+    {
+     "fr": "CERMEX - Autres",
+     "en": "Case packer"
+    },
+    {
+     "fr": "Étiqueteuse",
+     "en": "Case labeller"
+    },
+    {
+     "fr": "Autres (Non identifié)",
+     "en": "Other"
+    }
+   ],
+   "dysfSpare": 11,
+   "blockSizes": {
+    "dysf": 32,
+    "panne": 32,
+    "reglages": 33
+   },
+   "peopleZac": 12,
+   "wasteByMachine": 15,
+   "hasCategory": true,
+   "categoryRows": 96,
+   "categoryAnomalies": [],
+   "planSheet": true,
+   "planDay": "2026-08-03",
+   "planRows": 3,
+   "lossRows": 96,
+   "firstDay": "2026-01-05",
+   "lastDay": "2026-10-23"
+  },
+  {
+   "group": "NON TISSE",
+   "year": "2026",
+   "line": "HOME 3",
+   "file": "OEE HOME 3 - 2026.xlsm",
+   "baseColumns": 404,
+   "sheets": [
+    "Data",
+    "Feuil1",
+    "OEE",
+    "Base",
+    "Presentation",
+    "Category",
+    "OEE global report",
+    "LineLosses",
+    "PlanOPT"
+   ],
+   "dysfParts": [
+    {
+     "fr": "VIDE FÛT",
+     "en": "Barrel unloader"
+    },
+    {
+     "fr": "BAC MELTEX",
+     "en": "Mixing tank"
+    },
+    {
+     "fr": "NORDSON - ENDUCTION",
+     "en": "Coating dispenser"
+    },
+    {
+     "fr": "NORDSON - DÉCOUPE",
+     "en": "Coating dispenser"
+    },
+    {
+     "fr": "NORDSON - Autres",
+     "en": "Coating dispenser"
+    },
+    {
+     "fr": "SIEREM - Plateau / Courroies Divergentes",
+     "en": "Wax strip dispenser"
+    },
+    {
+     "fr": "SIEREM - Éjecteur",
+     "en": "Wax strip dispenser"
+    },
+    {
+     "fr": "SIEREM - Autres",
+     "en": "Wax strip dispenser"
+    },
+    {
+     "fr": "CAM - Notices",
+     "en": "Skilleting machine"
+    },
+    {
+     "fr": "CAM - Distribution Sachets",
+     "en": "Skilleting machine"
+    },
+    {
+     "fr": "CAM - Mise en étuis",
+     "en": "Skilleting machine"
+    },
+    {
+     "fr": "CAM - Autres",
+     "en": "Skilleting machine"
+    },
+    {
+     "fr": "LASER",
+     "en": "Laser"
+    },
+    {
+     "fr": "CAMÉRA",
+     "en": "Camera"
+    },
+    {
+     "fr": "GARVENS",
+     "en": "Weigher"
+    },
+    {
+     "fr": "CERMEX - Prise Caisses",
+     "en": "Case packer"
+    },
+    {
+     "fr": "CERMEX - Encaissage",
+     "en": "Case packer"
+    },
+    {
+     "fr": "CERMEX - Collage Caisses",
+     "en": "Case packer"
+    },
+    {
+     "fr": "CERMEX - Autres",
+     "en": "Case packer"
+    },
+    {
+     "fr": "Étiqueteuse",
+     "en": "Case labeller"
+    },
+    {
+     "fr": "Autres (Non identifié)",
+     "en": "Other"
+    }
+   ],
+   "dysfSpare": 11,
+   "blockSizes": {
+    "dysf": 32,
+    "panne": 32,
+    "reglages": 33
+   },
+   "peopleZac": 12,
+   "wasteByMachine": 15,
+   "hasCategory": true,
+   "categoryRows": 96,
+   "categoryAnomalies": [],
+   "planSheet": true,
+   "planDay": "2026-08-03",
+   "planRows": 4,
+   "lossRows": 96,
+   "firstDay": "2026-01-05",
+   "lastDay": "2026-10-23"
+  },
+  {
+   "group": "NON TISSE",
+   "year": "2026",
+   "line": "HOME 4",
+   "file": "OEE HOME 4 - 2026.xlsm",
+   "baseColumns": 404,
+   "sheets": [
+    "Data",
+    "OEE",
+    "Base",
+    "Presentation",
+    "Category",
+    "OEE global report",
+    "LineLosses",
+    "PlanOPT"
+   ],
+   "dysfParts": [
+    {
+     "fr": "VIDE FÛT",
+     "en": "Barrel unloader"
+    },
+    {
+     "fr": "BAC MELTEX",
+     "en": "Mixing tank"
+    },
+    {
+     "fr": "NORDSON - ENDUCTION",
+     "en": "Coating dispenser"
+    },
+    {
+     "fr": "NORDSON - DÉCOUPE",
+     "en": "Coating dispenser"
+    },
+    {
+     "fr": "NORDSON - Autres",
+     "en": "Coating dispenser"
+    },
+    {
+     "fr": "SIEREM - Plateau / Courroies Divergentes",
+     "en": "Wax strip dispenser"
+    },
+    {
+     "fr": "SIEREM - Éjecteur",
+     "en": "Wax strip dispenser"
+    },
+    {
+     "fr": "SIEREM - Autres",
+     "en": "Wax strip dispenser"
+    },
+    {
+     "fr": "CAM - Notices",
+     "en": "Skilleting machine"
+    },
+    {
+     "fr": "CAM - Distribution Sachets",
+     "en": "Skilleting machine"
+    },
+    {
+     "fr": "CAM - Mise en étuis",
+     "en": "Skilleting machine"
+    },
+    {
+     "fr": "CAM - Autres",
+     "en": "Skilleting machine"
+    },
+    {
+     "fr": "LASER",
+     "en": "Laser"
+    },
+    {
+     "fr": "CAMÉRA",
+     "en": "Camera"
+    },
+    {
+     "fr": "GARVENS",
+     "en": "Weigher"
+    },
+    {
+     "fr": "CERMEX - Prise Caisses",
+     "en": "Case packer"
+    },
+    {
+     "fr": "CERMEX - Encaissage",
+     "en": "Case packer"
+    },
+    {
+     "fr": "CERMEX - Collage Caisses",
+     "en": "Case packer"
+    },
+    {
+     "fr": "CERMEX - Autres",
+     "en": "Case packer"
+    },
+    {
+     "fr": "Étiqueteuse",
+     "en": "Case labeller"
+    },
+    {
+     "fr": "Autres (Non identifié)",
+     "en": "Other"
+    }
+   ],
+   "dysfSpare": 11,
+   "blockSizes": {
+    "dysf": 32,
+    "panne": 32,
+    "reglages": 33
+   },
+   "peopleZac": 12,
+   "wasteByMachine": 15,
+   "hasCategory": true,
+   "categoryRows": 96,
+   "categoryAnomalies": [],
+   "planSheet": true,
+   "planDay": "2026-08-03",
+   "planRows": 2,
+   "lossRows": 96,
+   "firstDay": "2026-01-06",
+   "lastDay": "2026-10-23"
+  },
+  {
+   "group": "NON TISSE",
+   "year": "2026",
+   "line": "SACHA 1",
+   "file": "OEE SACHA 1 - 2026.xlsm",
+   "baseColumns": 404,
+   "sheets": [
+    "Data",
+    "OEE",
+    "Base",
+    "Presentation",
+    "Category"
+   ],
+   "dysfParts": [
+    {
+     "fr": "DÉCOUPE NON TISSÉ (Piste 1/2)",
+     "en": "Piste 1/2"
+    },
+    {
+     "fr": "CONFORMATEUR (Piste 1/2)",
+     "en": "Piste 1/2"
+    },
+    {
+     "fr": "INTRO NON TISSÉ (Piste 1/2)",
+     "en": "Piste 1/2"
+    },
+    {
+     "fr": "DÉCENTRAGE (Piste 1/2)",
+     "en": "Piste 1/2"
+    },
+    {
+     "fr": "SOUDURE (FUITE) (Piste 1/2)",
+     "en": "Piste 1/2"
+    },
+    {
+     "fr": "DÉCOUPE LAMINÉ (Piste 1/2)",
+     "en": "Piste 1/2"
+    },
+    {
+     "fr": "REMPLISSAGE (Exemple POIDS) (Piste 1/2)",
+     "en": "Piste 1/2"
+    },
+    {
+     "fr": "DÉCOUPE NON TISSÉ (Piste 3/4)",
+     "en": "Piste 3/4"
+    },
+    {
+     "fr": "CONFORMATEUR (Piste 3/4)",
+     "en": "Piste 3/4"
+    },
+    {
+     "fr": "INTRO NON TISSÉ (Piste 3/4)",
+     "en": "Piste 3/4"
+    },
+    {
+     "fr": "DÉCENTRAGE (Piste 3/4)",
+     "en": "Piste 3/4"
+    },
+    {
+     "fr": "SOUDURE (FUITE) (Piste 3/4)",
+     "en": "Piste 3/4"
+    },
+    {
+     "fr": "DÉCOUPE LAMINÉ (Piste 3/4)",
+     "en": "Piste 3/4"
+    },
+    {
+     "fr": "REMPLISSAGE (Exemple POIDS) (Piste 3/4)",
+     "en": "Piste 3/4"
+    },
+    {
+     "fr": "POUSSOIR (Poumon)",
+     "en": "Pusher"
+    },
+    {
+     "fr": "BOURRAGE TRAPPES (Poumon)",
+     "en": "Hatch"
+    },
+    {
+     "fr": "Autres (Non identifié) (Poumon)",
+     "en": "Other"
+    }
+   ],
+   "dysfSpare": 15,
+   "blockSizes": {
+    "dysf": 32,
+    "panne": 32,
+    "reglages": 33
+   },
+   "peopleZac": 12,
+   "wasteByMachine": 5,
+   "hasCategory": true,
+   "categoryRows": 84,
+   "categoryAnomalies": [],
+   "planSheet": false,
+   "planDay": "",
+   "planRows": 0,
+   "lossRows": 0,
+   "firstDay": "2026-01-05",
+   "lastDay": "2026-10-23"
+  },
+  {
+   "group": "NON TISSE",
+   "year": "2026",
+   "line": "SACHA 2",
+   "file": "OEE SACHA 2 - 2026.xlsm",
+   "baseColumns": 404,
+   "sheets": [
+    "Data",
+    "OEE",
+    "Base",
+    "Presentation",
+    "Category"
+   ],
+   "dysfParts": [
+    {
+     "fr": "DÉCOUPE NON TISSÉ (Piste 5/6)",
+     "en": "Piste 5/6"
+    },
+    {
+     "fr": "CONFORMATEUR (Piste 5/6)",
+     "en": "Piste 5/6"
+    },
+    {
+     "fr": "INTRO NON TISSÉ (Piste 5/6)",
+     "en": "Piste 5/6"
+    },
+    {
+     "fr": "DÉCENTRAGE (Piste 5/6)",
+     "en": "Piste 5/6"
+    },
+    {
+     "fr": "SOUDURE (FUITE) (Piste 5/6)",
+     "en": "Piste 5/6"
+    },
+    {
+     "fr": "DÉCOUPE LAMINÉ (Piste 5/6)",
+     "en": "Piste 5/6"
+    },
+    {
+     "fr": "REMPLISSAGE (Exemple POIDS) (Piste 5/6)",
+     "en": "Piste 5/6"
+    },
+    {
+     "fr": "DÉCOUPE NON TISSÉ (Piste 7/8)",
+     "en": "Piste 7/8"
+    },
+    {
+     "fr": "CONFORMATEUR (Piste 7/8)",
+     "en": "Piste 7/8"
+    },
+    {
+     "fr": "INTRO NON TISSÉ (Piste 7/8)",
+     "en": "Piste 7/8"
+    },
+    {
+     "fr": "DÉCENTRAGE (Piste 7/8)",
+     "en": "Piste 7/8"
+    },
+    {
+     "fr": "SOUDURE (FUITE) (Piste 7/8)",
+     "en": "Piste 7/8"
+    },
+    {
+     "fr": "DÉCOUPE LAMINÉ (Piste 7/8)",
+     "en": "Piste 7/8"
+    },
+    {
+     "fr": "REMPLISSAGE (Exemple POIDS) (Piste 7/8)",
+     "en": "Piste 7/8"
+    },
+    {
+     "fr": "POUSSOIR (Poumon)",
+     "en": "Pusher"
+    },
+    {
+     "fr": "BOURRAGE TRAPPES (Poumon)",
+     "en": "Hatch"
+    },
+    {
+     "fr": "Autres (Non identifié) (Poumon)",
+     "en": "Other"
+    }
+   ],
+   "dysfSpare": 15,
+   "blockSizes": {
+    "dysf": 32,
+    "panne": 32,
+    "reglages": 33
+   },
+   "peopleZac": 12,
+   "wasteByMachine": 5,
+   "hasCategory": true,
+   "categoryRows": 84,
+   "categoryAnomalies": [],
+   "planSheet": false,
+   "planDay": "",
+   "planRows": 0,
+   "lossRows": 0,
+   "firstDay": "2026-01-05",
+   "lastDay": "2026-10-23"
+  },
+  {
+   "group": "NON TISSE",
+   "year": "2026",
+   "line": "SUGAR",
+   "file": "OEE SUGAR - 2026.xlsm",
+   "baseColumns": 383,
+   "sheets": [
+    "Data",
+    "OEE",
+    "Base",
+    "Presentation",
+    "Category"
+   ],
+   "dysfParts": [
+    {
+     "fr": "PROCESS",
+     "en": "Process"
+    },
+    {
+     "fr": "REMPLISSEUSE",
+     "en": "Filling machine"
+    },
+    {
+     "fr": "OPERCULEUSE",
+     "en": "Caps dispenser"
+    },
+    {
+     "fr": "DOMINO 1 - POTS",
+     "en": "Dater"
+    },
+    {
+     "fr": "VISSEUSE",
+     "en": "Screwing machine"
+    },
+    {
+     "fr": "ÉTIQUETEUSE",
+     "en": "Labeller"
+    },
+    {
+     "fr": "ÉTUYEUSE",
+     "en": "Skilleting machine"
+    },
+    {
+     "fr": "DOMINO 2 - ÉTUIS",
+     "en": "Skillet dater"
+    },
+    {
+     "fr": "ENCAISSEUSE",
+     "en": "Case packer"
+    },
+    {
+     "fr": "DOMINO M200 (CAISSES)",
+     "en": "Case labeller"
+    },
+    {
+     "fr": "Autres (Non Identifié)",
+     "en": "Other"
+    }
+   ],
+   "dysfSpare": 21,
+   "blockSizes": {
+    "dysf": 32,
+    "panne": 32,
+    "reglages": 33
+   },
+   "peopleZac": 0,
+   "wasteByMachine": 0,
+   "hasCategory": true,
+   "categoryRows": 66,
+   "categoryAnomalies": [],
+   "planSheet": false,
+   "planDay": "",
+   "planRows": 0,
+   "lossRows": 0,
+   "firstDay": "2026-01-06",
+   "lastDay": "2026-10-16"
+  },
+  {
+   "group": "SKIN CARE",
+   "year": "2025",
+   "line": "APOLLON",
+   "file": "OEE APOLLON - 2025.xlsm",
+   "baseColumns": 383,
+   "sheets": [
+    "Base",
+    "Data",
+    "OEE",
+    "Presentation"
+   ],
+   "dysfParts": [
+    {
+     "fr": "Posimat",
+     "en": ""
+    },
+    {
+     "fr": "Serac",
+     "en": ""
+    },
+    {
+     "fr": "breitner",
+     "en": ""
+    },
+    {
+     "fr": "bol cap",
+     "en": ""
+    },
+    {
+     "fr": "Bol pompes",
+     "en": ""
+    },
+    {
+     "fr": "Process",
+     "en": ""
+    },
+    {
+     "fr": "Autres ZAC",
+     "en": ""
+    },
+    {
+     "fr": "GARVENS Flacon",
+     "en": ""
+    },
+    {
+     "fr": "DOMINO jet d'encre",
+     "en": ""
+    },
+    {
+     "fr": "HARLAND",
+     "en": ""
+    },
+    {
+     "fr": "CAMÉRA",
+     "en": ""
+    },
+    {
+     "fr": "Déviateur",
+     "en": ""
+    },
+    {
+     "fr": "Embarquetteuse",
+     "en": ""
+    },
+    {
+     "fr": "Coiffeuse",
+     "en": ""
+    },
+    {
+     "fr": "DOMINO Caisse",
+     "en": ""
+    },
+    {
+     "fr": "GARVEN Caisse",
+     "en": ""
+    },
+    {
+     "fr": "FANUC",
+     "en": ""
+    },
+    {
+     "fr": "Autres",
+     "en": ""
+    }
+   ],
+   "dysfSpare": 14,
+   "blockSizes": {
+    "dysf": 32,
+    "panne": 32,
+    "reglages": 33
+   },
+   "peopleZac": 12,
+   "wasteByMachine": 0,
+   "hasCategory": false,
+   "categoryRows": 0,
+   "categoryAnomalies": [],
+   "planSheet": false,
+   "planDay": "",
+   "planRows": 0,
+   "lossRows": 0,
+   "firstDay": "2025-01-06",
+   "lastDay": "2025-12-23"
+  },
+  {
+   "group": "SKIN CARE",
+   "year": "2025",
+   "line": "CLÉOPATRE",
+   "file": "OEE CLÉOPATRE - 2025.xlsm",
+   "baseColumns": 383,
+   "sheets": [
+    "Base",
+    "Data",
+    "OEE",
+    "Presentation"
+   ],
+   "dysfParts": [
+    {
+     "fr": "ZAC - TZ",
+     "en": ""
+    },
+    {
+     "fr": "ZAC - REMPLISSEUSE (Distribution Tubes)",
+     "en": ""
+    },
+    {
+     "fr": "ZAC - REMPLISSEUSE (Orientation Tubes)",
+     "en": ""
+    },
+    {
+     "fr": "ZAC - REMPLISSEUSE (Remplissage Tubes)",
+     "en": ""
+    },
+    {
+     "fr": "ZAC - REMPLISSEUSE (Chauffe / Scellage Tubes )",
+     "en": ""
+    },
+    {
+     "fr": "ZAC - REMPLISSEUSE (Découpe Tubes)",
+     "en": ""
+    },
+    {
+     "fr": "ZAC - Cellule Spot UV / Orientation",
+     "en": ""
+    },
+    {
+     "fr": "ZAC - DOMINO Jet D'encre",
+     "en": ""
+    },
+    {
+     "fr": "ZAC - Trieuse Pondérale",
+     "en": ""
+    },
+    {
+     "fr": "ZAC - Autres",
+     "en": ""
+    },
+    {
+     "fr": "Ext ZAC CAMÉRA",
+     "en": ""
+    },
+    {
+     "fr": "Ext ZAC Formeuse ETT",
+     "en": ""
+    },
+    {
+     "fr": "Ext ZAC Encaisseuse ETT",
+     "en": ""
+    },
+    {
+     "fr": "Ext ZAC Fermeuse ETT",
+     "en": ""
+    },
+    {
+     "fr": "Ext ZAC DOMINO Étiquettes",
+     "en": ""
+    },
+    {
+     "fr": "Ext ZAC Trieuse Pondérale Caisses",
+     "en": ""
+    },
+    {
+     "fr": "Ext ZAC Palettiseur FANUC",
+     "en": ""
+    },
+    {
+     "fr": "Ext ZAC Autres",
+     "en": ""
+    }
+   ],
+   "dysfSpare": 14,
+   "blockSizes": {
+    "dysf": 32,
+    "panne": 32,
+    "reglages": 33
+   },
+   "peopleZac": 12,
+   "wasteByMachine": 0,
+   "hasCategory": false,
+   "categoryRows": 0,
+   "categoryAnomalies": [],
+   "planSheet": false,
+   "planDay": "",
+   "planRows": 0,
+   "lossRows": 0,
+   "firstDay": "2025-01-06",
+   "lastDay": "2025-12-18"
+  },
+  {
+   "group": "SKIN CARE",
+   "year": "2025",
+   "line": "NEPTUNE",
+   "file": "OEE NEPTUNE - 2025.xlsm",
+   "baseColumns": 383,
+   "sheets": [
+    "Base",
+    "Data",
+    "OEE",
+    "Presentation"
+   ],
+   "dysfParts": [
+    {
+     "fr": "BCM - Distributeur Flacons",
+     "en": ""
+    },
+    {
+     "fr": "Remplisseuse",
+     "en": ""
+    },
+    {
+     "fr": "Bol Bouchons",
+     "en": ""
+    },
+    {
+     "fr": "Dépose Bouchons",
+     "en": ""
+    },
+    {
+     "fr": "Bol Visseuse Bouchons",
+     "en": ""
+    },
+    {
+     "fr": "ZAC - Autres",
+     "en": ""
+    },
+    {
+     "fr": "Étiqueteuse Flacons",
+     "en": ""
+    },
+    {
+     "fr": "DOMINO Flacons",
+     "en": ""
+    },
+    {
+     "fr": "Dépucker",
+     "en": ""
+    },
+    {
+     "fr": "Table d'encaissage",
+     "en": ""
+    },
+    {
+     "fr": "Scotcheuse",
+     "en": ""
+    },
+    {
+     "fr": "Étiqueteuse Domino Caisse",
+     "en": ""
+    },
+    {
+     "fr": "Vérin Caisses",
+     "en": ""
+    },
+    {
+     "fr": "Convoyeur Sortie",
+     "en": ""
+    },
+    {
+     "fr": "Ext ZAC Autres",
+     "en": ""
+    }
+   ],
+   "dysfSpare": 17,
+   "blockSizes": {
+    "dysf": 32,
+    "panne": 32,
+    "reglages": 33
+   },
+   "peopleZac": 12,
+   "wasteByMachine": 0,
+   "hasCategory": false,
+   "categoryRows": 0,
+   "categoryAnomalies": [],
+   "planSheet": false,
+   "planDay": "",
+   "planRows": 0,
+   "lossRows": 0,
+   "firstDay": "2025-01-06",
+   "lastDay": "2025-12-23"
+  },
+  {
+   "group": "SKIN CARE",
+   "year": "2025",
+   "line": "OLYMPE",
+   "file": "OEE OLYMPE - 2025.xlsm",
+   "baseColumns": 383,
+   "sheets": [
+    "Base",
+    "Data",
+    "OEE",
+    "Presentation"
+   ],
+   "dysfParts": [
+    {
+     "fr": "TGM : Ascenseur",
+     "en": ""
+    },
+    {
+     "fr": "TGM - Tube bloqué dans la descente",
+     "en": ""
+    },
+    {
+     "fr": "TGM - Orientation tube",
+     "en": ""
+    },
+    {
+     "fr": "TGM - Remplissage",
+     "en": ""
+    },
+    {
+     "fr": "TGM - Chauffe / Scellage",
+     "en": ""
+    },
+    {
+     "fr": "TGM - Coupe",
+     "en": ""
+    },
+    {
+     "fr": "Domino",
+     "en": ""
+    },
+    {
+     "fr": "Déviateur",
+     "en": ""
+    },
+    {
+     "fr": "Autre",
+     "en": ""
+    }
+   ],
+   "dysfSpare": 23,
+   "blockSizes": {
+    "dysf": 32,
+    "panne": 32,
+    "reglages": 33
+   },
+   "peopleZac": 12,
+   "wasteByMachine": 0,
+   "hasCategory": false,
+   "categoryRows": 0,
+   "categoryAnomalies": [],
+   "planSheet": false,
+   "planDay": "",
+   "planRows": 0,
+   "lossRows": 0,
+   "firstDay": "2025-01-05",
+   "lastDay": "2025-12-22"
+  },
+  {
+   "group": "SKIN CARE",
+   "year": "2025",
+   "line": "ZEUS",
+   "file": "OEE ZEUS - 2025.xlsm",
+   "baseColumns": 383,
+   "sheets": [
+    "Base",
+    "Data",
+    "OEE",
+    "Presentation"
+   ],
+   "dysfParts": [
+    {
+     "fr": "ZAC - BCM",
+     "en": ""
+    },
+    {
+     "fr": "ZAC - SERAC",
+     "en": ""
+    },
+    {
+     "fr": "ZAC - BOL POMPES",
+     "en": ""
+    },
+    {
+     "fr": "ZAC - BOL CAPS",
+     "en": ""
+    },
+    {
+     "fr": "ZAC - REJVES",
+     "en": ""
+    },
+    {
+     "fr": "ZAC - Process",
+     "en": ""
+    },
+    {
+     "fr": "ZAC - Autres",
+     "en": ""
+    },
+    {
+     "fr": "Ext ZAC DOMINO LASER",
+     "en": ""
+    },
+    {
+     "fr": "Ext ZAC CAMÉRA",
+     "en": ""
+    },
+    {
+     "fr": "Ext ZAC KOSME",
+     "en": ""
+    },
+    {
+     "fr": "Ext ZAC KOSME (Film Cassé)",
+     "en": ""
+    },
+    {
+     "fr": "Ext ZAC KOSME (Bourrage sortie étoile)",
+     "en": ""
+    },
+    {
+     "fr": "Ext ZAC Formeuse Barquette",
+     "en": ""
+    },
+    {
+     "fr": "Ext ZAC AN",
+     "en": ""
+    },
+    {
+     "fr": "Ext ZAC AN (Flacon tombé dans le bac)",
+     "en": ""
+    },
+    {
+     "fr": "Ext ZAC AN (Problème Vis décalée)",
+     "en": ""
+    },
+    {
+     "fr": "Ext ZAC Coiffeuse",
+     "en": ""
+    },
+    {
+     "fr": "Ext ZAC Bourrage Sortie Coiffeuse",
+     "en": ""
+    },
+    {
+     "fr": "Ext ZAC GARVENS Caisse",
+     "en": ""
+    },
+    {
+     "fr": "Ext ZAC DOMINO Étiquette",
+     "en": ""
+    },
+    {
+     "fr": "Ext ZAC FANUC",
+     "en": ""
+    },
+    {
+     "fr": "Ext ZAC Autres",
+     "en": ""
+    }
+   ],
+   "dysfSpare": 10,
+   "blockSizes": {
+    "dysf": 32,
+    "panne": 32,
+    "reglages": 33
+   },
+   "peopleZac": 12,
+   "wasteByMachine": 0,
+   "hasCategory": false,
+   "categoryRows": 0,
+   "categoryAnomalies": [],
+   "planSheet": false,
+   "planDay": "",
+   "planRows": 0,
+   "lossRows": 0,
+   "firstDay": "2025-01-05",
+   "lastDay": "2026-01-04"
+  },
+  {
+   "group": "SKIN CARE",
+   "year": "2026",
+   "line": "APOLLON",
+   "file": "OEE APOLLON - 2026.xlsm",
+   "baseColumns": 383,
+   "sheets": [
+    "Base",
+    "Data",
+    "OEE",
+    "Presentation",
+    "Feuil1",
+    "Category",
+    "OEE global report",
+    "LineLosses",
+    "PlanOPT"
+   ],
+   "dysfParts": [
+    {
+     "fr": "Posimat",
+     "en": "ZAC-Bottle dispenser"
+    },
+    {
+     "fr": "Serac",
+     "en": "ZAC-Filling machine"
+    },
+    {
+     "fr": "breitner",
+     "en": "ZAC-Capping/Screwing machine"
+    },
+    {
+     "fr": "bol cap",
+     "en": "ZAC-Caps dispenser"
+    },
+    {
+     "fr": "Bol pompes",
+     "en": "ZAC-Pumps dispenser"
+    },
+    {
+     "fr": "Process",
+     "en": "ZAC-Process"
+    },
+    {
+     "fr": "Autres ZAC",
+     "en": "ZAC-Other"
+    },
+    {
+     "fr": "GARVENS Flacon",
+     "en": "EXT-Bottle Weigher"
+    },
+    {
+     "fr": "DOMINO jet d'encre",
+     "en": "EXT-Bottle dater"
+    },
+    {
+     "fr": "HARLAND",
+     "en": "EXT-Bottle labeller"
+    },
+    {
+     "fr": "CAMÉRA",
+     "en": ""
+    },
+    {
+     "fr": "Déviateur",
+     "en": "EXT-Case packer part1"
+    },
+    {
+     "fr": "Embarquetteuse",
+     "en": "EXT-Case packer part2"
+    },
+    {
+     "fr": "Coiffeuse",
+     "en": "EXT-Case packer part3"
+    },
+    {
+     "fr": "DOMINO Caisse",
+     "en": "EXT-Case labeller"
+    },
+    {
+     "fr": "GARVEN Caisse",
+     "en": "EXT- Case Weigher"
+    },
+    {
+     "fr": "FANUC",
+     "en": "EXT-Paletizer"
+    },
+    {
+     "fr": "Autres",
+     "en": "EXT-Other"
+    }
+   ],
+   "dysfSpare": 14,
+   "blockSizes": {
+    "dysf": 32,
+    "panne": 32,
+    "reglages": 33
+   },
+   "peopleZac": 12,
+   "wasteByMachine": 0,
+   "hasCategory": true,
+   "categoryRows": 87,
+   "categoryAnomalies": [],
+   "planSheet": true,
+   "planDay": "",
+   "planRows": 0,
+   "lossRows": 0,
+   "firstDay": "2026-01-05",
+   "lastDay": "2026-10-22"
+  },
+  {
+   "group": "SKIN CARE",
+   "year": "2026",
+   "line": "CLÉOPATRE",
+   "file": "OEE CLÉOPATRE - 2026.xlsm",
+   "baseColumns": 383,
+   "sheets": [
+    "Base",
+    "Data",
+    "OEE",
+    "Presentation",
+    "Category",
+    "OEE global report",
+    "LineLosses",
+    "PlanOPT"
+   ],
+   "dysfParts": [
+    {
+     "fr": "ZAC - TZ",
+     "en": "ZAC-Tube dispenser"
+    },
+    {
+     "fr": "ZAC - REMPLISSEUSE (Distribution Tubes)",
+     "en": "ZAC-Filling machine"
+    },
+    {
+     "fr": "ZAC - REMPLISSEUSE (Orientation Tubes)",
+     "en": "ZAC-Filling machine"
+    },
+    {
+     "fr": "ZAC - REMPLISSEUSE (Remplissage Tubes)",
+     "en": "ZAC-Filling machine"
+    },
+    {
+     "fr": "ZAC - REMPLISSEUSE (Chauffe / Scellage Tubes )",
+     "en": "ZAC-Filling machine"
+    },
+    {
+     "fr": "ZAC - REMPLISSEUSE (Découpe Tubes)",
+     "en": "ZAC-Filling machine"
+    },
+    {
+     "fr": "ZAC - Cellule Spot UV / Orientation",
+     "en": "ZAC-Filling machine"
+    },
+    {
+     "fr": "ZAC - DOMINO Jet D'encre",
+     "en": "ZAC-Dater"
+    },
+    {
+     "fr": "ZAC - Trieuse Pondérale",
+     "en": "ZAC-Tube Weigher"
+    },
+    {
+     "fr": "ZAC - Autres",
+     "en": "ZAC-Other"
+    },
+    {
+     "fr": "Ext ZAC CAMÉRA",
+     "en": ""
+    },
+    {
+     "fr": "Ext ZAC Formeuse ETT",
+     "en": "EXT-Case packer part1"
+    },
+    {
+     "fr": "Ext ZAC Encaisseuse ETT",
+     "en": "EXT-Case packer part2"
+    },
+    {
+     "fr": "Ext ZAC Fermeuse ETT",
+     "en": "EXT-Case packer part3"
+    },
+    {
+     "fr": "Ext ZAC DOMINO Étiquettes",
+     "en": "EXT-Case labeller"
+    },
+    {
+     "fr": "Ext ZAC Trieuse Pondérale Caisses",
+     "en": "EXT-Case Weigher"
+    },
+    {
+     "fr": "Ext ZAC Palettiseur FANUC",
+     "en": "EXT-Paletizer"
+    },
+    {
+     "fr": "Ext ZAC Autres",
+     "en": "EXT-Other"
+    }
+   ],
+   "dysfSpare": 14,
+   "blockSizes": {
+    "dysf": 32,
+    "panne": 32,
+    "reglages": 33
+   },
+   "peopleZac": 12,
+   "wasteByMachine": 0,
+   "hasCategory": true,
+   "categoryRows": 87,
+   "categoryAnomalies": [],
+   "planSheet": true,
+   "planDay": "",
+   "planRows": 0,
+   "lossRows": 0,
+   "firstDay": "2026-01-05",
+   "lastDay": "2026-10-05"
+  },
+  {
+   "group": "SKIN CARE",
+   "year": "2026",
+   "line": "NEPTUNE",
+   "file": "OEE NEPTUNE - 2026.xlsm",
+   "baseColumns": 383,
+   "sheets": [
+    "Base",
+    "Data",
+    "OEE",
+    "Presentation",
+    "Category",
+    "OEE global report",
+    "LineLosses",
+    "PlanOPT"
+   ],
+   "dysfParts": [
+    {
+     "fr": "BCM - Distributeur Flacons",
+     "en": "ZAC-Bottle dispenser"
+    },
+    {
+     "fr": "Remplisseuse",
+     "en": "ZAC-Filling machine"
+    },
+    {
+     "fr": "Bol Bouchons",
+     "en": "ZAC-Caps dispenser"
+    },
+    {
+     "fr": "Dépose Bouchons",
+     "en": "ZAC-Capper"
+    },
+    {
+     "fr": "Bol Visseuse Bouchons",
+     "en": "ZAC-Screwing machine"
+    },
+    {
+     "fr": "ZAC - Autres",
+     "en": "ZAC-Other"
+    },
+    {
+     "fr": "Étiqueteuse Flacons",
+     "en": "EXT-Bottle labeller"
+    },
+    {
+     "fr": "DOMINO Flacons",
+     "en": "EXT-Dater"
+    },
+    {
+     "fr": "Dépucker",
+     "en": "EXT-Depucker"
+    },
+    {
+     "fr": "Table d'encaissage",
+     "en": "EXT-Packing Table"
+    },
+    {
+     "fr": "Scotcheuse",
+     "en": "EXT-Case Closer"
+    },
+    {
+     "fr": "Étiqueteuse Domino Caisse",
+     "en": "EXT-Case Labeller"
+    },
+    {
+     "fr": "Vérin Caisses",
+     "en": "EXT-Case Conveyor"
+    },
+    {
+     "fr": "Convoyeur Sortie",
+     "en": "EXT-Case Conveyor"
+    },
+    {
+     "fr": "Ext ZAC Autres",
+     "en": "EXT-Other"
+    }
+   ],
+   "dysfSpare": 17,
+   "blockSizes": {
+    "dysf": 32,
+    "panne": 32,
+    "reglages": 33
+   },
+   "peopleZac": 12,
+   "wasteByMachine": 0,
+   "hasCategory": true,
+   "categoryRows": 78,
+   "categoryAnomalies": [],
+   "planSheet": true,
+   "planDay": "2026-10-23",
+   "planRows": 2,
+   "lossRows": 78,
+   "firstDay": "2026-01-05",
+   "lastDay": "2026-10-23"
+  },
+  {
+   "group": "SKIN CARE",
+   "year": "2026",
+   "line": "OLYMPE",
+   "file": "OEE OLYMPE - 2026.xlsm",
+   "baseColumns": 383,
+   "sheets": [
+    "Base",
+    "Feuil1",
+    "Data",
+    "OEE",
+    "Presentation",
+    "Category",
+    "OEE global report",
+    "LineLosses",
+    "PlanOPT"
+   ],
+   "dysfParts": [
+    {
+     "fr": "TGM : Ascenseur",
+     "en": "Filling machine"
+    },
+    {
+     "fr": "TGM - Tube bloqué dans la descente",
+     "en": "Filling machine"
+    },
+    {
+     "fr": "TGM - Orientation tube",
+     "en": "Filling machine"
+    },
+    {
+     "fr": "TGM - Remplissage",
+     "en": "Filling machine"
+    },
+    {
+     "fr": "TGM - Chauffe / Scellage",
+     "en": "Filling machine"
+    },
+    {
+     "fr": "TGM - Coupe",
+     "en": "Filling machine"
+    },
+    {
+     "fr": "Domino",
+     "en": "Dater"
+    },
+    {
+     "fr": "Déviateur",
+     "en": "Conveyor"
+    },
+    {
+     "fr": "Autre",
+     "en": "Other"
+    }
+   ],
+   "dysfSpare": 23,
+   "blockSizes": {
+    "dysf": 32,
+    "panne": 32,
+    "reglages": 33
+   },
+   "peopleZac": 12,
+   "wasteByMachine": 0,
+   "hasCategory": true,
+   "categoryRows": 60,
+   "categoryAnomalies": [],
+   "planSheet": true,
+   "planDay": "2026-10-23",
+   "planRows": 1,
+   "lossRows": 60,
+   "firstDay": "2026-01-05",
+   "lastDay": "2026-10-23"
+  },
+  {
+   "group": "SKIN CARE",
+   "year": "2026",
+   "line": "ZEUS",
+   "file": "OEE ZEUS - 2026.xlsm",
+   "baseColumns": 383,
+   "sheets": [
+    "Feuil1",
+    "Base",
+    "Data",
+    "OEE",
+    "Presentation",
+    "Category",
+    "OEE global report",
+    "LineLosses",
+    "PlanOPT"
+   ],
+   "dysfParts": [
+    {
+     "fr": "ZAC - BCM",
+     "en": "ZAC-Bottle dispenser"
+    },
+    {
+     "fr": "ZAC - SERAC",
+     "en": "ZAC-Filling machine"
+    },
+    {
+     "fr": "ZAC - BOL POMPES",
+     "en": "ZAC-Pumps dispenser"
+    },
+    {
+     "fr": "ZAC - BOL CAPS",
+     "en": "ZAC-Caps dispenser"
+    },
+    {
+     "fr": "ZAC - REJVES",
+     "en": "ZAC-Capping/Screwing machine"
+    },
+    {
+     "fr": "ZAC - Process",
+     "en": "ZAC-Process"
+    },
+    {
+     "fr": "ZAC - Autres",
+     "en": "ZAC-Other"
+    },
+    {
+     "fr": "Ext ZAC DOMINO LASER",
+     "en": "EXT-Laser"
+    },
+    {
+     "fr": "Ext ZAC CAMÉRA",
+     "en": "EXT-Camera"
+    },
+    {
+     "fr": "Ext ZAC KOSME",
+     "en": "EXT-Bottle labeller"
+    },
+    {
+     "fr": "Ext ZAC KOSME (Film Cassé)",
+     "en": "EXT-Bottle labeller"
+    },
+    {
+     "fr": "Ext ZAC KOSME (Bourrage sortie étoile)",
+     "en": "EXT-Bottle labeller"
+    },
+    {
+     "fr": "Ext ZAC Formeuse Barquette",
+     "en": "EXT-Case packer part1"
+    },
+    {
+     "fr": "Ext ZAC AN",
+     "en": "EXT-Case packer part2"
+    },
+    {
+     "fr": "Ext ZAC AN (Flacon tombé dans le bac)",
+     "en": "EXT-Case packer part2"
+    },
+    {
+     "fr": "Ext ZAC AN (Problème Vis décalée)",
+     "en": "EXT-Case packer part2"
+    },
+    {
+     "fr": "Ext ZAC Coiffeuse",
+     "en": "EXT-Case packer part3"
+    },
+    {
+     "fr": "Ext ZAC Bourrage Sortie Coiffeuse",
+     "en": "EXT-Case packer part3"
+    },
+    {
+     "fr": "Ext ZAC GARVENS Caisse",
+     "en": "EXT-Weighter"
+    },
+    {
+     "fr": "Ext ZAC DOMINO Étiquette",
+     "en": "EXT-Case labeller"
+    },
+    {
+     "fr": "Ext ZAC FANUC",
+     "en": "EXT-Paletizer"
+    },
+    {
+     "fr": "Ext ZAC Autres",
+     "en": "EXT-Other"
+    }
+   ],
+   "dysfSpare": 10,
+   "blockSizes": {
+    "dysf": 32,
+    "panne": 32,
+    "reglages": 33
+   },
+   "peopleZac": 12,
+   "wasteByMachine": 0,
+   "hasCategory": true,
+   "categoryRows": 99,
+   "categoryAnomalies": [],
+   "planSheet": true,
+   "planDay": "2026-01-30",
+   "planRows": 8,
+   "lossRows": 99,
+   "firstDay": "2026-01-03",
+   "lastDay": "2026-10-09"
+  }
+ ],
+ "exports": [
+  {
+   "group": "CREAM Chartres",
+   "folder": "LineLosses",
+   "files": 165,
+   "first": "20260801",
+   "last": "20261023",
+   "monthlyFiles": 0,
+   "lines": [
+    "OEE CUMULUS - 2026",
+    "OEE IWKA 1 - 2026",
+    "OEE IWKA 2 - 2026",
+    "OEE IWKA 3 - 2026"
+   ]
+  },
+  {
+   "group": "CREAM Chartres",
+   "folder": "PlanOpt",
+   "files": 161,
+   "first": "20260801",
+   "last": "20261023",
+   "monthlyFiles": 0,
+   "lines": [
+    "OEE CUMULUS - 2026",
+    "OEE IWKA 1 - 2026",
+    "OEE IWKA 2 - 2026",
+    "OEE IWKA 3 - 2026"
+   ]
+  },
+  {
+   "group": "NON TISSE",
+   "folder": "LineLosses",
+   "files": 47,
+   "first": "20260803",
+   "last": "20261023",
+   "monthlyFiles": 0,
+   "lines": [
+    "OEE HOME 1 - 2026",
+    "OEE HOME 3 - 2026",
+    "OEE HOME 4 - 2026"
+   ]
+  },
+  {
+   "group": "NON TISSE",
+   "folder": "LineLosses_january",
+   "files": 13,
+   "first": "",
+   "last": "",
+   "monthlyFiles": 13,
+   "lines": [
+    "OEE APOLLON - 2026",
+    "OEE CLÉOPATRE - 2026",
+    "OEE CUMULUS - 2026",
+    "OEE HOME 1 - 2026",
+    "OEE HOME 2 - 2026",
+    "OEE HOME 3 - 2026",
+    "OEE HOME 4 - 2026",
+    "OEE IWKA 1 - 2026",
+    "OEE IWKA 2 - 2026",
+    "OEE NEPTUNE - 2026",
+    "OEE OLYMPE - 2026",
+    "OEE SUGAR - 2026",
+    "OEE ZEUS - 2026"
+   ]
+  },
+  {
+   "group": "NON TISSE",
+   "folder": "PlanOPT",
+   "files": 47,
+   "first": "20260803",
+   "last": "20261023",
+   "monthlyFiles": 0,
+   "lines": [
+    "OEE HOME 1 - 2026",
+    "OEE HOME 3 - 2026",
+    "OEE HOME 4 - 2026"
+   ]
+  },
+  {
+   "group": "NON TISSE",
+   "folder": "PlanOPT_january",
+   "files": 13,
+   "first": "",
+   "last": "",
+   "monthlyFiles": 13,
+   "lines": [
+    "OEE APOLLON - 2026",
+    "OEE CLÉOPATRE - 2026",
+    "OEE CUMULUS - 2026",
+    "OEE HOME 1 - 2026",
+    "OEE HOME 2 - 2026",
+    "OEE HOME 3 - 2026",
+    "OEE HOME 4 - 2026",
+    "OEE IWKA 1 - 2026",
+    "OEE IWKA 2 - 2026",
+    "OEE NEPTUNE - 2026",
+    "OEE OLYMPE - 2026",
+    "OEE SUGAR - 2026",
+    "OEE ZEUS - 2026"
+   ]
+  },
+  {
+   "group": "SKIN CARE",
+   "folder": "LineLosses",
+   "files": 157,
+   "first": "20260803",
+   "last": "20261006",
+   "monthlyFiles": 0,
+   "lines": [
+    "OEE APOLLON - 2026",
+    "OEE CLÉOPATRE - 2026",
+    "OEE NEPTUNE - 2026",
+    "OEE OLYMPE - 2026",
+    "OEE ZEUS - 2026"
+   ]
+  },
+  {
+   "group": "SKIN CARE",
+   "folder": "PlanOPT",
+   "files": 157,
+   "first": "20260803",
+   "last": "20261006",
+   "monthlyFiles": 0,
+   "lines": [
+    "OEE APOLLON - 2026",
+    "OEE CLÉOPATRE - 2026",
+    "OEE NEPTUNE - 2026",
+    "OEE OLYMPE - 2026",
+    "OEE ZEUS - 2026"
+   ]
+  }
+ ]
+}

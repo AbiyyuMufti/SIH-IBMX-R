@@ -48,7 +48,7 @@ Counts are cells with a value (input) and cells with a formula. `*` = hidden in 
 | LineLosses* | day export, loss rows | A1:AA1981, 781 / 0 | 706 / 0 | 454 / 0 |
 | PlanOPT* | day export, product rows | A1:AR2332, 466 / 0 | 451 / 0 | 446 / 0 |
 
-`LineLosses`, `PlanOPT` and `Category` exist only in the 2026 files of 13 lines (see section 3). `Feuil1`, `Feuil2`, `Feuil7`... are empty or test sheets in some files. 5 to 10 Excel tables per file, no pivot tables, no external links, no data connections.
+`PlanOPT` and `LineLosses` exist only in the 2026 files of 13 lines, and 3 of those are empty (section 5); `Category` exists in the 2026 files of 16 lines (all except CUPIDON and DAISY). `Feuil1`, `Feuil2`, `Feuil7`... are empty or test sheets in some files. 5 to 10 Excel tables per file, no pivot tables, no external links, no data connections.
 
 ### Base columns (CREAM IWKA 2 2026, French names)
 The first row holds the names, the second row the codes `ENR1`, `ENR2`, ... (entry fields). Data starts in row 3, newest day on top.
@@ -102,7 +102,7 @@ Dates are Excel serial numbers. The sheets hold only the last exported day (abou
 | Réglages named `Réglage` | The first 18 Réglages slots are called `Réglage <part>` (singular) | APOLLON, CLÉOPATRE |
 | More columns | NON TISSE: 404 columns. Adds `People ZAC / Ext ZAC` (12), `Déchets <machine> <shift>` (15 in HOME, 5 in SACHA, in the 2025 files too) and `Déchets Libre 1 to 6`; `Total Déchets` then sums those columns, not the product waste cells (checked on HOME 1). All SKIN CARE files and NON TISSE HOME / SACHA have the 12 `People ZAC` columns, CREAM and SUGAR do not | HOME, SACHA (2025, 2026); SKIN CARE |
 | Sheet `OEE` | HOME has 12 columns (waste weight, ratio) instead of 9 | HOME 1 to 4 |
-| Output sheets | `PlanOPT`, `LineLosses`, `Category`, `OEE global report` exist only in 2026 files of CUMULUS, IWKA 1 to 3, HOME 1 to 4, APOLLON, CLÉOPATRE, NEPTUNE, OLYMPE, ZEUS (13 files). Headers identical in all 13. Not in any 2025 file, nor in CUPIDON, DAISY, SACHA 1 and 2, SUGAR 2026 | see list |
+| Output sheets | `PlanOPT` and `LineLosses` (with their macros) exist only in the 2026 files of CUMULUS, IWKA 1 to 3, HOME 1 to 4, APOLLON, CLÉOPATRE, NEPTUNE, OLYMPE, ZEUS (13 files); CUMULUS, APOLLON and CLÉOPATRE hold no day. `Category` is in 16 files of 2026. None in any 2025 file, nor in CUPIDON and DAISY (and no PlanOPT in SACHA 1 and 2, SUGAR) | see list |
 | Macro modules | 2025: 3 modules; 2026 lines with output sheets: 5 to 6 (`Module_PlanOPT`, `Module_LineLosses`, `Module_Update`); SACHA / SUGAR 2026: 4 | see list |
 | Hidden sheets | Which sheets are hidden varies by file (Base is visible in some, hidden in others) | all |
 | Empty files | `OEE CUPIDON - 2026` and `OEE DAISY - 2026` hold no day (template only). CUPIDON 2025 ends 2025-09-22, DAISY 2025 ends 2025-11-06 | 2 |
@@ -136,7 +136,16 @@ Dates are Excel serial numbers. The sheets hold only the last exported day (abou
 
 Dates are from the `Date` column. A Base row is one day of one line (IWKA 2 2026: 179 rows, 179 distinct dates). A few files repeat a date: CUMULUS 2025 has 7 repeated days, ZEUS 2025 has 2 (two entries for one day, to check before loading). The files run 7 days a week.
 
-## 4. Open points
+## 4. Macro output against the workbook (2026-10-26, diagram page 2)
+Checked on the 10 files whose `PlanOPT` / `LineLosses` hold a day (IWKA 1 to 3, HOME 1 to 4, NEPTUNE, OLYMPE, ZEUS):
+- Plan rows: `Good Parts` = `Volume` of the slot, `Target` = `Capacity` = `Vitesse` x `Temps`, `Total Time` = `Temps`, `Downtime Units` = Target - Good Parts. Equal on every row. `Planned OpT` and `OEE Time` are empty (ZEUS has some values). `Good Parts` ignores `Déchets`, unlike the sheet `OEE` (Volume Réel = Volume Annoncé - Déchets). `ShiftName` is the number 1 to 5.
+- Loss rows: the French name is looked up in `Category`, but every `Panne` and `Réglages` line is written as "Minor stop" (Category: Breakdown, Adjustment) and every `Dysf / Panne / Réglages ... Autre` line as Planned losses / Cleaning / Other (Category: Unplanned / Minor stop, Breakdown, Adjustment / Other). 19 to 49 rows per file differ.
+- Time: `TOR` = `TOP` minus the not-counted columns (LR to LW); `TU` is about the sum of Volume / Vitesse over the day (9 of 10 files; HOME 3 differs, 427 vs 458); `Vérification TO` = TU + NR + the eight loss totals = TOR.
+- Macro history: the daily export files start 2026-08-01 / 03 (to 2026-10-23, SKIN CARE to 2026-10-06; 12 of 18 lines); January 2026 has one file per line (5 to 30 Jan, 13 lines, all in the NON TISSE folders `PlanOPT_january` / `LineLosses_january`). Nothing for 2025 and for February to July 2026.
+- Decision (user, 2026-10-26): the Plan / LineLosses conversion was for a Power BI project that was stopped; build from `Base` directly, use the macro output only as a test.
+- Diagram of all this, the columns and the mapping to the three report tables: `diagrams/chartres-source-map.drawio` (`node scripts/helper-chartres-diagram-data.js`, `node scripts/build-drawio-chartres.js`).
+
+## 5. Open points
 1. DOR L3: which file is the OEE source (Laura).
 2. Meaning of `TOP`, `TOR`, `TU`, `NR` (confirm with the site; the check formulas suggest TU + NR + the eight loss totals = TO) and what a repeated date means (correction or second entry).
 3. `PlanOPT` column `PartName` repeats one value on all products of a day in the IWKA 2 sample, while `Batch ID` is the product code: confirm which is the SKU.
