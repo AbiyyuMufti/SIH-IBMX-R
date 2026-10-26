@@ -12,7 +12,7 @@ History and finished work: `NOTES.md`, git log, and `docs/README.md` (every doc 
 
 Current jobs (each has a handover in `session_handover/`):
 - Site dashboards: EU, Nottingham and Hull into one Tableau workbook (Nottingham model). Open: why the sum of `Value` differs between EU and site reports. Analysis `prompt-response/site-dashboards-analysis.md`, map `diagrams/site-dashboards-map.drawio`, handover `site-dashboards-handover.md`
-- Chartres: recreate the `<group>/<year>/SAISIE OEE/OEE*.xlsm` files (CREAM, DOR L3, NON TISSE, SKIN CARE) into the report tables. DOR L3 layout to confirm with the site owner. Handover `chartres-handover.md`
+- Chartres: recreate the `<group>/<year>/SAISIE OEE/OEE*.xlsm` files (CREAM, NON TISSE, SKIN CARE; DOR L3 is management level, no OEE entry) from the sheet `Base` into the report tables. Investigation done (doc `docs/chartres-source-files.md`, diagram `diagrams/chartres-source-map.drawio`), nothing built; waiting for the Chartres reference file and Glidepaths. Handover `chartres-handover.md`
 - Shift report flow: postponed (tables above), open points in `docs/shift-report-flow.md`
 
 Flows in use (docs and tests):

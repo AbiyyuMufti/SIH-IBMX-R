@@ -6,7 +6,7 @@
 | **Sources read** | the unzipped folders `downloads/Chartres/<group>/<year>/SAISIE OEE/OEE*.xlsm` (git-ignored, untrusted; 36 files). Nothing was opened in Excel and no macro was run. The VBA source of all 36 files was read as text (`scripts/helper-chartres-vba-extract.py`, 2026-10-26) |
 | **Scripts** | `node scripts/chartres-compare.js downloads/Chartres` (all OEE files, picks the pattern itself), `scripts/chartres-profile.js` (one file); they use `readZip` of `scripts/lib-office.js` |
 | **Status** | Steps 1 to 3 done on 2026-10-26, VBA read the same day (section 2b). French to English dictionary, column map to the report tables, recompute and automation are NOT started (waiting for the user's go) |
-| **Blocker** | DOR L3 has no `SAISIE OEE/OEE*.xlsm` (see below). To confirm with Laura (site owner) |
+| **Blocker** | none for the files. Answers from the site (2026-10-26): DOR L3 is management level, CUPIDON and DAISY were dropped this year. Chartres will share the Glidepaths, the path format and the reference file in a few days |
 
 ## 1. Files found (step 1)
 Found with the pattern `<group>/<year>/SAISIE OEE/OEE*.xlsm` in the unzipped folders (SKIN CARE 2025 was moved by the user from a wrong place, `2026/2025/`, a copy-paste mistake).
@@ -16,14 +16,14 @@ Found with the pattern `<group>/<year>/SAISIE OEE/OEE*.xlsm` in the unzipped fol
 | CREAM Chartres | CUMULUS, CUPIDON, DAISY, IWKA 1, IWKA 2, IWKA 3 | 6 files | 6 files |
 | NON TISSE | HOME 1 to 4, SACHA 1 and 2, SUGAR | 7 files | 7 files |
 | SKIN CARE | APOLLON, CLÉOPATRE, NEPTUNE, OLYMPE, ZEUS | 5 files | 5 files |
-| DOR L3 | none | none | none |
+| DOR L3 | none (management level, confirmed) | none | none |
 
 - 36 files, 0.6 to 2.8 MB each (sizes in the profile output).
 - No `OEE*.xlsm` exists for 2024 (CREAM 2024 has `DOR Personal Care.xlsm`, an older file outside the pattern).
 - Left out as agreed: Backup, PDF, PPTX, and other xlsm in the same trees (`Archives/`, `Fichiers de travail/`, `SAISIE 2025/` hold copies and tests such as `DOR Personal Care - 27012025.xlsm`).
 
-### DOR L3: blocker for this group only
-The zip has no `SAISIE OEE` folder and no `OEE*.xlsm`. The Excel files are other kinds: `L3 DOR.xlsm` (2024), `L3 DOR Version 2025.xlsm`, `BREAKFAST CHARTRES 2025/2026.xlsm`, `L3 board - Daily Management - Chartres.xlsm`, `DATA CHARTRES 2026.xlsm`, `OEE Simulator 2026.xlsx`, and `.pptm` weekly reviews. Which of them is the OEE source of the DOR L3 lines is not known. Not guessed; not profiled. Question for Laura: which file does DOR L3 use for the daily OEE entry?
+### DOR L3: not a source (answered 2026-10-26)
+The site says DOR L3 is management level: there is no OEE entry for it, and its files are a compilation of the line files. So it is out of scope, and loading it would double count the lines. The zip has no `SAISIE OEE` folder and no `OEE*.xlsm`. The Excel files are other kinds: `L3 DOR.xlsm` (2024), `L3 DOR Version 2025.xlsm`, `BREAKFAST CHARTRES 2025/2026.xlsm`, `L3 board - Daily Management - Chartres.xlsm`, `DATA CHARTRES 2026.xlsm`, `OEE Simulator 2026.xlsx`, and `.pptm` weekly reviews. They are the management compilation. Not profiled.
 
 ## 2. How one workbook works (step 2)
 Read from the sheet content, the formulas and the VBA source (see 2b, the flow below is confirmed by the code):
@@ -120,7 +120,7 @@ Extraction: `python -I scripts/helper-chartres-vba-extract.py downloads/Chartres
 | Output sheets | `PlanOPT` and `LineLosses` (with their macros) exist only in the 2026 files of CUMULUS, IWKA 1 to 3, HOME 1 to 4, APOLLON, CLÉOPATRE, NEPTUNE, OLYMPE, ZEUS (13 files); CUMULUS, APOLLON and CLÉOPATRE hold no day. `Category` is in 16 files of 2026. None in any 2025 file, nor in CUPIDON and DAISY (and no PlanOPT in SACHA 1 and 2, SUGAR) | see list |
 | Macro modules | 2025: 3 modules; 2026 lines with output sheets: 5 to 6 (`Module_PlanOPT`, `Module_LineLosses`, `Module_Update`); SACHA / SUGAR 2026: 4 | see list |
 | Hidden sheets | Which sheets are hidden varies by file (Base is visible in some, hidden in others) | all |
-| Empty files | `OEE CUPIDON - 2026` and `OEE DAISY - 2026` hold no day (template only). CUPIDON 2025 ends 2025-09-22, DAISY 2025 ends 2025-11-06 | 2 |
+| Empty files | `OEE CUPIDON - 2026` and `OEE DAISY - 2026` hold no day: the two lines were dropped this year (confirmed). CUPIDON 2025 ends 2025-09-22, DAISY 2025 ends 2025-11-06 | 2 |
 
 ### Per file (rows = row 3 on, with an ANNEE value)
 | Group | File | Year | Base columns | Day rows | First to last date | Output sheets |
@@ -163,12 +163,19 @@ Checked on the 10 files whose `PlanOPT` / `LineLosses` hold a day (IWKA 1 to 3, 
 ## 4b. One row per Base column (Excel)
 `node scripts/helper-chartres-base-columns.js` then `python -I scripts/helper-chartres-base-columns-xlsx.py` write `downloads/chartres-base-columns.xlsx` (git-ignored, it holds product names): sheet 1 the 383 columns of the reference template (CREAM IWKA 2 2026) with French name, entry code, English, type, example, meaning, formula, target table, how sure, and in how many of the 18 files of 2026 the name exists; sheet 2 the 665 columns of the other lines that are not in the reference. The `People` columns hold labour time in person-minutes (for example 2250), not a headcount.
 
-## 5. Open points
-1. DOR L3: which file is the OEE source (Laura).
-2. Time_Utilisation_EU: which of TOP and TOR is Total Time and which is Planned OPT. The Plan_OPT_EU slot times add up to TOR (enforced).
-3. Good Parts: the macro writes Volume, the OEE of the workbook uses Volume - Déchets. Proposal: net.
-4. Days that fail the form rules (about 1,100 of 7,181) and dates entered twice (CUMULUS 2025: 7, ZEUS 2025: 2): load and flag, or leave out.
-5. Losses are per day, not per shift or product: what to put in ShiftName, PartName and Time of Daily_Losses_EU.
-6. Which lines are still in production (CUPIDON and DAISY have no days in 2026).
-7. Tell the site about the LineLosses lookup bug, the CLÉOPATRE machine name and the empty ZEUS module? Our rows will use the Category row itself.
+## 5. Questions: answered and open
+Answered by the site on 2026-10-26:
+1. DOR L3: management level, no OEE entry, its files compile the lines. Out of scope.
+2. CUPIDON and DAISY: lines dropped this year, so no 2026 data. Their 2025 files stay (CUPIDON to 2025-09-22, DAISY to 2025-11-06).
+3. Glidepaths (targets), the path format and the reference file for Chartres exist and will be shared in a few days. This settles the Dept, Area, Product Type, report name and target columns once they arrive.
+
+Still open (diagram page 8 has them in plain words):
+1. Time_Utilisation_EU: which of TOP and TOR is Total Time and which is Planned OPT. The Plan_OPT_EU slot times add up to TOR (enforced). Proposal: Total Time = TOR.
+2. Good Parts: the macro writes Volume, the OEE of the workbook uses Volume - Déchets. Proposal: net.
+3. Days that fail the form rules (about 1,100 of 7,181) and dates entered twice (CUMULUS 2025: 7, ZEUS 2025: 2): load and flag, or leave out. Proposal: load and flag.
+4. Losses are per day, not per shift or product: what to put in ShiftName, PartName and Time of Daily_Losses_EU. Proposal: empty.
+5. The five shift types to Day / Night, or keep Chartres' names.
+6. Time not counted (TownHall, trials, training, validation): in the losses table or out. Proposal: out.
+7. Tell the site about the LineLosses lookup bug, the CLÉOPATRE machine name and the empty ZEUS module? Our rows use the Category row itself.
 8. Meaning of the abbreviation NR (not spelled out in the code).
+9. Do CUMULUS and HOME 2 close without the export on purpose (no close event)?

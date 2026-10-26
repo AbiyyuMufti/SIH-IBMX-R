@@ -129,12 +129,12 @@ title(p1, 'Chartres: what is in the downloaded folders (downloads/Chartres)',
   'Four groups, each with 2024, 2025 and 2026. The file we need is <group>/<year>/SAISIE OEE/OEE <line> - <year>.xlsm '
   + '(one workbook per production line and year). Counts are files in the folder, subfolders included. Role of a folder = read from its name and content (French names translated), to confirm with the site.');
 legend(p1, 40, 90, ['have', 'fixed', 'warn', 'grey', 'none']);
-p1.text(40, 130, 1500, 20, small('green = OEE entry workbook (our source) | blue = daily/monthly exports written by the macros (PlanOPT, LineLosses) | yellow = other workbooks, not profiled | grey = copies and backups | red = blocker'));
+p1.text(40, 130, 1500, 20, small('green = OEE entry workbook (our source) | blue = daily/monthly exports written by the macros (PlanOPT, LineLosses) | yellow = other workbooks, not profiled | grey = copies and backups | red = missing'));
 
 const TREES = [
   {
     group: 'CREAM Chartres',
-    sub: '6 lines: CUMULUS, CUPIDON, DAISY, IWKA 1, IWKA 2, IWKA 3',
+    sub: '6 lines: CUMULUS, IWKA 1, IWKA 2, IWKA 3, and CUPIDON, DAISY (dropped this year)',
     rows: [
       [0, 'warn', '2024/ (26 files): "DOR Personal Care.xlsm" and a dated copy = the older group workbook; "OEE DAISY - TEST.xlsm" = a test; test lien.xlsx'],
       [1, 'grey', 'Backup/ (22): dated copies of the DOR file (Nov to Dec 2024), v00, TEST BLUE PRINT'],
@@ -152,7 +152,7 @@ const TREES = [
     group: 'DOR L3',
     sub: 'lines not named; no SAISIE OEE folder',
     rows: [
-      [0, 'none', 'BLOCKER: no SAISIE OEE folder and no OEE*.xlsm in any year. Laura (site owner) must confirm which file is the OEE source'],
+      [0, 'grey', 'MANAGEMENT LEVEL (site answer, 2026-10-26): no OEE entry here, no SAISIE OEE folder. The files compile the lines, so DOR L3 is not a source (it would double count)'],
       [0, 'warn', '2024/ (37): L3 DOR.xlsm (25 MB); Backup/ (L3 DOR2.xlsm, DOR L3/ 2 files, Présence Absence/ = attendance, empty); Fichiers de travail - Ne pas utiliser/ = working files, do not use (empty)'],
       [1, 'warn', 'DI/ and OT/ (2 each): Export.xlsx + archived exports. Probably maintenance requests and work orders (inferred from the French abbreviations)'],
       [1, 'warn', 'Suivi IWKA 2/ = IWKA 2 follow-up (29): Daily 19, Weekly 4, BiWeekly 1, Monthly 2, Fichier de données 3'],
@@ -218,7 +218,7 @@ y1 += 30;
 const W1 = [210, 300, 300, 300, 300];
 y1 = row(p1, 40, y1, W1, [bold('Aspect'), bold('CREAM Chartres'), bold('NON TISSE'), bold('SKIN CARE'), bold('DOR L3')], 'head');
 const DIFFS = [
-  ['OEE entry workbooks', '6 lines x 2025, 2026', '7 lines x 2025, 2026', '5 lines x 2025, 2026', 'none found'],
+  ['OEE entry workbooks', '6 lines x 2025, 2026', '7 lines x 2025, 2026', '5 lines x 2025, 2026', 'none: management level, no OEE entry (confirmed)'],
   ['Where 2025 files sit', 'SAISIE OEE/ 2025', 'SAISIE OEE/ 2025', 'SAISIE OEE/ 2025 (you moved them)', 'n/a'],
   ['Macro export folders (2026)', 'PlanOpt, LineLosses (daily, 4 lines)', 'PlanOPT, LineLosses (daily, 3 lines) + january folders (13 lines, all groups)', 'PlanOPT, LineLosses (daily, 5 lines); 2 empty folders', 'none'],
   ['Group workbook at year level', 'DOR Personal Care', 'DOR Non Woven', 'DOR Skin Care', 'L3 DOR / BREAKFAST CHARTRES / DATA CHARTRES'],
@@ -226,7 +226,7 @@ const DIFFS = [
   ['Other material', 'PDF export, 90 days plan', 'empty plan folders', 'empty plan folders', 'DI, OT, L3 Board, RPS targets, glidepath reviews, Suivi IWKA 2'],
 ];
 for (const r of DIFFS) {
-  y1 = row(p1, 40, y1, W1, [bold(r[0]), r[1], r[2], r[3], r[4]], ['head', 'table', 'table', 'table', r[0] === 'OEE entry workbooks' ? 'none' : 'table']);
+  y1 = row(p1, 40, y1, W1, [bold(r[0]), r[1], r[2], r[3], r[4]], ['head', 'table', 'table', 'table', r[0] === 'OEE entry workbooks' ? 'grey' : 'table']);
 }
 y1 += 20;
 const NOTE1 = 'Not profiled (outside the pattern): the year-level "DOR <group> ... .xlsm" files. They may be the group roll-up of the lines. '
@@ -415,7 +415,7 @@ const D4 = [
   ['People ZAC (12)', 'All SKIN CARE files and NON TISSE HOME / SACHA. CREAM and SUGAR have only the 12 generic People columns', 'Not used in the three tables', 'have'],
   ['"Réglage" (singular)', 'APOLLON and CLÉOPATRE: the first 18 adjustment slots are "Réglage <part>"; the others "Réglages <part>"', 'Match the prefix with a pattern, not an exact word', 'warn'],
   ['Category sheet', 'Only in the 2026 files of 16 lines (all except CUPIDON and DAISY); not in any 2025 file', 'For the others the same French name usually exists in another file of the group: build one dictionary from all Category sheets and check the gaps', 'warn'],
-  ['Empty or short files', 'CUPIDON 2026 and DAISY 2026 hold no day. CUPIDON 2025 ends 2025-09-22, DAISY 2025 ends 2025-11-06, CLÉOPATRE has the fewest days', 'Nothing to load for the two empty files', 'none'],
+  ['Empty or short files', 'CUPIDON 2026 and DAISY 2026 hold no day: the two lines were dropped this year (confirmed). CUPIDON 2025 ends 2025-09-22, DAISY 2025 ends 2025-11-06, CLÉOPATRE has the fewest days', 'Nothing to load for the two 2026 files', 'have'],
   ['Repeated date', 'CUMULUS 2025 (7 days) and ZEUS 2025 (2 days) have two rows for one date', 'Needs a rule: second entry replaces the first, or both are summed', 'warn'],
 ];
 for (const r of D4) {
@@ -578,20 +578,20 @@ p7.box(40, y7, 1510, fit(1510, LOSSNOTE), LOSSNOTE, 'warn');
 
 // ---- Page 8: questions ---------------------------------------------------------------
 const p8 = new Page('8 Questions', 8);
-title(p8, 'Open questions and decisions before building anything',
-  'Nothing is built yet. Order = what blocks the mapping first.');
+title(p8, 'Questions: 3 answered on 2026-10-26, the rest still open',
+  'Nothing is built yet. Green = answered by the site. Order of the open ones = what blocks the mapping first.');
 const QUESTIONS = [
-  ['none', 'DOR L3: which file is the OEE source? No OEE*.xlsm exists for this group (Laura).'],
-  ['test', 'Source: Base directly with the Category sheet (your preference), the macro exports only as a test of our rows. The code was read: the macros do not do what we need (one day per close, wrong Level 1/2, no Planned OpT / OEE Time). Agreed?'],
-  ['warn', 'The macro LineLosses has a lookup bug (Level 1/2 from the first row with the same Level 3 text), so Breakdown and Adjustment appear as Minor stop in every export. Should the site be told? Our rows will use the Category row itself.'],
+  ['have', 'ANSWERED. DOR L3 is management level: no OEE entry, its files compile the lines. It is out of scope (loading it would double count).'],
+  ['have', 'ANSWERED. CUPIDON and DAISY were dropped this year, so no 2026 data. Their 2025 files stay as they are.'],
+  ['have', 'ANSWERED. Glidepaths (targets), the path format and the reference file for Chartres exist and arrive in a few days. They fill Dept, Area, Product Type, report name and the targets of the three tables.'],
+  ['test', 'Source: Base directly with the Category sheet, the macro exports only as a test of our rows. The code was read: the macros do not do what we need (one day per close, wrong Level 1/2, no Planned OpT / OEE Time). Our proposal, no answer needed unless you disagree.'],
+  ['test', 'Time_Utilisation_EU: which of TOP (planned opening time) and TOR (real opening time) is Total Time and which is Planned OPT? The Plan_OPT_EU slot times add up to TOR. Proposal: Total Time = TOR.'],
   ['warn', 'Good Parts: the macro writes Volume, the workbook OEE uses Volume - Déchets. Proposal: net of waste. NON TISSE also has waste per machine (Total Déchets sums those).'],
-  ['test', 'Time_Utilisation_EU: which of TOP (planned opening time) and TOR (real opening time) is Total Time and which is Planned OPT? The Plan_OPT_EU slot times add up to TOR.'],
-  ['test', 'Losses are per day, not per shift or product: leave ShiftName, PartName and Time empty, or spread them? Spread by what?'],
+  ['warn', 'Days that fail the form rules today (about 1,100 of 7,181: mostly TU vs OEE and the sum of times, mostly 2025): load them and flag, or leave them out? Dates entered twice (CUMULUS 2025: 7, ZEUS 2025: 2): replace or add? Proposal: load and flag.'],
+  ['test', 'Losses are per day, not per shift or product: leave ShiftName, PartName and Time empty, or spread them? Spread by what? Proposal: empty.'],
   ['test', 'Shift names: the 5 types (weekday morning / afternoon / night, weekend morning / night) to Day / Night or to their own names?'],
-  ['none', 'Chartres lines in Machine Names (Dept, Area, Product Type, report name) and Chartres targets (UPDT, PDT, OEE Target, Value).'],
-  ['warn', 'Days that fail the form rules today (about 1,100 of 7,181: mostly TU vs OEE and the sum of times, mostly 2025): load them and flag, or leave them out? Dates entered twice (CUMULUS 2025: 7, ZEUS 2025: 2): replace or add?'],
-  ['warn', 'Time not counted (TownHall, trials, training, validation): in the losses table or out?'],
-  ['fixed', 'Smaller points seen in the code: CLÉOPATRE exports are labelled APOLLON; ZEUS Module_PlanOPT is empty; CUMULUS and HOME 2 do not export on close; CUPIDON and DAISY have no export macros and no days in 2026. Which lines are still in production?'],
+  ['warn', 'Time not counted (TownHall, trials, training, validation): in the losses table or out? Proposal: out.'],
+  ['warn', 'The macro LineLosses has a lookup bug (Level 1/2 from the first row with the same Level 3 text), so Breakdown and Adjustment appear as Minor stop in every export. CLÉOPATRE exports are labelled APOLLON. ZEUS Module_PlanOPT is empty. CUMULUS and HOME 2 do not export on close. Tell the site? Our rows use the Category row itself.'],
 ];
 let y8 = 100;
 QUESTIONS.forEach(([level, text], i) => {
