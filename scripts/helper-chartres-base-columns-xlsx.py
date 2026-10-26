@@ -1,7 +1,7 @@
-"""Writes downloads/chartres-base-columns.xlsx from the JSON of
+"""Writes analysis/chartres-base-columns.xlsx (tracked in git) from the JSON of
 scripts/helper-chartres-base-columns.js (one row per column of the sheet Base).
 Usage: python -I scripts/helper-chartres-base-columns-xlsx.py [in.json] [out.xlsx]
-Reads only our own JSON. The file holds product names: it stays in downloads/.
+Reads only our own JSON. The file holds product names; the user tracks it in analysis/ on purpose.
 """
 import json
 import sys
@@ -11,7 +11,7 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
 src = sys.argv[1] if len(sys.argv) > 1 else "downloads/chartres-base-columns.json"
-dst = sys.argv[2] if len(sys.argv) > 2 else "downloads/chartres-base-columns.xlsx"
+dst = sys.argv[2] if len(sys.argv) > 2 else "analysis/chartres-base-columns.xlsx"
 data = json.load(open(src, encoding="utf-8"))
 
 HEAD_FILL = PatternFill("solid", fgColor="DDDDDD")
@@ -68,7 +68,7 @@ lines = [
     "'checked on the data' = a rule tested on the files; 'inferred, confirm with the site' = worked out from formulas and numbers.",
     "",
     "The machine part names (Dysf / Panne / Réglages) are different in every line: the English there is a word-by-word translation.",
-    "Contains product names from the files: keep it in downloads/ (git-ignored).",
+    "Contains product names from the files and is tracked in git (analysis/): do not push the repo without checking.",
 ]
 for line in lines:
     readme.append([line])

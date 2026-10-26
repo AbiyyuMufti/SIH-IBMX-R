@@ -1,11 +1,11 @@
 // Lists every column of the sheet Base, one row per column, for the Excel file
-// downloads/chartres-base-columns.xlsx (written by helper-chartres-base-columns-xlsx.py).
+// analysis/chartres-base-columns.xlsx (written by helper-chartres-base-columns-xlsx.py).
 // Sheet 1: the reference template (CREAM IWKA 2 2026, 383 columns).
 // Sheet 2: columns of the other 2026 files whose name is not in the reference.
 // Per column: French name, English, example value (newest day with a value), type,
 // meaning, formula, which table it feeds, how sure the meaning is.
 // Usage: node scripts/helper-chartres-base-columns.js [out.json]
-// Read only. The output holds product names from the files: it stays in downloads/.
+// Read only. The JSON holds product names from the files and stays in downloads/ (git-ignored); the xlsx is tracked in analysis/.
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { readXlsx } from './lib-office.js';
