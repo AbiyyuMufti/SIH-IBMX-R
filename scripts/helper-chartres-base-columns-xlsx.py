@@ -18,6 +18,7 @@ HEAD_FILL = PatternFill("solid", fgColor="DDDDDD")
 FILLS = {
     "from the file": None,
     "checked on the data": PatternFill("solid", fgColor="D5E8D4"),
+    "from the macro code": PatternFill("solid", fgColor="D5E8D4"),
     "inferred, confirm with the site": PatternFill("solid", fgColor="FFE6CC"),
 }
 
@@ -60,8 +61,11 @@ lines = [
     "Formula = the formula of row 3 as stored in the file; Feeds = the report table that would use it; "
     "In lines = in how many of the 18 workbooks of 2026 the exact name exists.",
     "",
-    "How sure: 'from the file' = the name or the sheet Category says it; 'checked on the data' = a rule tested on the files; "
-    "'inferred, confirm with the site' = worked out from formulas and numbers.",
+    "Written by = the part of the entry form (BSAISIE, VBA read but not run) that writes the column: a form field, a formula the form inserts, or a value it computes. "
+    "A column with nothing there is a spare 'Libre' column that the form never writes.",
+    "",
+    "How sure: 'from the file' = the name or the sheet Category says it; 'from the macro code' = read in the VBA; "
+    "'checked on the data' = a rule tested on the files; 'inferred, confirm with the site' = worked out from formulas and numbers.",
     "",
     "The machine part names (Dysf / Panne / Réglages) are different in every line: the English there is a word-by-word translation.",
     "Contains product names from the files: keep it in downloads/ (git-ignored).",
@@ -75,31 +79,31 @@ for row in readme.iter_rows():
 ref_rows = [
     [
         r["index"], r["letter"], r["french"], r["code"], r["en"], r["type"], r["example"],
-        r["meaning"], r["formula"], r["feeds"], r["certainty"], f"{r['inLines']} of {r['of']}",
+        r["meaning"], r["formula"], r["writtenBy"], r["feeds"], r["certainty"], f"{r['inLines']} of {r['of']}",
     ]
     for r in data["refRows"]
 ]
 sheet(
     wb, "Base columns (reference)",
     ["#", "Letter", "French (as in the file)", "Entry code", "English", "Type", "Example (newest day with a value)",
-     "Meaning", "Formula in the file (row 3)", "Feeds", "How sure", "In lines"],
-    [5, 7, 38, 9, 38, 14, 28, 70, 30, 30, 22, 9],
-    ref_rows, 10,
+     "Meaning", "Formula in the file (row 3)", "Written by (macro code)", "Feeds", "How sure", "In lines"],
+    [5, 7, 38, 9, 38, 14, 28, 70, 30, 34, 30, 22, 9],
+    ref_rows, 11,
 )
 
 extra_rows = [
     [
         r["letter"], r["french"], r["code"], r["en"], r["type"], r["example"], r["meaning"],
-        r["formula"], r["feeds"], r["certainty"], r["inLines"], r["lineList"],
+        r["formula"], r["writtenBy"], r["feeds"], r["certainty"], r["inLines"], r["lineList"],
     ]
     for r in data["extraRows"]
 ]
 sheet(
     wb, "Other lines (extra columns)",
     ["Letter (first line)", "French (as in the file)", "Entry code", "English", "Type", "Example (first line listed)",
-     "Meaning", "Formula in the file (row 3)", "Feeds", "How sure", "Number of lines", "Lines"],
-    [9, 42, 9, 42, 14, 28, 70, 30, 30, 22, 9, 40],
-    extra_rows, 9,
+     "Meaning", "Formula in the file (row 3)", "Written by (macro code)", "Feeds", "How sure", "Number of lines", "Lines"],
+    [9, 42, 9, 42, 14, 28, 70, 30, 34, 30, 22, 9, 40],
+    extra_rows, 10,
 )
 
 wb.save(dst)

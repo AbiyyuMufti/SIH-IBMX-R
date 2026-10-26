@@ -3,9 +3,9 @@
 | At a glance | |
 |---|---|
 | **What** | The daily OEE entry workbooks of the Chartres site, one per line and year, and what is inside them (sheets, columns, formulas, macros), so they can be recreated and loaded as-is into the report tables |
-| **Sources read** | the unzipped folders `downloads/Chartres/<group>/<year>/SAISIE OEE/OEE*.xlsm` (git-ignored, untrusted; 36 files). Nothing was opened in Excel and no macro was run. Macro code was not read, only the module names |
+| **Sources read** | the unzipped folders `downloads/Chartres/<group>/<year>/SAISIE OEE/OEE*.xlsm` (git-ignored, untrusted; 36 files). Nothing was opened in Excel and no macro was run. The VBA source of all 36 files was read as text (`scripts/helper-chartres-vba-extract.py`, 2026-10-26) |
 | **Scripts** | `node scripts/chartres-compare.js downloads/Chartres` (all OEE files, picks the pattern itself), `scripts/chartres-profile.js` (one file); they use `readZip` of `scripts/lib-office.js` |
-| **Status** | Steps 1 to 3 done on 2026-10-26. French to English dictionary, column map to the report tables, recompute and automation are NOT started (waiting for the user's go) |
+| **Status** | Steps 1 to 3 done on 2026-10-26, VBA read the same day (section 2b). French to English dictionary, column map to the report tables, recompute and automation are NOT started (waiting for the user's go) |
 | **Blocker** | DOR L3 has no `SAISIE OEE/OEE*.xlsm` (see below). To confirm with Laura (site owner) |
 
 ## 1. Files found (step 1)
@@ -26,7 +26,7 @@ Found with the pattern `<group>/<year>/SAISIE OEE/OEE*.xlsm` in the unzipped fol
 The zip has no `SAISIE OEE` folder and no `OEE*.xlsm`. The Excel files are other kinds: `L3 DOR.xlsm` (2024), `L3 DOR Version 2025.xlsm`, `BREAKFAST CHARTRES 2025/2026.xlsm`, `L3 board - Daily Management - Chartres.xlsm`, `DATA CHARTRES 2026.xlsm`, `OEE Simulator 2026.xlsx`, and `.pptm` weekly reviews. Which of them is the OEE source of the DOR L3 lines is not known. Not guessed; not profiled. Question for Laura: which file does DOR L3 use for the daily OEE entry?
 
 ## 2. How one workbook works (step 2)
-Read from the sheet content, the formulas and the module names (the macro code itself was not read, so the flow below is the likely one, to confirm):
+Read from the sheet content, the formulas and the VBA source (see 2b, the flow below is confirmed by the code):
 
 1. Operators enter the day through a form (module classes `BSAISIE`, `lancement`, `Retour`). The result is one row per day in the sheet `Base`.
 2. `Base` holds 383 columns per day: losses in minutes by category and by machine part, and per shift up to 4 products with time, volume and waste.
@@ -86,11 +86,26 @@ The first row holds the names, the second row the codes `ENR1`, `ENR2`, ... (ent
 
 Dates are Excel serial numbers. The sheets hold only the last exported day (about 21 and 60 to 105 rows), so history must come from `Base` or from the daily files.
 
-### Macros (list only)
-`xl/vbaProject.bin` of 0.77 to 0.88 MB in every file. Modules (names from the project stream): `ThisWorkbook`, sheet modules, class `BSAISIE` (the entry form), class `Vérification`, `lancement`, `Divers`, `Retour`, and in 2026 `Module1`, `Module_PlanOPT`, `Module_LineLosses`, `Module_Update`. Not read, not run.
+### Macros
+`xl/vbaProject.bin` of 0.77 to 0.88 MB in every file. Modules: `ThisWorkbook`, sheet modules, form `BSAISIE` (the entry form, 3,300 to 3,650 lines, 36 different versions), form `Vérification`, `lancement` (opens the form), `Divers`, `Retour`, and in 2026 `Module_PlanOPT`, `Module_LineLosses`, `Module_Update`, `Module1`. What they do: section 2b.
 
 ### Defined names
 181 names in the CREAM file, nearly all `_xlpm.*` / `_xleta.*` (parameters of Excel `LAMBDA` functions, shown as `#NAME?`) and broken ones (`#REF!`). Working: `BDBASE = Base!$A$2:$CM$186` (stale, only 91 columns), `PRES = Presentation!$A$1:$G$15`. The workbook uses `LAMBDA`, so a reader that does not calculate cannot recompute it; our script reads the stored values.
+
+## 2b. What the VBA does (read 2026-10-26, nothing run)
+Extraction: `python -I scripts/helper-chartres-vba-extract.py downloads/Chartres <new folder>` unzips `xl/vbaProject.bin` in memory, reads the OLE streams and decompresses the module source (MS-OVBA). The source lands in `downloads/chartres-vba/run1/` (git-ignored). The diagram page "2b How it works (VBA)" shows the flow.
+
+**Entry form `BSAISIE`** (opened by `Lance_Saisie`):
+- The operator types the day: date and week, safety answers (`Secu1` to `Secu3`), `Temp0` = TOP, `Temp2` = TU, `TempsNR1` = NR, `Temp15` to `Temp18` = the four not-counted times (TownHall, trials, training, validation), the losses by cause (`Orga`, `Change`, `Rupt`, `Qual`, `Dysf`, `Panne`, `Reg`, `Maint`; 24 named slots for each machine block, so the 8 other slots of the block are never written), labour `MOD1` to `MOD6` (Main d'Œuvre Directe), and per shift up to 4 products (code, time, volume, waste).
+- `Temp1` = TOR = TOP minus the four not-counted times (computed). The losses total (`Pertes` = NR + Orga + Change + Rupt + Qual + Dysf + Panne + Reg + Maint) must equal TOR - TU (a box turns green at 0).
+- For each product code the form does a `VLOOKUP` in the sheet `Data`: name (column I in the IWKA 2 layout), formula (G), format (B), case (F), speed (J). "Non trouvé" refuses the day.
+- `Valider` inserts a NEW row 3 in `Base` (newest on top), writes the typed values (323 of the 383 columns; the 60 "Libre" spare columns are never written), inserts the total and check formulas, copies the OEE from the sheet `OEE` (cell C33 = sum of (Volume - Déchets) / sum of (Vitesse x Temps)), the date, the ISO week and the time of saving. Then it refuses the day, and deletes the row, unless: (1) TU + NR + the eight loss totals = TOR, (2) the week matches the date, (3) TOR + not-counted time = TOP, (4) the sum of Temps over the product slots = TOR, (5) every product code is in `Data`, (6) TU = Round(OEE x TOR). The form `Vérification` then asks the user to confirm; Cancel deletes the row.
+- Measured on all 7,181 day rows of the 36 files (`node scripts/helper-chartres-invariants.js`): rule (3) fails on 5 rows, (1) on 81, (4) on 269, (6) on 804, mostly 2025 (older form versions or later edits).
+
+**Export macros** (13 lines, 2026): `ThisWorkbook.Workbook_BeforeClose` (11 of the 13) runs `Run_Reports` (`LineLosses` then `PlanOPT`) and `Export_All_CSVs`, for the ONE day in the sheet `OEE global report`, cell F10. The export saves `<workbook>_<yyyymmdd>_line_losses.xlsx` and `_plan_opt.xlsx` in the folders `LineLosses` and `PlanOPT` (the same day again overwrites). CUMULUS and HOME 2 have the modules but no close event.
+- `PlanOPT`: 21 rows per Base row of that date (20 slots + 1 spare). Batch ID = Code, Total Time = Temps, Good Parts = Volume (Déchets is read but never written), speed looked up in `Data` by the code, Target = Capacity = speed x time, OEE = Good Parts / Capacity, Downtime Units = Capacity - Good Parts, TOR = the first Base column from H whose name contains "TOR" (that is "Vérification TOR" = TOP). Planned OpT and OEE Time are never written. PartName = one column of `Data` chosen per file (D in IWKA 2, B in CUMULUS, IWKA 1, IWKA 3, OLYMPE, M in HOME), so it is a format or a code, not always a name. AreaName ("CREAM", "NON WOVEN", "SKIN") and MachineName are typed in the code of each file. The export keeps only rows with a PartName.
+- `LineLosses`: one row per Category row, French name, Level 3 English text, then Level 1 and Level 2 taken from the FIRST Category row with the same Level 3 text (not from its own row): a bug. Because "Filling machine", "Other" and similar texts exist under Dysf, Panne, Réglages and Organisation, every Panne and Réglages line comes out as "Minor stop" and every "Autre" line as Planned losses / Cleaning. 19 to 49 rows per file are wrong. The duration (looked up by the French name in Base) is right.
+- Exceptions: CLÉOPATRE `Module_PlanOPT` writes MachineName "APOLLON" (copy mistake) and `Module_LineLosses` "CLEOPATRE" without accent; ZEUS `Module_PlanOPT` is empty (the call would fail); CUPIDON and DAISY have no export macros; SACHA 1, SACHA 2 and SUGAR have `Module1` with `Load_LineLosses` and `Load_PlanOPT`, which fill a whole month with `LET` / `SEQUENCE` formulas for the month typed in a cell (the target sheets are not in our copies). The January files were probably made like that (inferred).
 
 ## 3. Groups and years compared (step 3)
 **One template, not several.** All 36 files share the same skeleton: same sheets, same 14 Base total formulas, same block order and sizes (4 + 4 + 9 + 13 + 9 + 7 + the three machine blocks + 7 + 180 + 6 + 12 + totals + checks + 12). What changes between files is below.
@@ -139,8 +154,8 @@ Dates are from the `Date` column. A Base row is one day of one line (IWKA 2 2026
 ## 4. Macro output against the workbook (2026-10-26, diagram page 2)
 Checked on the 10 files whose `PlanOPT` / `LineLosses` hold a day (IWKA 1 to 3, HOME 1 to 4, NEPTUNE, OLYMPE, ZEUS):
 - Plan rows: `Good Parts` = `Volume` of the slot, `Target` = `Capacity` = `Vitesse` x `Temps`, `Total Time` = `Temps`, `Downtime Units` = Target - Good Parts. Equal on every row. `Planned OpT` and `OEE Time` are empty (ZEUS has some values). `Good Parts` ignores `Déchets`, unlike the sheet `OEE` (Volume Réel = Volume Annoncé - Déchets). `ShiftName` is the number 1 to 5.
-- Loss rows: the French name is looked up in `Category`, but every `Panne` and `Réglages` line is written as "Minor stop" (Category: Breakdown, Adjustment) and every `Dysf / Panne / Réglages ... Autre` line as Planned losses / Cleaning / Other (Category: Unplanned / Minor stop, Breakdown, Adjustment / Other). 19 to 49 rows per file differ.
-- Time: `TOR` = `TOP` minus the not-counted columns (LR to LW); `TU` is about the sum of Volume / Vitesse over the day (9 of 10 files; HOME 3 differs, 427 vs 458); `Vérification TO` = TU + NR + the eight loss totals = TOR.
+- Loss rows (cause found in the code, section 2b): the French name is looked up in `Category`, but Level 1 and 2 come from the first row with the same Level 3 text, so every `Panne` and `Réglages` line is written as "Minor stop" (Category: Breakdown, Adjustment) and every `Dysf / Panne / Réglages ... Autre` line as Planned losses / Cleaning / Other (Category: Unplanned / Minor stop, Breakdown, Adjustment / Other). 19 to 49 rows per file differ.
+- Time: `TOR` = `TOP` minus the not-counted columns (LR to LW); `TU` = Round(OEE x TOR) by the rule of the form (section 2b), not simply the sum of Volume / Vitesse (that sum is off by more than 1 minute on about 14 percent of the days, because the OEE nets the waste); `Vérification TO` = TU + NR + the eight loss totals = TOR.
 - Macro history: the daily export files start 2026-08-01 / 03 (to 2026-10-23, SKIN CARE to 2026-10-06; 12 of 18 lines); January 2026 has one file per line (5 to 30 Jan, 13 lines, all in the NON TISSE folders `PlanOPT_january` / `LineLosses_january`). Nothing for 2025 and for February to July 2026.
 - Decision (user, 2026-10-26): the Plan / LineLosses conversion was for a Power BI project that was stopped; build from `Base` directly, use the macro output only as a test.
 - Diagram of all this, the columns and the mapping to the three report tables: `diagrams/chartres-source-map.drawio` (`node scripts/helper-chartres-diagram-data.js`, `node scripts/build-drawio-chartres.js`).
@@ -150,8 +165,10 @@ Checked on the 10 files whose `PlanOPT` / `LineLosses` hold a day (IWKA 1 to 3, 
 
 ## 5. Open points
 1. DOR L3: which file is the OEE source (Laura).
-2. Meaning of `TOP`, `TOR`, `TU`, `NR` (confirm with the site; the check formulas suggest TU + NR + the eight loss totals = TO) and what a repeated date means (correction or second entry).
-3. `PlanOPT` column `PartName` repeats one value on all products of a day in the IWKA 2 sample, while `Batch ID` is the product code: confirm which is the SKU.
-4. Is the macro code the owner of the `PlanOPT` / `LineLosses` content for 2025 too? The 2025 files have no such sheets, so 2025 must be built from `Base`.
-5. Daily export files exist only for CREAM 2026 in the download. Are the other groups exported to another folder?
-6. Machine part names are per line and in French: a dictionary per line is needed before a mapping (next step, after the user's go).
+2. Time_Utilisation_EU: which of TOP and TOR is Total Time and which is Planned OPT. The Plan_OPT_EU slot times add up to TOR (enforced).
+3. Good Parts: the macro writes Volume, the OEE of the workbook uses Volume - Déchets. Proposal: net.
+4. Days that fail the form rules (about 1,100 of 7,181) and dates entered twice (CUMULUS 2025: 7, ZEUS 2025: 2): load and flag, or leave out.
+5. Losses are per day, not per shift or product: what to put in ShiftName, PartName and Time of Daily_Losses_EU.
+6. Which lines are still in production (CUPIDON and DAISY have no days in 2026).
+7. Tell the site about the LineLosses lookup bug, the CLÉOPATRE machine name and the empty ZEUS module? Our rows will use the Category row itself.
+8. Meaning of the abbreviation NR (not spelled out in the code).

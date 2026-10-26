@@ -236,8 +236,8 @@ p1.box(40, y1, 1500, fit(1500, NOTE1), NOTE1, 'warn');
 // ---- Page 2: do the macros cover 2026? ---------------------------------------
 const p2 = new Page('2 Macros and 2026', 2);
 title(p2, 'Does the PlanOPT / LineLosses conversion cover all of 2026? No.',
-  '18 OEE workbooks for 2026. The macros (Module_PlanOPT, Module_LineLosses) exist in 13. Their sheets keep only the LAST exported day. '
-  + 'History is in the daily export files (Aug to Oct) and one January export. You prefer Base directly: this page shows what the macros would and would not give.');
+  '18 OEE workbooks for 2026. The macros (Module_PlanOPT, Module_LineLosses) exist in 13 and run when someone CLOSES the workbook, for ONE day: the date in the sheet "OEE global report", cell F10. '
+  + 'So the sheets keep only the last day and an export file exists only for a day on which the workbook was closed with that date. You prefer Base directly: this page shows what the macros give and where they go wrong (read from the VBA, not run).');
 legend(p2, 40, 90, ['have', 'warn', 'none']);
 
 const files2026 = data.files.filter((f) => f.year === '2026');
@@ -247,20 +247,34 @@ for (const e of data.exports.filter((x) => /^planopt/i.test(x.folder))) {
   const target = /january/i.test(e.folder) ? janLines : dailyLines;
   e.lines.forEach((l) => target.add(l.replace(/_.*$/, '')));
 }
-const W2 = [120, 100, 200, 260, 330, 330];
+// From the VBA of ThisWorkbook: does the close event run the reports and the export?
+const ON_CLOSE = { CUMULUS: false, 'HOME 2': false };
+const W2 = [110, 100, 190, 250, 160, 270, 260];
 let y2 = 140;
-y2 = row(p2, 40, y2, W2, [bold('Group'), bold('Line'), bold('Macros + PlanOPT / LineLosses sheets'), bold('Day held in the sheets now'), bold('Daily export files (Aug to Oct 2026)'), bold('January 2026 export')], 'head');
+y2 = row(p2, 40, y2, W2, [bold('Group'), bold('Line'), bold('Macros + PlanOPT / LineLosses sheets'), bold('Day held in the sheets now'), bold('Runs on close (VBA)'), bold('Daily export files (Aug to Oct 2026)'), bold('January 2026 export')], 'head');
 for (const f of files2026) {
   const key = `OEE ${f.line} - 2026`;
   const hasMacro = f.planSheet;
   const filled = f.planRows > 0;
   const daily = dailyLines.has(key);
   const jan = janLines.has(key);
+  let closeText = 'no macros';
+  let closeLevel = 'none';
+  if (hasMacro) {
+    const noEvent = f.line in ON_CLOSE;
+    closeText = noEvent ? 'NO close event: exports are not automatic' : 'yes';
+    closeLevel = noEvent ? 'warn' : 'have';
+    if (f.line === 'ZEUS') {
+      closeText = 'close event yes, but Module_PlanOPT is EMPTY: the call fails';
+      closeLevel = 'warn';
+    }
+  }
   y2 = row(p2, 40, y2, W2, [
     f.group.replace(' Chartres', ''),
     bold(f.line),
-    hasMacro ? 'yes (13 of 18 have them)' : 'NO macros, no sheets: Base only',
+    hasMacro ? 'yes (13 of 18 have them)' : 'NO export macros: Base only',
     !hasMacro ? '-' : filled ? `${f.planDay}, ${f.planRows} product rows, ${f.lossRows} loss rows` : 'sheets are EMPTY (never run, or cleared)',
+    closeText,
     daily ? 'yes' : 'no export file',
     jan ? 'yes' : 'no',
   ], [
@@ -268,32 +282,38 @@ for (const f of files2026) {
     'table',
     hasMacro ? 'have' : 'none',
     !hasMacro ? 'none' : filled ? (f.planDay >= '2026-10-01' ? 'have' : 'warn') : 'warn',
+    closeLevel,
     daily ? 'have' : 'none',
     jan ? 'have' : 'none',
   ]);
 }
-y2 += 30;
+const OTHER_VBA = 'CUPIDON, DAISY: no export macros (CUPIDON has an empty Module1). SACHA 1, SACHA 2, SUGAR: Module1 holds Load_LineLosses and Load_PlanOPT, which fill a whole MONTH '
+  + 'with formulas (month typed in sheet cell AB1 / AI1); the sheets they need are not in our copies. The January files were probably made this way (inferred). '
+  + 'CLÉOPATRE: Module_PlanOPT writes MachineName "APOLLON" (copy mistake), Module_LineLosses writes "CLEOPATRE" without the accent.';
+y2 += 10;
+p2.box(40, y2, 1340, fit(1340, OTHER_VBA), OTHER_VBA, 'warn');
+y2 += fit(1340, OTHER_VBA) + 30;
 p2.text(40, y2, 1500, 24, bold('Coverage in time (whatever the macros wrote)'));
 y2 += 30;
 const bar = [
   [40, 'none', '2025: no macro output at all. Build from Base (about 5 Jan to 23 Dec 2025 for most lines)', 360],
   [400, 'have', 'Jan 2026: ONE monthly file per line (5 to 30 Jan), 13 lines', 300],
   [700, 'none', 'Feb to Jul 2026: no macro output. Build from Base', 360],
-  [1060, 'have', 'Aug 1/3 to Oct 23, 2026 (SKIN CARE to Oct 6): daily files for 12 of the 18 lines', 480],
+  [1060, 'have', 'Aug 1/3 to Oct 23, 2026 (SKIN CARE to Oct 6): daily files for 12 of the 18 lines, only for days the workbook was closed', 480],
 ];
 for (const [x, level, text, w] of bar) {
   p2.box(x, y2, w, 60, text, level);
 }
 y2 += 90;
-p2.text(40, y2, 1500, 24, bold('The macro output is not the same as the workbook\'s own rules (checked on the 10 files that hold a day)'));
+p2.text(40, y2, 1500, 24, bold('What the two macros do, and where they differ from the workbook rules (code read, then checked on the 10 files that hold a day)'));
 y2 += 30;
 const CHECKS = [
-  ['have', 'Good Parts = Volume of the product slot, Target = Capacity = Vitesse x Temps, Total Time = Temps, Downtime Units = Target - Good Parts. Equal on every product row of the 10 files.'],
-  ['warn', 'Good Parts uses the declared Volume and ignores Déchets (waste). The sheet "OEE" of the same workbook computes Volume Réel = Volume Annoncé - Déchets. Defect Parts is left empty.'],
-  ['none', 'Planned OpT and OEE Time are always empty (except ZEUS, which has values in some rows). Plan_OPT_EU needs both, so they must be calculated anyway.'],
-  ['warn', 'ShiftName is a number 1 to 5 (the 5 shift types), not a name. PartName is a lookup that gives a different kind of value per line (a name, a size such as "100ml", or one code repeated on all products of a day in IWKA 2).'],
-  ['warn', 'LineLosses disagrees with the Category sheet of the same file: every Panne (breakdown) and Réglages (adjustment) line is written as "Minor stop", and every "... Autre" line of the Dysf / Panne / Réglages blocks as Planned losses / Cleaning / Other. 19 to 49 rows per file differ (all 10 files). Category says Breakdown, Adjustment and Unplanned.'],
-  ['have', 'Loss durations in LineLosses add up to the eight loss totals of Base (Organisation to Maintenance) + the "Temps non compté" columns, in 6 of 10 files; the other 4 are off by 20 to 70 minutes (probably the not-counted time of TownHall, training, trials; not verified).'],
+  ['have', 'PlanOPT: for the chosen day it makes 21 rows per Base row of that date (20 product slots + 1 spare). Batch ID = Code, Total Time = Temps, Good Parts = Volume, Speed = looked up in the sheet Data by the code, Target = Capacity = Speed x Time, OEE = Good Parts / Capacity, Downtime Units = Capacity - Good Parts, TOR = the first Base column whose name contains "TOR" from column H, which is "Vérification TOR" (= TOP). Equal on every row of the 10 files.'],
+  ['warn', 'PlanOPT reads Déchets (waste) but never writes it (Defect Parts empty), and never writes Planned OpT or OEE Time. Good Parts is the declared Volume, while the workbook OEE (sheet OEE) uses Volume - Déchets. ShiftName is the number 1 to 5, ShiftStartTime is the date only.'],
+  ['warn', 'PlanOPT PartName = the value of ONE column of the sheet Data, chosen per file: column D in IWKA 2 (a formula code, not a name), B (the format) in CUMULUS, IWKA 1 and 3 and OLYMPE, M in HOME. AreaName and MachineName are typed in the code of each file. The export keeps only rows with a PartName.'],
+  ['none', 'LineLosses: ROOT CAUSE of the wrong groups. For each Category row it looks up Level 1 and Level 2 in the FIRST Category row with the same Level 3 English text, not in its own row. "Filling machine" or "Other" exist under Dysf, Panne, Réglages and Organisation, so every Panne and Réglages line gets Dysf\'s "Minor stop", and every "Autre" line gets Organisation\'s Planned losses / Cleaning. 19 to 49 rows per file are wrong. The duration itself (looked up by the French name) is right.'],
+  ['have', 'LineLosses writes ALL Category rows for the day, with a blank duration when there is none (about 60 to 105 rows), and the export keeps every row with a description. Durations add up to the eight loss totals of Base in 6 of 10 files; the other 4 differ by 20 to 70 minutes (probably the not-counted time).'],
+  ['have', 'Export on close: ThisWorkbook.Workbook_BeforeClose runs Run_Reports (LineLosses, then PlanOPT) and Export_All_CSVs, which saves <workbook>_<yyyymmdd>_line_losses.xlsx and _plan_opt.xlsx next to the workbook. The date is the one in the first row; a second close on the same day overwrites the file.'],
 ];
 for (const [level, text] of CHECKS) {
   const h = fit(1500, text);
@@ -301,23 +321,65 @@ for (const [level, text] of CHECKS) {
   y2 += h + 6;
 }
 y2 += 10;
-const REC2 = bold('Recommendation: ') + 'build every day from Base with the Category sheet (one rule for 2025 and 2026 and for every line), '
+const REC2 = bold('Recommendation: ') + 'build every day from Base with the Category sheet, using its own row for Level 1, 2 and 3 (one rule for 2025 and 2026 and for every line), '
   + 'and use the daily export files of Aug to Oct 2026 and the January file only as a test: our rows for the same line and day must equal the macro rows, '
-  + 'except where the table above shows the macro differs from the workbook rules. Running the macros ourselves is not needed and we do not run macros.';
+  + 'except where the macro is wrong (above). We do not run the macros.';
 p2.box(40, y2, 1500, fit(1500, REC2), REC2, 'fixed');
+
+// ---- Page 2b: how the workbook works (from the VBA) ----------------------------------
+const p2b = new Page('2b How it works (VBA)', 20);
+title(p2b, 'How one OEE workbook works (read from the VBA, nothing was run)',
+  'Entry form BSAISIE (3,300 to 3,650 lines of code) writes the sheet Base. The macros at close write PlanOPT and LineLosses and export them. Our plan reuses the same rules on Base.');
+legend(p2b, 40, 90, ['have', 'fixed', 'warn', 'none']);
+const FLOW_W = 300;
+const flowRow = (page, y, items) => {
+  let prev = null;
+  items.forEach(([level, html], i) => {
+    const h = Math.max(110, fit(FLOW_W, html));
+    const id = page.box(40 + i * (FLOW_W + 50), y, FLOW_W, h, html, level, 'verticalAlign=top;');
+    if (prev) {
+      page.edge(prev, id);
+    }
+    prev = id;
+  });
+  return y + 230;
+};
+p2b.text(40, 140, 1500, 24, bold('A. Entering a day (sub Lance_Saisie opens the form BSAISIE)'));
+let yb = flowRow(p2b, 170, [
+  ['fixed', bold('1. The operator types the day') + '<br>Date, week, safety (Secu1 to 3), TOP (Temp0), TU (Temp2), NR (TempsNR1), not-counted minutes (Temp15 to 18), losses by cause (Orga, Change, Rupt, Qual, Dysf, Panne, Reg, Maint: 24 named slots for each machine block), labour (MOD1 to 6), and per shift up to 4 products: code, time, volume, waste.'],
+  ['have', bold('2. The form fills in the rest') + '<br>TOR (Temp1) = TOP - the four not-counted items. For each product code a VLOOKUP in the sheet Data gives name, formula, format, case and speed. The losses total (Pertes) must equal TOR - TU: the box turns green when the difference is 0.'],
+  ['have', bold('3. Valider writes the day') + '<br>It inserts a NEW ROW 3 in Base (newest on top), writes the typed values, the 14 total / check formulas, the OEE copied from the sheet OEE (C33), the date, the ISO week and the saving time.'],
+  ['warn', bold('4. Checks, else the row is deleted') + '<br>(1) TU + NR + 8 loss totals = TOR; (2) week = ISO week of the date; (3) TOR + not counted = TOP; (4) sum of Temps of the products = TOR; (5) every code found in Data ("Non trouvé" refuses); (6) TU = Round(OEE x TOR). Then the Vérification form: Cancel deletes the row.'],
+]);
+const RATES = bold('How well the rows pass today (all 7,181 day rows of the 36 files)') + '<br>'
+  + '(3) TOR = TOP - not counted: fails on 5 rows | (1) TU + NR + losses = TOR: 81 rows | (4) sum of Temps = TOR: 269 rows | (6) TU = Round(OEE x TOR): 804 rows, mostly 2025. '
+  + 'In the 2026 files of the 13 macro lines the failures are a few rows per file. Rows that fail were probably edited after saving, or saved by an older version of the form (the form code differs in every file: 36 versions).';
+p2b.box(40, yb - 40, 1340, fit(1340, RATES), RATES, 'warn');
+yb += fit(1340, RATES) - 10;
+p2b.text(40, yb, 1500, 24, bold('B. Closing the workbook (ThisWorkbook.Workbook_BeforeClose, in 11 of the 13 macro files)'));
+yb = flowRow(p2b, yb + 30, [
+  ['fixed', bold('1. Day chosen') + '<br>Sheet "OEE global report", cell F10 (F9 shows TODAY()). Only that one day is processed.'],
+  ['have', bold('2. Run_Reports') + '<br>LineLosses: one row per Category line, duration from Base by French name. PlanOPT: 21 rows per product slot template, values from Base and from Data. Details on page 2.'],
+  ['have', bold('3. Export_All_CSVs') + '<br>Copies the rows with a value in the filter column (LineLosses: description; PlanOPT: PartName) to a new sheet, saves it as xlsx in the folders LineLosses and PlanOPT, named <workbook>_<yyyymmdd>_..., closes it.'],
+  ['none', bold('4. Result') + '<br>One pair of files per closing day, per workbook. Days the workbook was not closed with that date in F10 have no file. 2025: nothing.'],
+]);
+const REUSE = bold('What we reuse for the rebuild from Base') + '<br>'
+  + 'The six checks above as our own validation of each day (flag the days that fail, do not drop them silently); the Data lookup (code -> name, speed); the sheet Category with its own Level 1/2/3 per French name; '
+  + 'the OEE definition: sum of (Volume - Déchets) / sum of (Speed x Time); TOR and TU as defined by the form. Not reused: the macro mapping of Level 1/2, the PartName column choice, Good Parts without waste.';
+p2b.box(40, yb, 1340, fit(1340, REUSE), REUSE, 'fixed');
 
 // ---- Page 3: Base columns ------------------------------------------------------
 const p3 = new Page('3 Base columns', 3);
 title(p3, 'Sheet "Base": the important columns (French, English, abbreviations)',
   'One row = one day of one line, newest day on top. Letters are those of the CREAM template (IWKA 2); other lines shift after the machine blocks (page 4). '
-  + 'English = the translation or the wording of the sheet "Category" of the same workbook. "(inferred)" = meaning worked out from formulas and numbers, to confirm with the site.');
+  + 'English = the translation or the wording of the sheet "Category" of the same workbook. Meanings of TOP, TOR, TU are now from the entry form code. Of the 383 columns, 323 are written by the form and 60 are spare "Libre" columns it never writes.');
 legend(p3, 40, 90, ['have', 'test', 'warn']);
 const W3 = [110, 430, 430, 330, 230];
 let y3 = 140;
 y3 = row(p3, 40, y3, W3, [bold('Columns'), bold('French (as in the file)'), bold('English'), bold('Abbreviation / note'), bold('Feeds')], 'head');
 const BASE_ROWS = [
   ['A to D', 'ANNEE, MOIS, SEMAINE, JOUR', 'Year, Month, Week, Day', 'The day of the row (also column MV "Date", an Excel serial number, and MW "Vérification Semaine" = week check)', 'Date, all 3 tables', 'have'],
-  ['E to H', 'TOP, TOR, TU, NR', 'minutes of the day: TOP, TOR, TU, NR', 'TOP = scheduled opening time (inferred). TOR = TOP minus the time not counted in LR to LW (checked: TOP = TOR + LR..LW). TU = "Temps Utile", useful time = OEE time (checked: about the sum of Volume / Vitesse over the day, 9 of 10 files). NR = "Non Renseigné", time not accounted for (becomes the loss "Undefined")', 'Time_Utilisation_EU, Plan_OPT_EU', 'test'],
+  ['E to H', 'TOP, TOR, TU, NR', 'minutes of the day: TOP, TOR, TU, NR', 'TOP = Temps d’Ouverture Planifié (planned opening time), typed. TOR = Temps d’Ouverture Réel = TOP minus the four not-counted items (LR to LW), computed by the form. TU = Temps Utile (useful time), typed, and the form refuses the day unless TU = Round(OEE x TOR). NR = typed, counted with the losses (name not spelled out in the code, probably Non Renseigné). Rule enforced: TU + NR + the eight loss totals = TOR', 'Time_Utilisation_EU, Plan_OPT_EU', 'have'],
   ['I to Q', 'Démarrage Ligne, Arrêt Ligne, Pauses, Nettoyage, Désinfection, Perte Cadence, Organisation Autre, Orga Libre 1, 2', 'Line start-up, Line shut-down, Breaks, Cleaning, Sanitization, Reduced speed, Other, spare 1, 2', 'Minutes. Group "Organisation". Planned losses, except Perte Cadence (unplanned). "Libre" = free, spare slot a line can name', 'Daily_Losses_EU', 'have'],
   ['R to AD', 'Changement de Format, Changement de Formule, Changement Composant / Lot / OF, Changement de consommable, Changement Libre 1 to 6; Nbre de changement ...', 'Format changeover, Formula change, Component / batch / work order change, Consumable refill, spare 1 to 6; Number of changes', 'Minutes, except the three "Nbre ..." columns (S, U, W) which are COUNTS and are not in Total Changement (R + T + V + X). OF = Ordre de Fabrication = work order. Planned losses', 'Daily_Losses_EU (not the counts)', 'have'],
   ['AE to AM', 'Rupture Formule, Composants, Personnel, Utilité, Technicien; Manque Documentation; Évacuation - Alarme Incendie; Rupture OF / Planning; Rupture Libre 2', 'Lack of formula, materials, crew, utilities, technician; lack of documents; fire alarm; lack of work order / planning', 'Minutes. Unplanned losses, group "Lack of resources"', 'Daily_Losses_EU', 'have'],
@@ -326,12 +388,12 @@ const BASE_ROWS = [
   ['CA to DF', 'Panne <partie machine>', 'Breakdown of <machine part>', '32 slots, same parts. Category: "Breakdown" (the macro export writes Minor stop)', 'Daily_Losses_EU', 'have'],
   ['DG to EL', 'Réglages <partie machine>', 'Adjustments of <machine part>', '33 slots (the first is "Réglages Camera" in some files). Category: "Adjustment" (macro export: Minor stop)', 'Daily_Losses_EU', 'have'],
   ['EM to ES', 'Auto Maintenance, Maintenance Préventive Mensuelle / Annuelle / Autre, Action Maintenance Planifiée, Libre 1, 2', 'Operator asset care, Monthly / Annual / Other maintenance, Planned actions, spare', 'Minutes. Planned losses, group "Planned maintenance"', 'Daily_Losses_EU', 'have'],
-  ['ET to LQ (180)', '<Champ> PF<n> <équipe>: Code, Temps, Volume, Déchets, Nom, Nom Formule, Caisse, Format, Vitesse', '<Field> product slot <n> <shift>: Code, Time, Volume, Waste, Name, Formula name, Case, Format, Speed', 'PF = Produit Fini = finished product, 4 slots (PF1 to PF4) per shift. 5 shifts: Semaine Matin / Après Midi / Nuit = weekday morning / afternoon / night; Weekend Matin / Nuit = weekend morning / night. 9 fields x 4 x 5 = 180. Temps = minutes run, Vitesse = units per minute, Caisse = case pack', 'Plan_OPT_EU (one row per filled slot)', 'have'],
+  ['ET to LQ (180)', '<Champ> PF<n> <équipe>: Code, Temps, Volume, Déchets, Nom, Nom Formule, Caisse, Format, Vitesse', '<Field> product slot <n> <shift>: Code, Time, Volume, Waste, Name, Formula name, Case, Format, Speed', 'PF = Produit Fini = finished product, 4 slots (PF1 to PF4) per shift. 5 shifts: Semaine Matin / Après Midi / Nuit = weekday morning / afternoon / night; Weekend Matin / Nuit. Typed: Code, Temps, Volume, Déchets. Filled by the form from the sheet Data by the code: Nom, Nom Formule, Caisse, Format, Vitesse. The sum of Temps over the 20 slots must equal TOR', 'Plan_OPT_EU (one row per filled slot)', 'have'],
   ['LR to LW', 'TownHall - Réunion, Essais Planifiés, Formation, Validation / Qualification, Temps non compté Libre 1, 2', 'Town hall meeting, Planned trials, Training, Validation / Qualification, spare', 'Time not counted in TOR. Groups "Production not scheduled" and "NPD/CapEX & Trials"', 'Daily_Losses_EU (decide)', 'test'],
-  ['LX to MI', 'People Journée, Matin, Après Midi, Nuit, Week End Matin, Week End Nuit, Libre 1 to 6', 'People: day, morning, afternoon, night, weekend morning, weekend night, spare', 'Labour time in person-minutes, not a headcount (IWKA 2 values 1800, 2250, 2460, 2700; inferred). No target table has it', 'not used', 'warn'],
+  ['LX to MI', 'People Journée, Matin, Après Midi, Nuit, Week End Matin, Week End Nuit, Libre 1 to 6', 'People: day, morning, afternoon, night, weekend morning, weekend night, spare', 'Typed in the form as MOD1 to MOD6 (Main d’Œuvre Directe = direct labour). Values such as 1800, 2250, 2460 look like people x minutes, not a headcount. No target table has it', 'not used', 'warn'],
   ['MJ to MS', 'Total Organisation, Changement, Rupture, Qualité, Dysfonctionnement, Panne, Réglage, Maintenance Planifiée, Temps Fermeture, Volume', 'Totals per block, closed time, total volume', 'Formulas (SUM of the block). Good for checks, not needed as input', 'check only', 'have'],
   ['MT to NG', 'Vérification TO, OEE, Date, Vérification Semaine, Vérification TOR, Total Déchets, Total Temps de production, Vérification TU, Date et heure de la saisie, Vérification Libre 5 to 9', 'Check TO, OEE, Date, Week check, TOR check, Total waste, Total production time, TU check, Entry date and time, spare checks', 'OEE is a stored value (macro), not a formula. Vérification TO = TU + NR + 8 loss totals and must equal TOR', 'check, and OEE for the test', 'have'],
-  ['NH to NS', 'Sécurité Nombre d\'actions ouvertes, Nombre d\'actions cloturées, Nombre de "NON" total de la journée, Sécurité Libre 1 to 9', 'Safety: number of open actions, closed actions, number of "NO" answers of the day', 'Safety check of the shift. No target table has it', 'not used', 'warn'],
+  ['NH to NS', 'Sécurité Nombre d\'actions ouvertes, Nombre d\'actions cloturées, Nombre de "NON" total de la journée, Sécurité Libre 1 to 9', 'Safety: number of open actions, closed actions, number of "NO" answers of the day', 'Only the first three are written (form fields Secu1 to Secu3); the 9 Libre columns are never written. No target table has it', 'not used', 'warn'],
 ];
 for (const r of BASE_ROWS) {
   y3 = row(p3, 40, y3, W3, [bold(r[0]), r[1], r[2], r[3], r[4]], ['head', 'table', 'table', r[5], 'table']);
@@ -442,12 +504,12 @@ y5 = mapping(p5, y5, [
   ['MachineName', 'IWKA 2', 'line name from the file name "OEE IWKA 2 - 2026"', 'fixed', 'check it equals the report name in Machine Names'],
   ['ShiftName', 'Semaine Matin (macro: 1)', 'the shift type of the slot (5 types)', 'test', 'EU tables use names like Day / Night: a mapping of the 5 types is needed'],
   ['AreaName', 'CREAM (macro: CREAM)', 'macro writes the group; EU uses site + area (Hull Dries)', 'test', 'decide the Chartres area names'],
-  ['PartName', '<Nom PF1 Semaine Matin>', 'Nom PF<n> <shift>', 'test', 'the macro writes a lookup whose value differs per line; use the Nom column and compare'],
-  ['Good Parts', '3006', 'Volume PF1 Semaine Matin', 'have', 'macro rule, equal on all rows of 10 files. It ignores Déchets: decide whether to subtract waste'],
-  ['Capacity', '7200', 'Vitesse x Temps = 80 x 90', 'have', 'macro: Target = Capacity = this product'],
+  ['PartName', '<Nom PF1 Semaine Matin>', 'Nom PF<n> <shift>', 'test', 'the form fills it from Data (column I in the IWKA 2 layout). The macro writes another Data column instead (D, B or M per file), so macro PartName is not a product name everywhere'],
+  ['Good Parts', '3006', 'Volume PF1 Semaine Matin, minus Déchets PF1 Semaine Matin (to decide)', 'test', 'the macro writes Volume without waste (equal on all rows of 10 files); the workbook OEE (sheet OEE) uses Volume - Déchets, so net is the consistent choice'],
+  ['Capacity', '7200', 'Vitesse x Temps = 80 x 90', 'have', 'macro: Target = Capacity; the macro takes the speed from Data, the form copies the same speed into Base (Vitesse)'],
   ['Total Time', '90', 'Temps PF1 Semaine Matin (minutes run)', 'have', 'macro rule, equal on all rows'],
-  ['Planned OpT', '(macro: empty)', 'none in the files. Candidate: Temps of the slot', 'test', 'Plan_OPT_EU needs it. In the Hull files Planned OpT can be lower than Total Time (planned stops)'],
-  ['OEE Time', '(macro: empty)', 'Volume / Vitesse = 3006 / 80 = 37.6 minutes', 'test', 'supported by TU (Base): the day total equals the sum of Volume / Vitesse in 9 of 10 files'],
+  ['Planned OpT', '(macro: never written)', 'none in the files. Candidate: Temps of the slot', 'test', 'Plan_OPT_EU needs it. The sum of Temps of the slots equals TOR (enforced). In the Hull files Planned OpT can be lower than Total Time (planned stops)'],
+  ['OEE Time', '(macro: never written)', '(Volume - Déchets) / Vitesse = 3006 / 80 = 37.6 minutes', 'test', 'the day total TU is typed and equals Round(OEE x TOR); the sum of the slot values is close to TU when speeds are similar (differs for about 14 percent of the days)'],
   ['Downtime Units', '4194', 'Capacity - Good Parts', 'have', 'macro rule, equal on all rows'],
   ['SiteName', 'Chartres', 'fixed', 'fixed', ''],
   ['Unique Machine Name', 'IWKA 2-Chartres', 'MachineName + "-Chartres" (as B2 Auto-Hull)', 'fixed', ''],
@@ -469,17 +531,17 @@ let y6 = flow(p6, 140, [
 y6 = mapping(p6, y6, [
   ['Date', '2026-10-23', 'ANNEE / MOIS / JOUR', 'have', ''],
   ['MachineName', 'IWKA 2', 'file name', 'fixed', ''],
-  ['OEE Time Total', '161', 'TU (Temps Utile)', 'test', 'TU = sum of Volume / Vitesse (161.3), 9 of 10 files. HOME 3 differs (427 vs 458): check the waste columns'],
-  ['Total Time Total', '900', 'TOP (scheduled opening time)', 'test', 'candidate; the alternative is the sum of Temps of the slots (MZ). Same value in IWKA 2'],
-  ['Planned OPT Total', '900', 'TOR (TOP minus time not counted)', 'test', 'TOP and TOR differ when TownHall, trials, training or validation minutes exist (for example 1410 vs 1340)'],
+  ['OEE Time Total', '161', 'TU (Temps Utile)', 'have', 'typed in the form and checked: TU = Round(OEE x TOR), OEE = sum of (Volume - Déchets) / sum of (Vitesse x Temps)'],
+  ['Total Time Total', '900', 'TOR (= sum of Temps of the slots, enforced) or TOP', 'test', 'Plan_OPT_EU Total Time adds up to TOR, so for the two tables to agree this is TOR; TOP (planned opening time) has no column unless it becomes Planned OPT or All Time. Same value in IWKA 2'],
+  ['Planned OPT Total', '900', 'TOR or TOP', 'test', 'order of the minutes: TU <= TOR <= TOP <= 1440. TOP and TOR differ when TownHall, trials, training or validation minutes exist (for example 1410 vs 1340). Needs the Reckitt definition of Planned OpT'],
   ['All Time', '1440', 'fixed 1440 per day', 'fixed', 'as in the other sites'],
   ['SiteName, Unique Machine Name', 'Chartres, IWKA 2-Chartres', 'as Plan_OPT_EU', 'fixed', ''],
   ['Dept, Area, Product Type', '-', 'Machine Names lookup', 'none', 'Chartres lines not in Machine Names yet'],
   ['Data Source', '-', 'new value', 'test', ''],
 ]);
 y6 += 20;
-const CHECK6 = bold('Check built into the workbook: ') + 'Vérification TO = TU + NR + the eight loss totals and equals TOR on every day shown (IWKA 2: 161 + 739 = 900). '
-  + 'So the day is always fully accounted for, and the losses of Daily_Losses_EU add up to TOR - TU.';
+const CHECK6 = bold('Rules of the form: ') + 'TOR = TOP - not counted; TU + NR + the eight loss totals = TOR; the sum of Temps of the slots = TOR; TU = Round(OEE x TOR). '
+  + 'Checked on IWKA 2 for 23 Oct: 161 + 739 = 900. So the losses of Daily_Losses_EU add up to TOR - TU for every day that passes the checks (page 2b).';
 p6.box(40, y6, 1510, fit(1510, CHECK6), CHECK6, 'have');
 
 const p7 = new Page('7 Base to Daily_Losses_EU', 7);
@@ -496,7 +558,7 @@ y7 = mapping(p7, y7, [
   ['Date, ShiftStartDate', '2026-10-23', 'ANNEE / MOIS / JOUR', 'have', ''],
   ['MachineName', 'IWKA 2', 'file name', 'fixed', ''],
   ['OEELossLvl3Group', 'Unplanned losses', 'Category level 1 (EN) of the French column name', 'have', 'e.g. "Réglages REMPLISSEUSE - Scellage Tubes" -> Unplanned losses'],
-  ['OEELossLvl3SubGroup', 'Adjustment', 'Category level 2 (EN)', 'have', 'the macro export writes "Minor stop" here: decide (page 2)'],
+  ['OEELossLvl3SubGroup', 'Adjustment', 'Category level 2 (EN) of the SAME row', 'have', 'the macro looks it up in the first row with the same Level 3 text and gets "Minor stop": a bug, do not copy it'],
   ['OEELossLvl3Desc', 'Filling machine', 'Category level 3 (EN)', 'have', ''],
   ['Duration', '310', 'the minutes in that column', 'have', 'whole minutes; the EU extract also has whole minutes'],
   ['Breakdown Types, Loss Final Level, Equipment', 'Adjustment / Filling machine', 'Breakdown Types = sub group; Loss Final Level = level 3 name; Equipment = machine description', 'test', 'built the report way in the other sites (docs/pbi-report-build.md)'],
@@ -520,16 +582,16 @@ title(p8, 'Open questions and decisions before building anything',
   'Nothing is built yet. Order = what blocks the mapping first.');
 const QUESTIONS = [
   ['none', 'DOR L3: which file is the OEE source? No OEE*.xlsm exists for this group (Laura).'],
-  ['test', 'Source: Base directly with the Category sheet (your preference) and the macro exports only as a test of our rows (Aug to Oct 2026 daily, January monthly). Agreed?'],
-  ['warn', 'The macro export maps Panne and Réglages to "Minor stop" and every "Autre" to Planned / Cleaning. The Category sheet says Breakdown, Adjustment, Unplanned. Which is the intended result for the report?'],
-  ['warn', 'Good Parts: Volume as the macro does, or Volume - Déchets as the OEE sheet does? NON TISSE has waste per machine as well.'],
-  ['test', 'Meaning of TOP, TOR, TU, NR, and which of them are Total Time, Planned OpT and OEE Time (Time_Utilisation_EU and Plan_OPT_EU).'],
+  ['test', 'Source: Base directly with the Category sheet (your preference), the macro exports only as a test of our rows. The code was read: the macros do not do what we need (one day per close, wrong Level 1/2, no Planned OpT / OEE Time). Agreed?'],
+  ['warn', 'The macro LineLosses has a lookup bug (Level 1/2 from the first row with the same Level 3 text), so Breakdown and Adjustment appear as Minor stop in every export. Should the site be told? Our rows will use the Category row itself.'],
+  ['warn', 'Good Parts: the macro writes Volume, the workbook OEE uses Volume - Déchets. Proposal: net of waste. NON TISSE also has waste per machine (Total Déchets sums those).'],
+  ['test', 'Time_Utilisation_EU: which of TOP (planned opening time) and TOR (real opening time) is Total Time and which is Planned OPT? The Plan_OPT_EU slot times add up to TOR.'],
   ['test', 'Losses are per day, not per shift or product: leave ShiftName, PartName and Time empty, or spread them? Spread by what?'],
   ['test', 'Shift names: the 5 types (weekday morning / afternoon / night, weekend morning / night) to Day / Night or to their own names?'],
   ['none', 'Chartres lines in Machine Names (Dept, Area, Product Type, report name) and Chartres targets (UPDT, PDT, OEE Target, Value).'],
-  ['warn', 'Dates entered twice (CUMULUS 2025: 7, ZEUS 2025: 2): replace or add? Empty files (CUPIDON, DAISY 2026): ignore.'],
+  ['warn', 'Days that fail the form rules today (about 1,100 of 7,181: mostly TU vs OEE and the sum of times, mostly 2025): load them and flag, or leave them out? Dates entered twice (CUMULUS 2025: 7, ZEUS 2025: 2): replace or add?'],
   ['warn', 'Time not counted (TownHall, trials, training, validation): in the losses table or out?'],
-  ['fixed', 'Optional: read the macro source code (static, not run) to settle the questions above. It needs an extraction tool for the VBA project; I will not do it without your go.'],
+  ['fixed', 'Smaller points seen in the code: CLÉOPATRE exports are labelled APOLLON; ZEUS Module_PlanOPT is empty; CUMULUS and HOME 2 do not export on close; CUPIDON and DAISY have no export macros and no days in 2026. Which lines are still in production?'],
 ];
 let y8 = 100;
 QUESTIONS.forEach(([level, text], i) => {
@@ -539,6 +601,6 @@ QUESTIONS.forEach(([level, text], i) => {
   y8 += h + 8;
 });
 
-const pages = [p1, p2, p3, p4, p5, p6, p7, p8];
+const pages = [p1, p2, p2b, p3, p4, p5, p6, p7, p8];
 writeFileSync(OUTPUT, `<mxfile host="build-drawio-chartres.js">${pages.map((p) => p.xml()).join('')}</mxfile>`);
 console.log(`Wrote ${OUTPUT} (${pages.length} pages)`);

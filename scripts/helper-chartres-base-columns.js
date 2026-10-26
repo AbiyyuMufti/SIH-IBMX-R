@@ -6,7 +6,7 @@
 // meaning, formula, which table it feeds, how sure the meaning is.
 // Usage: node scripts/helper-chartres-base-columns.js [out.json]
 // Read only. The output holds product names from the files: it stays in downloads/.
-import { readdirSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { readXlsx } from './lib-office.js';
 import { profileFile } from './chartres-profile.js';
@@ -14,6 +14,14 @@ import { profileFile } from './chartres-profile.js';
 const ROOT = 'downloads/Chartres';
 const REFERENCE = 'CREAM Chartres/2026/SAISIE OEE/OEE IWKA 2 - 2026.xlsm';
 const OUT = process.argv[2] ?? 'downloads/chartres-base-columns.json';
+// Output of scripts/helper-chartres-vba-extract.py (the VBA source, read not run).
+const VBA_DIR = 'downloads/chartres-vba/run1';
+const SPECIAL = {
+  360: 'form: date built from ANNEE / MOIS / JOUR',
+  361: 'form: ISO week number of that date',
+  365: 'form: Round(OEE x TOR), must equal TU or the day is refused',
+  366: 'form: date of the day + time of saving',
+};
 
 const walk = (dir) =>
   readdirSync(dir).flatMap((n) => {
@@ -90,16 +98,17 @@ const tr = (part) => WORDS.reduce((s, [re, en]) => s.replace(re, en), part);
 const FILE = 'from the file';
 const CHECK = 'checked on the data';
 const INFER = 'inferred, confirm with the site';
+const CODE = 'from the macro code';
 const LOSS = 'Daily_Losses_EU';
 const FIXED = {
   ANNEE: ['Year', 'number', 'Year of the day', 'Date (all tables)', FILE],
   MOIS: ['Month', 'number', 'Month of the day, 1 to 12', 'Date (all tables)', FILE],
   SEMAINE: ['Week', 'number', 'ISO week number of the day', 'not used', FILE],
   JOUR: ['Day', 'number', 'Day of the month', 'Date (all tables)', FILE],
-  TOP: ['TOP', 'minutes', 'Scheduled opening time of the day. TOP = TOR + the time not counted (columns LR to LW), see Vérification TOR', 'Time_Utilisation_EU (Total Time Total, candidate)', INFER],
-  TOR: ['TOR', 'minutes', 'Counted time: TOP minus the time not counted (TownHall, trials, training, validation). Equals TU + NR + the eight loss totals (Vérification TO)', 'Time_Utilisation_EU (Planned OPT Total, candidate)', INFER],
-  TU: ['TU, useful time', 'minutes', 'Temps Utile: time spent making good product at nominal speed = OEE time. About the sum of Volume / Vitesse over the product slots (9 of 10 files)', 'Time_Utilisation_EU (OEE Time Total)', CHECK],
-  NR: ['NR, not reported', 'minutes', 'Non Renseigné: time of the day not accounted for by any loss. Written as loss "Undefined" by the macro. Can be negative (seen: -1)', LOSS, INFER],
+  TOP: ['TOP, planned opening time', 'minutes', "Temps d'Ouverture Planifié, typed in the form (Temp0). The form refuses the day unless TOR + the not-counted time (LR to LW) = TOP", 'Time_Utilisation_EU (Total Time Total, candidate)', CODE],
+  TOR: ['TOR, real opening time', 'minutes', "Temps d'Ouverture Réel = TOP minus the four not-counted items (Temp15 to Temp18), computed by the form. Must equal TU + NR + the eight loss totals, and the sum of Temps over the product slots", 'Time_Utilisation_EU (Total Time Total, Planned OPT Total: to decide)', CODE],
+  TU: ['TU, useful time', 'minutes', 'Temps Utile, typed in the form (Temp2). The form refuses the day unless TU = Round(OEE x TOR), with OEE = sum of (Volume - Déchets) / sum of (Vitesse x Temps) of the day (sheet OEE, C33)', 'Time_Utilisation_EU (OEE Time Total)', CODE],
+  NR: ['NR, not reported', 'minutes', 'Typed in the form (TempsNR1) and counted with the losses (Pertes) that must fill TOR - TU. The macro writes it as loss "Undefined". Can be negative (seen: -1). The name NR is not spelled out in the code (probably Non Renseigné)', LOSS, INFER],
   'Démarrage Ligne': ['Line start-up', 'minutes', 'Time to start the line', LOSS, FILE],
   'Arrêt Ligne': ['Line shut-down', 'minutes', 'Time to stop the line at the end of production', LOSS, FILE],
   Pauses: ['Breaks', 'minutes', 'Meal and break time', LOSS, FILE],
@@ -146,17 +155,17 @@ const FIXED = {
   'Total Temps Fermeture': ['Total closed time', 'minutes', 'Sum of the time not counted (LR to LW)', 'check only', FILE],
   'Total Volume': ['Total volume', 'units', 'Sum of the Volume of the 20 product slots', 'check only', FILE],
   'Vérification TO': ['Check TO', 'minutes', 'TU + NR + the eight loss totals; must equal TOR', 'check only', CHECK],
-  OEE: ['OEE', 'ratio', 'OEE of the day as a stored value written by the macro (not a formula)', 'test of our rows', FILE],
+  OEE: ['OEE', 'ratio', "OEE of the day, copied by the form from sheet OEE (C33) = sum of (Volume - Déchets) / sum of (Vitesse x Temps) over the product slots. A stored value, not a formula", 'test of our rows', CODE],
   Date: ['Date', 'date', 'The day as an Excel date', 'Date (all tables)', FILE],
   'Vérification Semaine': ['Week check', 'number', 'Week number recomputed from the date', 'check only', FILE],
   'Vérification TOR': ['Check TOR', 'minutes', 'TOR + the time not counted; must equal TOP', 'check only', CHECK],
   'Total Déchets': ['Total waste', 'units', 'Sum of the waste: the Déchets of the 20 product slots (NON TISSE files: the per-machine waste columns)', 'check only', FILE],
   'Total Temps de production': ['Total production time', 'minutes', 'Sum of the Temps of the 20 product slots', 'check only', FILE],
-  'Vérification TU': ['Check TU', 'minutes', 'A copy of TU', 'check only', FILE],
-  'Date et heure de la saisie': ['Entry date and time', 'date and time', 'When the day was saved in the form', 'not used', FILE],
-  "Sécurité Nombre d'actions ouvertes": ['Safety: open actions', 'count', 'Number of open safety actions', 'not used', FILE],
-  "Sécurité Nombre d'actions cloturées": ['Safety: closed actions', 'count', 'Number of closed safety actions', 'not used', FILE],
-  'Sécurité Nombre de "NON" total de la journée': ['Safety: number of "NO" answers', 'count', 'Number of "NO" answers in the safety check of the day', 'not used', FILE],
+  'Vérification TU': ['Check TU', 'minutes', 'Round(OEE x TOR), computed by the form; must equal TU or the day is refused', 'check only', CODE],
+  'Date et heure de la saisie': ['Entry date and time', 'date and time', 'Date of the production day + the clock time when the day was saved (not the real entry date)', 'not used', CODE],
+  "Sécurité Nombre d'actions ouvertes": ['Safety: open actions', 'count', 'Number of open safety actions (form field Secu1). Only the first three Sécurité columns are written', 'not used', CODE],
+  "Sécurité Nombre d'actions cloturées": ['Safety: closed actions', 'count', 'Number of closed safety actions (form field Secu2)', 'not used', CODE],
+  'Sécurité Nombre de "NON" total de la journée': ['Safety: number of "NO" answers', 'count', 'Number of "NO" answers in the safety check of the day (form field Secu3)', 'not used', CODE],
 };
 
 const SHIFTS = {
@@ -169,15 +178,15 @@ const SHIFTS = {
   'Week-end Nuit': 'weekend night',
 };
 const PF_FIELD = {
-  Code: ['Code', 'code', 'Product code entered for the slot (the macro writes it as Batch ID)', 'Plan_OPT_EU (Batch ID)'],
-  Temps: ['Time', 'minutes', 'Minutes the line ran this product in this shift', 'Plan_OPT_EU (Total Time, Capacity)'],
-  Volume: ['Volume', 'units', 'Units produced, declared (before waste)', 'Plan_OPT_EU (Good Parts)'],
-  'Déchets': ['Waste', 'units', 'Units wasted', 'Plan_OPT_EU (decide: subtract from Volume?)'],
-  Nom: ['Name', 'text', 'Finished product name', 'Plan_OPT_EU (PartName)'],
-  'Nom Formule': ['Formula name', 'text', 'Name of the formula (bulk) of the product', 'not used'],
-  Caisse: ['Case', 'text', 'Case pack, for example X6', 'not used'],
-  Format: ['Format', 'text', 'Pack format, for example 100ml', 'not used'],
-  Vitesse: ['Speed', 'units per minute', 'Nominal speed of the product on this line', 'Plan_OPT_EU (Capacity = Speed x Time)'],
+  Code: ['Code', 'code', 'Product code (SKU) typed in the form; it must exist in the sheet Data (column A) or the day is refused. The macro writes it as Batch ID', 'Plan_OPT_EU (Batch ID)'],
+  Temps: ['Time', 'minutes', 'Minutes the line ran this product in this shift, typed. The sum over the 20 slots must equal TOR', 'Plan_OPT_EU (Total Time, Capacity)'],
+  Volume: ['Volume', 'units', 'Units produced, typed (declared, before waste). The sheet OEE nets the waste: Volume Réel = Volume - Déchets', 'Plan_OPT_EU (Good Parts)'],
+  'Déchets': ['Waste', 'units', 'Units wasted, typed. The macro PlanOPT reads it but never writes it (Defect Parts stays empty)', 'Plan_OPT_EU (decide: subtract from Volume)'],
+  Nom: ['Name', 'text', 'Product name, filled by the form from the sheet Data (VLOOKUP on the code, column I of Data in the IWKA 2 layout)', 'Plan_OPT_EU (PartName)'],
+  'Nom Formule': ['Formula name', 'text', 'Filled by the form from Data (column G in the IWKA 2 layout)', 'not used'],
+  Caisse: ['Case', 'text', 'Case pack, for example X6. Filled from Data (column F)', 'not used'],
+  Format: ['Format', 'text', 'Pack format, for example 100ml. Filled from Data (column B)', 'not used'],
+  Vitesse: ['Speed', 'units per minute', 'Nominal speed of the product. Filled from Data (column J). Used in the OEE; the macro PlanOPT reads the speed from Data again, not from this column', 'Plan_OPT_EU (Capacity = Speed x Time)'],
 };
 const LOSS_TYPE = {
   Dysf: ['Malfunction', 'minor stop', 'Dysfonctionnement'],
@@ -196,7 +205,7 @@ function describe(name, category) {
   let m = n.match(/^(Code|Temps|Volume|Déchets|Nom Formule|Nom|Caisse|Format|Vitesse) PF(\d) (.+)$/);
   if (m && SHIFTS[m[3]]) {
     const [en, type, meaning, feeds] = PF_FIELD[m[1]];
-    return { en: `${en} of product ${m[2]}, ${SHIFTS[m[3]]}`, type, meaning: `${meaning}. Slot PF${m[2]} (Produit Fini = finished product) of the ${SHIFTS[m[3]]} shift`, feeds, certainty: m[1] === 'Code' || m[1] === 'Temps' || m[1] === 'Volume' || m[1] === 'Vitesse' ? CHECK : FILE };
+    return { en: `${en} of product ${m[2]}, ${SHIFTS[m[3]]}`, type, meaning: `${meaning}. Slot PF${m[2]} (Produit Fini = finished product) of the ${SHIFTS[m[3]]} shift`, feeds, certainty: CODE };
   }
   m = n.match(/^Déchets (.+) (Semaine Matin|Semaine Après Midi|Semaine Nuit|Week-end Matin|Week-end Nuit)$/);
   if (m) {
@@ -216,7 +225,7 @@ function describe(name, category) {
   }
   m = n.match(/^People (.+)$/);
   if (m) {
-    return { en: `People: ${m[1] === 'Journée' ? 'day' : m[1].replace(/^Libre/, 'spare')}`, type: 'person-minutes', meaning: 'Labour time of the shift: people x minutes, not a headcount (IWKA 2 values: 1800, 2250, 2460, 2700)', feeds: 'not used', certainty: INFER };
+    return { en: `People: ${m[1] === 'Journée' ? 'day' : m[1].replace(/^Libre/, 'spare')}`, type: 'person-minutes', meaning: 'Labour time of the shift, typed in the form as MOD (Main d\'Œuvre Directe = direct labour). Values such as 1800, 2250, 2460 look like people x minutes, not a headcount', feeds: 'not used', certainty: INFER };
   }
   m = n.match(/^(Dysf|Panne|Réglages?)\s+(.+)$/);
   if (m) {
@@ -242,6 +251,36 @@ function describe(name, category) {
   return { en: '', type: '', meaning: 'NOT DESCRIBED YET', feeds: '', certainty: '' };
 }
 
+// Which form field (or formula) writes each Base column, read from the form code BSAISIE.
+function formWriters(rel) {
+  const indexPath = `${VBA_DIR}/index.json`;
+  if (!existsSync(indexPath)) {
+    return {};
+  }
+  const index = JSON.parse(readFileSync(indexPath, 'utf8')).BSAISIE ?? {};
+  const hit = Object.values(index).find((v) => v.workbooks.includes(rel));
+  if (!hit) {
+    return {};
+  }
+  const writers = { ...SPECIAL };
+  const re = /Worksheets\("Base"\)\.Cells\(3, (\d+)\)(?:\.Value)?\s*=\s*(.+?)\s*(?:'(.*))?$/;
+  for (const line of readFileSync(`${VBA_DIR}/${hit.file}`, 'utf8').split('\n')) {
+    const m = line.match(re);
+    if (!m) {
+      continue;
+    }
+    const expr = m[2].trim();
+    if (/^Var\w+$/.test(expr)) {
+      writers[m[1]] = `form field ${expr.slice(3)}`;
+    } else if (/^"=/.test(expr)) {
+      writers[m[1]] = `form inserts formula ${expr.split('"')[1]}${m[3] ? ` (${m[3].trim()})` : ''}`;
+    } else {
+      writers[m[1]] = `form: ${expr.slice(0, 60)}`;
+    }
+  }
+  return writers;
+}
+
 // ---- Read one file: header, codes, newest example per column, formulas -----------------
 function readFile(rel) {
   const path = `${ROOT}/${rel}`;
@@ -261,6 +300,7 @@ function readFile(rel) {
   for (const c of profileFile(path).sheets.find((s) => s.name === 'Base').cols) {
     formulas[c.col] = c.formula;
   }
+  const writers = formWriters(rel);
   const columns = header.map((h, i) => {
     if (h === '' || h === undefined) {
       return null;
@@ -281,6 +321,7 @@ function readFile(rel) {
       code: x.Base[1]?.[i] ?? '',
       example,
       formula: formulas[letter] ? `=${formulas[letter]}` : '',
+      writtenBy: writers[i + 1] ?? '',
       ...describe(h, category),
     };
   }).filter(Boolean);
