@@ -389,7 +389,7 @@ const BASE_ROWS = [
   ['DG to EL', 'Réglages <partie machine>', 'Adjustments of <machine part>', '33 slots (the first is "Réglages Camera" in some files). Category: "Adjustment" (macro export: Minor stop)', 'Daily_Losses_EU', 'have'],
   ['EM to ES', 'Auto Maintenance, Maintenance Préventive Mensuelle / Annuelle / Autre, Action Maintenance Planifiée, Libre 1, 2', 'Operator asset care, Monthly / Annual / Other maintenance, Planned actions, spare', 'Minutes. Planned losses, group "Planned maintenance"', 'Daily_Losses_EU', 'have'],
   ['ET to LQ (180)', '<Champ> PF<n> <équipe>: Code, Temps, Volume, Déchets, Nom, Nom Formule, Caisse, Format, Vitesse', '<Field> product slot <n> <shift>: Code, Time, Volume, Waste, Name, Formula name, Case, Format, Speed', 'PF = Produit Fini = finished product, 4 slots (PF1 to PF4) per shift. 5 shifts: Semaine Matin / Après Midi / Nuit = weekday morning / afternoon / night; Weekend Matin / Nuit. Typed: Code, Temps, Volume, Déchets. Filled by the form from the sheet Data by the code: Nom, Nom Formule, Caisse, Format, Vitesse. The sum of Temps over the 20 slots must equal TOR', 'Plan_OPT_EU (one row per filled slot)', 'have'],
-  ['LR to LW', 'TownHall - Réunion, Essais Planifiés, Formation, Validation / Qualification, Temps non compté Libre 1, 2', 'Town hall meeting, Planned trials, Training, Validation / Qualification, spare', 'Time not counted in TOR. Groups "Production not scheduled" and "NPD/CapEX & Trials"', 'Daily_Losses_EU (decide)', 'test'],
+  ['LR to LW', 'TownHall - Réunion, Essais Planifiés, Formation, Validation / Qualification, Temps non compté Libre 1, 2', 'Town hall meeting, Planned trials, Training, Validation / Qualification, spare', 'Time not counted in TOR. Groups "Production not scheduled" and "NPD/CapEX & Trials"', 'not loaded (outside TOR)', 'have'],
   ['LX to MI', 'People Journée, Matin, Après Midi, Nuit, Week End Matin, Week End Nuit, Libre 1 to 6', 'People: day, morning, afternoon, night, weekend morning, weekend night, spare', 'Typed in the form as MOD1 to MOD6 (Main d’Œuvre Directe = direct labour). Values such as 1800, 2250, 2460 look like people x minutes, not a headcount. No target table has it', 'not used', 'warn'],
   ['MJ to MS', 'Total Organisation, Changement, Rupture, Qualité, Dysfonctionnement, Panne, Réglage, Maintenance Planifiée, Temps Fermeture, Volume', 'Totals per block, closed time, total volume', 'Formulas (SUM of the block). Good for checks, not needed as input', 'check only', 'have'],
   ['MT to NG', 'Vérification TO, OEE, Date, Vérification Semaine, Vérification TOR, Total Déchets, Total Temps de production, Vérification TU, Date et heure de la saisie, Vérification Libre 5 to 9', 'Check TO, OEE, Date, Week check, TOR check, Total waste, Total production time, TU check, Entry date and time, spare checks', 'OEE is a stored value (macro), not a formula. Vérification TO = TU + NR + 8 loss totals and must equal TOR', 'check, and OEE for the test', 'have'],
@@ -502,21 +502,22 @@ let y5 = flow(p5, 140, [
 y5 = mapping(p5, y5, [
   ['Date', '2026-10-23', 'ANNEE / MOIS / JOUR (or column Date)', 'have', 'Excel serial number in the macro sheets; text YYYY-MM-DD in the table'],
   ['MachineName', 'IWKA 2', 'line name from the file name "OEE IWKA 2 - 2026"', 'fixed', 'check it equals the report name in Machine Names'],
-  ['ShiftName', 'Semaine Matin (macro: 1)', 'the shift type of the slot (5 types)', 'test', 'EU tables use names like Day / Night: a mapping of the 5 types is needed'],
-  ['AreaName', 'CREAM (macro: CREAM)', 'macro writes the group; EU uses site + area (Hull Dries)', 'test', 'decide the Chartres area names'],
+  ['ShiftName', 'Day (Semaine Matin; macro: 1)', 'shift type: Matin = Day, Après Midi = Afternoon, Nuit = Night (weekday and weekend)', 'fixed', 'built 2026-10-26 (constant SHIFTS); shift times asked to the site'],
+  ['AreaName', 'CREAM', 'the group: CREAM, NON WOVEN, SKIN CARE', 'fixed', 'names of the macro export and of the site target file'],
   ['PartName', '<Nom PF1 Semaine Matin>', 'Nom PF<n> <shift>', 'test', 'the form fills it from Data (column I in the IWKA 2 layout). The macro writes another Data column instead (D, B or M per file), so macro PartName is not a product name everywhere'],
-  ['Good Parts', '3006', 'Volume PF1 Semaine Matin, minus Déchets PF1 Semaine Matin (to decide)', 'test', 'the macro writes Volume without waste (equal on all rows of 10 files); the workbook OEE (sheet OEE) uses Volume - Déchets, so net is the consistent choice'],
+  ['Good Parts', '3006', 'Volume PF1 Semaine Matin, minus Déchets PF1 Semaine Matin (net, built)', 'have', 'the macro writes Volume without waste (equal on all rows of 10 files); the workbook OEE (sheet OEE) uses Volume - Déchets, so net is the consistent choice'],
   ['Capacity', '7200', 'Vitesse x Temps = 80 x 90', 'have', 'macro: Target = Capacity; the macro takes the speed from Data, the form copies the same speed into Base (Vitesse)'],
   ['Total Time', '90', 'Temps PF1 Semaine Matin (minutes run)', 'have', 'macro rule, equal on all rows'],
-  ['Planned OpT', '(macro: never written)', 'none in the files. Candidate: Temps of the slot', 'test', 'Plan_OPT_EU needs it. The sum of Temps of the slots equals TOR (enforced). In the Hull files Planned OpT can be lower than Total Time (planned stops)'],
+  ['Planned OpT', '(macro: never written)', 'Temps of the slot (built)', 'fixed', 'Plan_OPT_EU needs it. The sum of Temps of the slots equals TOR (enforced). In the Hull files Planned OpT can be lower than Total Time (planned stops)'],
   ['OEE Time', '(macro: never written)', '(Volume - Déchets) / Vitesse = 3006 / 80 = 37.6 minutes', 'test', 'the day total TU is typed and equals Round(OEE x TOR); the sum of the slot values is close to TU when speeds are similar (differs for about 14 percent of the days)'],
   ['Downtime Units', '4194', 'Capacity - Good Parts', 'have', 'macro rule, equal on all rows'],
   ['SiteName', 'Chartres', 'fixed', 'fixed', ''],
   ['Unique Machine Name', 'IWKA 2-Chartres', 'MachineName + "-Chartres" (as B2 Auto-Hull)', 'fixed', ''],
   ['Product Key', 'IWKA 2-Chartres <part>', 'Unique Machine Name + space + PartName', 'fixed', 'built the report way'],
-  ['UPDT Target, PDT Target, OEE Target', '-', 'targets (Glidepaths) by machine and month', 'none', 'not in the Chartres files; empty until Reckitt gives Chartres targets'],
+  ['OEE Target', '(target)', 'Copie de Target 2026.xlsx by line and month; 2025 uses the same month of 2026', 'fixed', 'from the site 2026-10-26; CUPIDON and DAISY have none'],
+  ['UPDT Target, PDT Target', '-', 'none: the site target file has OEE only', 'none', 'empty'],
   ['Dept, Area, Product Type', '-', 'Machine Names lookup', 'none', 'Chartres lines are not in Machine Names yet'],
-  ['Data Source', '-', 'new value, for example "Chartres Excel"', 'test', 'Provideam / SIH exist today'],
+  ['Data Source', 'Excel', 'fixed value, file names end with _excel', 'fixed', 'Provideam / SIH exist today'],
 ]);
 
 const p6 = new Page('6 Base to Time_Utilisation_EU', 6);
@@ -532,12 +533,12 @@ y6 = mapping(p6, y6, [
   ['Date', '2026-10-23', 'ANNEE / MOIS / JOUR', 'have', ''],
   ['MachineName', 'IWKA 2', 'file name', 'fixed', ''],
   ['OEE Time Total', '161', 'TU (Temps Utile)', 'have', 'typed in the form and checked: TU = Round(OEE x TOR), OEE = sum of (Volume - Déchets) / sum of (Vitesse x Temps)'],
-  ['Total Time Total', '900', 'TOR (= sum of Temps of the slots, enforced) or TOP', 'test', 'Plan_OPT_EU Total Time adds up to TOR, so for the two tables to agree this is TOR; TOP (planned opening time) has no column unless it becomes Planned OPT or All Time. Same value in IWKA 2'],
-  ['Planned OPT Total', '900', 'TOR or TOP', 'test', 'order of the minutes: TU <= TOR <= TOP <= 1440. TOP and TOR differ when TownHall, trials, training or validation minutes exist (for example 1410 vs 1340). Needs the Reckitt definition of Planned OpT'],
+  ['Total Time Total', '900', 'TOR (= sum of Temps of the slots, enforced), built', 'fixed', 'Plan_OPT_EU Total Time adds up to TOR, so for the two tables to agree this is TOR; TOP (planned opening time) has no column unless it becomes Planned OPT or All Time. Same value in IWKA 2'],
+  ['Planned OPT Total', '900', 'TOR (the base of the workbook OEE), built', 'fixed', 'order of the minutes: TU <= TOR <= TOP <= 1440. TOP and TOR differ when TownHall, trials, training or validation minutes exist (for example 1410 vs 1340). Needs the Reckitt definition of Planned OpT'],
   ['All Time', '1440', 'fixed 1440 per day', 'fixed', 'as in the other sites'],
   ['SiteName, Unique Machine Name', 'Chartres, IWKA 2-Chartres', 'as Plan_OPT_EU', 'fixed', ''],
   ['Dept, Area, Product Type', '-', 'Machine Names lookup', 'none', 'Chartres lines not in Machine Names yet'],
-  ['Data Source', '-', 'new value', 'test', ''],
+  ['Data Source', 'Excel', 'fixed value', 'fixed', ''],
 ]);
 y6 += 20;
 const CHECK6 = bold('Rules of the form: ') + 'TOR = TOP - not counted; TU + NR + the eight loss totals = TOR; the sum of Temps of the slots = TOR; TU = Round(OEE x TOR). '
@@ -557,41 +558,36 @@ let y7 = flow(p7, 140, [
 y7 = mapping(p7, y7, [
   ['Date, ShiftStartDate', '2026-10-23', 'ANNEE / MOIS / JOUR', 'have', ''],
   ['MachineName', 'IWKA 2', 'file name', 'fixed', ''],
-  ['OEELossLvl3Group', 'Unplanned losses', 'Category level 1 (EN) of the French column name', 'have', 'e.g. "Réglages REMPLISSEUSE - Scellage Tubes" -> Unplanned losses'],
-  ['OEELossLvl3SubGroup', 'Adjustment', 'Category level 2 (EN) of the SAME row', 'have', 'the macro looks it up in the first row with the same Level 3 text and gets "Minor stop": a bug, do not copy it'],
+  ['OEELossLvl3Group', 'Unplanned losses', 'Category level 1 (EN) of the French column name, in the EU name (Planned Loss, Unplanned Loss)', 'have', 'e.g. "Réglages REMPLISSEUSE - Scellage Tubes" -> Unplanned losses'],
+  ['OEELossLvl3SubGroup', 'Adjustments', 'Category level 2 (EN) of the SAME row, in the EU name (Minor Stops, Adjustments, NR = Not Logged)', 'have', 'the macro looks it up in the first row with the same Level 3 text and gets "Minor stop": a bug, do not copy it'],
   ['OEELossLvl3Desc', 'Filling machine', 'Category level 3 (EN)', 'have', ''],
   ['Duration', '310', 'the minutes in that column', 'have', 'whole minutes; the EU extract also has whole minutes'],
   ['Breakdown Types, Loss Final Level, Equipment', 'Adjustment / Filling machine', 'Breakdown Types = sub group; Loss Final Level = level 3 name; Equipment = machine description', 'test', 'built the report way in the other sites (docs/pbi-report-build.md)'],
-  ['ShiftName', '-', 'NONE: Base losses are per day, not per shift', 'none', 'empty, or share the day by the minutes of each shift (decision)'],
-  ['PartName, Product Key, Batch ID', '-', 'NONE: losses are not tied to a product slot', 'none', 'empty, or the product with most minutes of the day (decision)'],
-  ['Time', '-', 'NONE: no start time of a stop', 'none', 'the EU extract has the shift start (06:00); empty or shift start'],
+  ['ShiftName', '-', 'NONE: Base losses are per day, not per shift', 'none', 'empty (built)'],
+  ['PartName, Product Key, Batch ID', '-', 'NONE: losses are not tied to a product slot', 'none', 'empty (built)'],
+  ['Time', '-', 'NONE: no start time of a stop', 'none', 'empty (built)'],
   ['Comment', '-', 'NONE', 'none', 'Base has no free text'],
-  ['Loss Units', '-', 'Vitesse x Duration (design speed x minutes, as in the other sites)', 'test', 'needs a speed: the day has up to 20 speeds, take the product of the day with most minutes'],
+  ['Loss Units', '-', 'Vitesse x Duration (design speed x minutes, as in the other sites)', 'test', 'speed of the product with most minutes that day (built)'],
   ['Volume Total', '-', 'sum of Capacity of the machine and day (Plan_OPT_EU)', 'test', 'built from the Plan_OPT_EU rows'],
-  ['Volume Key, Loss Target Key, Value', '-', 'Volume Key = dd/MM/yyyy machine group sub desc; Loss Target Key = unique name + sub group + month start; Value = target of Glidepaths', 'none', 'keys can be built; Value needs Chartres targets, which are not in the files'],
+  ['Volume Key, Loss Target Key, Value', '-', 'Volume Key = dd/MM/yyyy machine group sub desc; Loss Target Key = unique name + sub group + month start; Value = target of Glidepaths', 'none', 'keys built; Value empty (no loss targets from the site)'],
   ['SiteName, Unique Machine Name, Dept, Area, Product Type, Data Source', '-', 'as Plan_OPT_EU', 'fixed', 'Dept, Area, Product Type need Machine Names for Chartres'],
 ]);
 y7 += 20;
-const LOSSNOTE = bold('Rows that need a decision: ') + 'NR (no accounted time) -> Undefined / Unplanned losses; TownHall, Formation -> "Production not scheduled"; '
-  + 'Essais Planifiés, Validation -> "NPD/CapEX & Trials". Other sites keep these groups out of the loss % or not: to check against how Hull and Nottingham treat them.';
+const LOSSNOTE = bold('Built 2026-10-26 (scripts/chartres-convert.js, docs/chartres-convert.md): ') + 'NR -> Unplanned Loss / Not Logged (Category: Undefined); NR below 0 (910 days) is not loaded. '
+  + 'TownHall, training, trials, validation (Temps fermeture = TOP - TOR) are not loss rows. Names in no Category sheet (CUPIDON, DAISY, Libre) get the group of their block.';
 p7.box(40, y7, 1510, fit(1510, LOSSNOTE), LOSSNOTE, 'warn');
 
 // ---- Page 8: questions ---------------------------------------------------------------
 const p8 = new Page('8 Questions', 8);
-title(p8, 'Questions: 3 answered on 2026-10-26, the rest still open',
-  'Nothing is built yet. Green = answered by the site. Order of the open ones = what blocks the mapping first.');
+title(p8, 'Questions and decisions (2026-10-26)',
+  'Green = answered or confirmed from the files. Blue = built with our proposal. Orange = asked to the site or still open.');
 const QUESTIONS = [
-  ['have', 'ANSWERED. DOR L3 is management level: no OEE entry, its files compile the lines. It is out of scope (loading it would double count).'],
-  ['have', 'ANSWERED. CUPIDON and DAISY were dropped this year, so no 2026 data. Their 2025 files stay as they are.'],
-  ['have', 'ANSWERED. Glidepaths (targets), the path format and the reference file for Chartres exist and arrive in a few days. They fill Dept, Area, Product Type, report name and the targets of the three tables.'],
-  ['test', 'Source: Base directly with the Category sheet, the macro exports only as a test of our rows. The code was read: the macros do not do what we need (one day per close, wrong Level 1/2, no Planned OpT / OEE Time). Our proposal, no answer needed unless you disagree.'],
-  ['test', 'Time_Utilisation_EU: which of TOP (planned opening time) and TOR (real opening time) is Total Time and which is Planned OPT? The Plan_OPT_EU slot times add up to TOR. Proposal: Total Time = TOR.'],
-  ['warn', 'Good Parts: the macro writes Volume, the workbook OEE uses Volume - Déchets. Proposal: net of waste. NON TISSE also has waste per machine (Total Déchets sums those).'],
-  ['warn', 'Days that fail the form rules today (about 1,100 of 7,181: mostly TU vs OEE and the sum of times, mostly 2025): load them and flag, or leave them out? Dates entered twice (CUMULUS 2025: 7, ZEUS 2025: 2): replace or add? Proposal: load and flag.'],
-  ['test', 'Losses are per day, not per shift or product: leave ShiftName, PartName and Time empty, or spread them? Spread by what? Proposal: empty.'],
-  ['test', 'Shift names: the 5 types (weekday morning / afternoon / night, weekend morning / night) to Day / Night or to their own names?'],
-  ['warn', 'Time not counted (TownHall, trials, training, validation): in the losses table or out? Proposal: out.'],
-  ['warn', 'The macro LineLosses has a lookup bug (Level 1/2 from the first row with the same Level 3 text), so Breakdown and Adjustment appear as Minor stop in every export. CLÉOPATRE exports are labelled APOLLON. ZEUS Module_PlanOPT is empty. CUMULUS and HOME 2 do not export on close. Tell the site? Our rows use the Category row itself.'],
+  ['have', 'ANSWERED. DOR L3 is management level: out of scope. CUPIDON and DAISY dropped in 2026, their 2025 files stay. 2024 (DOR files, sheet TRS) is out: the load starts in 2025.'],
+  ['have', 'ANSWERED. Targets 2026 received (Copie de Target 2026.xlsx): monthly OEE target per line, used for 2025 too. Chartres moves to OEE entry in SIH: no automation of the workbooks.'],
+  ['have', 'CONFIRMED FROM THE FILES. TOR = TOP - Temps fermeture (TownHall, trials, training, validation, Libre). OEE is on TOR. Good parts = Volume - Déchets (sheet OEE). NR is Level 3 Undefined, Unplanned losses.'],
+  ['test', 'BUILT. Total Time and Planned OPT = TOR. Shift types -> Day / Afternoon / Night. Losses without shift, part, time. Not-counted time out of the losses. Failing days loaded and listed (checks.csv); a day entered twice: newest saving kept.'],
+  ['warn', 'ASKED TO THE SITE. Meaning of TOP, TOR, TU, NR; shift times; which entry of a repeated day is right; failing days known errors?; split of NON TISSE machine waste per product; 2025 targets; date of the move to SIH; use of Libre 1 on ZEUS.'],
+  ['warn', 'OPEN. Reference file (Dept, Area, Product Type) and the path format of Chartres. Tell the site about the LineLosses lookup bug, the CLÉOPATRE name, the empty ZEUS module, CUMULUS and HOME 2 without close event.'],
 ];
 let y8 = 100;
 QUESTIONS.forEach(([level, text], i) => {

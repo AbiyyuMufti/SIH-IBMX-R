@@ -5,8 +5,8 @@
 | **What** | The daily OEE entry workbooks of the Chartres site, one per line and year, and what is inside them (sheets, columns, formulas, macros), so they can be recreated and loaded as-is into the report tables |
 | **Sources read** | the unzipped folders `downloads/Chartres/<group>/<year>/SAISIE OEE/OEE*.xlsm` (git-ignored, untrusted; 36 files). Nothing was opened in Excel and no macro was run. The VBA source of all 36 files was read as text (`scripts/helper-chartres-vba-extract.py`, 2026-10-26) |
 | **Scripts** | `node scripts/chartres-compare.js downloads/Chartres` (all OEE files, picks the pattern itself), `scripts/chartres-profile.js` (one file); they use `readZip` of `scripts/lib-office.js` |
-| **Status** | Steps 1 to 3 done on 2026-10-26, VBA read the same day (section 2b). French to English dictionary, column map to the report tables, recompute and automation are NOT started (waiting for the user's go) |
-| **Blocker** | none for the files. Answers from the site (2026-10-26): DOR L3 is management level, CUPIDON and DAISY were dropped this year. Chartres will share the Glidepaths, the path format and the reference file in a few days |
+| **Status** | Steps 1 to 3 done on 2026-10-26, VBA read the same day (section 2b). Column map and conversion of 2025 and 2026 built the same day: [chartres-convert.md](chartres-convert.md) (local files, not uploaded). New entries: Chartres moves to manual OEE entry in SIH, so no automation of the workbooks is planned |
+| **Blocker** | none for the files. Answers from the site (2026-10-26): DOR L3 is management level, CUPIDON and DAISY were dropped this year. Targets 2026 received (section 6); the path format and the reference file (Dept, Area, Product Type) are still to come |
 
 ## 1. Files found (step 1)
 Found with the pattern `<group>/<year>/SAISIE OEE/OEE*.xlsm` in the unzipped folders (SKIN CARE 2025 was moved by the user from a wrong place, `2026/2025/`, a copy-paste mistake).
@@ -19,7 +19,7 @@ Found with the pattern `<group>/<year>/SAISIE OEE/OEE*.xlsm` in the unzipped fol
 | DOR L3 | none (management level, confirmed) | none | none |
 
 - 36 files, 0.6 to 2.8 MB each (sizes in the profile output).
-- No `OEE*.xlsm` exists for 2024 (CREAM 2024 has `DOR Personal Care.xlsm`, an older file outside the pattern).
+- No `OEE*.xlsm` exists for 2024. 2024 has one workbook per group, `DOR Personal Care.xlsm` (CREAM), `DOR Non Woven.xlsm` (NON TISSE), and for SKIN CARE only dated copies in `Backup/` (latest `DOR Skin Care 17122024.xlsm`). Their sheet `TRS` is a long table (`ID, MachineName, Date, TO, TU, Downtime` = loss label, `Value` = minutes; the label `Total Volume` carries the volume), filled by Power Query from workbooks we do not have (CREAM links to `OEE_CREAM`). 2 Jan to about 20 Dec 2024, 167 to 299 days per line. No shift, product, waste, TOP / TOR split or Level 1/2/3. Left out of the load (decision of the user, 2026-10-26).
 - Left out as agreed: Backup, PDF, PPTX, and other xlsm in the same trees (`Archives/`, `Fichiers de travail/`, `SAISIE 2025/` hold copies and tests such as `DOR Personal Care - 27012025.xlsm`).
 
 ### DOR L3: not a source (answered 2026-10-26)
@@ -169,13 +169,20 @@ Answered by the site on 2026-10-26:
 2. CUPIDON and DAISY: lines dropped this year, so no 2026 data. Their 2025 files stay (CUPIDON to 2025-09-22, DAISY to 2025-11-06).
 3. Glidepaths (targets), the path format and the reference file for Chartres exist and will be shared in a few days. This settles the Dept, Area, Product Type, report name and target columns once they arrive.
 
-Still open (diagram page 8 has them in plain words):
-1. Time_Utilisation_EU: which of TOP and TOR is Total Time and which is Planned OPT. The Plan_OPT_EU slot times add up to TOR (enforced). Proposal: Total Time = TOR.
-2. Good Parts: the macro writes Volume, the OEE of the workbook uses Volume - Déchets. Proposal: net.
-3. Days that fail the form rules (about 1,100 of 7,181) and dates entered twice (CUMULUS 2025: 7, ZEUS 2025: 2): load and flag, or leave out. Proposal: load and flag.
-4. Losses are per day, not per shift or product: what to put in ShiftName, PartName and Time of Daily_Losses_EU. Proposal: empty.
-5. The five shift types to Day / Night, or keep Chartres' names.
-6. Time not counted (TownHall, trials, training, validation): in the losses table or out. Proposal: out.
-7. Tell the site about the LineLosses lookup bug, the CLÉOPATRE machine name and the empty ZEUS module? Our rows use the Category row itself.
-8. Meaning of the abbreviation NR (not spelled out in the code).
-9. Do CUMULUS and HOME 2 close without the export on purpose (no close event)?
+Built with these choices on 2026-10-26 (the proposals; [chartres-convert.md](chartres-convert.md), each a constant at the top of the script):
+1. Total Time and Planned OPT of Time_Utilisation_EU = TOR (the base of the workbook OEE; the slot times add up to TOR). TOP is not loaded.
+2. Good Parts net of waste (Volume - Déchets). Confirmed by the files: the sheet `OEE` uses Volume Réel = Volume Annoncé - Déchets, and TU = round(OEE x TOR).
+3. Days that fail the form rules are loaded and listed in `checks.csv`. A day entered twice: the newest saving is kept (19 cases with the date from ANNEE / MOIS / JOUR; the earlier count of 9 used the stored Date, which is one day off on some rows). NR below 0 (910 days) is not loaded as a loss.
+4. Losses: ShiftName, PartName and Time empty.
+5. Shift types: weekday and weekend morning = Day, afternoon = Afternoon, weekday and weekend night = Night (MASTERDATA `Plant` lists the five Chartres names).
+6. Not-counted time (Temps fermeture = TownHall, trials, training, validation, Libre 1 and 2 = TOP - TOR) is not in the losses.
+
+Confirmed from the files (no need to ask): TOR = TOP - Temps fermeture (`Total Temps Fermeture = SUM(LR:LW)`; the form message says "le temps d'ouverture planifié et la somme des temps de fermeture ne correspondent pas"); the OEE is on TOR; NR is in the Category sheet as Level 3 `Undefined`, Unplanned losses. `Temps non compté Libre 1` holds minutes on 2 days only (ZEUS 2026, 15 and 20), Libre 2 never.
+
+Asked to the site (2026-10-26, the user's chat): the meaning of the abbreviations (our reading: TOP = Temps d'Ouverture Planifié, TOR = Temps d'Ouverture Réel, TU = Temps Utile, NR = Non Renseigné: downtime with no reason given, 0.3 % of TOR, above 0 on 22 % of days), the start and end time of the five shifts, which of two entries of one day is right, whether failing days are known errors, a rule to split the NON TISSE machine waste per product, 2025 targets, the date Chartres moves to OEE entry in SIH, what `Libre 1` was used for on ZEUS.
+
+Still open for us: tell the site about the LineLosses lookup bug, the CLÉOPATRE machine name and the empty ZEUS module; CUMULUS and HOME 2 without a close event.
+
+## 6. Files from the site (2026-10-26, `downloads/`)
+- `Copie de Target 2026.xlsx`: sheet `OEE TARGET`, one row per day of 2026 (date, month, week) and one column per line plus GLOBAL SITE, CREAM, SKIN CARE, NON WOVEN. The values change on the 1st of each month only, so these are 12 monthly OEE targets per line. DAISY and CUPIDON are empty. OEE only: no PDT / UPDT or loss targets. The Chartres equivalent of the Glidepaths OEE target; used for `OEE Target` (2025 takes the same month of 2026).
+- `MASTERDATA.xlsx`: the English and French terms for the manual OEE entry page in SIH (used by Farhan; first made from a Brazilian template, some sheets are Portuguese with 2023 sample rows). `Downtime_updated`: about 1,880 rows of loss codes Level 1 to 4 in English and French (planned, unplanned, and per line machine part x Breakdown / Minor Stop / Adjustment for 16 lines). `SKU`: about 1,160 products with line, units per case and speed. `Plant`: the 16 lines and the 5 shift names. `Reject_reasons`, `OEE` (the same monthly targets). The sheet `Users` holds names and e-mail addresses: never copy it into the repo. Not used by the conversion yet: matching the Base names to `Downtime_updated` would give the history the same loss names as the new SIH entries.

@@ -1,0 +1,4 @@
+{
+  "context": { "fileName": ["AGENTS.md"] },
+  "model": { "name": "gemini-3.8-flash" }
+}

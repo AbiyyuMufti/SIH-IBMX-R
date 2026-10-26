@@ -1,0 +1,42 @@
+name: svrdl-ollama
+version: 1.0.0
+schema: v1
+
+models:
+  # 16k is the max that fits the server GPU: 32k or the 8B model spill
+  # to CPU and run 4x to 30x slower (tested 2026-10-27)
+  - name: Qwen3 4B Instruct (svrdl)
+    provider: ollama
+    model: qwen3:4b-instruct-2507-q4_K_M
+    apiBase: http://192.168.7.91:11435
+    roles:
+      - chat
+      - edit
+      - apply
+      - autocomplete
+    capabilities:
+      - tool_use
+    defaultCompletionOptions:
+      contextLength: 16384
+      maxTokens: 2048
+      temperature: 0.3
+      topP: 0.8
+    requestOptions:
+      extraBodyProperties:
+        keep_alive: 30m
+
+rules:
+  - Follow AGENTS.md. Read only the files named in the task.
+  - Function-node code - max 80 characters per line, comments above code.
+  - Never print secrets from .env. Never git add . or -A.
+
+context:
+  - provider: code
+  - provider: file
+  - provider: currentFile
+  - provider: open
+  - provider: diff
+  - provider: terminal
+  - provider: problems
+  - provider: folder
+  - provider: codebase
