@@ -7,6 +7,7 @@ node_modules/
 # VFC flow copies that contain real credentials, and downloaded data files
 flows/*.local.json
 *.parquet
+*.csv
 downloads/
 
 # Function code extracted from flows (may come from *.local.json)
@@ -20,5 +21,4 @@ sharepoint/
 graphify-out/
 session_handover/
 # exports of the shift report tables for the notebook (real values)
-parquet/shift_rpt_*.csv
 !prompt-response/site-dashboards-reconcile.ipynb
