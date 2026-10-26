@@ -27,7 +27,7 @@ const headerOf = (sheet) =>
   );
 
 const rows = [];
-for (const path of walk(root).filter((p) => /\.xlsm$/i.test(p))) {
+for (const path of walk(root).filter((p) => /[\\/]\d{4}[\\/]SAISIE OEE[\\/]OEE[^\\/]*\.xlsm$/i.test(p))) {
   const rel = relative(root, path).replace(/\\/g, '/');
   const p = profileFile(path);
   const main = p.sheets.find((s) => s.name === 'Base') ?? p.sheets[0];

@@ -512,8 +512,8 @@ Tried: Power BI flow with `Keep dim_asset` expecting an array. Error: "the file 
 - Failed attempt: a test replaced `shiftReport: true` in the Config text and hit the comment first; the comment was reworded.
 
 ## Chartres: OEE files profiled (2026-10-26, master)
-- Steps 1 to 3 of the Chartres job done: 36 `OEE*.xlsm` (CREAM 12, NON TISSE 14, SKIN CARE 10) extracted into `downloads/chartres-oee/run1/`, profiled and compared. Doc `docs/chartres-source-files.md`, scripts `scripts/chartres-list.js`, `chartres-profile.js`, `chartres-compare.js`. Handover `session_handover/chartres-handover.md`.
+- Steps 1 to 3 of the Chartres job done: 36 `OEE*.xlsm` (CREAM 12, NON TISSE 14, SKIN CARE 10) read in place from the unzipped `downloads/Chartres/`, profiled and compared. Doc `docs/chartres-source-files.md`, scripts `scripts/chartres-profile.js`, `chartres-compare.js`. Handover `session_handover/chartres-handover.md`.
 - Found: one template for all lines (sheet `Base`, one row per day, 383 columns; only the machine-part column names differ, NON TISSE has 404, IWKA 3 has 353). The 2026 files of 13 lines also have hidden sheets `PlanOPT` and `LineLosses` in the Provideam layout, written by macros; CREAM 2026 also has the daily export files. No such sheet in 2025.
-- DOR L3: no `SAISIE OEE/OEE*.xlsm` in the zip. Blocker for that group only (Laura). SKIN CARE 2025 sits in `2026/2025/SAISIE OEE/`. `OEE CUPIDON - 2026` and `OEE DAISY - 2026` are empty.
-- Failed attempt: `unzip -l` prints the accented name `CLEOPATRE` garbled, so extracting by the printed name failed; the script uses a wildcard for non-ASCII characters.
+- DOR L3: no `SAISIE OEE/OEE*.xlsm` in the zip. Blocker for that group only (Laura). `OEE CUPIDON - 2026` and `OEE DAISY - 2026` are empty.
+- Mistake: I first listed and extracted from the zips into a second copy; the user had already unzipped and fixed the folders. Redone in place, same results. The extra list script was removed.
 - Next: wait for the user's go, then the French to English dictionary, the map to the report tables, recompute one day, automation.

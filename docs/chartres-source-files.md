@@ -3,25 +3,24 @@
 | At a glance | |
 |---|---|
 | **What** | The daily OEE entry workbooks of the Chartres site, one per line and year, and what is inside them (sheets, columns, formulas, macros), so they can be recreated and loaded as-is into the report tables |
-| **Sources read** | `downloads/Chartres/*.zip` (git-ignored, untrusted). Only `<year>/SAISIE OEE/OEE*.xlsm` was extracted (36 files, `downloads/chartres-oee/run1/`). Nothing was opened in Excel and no macro was run. Macro code was not read, only the module names |
-| **Scripts** | `scripts/chartres-list.js` (list and extract), `scripts/chartres-profile.js` (one file), `scripts/chartres-compare.js` (all files); they use `readZip` of `scripts/lib-office.js` |
+| **Sources read** | the unzipped folders `downloads/Chartres/<group>/<year>/SAISIE OEE/OEE*.xlsm` (git-ignored, untrusted; 36 files). Nothing was opened in Excel and no macro was run. Macro code was not read, only the module names |
+| **Scripts** | `node scripts/chartres-compare.js downloads/Chartres` (all OEE files, picks the pattern itself), `scripts/chartres-profile.js` (one file); they use `readZip` of `scripts/lib-office.js` |
 | **Status** | Steps 1 to 3 done on 2026-10-26. French to English dictionary, column map to the report tables, recompute and automation are NOT started (waiting for the user's go) |
 | **Blocker** | DOR L3 has no `SAISIE OEE/OEE*.xlsm` (see below). To confirm with Laura (site owner) |
 
 ## 1. Files found (step 1)
-The four zips hold the folders `<group>/<year>/...`. The zip paths do not repeat the group name.
+Found with the pattern `<group>/<year>/SAISIE OEE/OEE*.xlsm` in the unzipped folders (SKIN CARE 2025 was moved by the user from a wrong place, `2026/2025/`, a copy-paste mistake).
 
 | Group | Lines (one file per line and year) | 2025 | 2026 |
 |---|---|---|---|
 | CREAM Chartres | CUMULUS, CUPIDON, DAISY, IWKA 1, IWKA 2, IWKA 3 | 6 files | 6 files |
 | NON TISSE | HOME 1 to 4, SACHA 1 and 2, SUGAR | 7 files | 7 files |
-| SKIN CARE | APOLLON, CLEOPATRE, NEPTUNE, OLYMPE, ZEUS | 5 files, in `2026/2025/SAISIE OEE/` (one level too deep) | 5 files |
+| SKIN CARE | APOLLON, CLÉOPATRE, NEPTUNE, OLYMPE, ZEUS | 5 files | 5 files |
 | DOR L3 | none | none | none |
 
-- 36 files, 0.6 to 2.8 MB each (the full list with sizes: `node scripts/chartres-list.js`).
+- 36 files, 0.6 to 2.8 MB each (sizes in the profile output).
 - No `OEE*.xlsm` exists for 2024 (CREAM 2024 has `DOR Personal Care.xlsm`, an older file outside the pattern).
 - Left out as agreed: Backup, PDF, PPTX, and other xlsm in the same trees (`Archives/`, `Fichiers de travail/`, `SAISIE 2025/` hold copies and tests such as `DOR Personal Care - 27012025.xlsm`).
-- The accented name `CLEOPATRE` (with an accent in the real name) comes out garbled from `unzip -l`; the script extracts it with a wildcard.
 
 ### DOR L3: blocker for this group only
 The zip has no `SAISIE OEE` folder and no `OEE*.xlsm`. The Excel files are other kinds: `L3 DOR.xlsm` (2024), `L3 DOR Version 2025.xlsm`, `BREAKFAST CHARTRES 2025/2026.xlsm`, `L3 board - Daily Management - Chartres.xlsm`, `DATA CHARTRES 2026.xlsm`, `OEE Simulator 2026.xlsx`, and `.pptm` weekly reviews. Which of them is the OEE source of the DOR L3 lines is not known. Not guessed; not profiled. Question for Laura: which file does DOR L3 use for the daily OEE entry?
@@ -100,14 +99,13 @@ Dates are Excel serial numbers. The sheets hold only the last exported day (abou
 |---|---|---|
 | Machine part columns | The names of the three machine blocks (Dysf / Panne / Réglages) are specific to the line; the unused ones are `Libre n`. About 63 to 85 of the 383 names differ from CREAM IWKA 2 | every line |
 | Fewer columns | IWKA 3: 353 columns (22 Dysf, 22 Panne, 22 Réglages) | IWKA 3, 2025 and 2026 |
-| Réglages named `Réglage` | The first 18 Réglages slots are called `Réglage <part>` (singular) | APOLLON, CLEOPATRE |
+| Réglages named `Réglage` | The first 18 Réglages slots are called `Réglage <part>` (singular) | APOLLON, CLÉOPATRE |
 | More columns | NON TISSE: 404 columns. Adds `People ZAC / Ext ZAC` (12), `Déchets <machine> <shift>` (15 in HOME, 5 in SACHA, in the 2025 files too) and `Déchets Libre 1 to 6`; `Total Déchets` then sums those columns, not the product waste cells (checked on HOME 1). All SKIN CARE files and NON TISSE HOME / SACHA have the 12 `People ZAC` columns, CREAM and SUGAR do not | HOME, SACHA (2025, 2026); SKIN CARE |
 | Sheet `OEE` | HOME has 12 columns (waste weight, ratio) instead of 9 | HOME 1 to 4 |
-| Output sheets | `PlanOPT`, `LineLosses`, `Category`, `OEE global report` exist only in 2026 files of CUMULUS, IWKA 1 to 3, HOME 1 to 4, APOLLON, CLEOPATRE, NEPTUNE, OLYMPE, ZEUS (13 files). Headers identical in all 13. Not in any 2025 file, nor in CUPIDON, DAISY, SACHA 1 and 2, SUGAR 2026 | see list |
+| Output sheets | `PlanOPT`, `LineLosses`, `Category`, `OEE global report` exist only in 2026 files of CUMULUS, IWKA 1 to 3, HOME 1 to 4, APOLLON, CLÉOPATRE, NEPTUNE, OLYMPE, ZEUS (13 files). Headers identical in all 13. Not in any 2025 file, nor in CUPIDON, DAISY, SACHA 1 and 2, SUGAR 2026 | see list |
 | Macro modules | 2025: 3 modules; 2026 lines with output sheets: 5 to 6 (`Module_PlanOPT`, `Module_LineLosses`, `Module_Update`); SACHA / SUGAR 2026: 4 | see list |
 | Hidden sheets | Which sheets are hidden varies by file (Base is visible in some, hidden in others) | all |
 | Empty files | `OEE CUPIDON - 2026` and `OEE DAISY - 2026` hold no day (template only). CUPIDON 2025 ends 2025-09-22, DAISY 2025 ends 2025-11-06 | 2 |
-| Wrong folder | SKIN CARE 2025 files sit in `2026/2025/SAISIE OEE/` | 5 |
 
 ### Per file (rows = row 3 on, with an ANNEE value)
 | Group | File | Year | Base columns | Day rows | First to last date | Output sheets |
@@ -131,7 +129,7 @@ Dates are Excel serial numbers. The sheets hold only the last exported day (abou
 | NON TISSE | SACHA 1 / 2 | 2026 | 404 | 228 / 221 | 2026-01-05 to 2026-10-23 | no |
 | NON TISSE | SUGAR | 2026 | 383 | 140 | 2026-01-06 to 2026-10-16 | no |
 | SKIN CARE | APOLLON | 2025 / 2026 | 383 | 232 / 190 | 2025-01-06 to 2025-12-23 / 2026-01-05 to 2026-10-22 | no / yes |
-| SKIN CARE | CLEOPATRE | 2025 / 2026 | 383 | 115 / 112 | 2025-01-06 to 2025-12-18 / 2026-01-05 to 2026-10-05 | no / yes |
+| SKIN CARE | CLÉOPATRE | 2025 / 2026 | 383 | 115 / 112 | 2025-01-06 to 2025-12-18 / 2026-01-05 to 2026-10-05 | no / yes |
 | SKIN CARE | NEPTUNE | 2025 / 2026 | 383 | 220 / 186 | 2025-01-06 to 2025-12-23 / 2026-01-05 to 2026-10-23 | no / yes |
 | SKIN CARE | OLYMPE | 2025 / 2026 | 383 | 249 / 169 | 2025-01-05 to 2025-12-22 / 2026-01-05 to 2026-10-23 | no / yes |
 | SKIN CARE | ZEUS | 2025 / 2026 | 383 | 336 / 195 | 2025-01-05 to 2026-01-04 / 2026-01-03 to 2026-10-09 | no / yes |
