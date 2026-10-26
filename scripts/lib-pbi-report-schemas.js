@@ -104,3 +104,16 @@ export const reportFormatSchema = [
     'Unit Count/Format', 'Extra Info', 'Unique Machine Name', 'Product Key']),
   ['loaded_at', TS]
 ];
+
+// Historical_OEE_EU: the Provideam archive (2022 to Nov 2024), one row per
+// machine and day, OEE / Availability / Performance as fractions (0.406).
+// Written once by scripts/historical-oee-convert.js, no flow.
+export const historicalOeeSchema = [
+  ['Date', DATE],
+  ...str(['MachineName', 'SiteName', 'Unique Machine Name']),
+  ['OEE', D],
+  ['Availability', D],
+  ['Performance', D],
+  ...machineCols,
+  ['loaded_at', TS]
+];
