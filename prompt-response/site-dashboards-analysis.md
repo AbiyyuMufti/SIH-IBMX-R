@@ -5,7 +5,7 @@
 | **What** | Analysis of the two site-level Power BI reports (Nottingham Site OEE Report 2025 V1, Hull Site OEE Report 2025 V3.1), read from their templates (`.pbit`), compared with the EU report template and with our three visualization tables (`Plan_OPT_EU`, `Time_Utilisation_EU`, `Daily_Losses_EU`) plus the reference files (Machine Names, Shift Naming, Glidepaths, Equipment Coding) |
 | **Why** | The site dashboards and the EU dashboard become one Tableau workbook. The agreed pages follow the Nottingham dashboard. We need to know which data the site pages use that our EU-level tables do not have yet |
 | **Steps** | 1 data model (this version), 2 what the agreed pages read, 3 comparison with the EU model and our tables, 4 what SIH can give |
-| **Status** | Steps 1 to 4 done (2026-10-23). Nothing built (decision of the user): all open decisions are in section 5 |
+| **Status** | Steps 1 to 4 done (2026-10-23). Nothing built (decision of the user): all open decisions are in section 5. Section 6 (2026-10-26): why EU and site numbers differ, proven on the loaded tables of the real .pbix files |
 | **Files** | Outside the repo (customer paths and names). Re-read with `node scripts/helper-pbit-outline.js <file.pbit>` |
 | **Diagram** | `diagrams/site-dashboards-map.drawio`, the current data map: agreed pages, current map overview, one page per table (3 existing + 4 proposed: every column with an example from Segun's extracts, the Provideam rule, the SIH rule, a status and the agreed pages that use it), EU scope (idea C1), SIH coverage, open decisions, parked differences, and 8 "Background" pages (the still-valid explanation pages of the old map, with a "since then" note). `powerbi-data-map.drawio` stays as the snapshot of 2026-10-13/15. Rebuild: `node scripts/helper-site-column-usage.js` (column usage from the three templates), `python -I scripts/helper-profile-parquet.py downloads/eu_oee_latest diagrams/data/eu-extract-profile.json` (examples), `node scripts/build-drawio-site-dashboards.js`, then `node scripts/validate-drawio.js diagrams/site-dashboards-map.drawio` |
 
@@ -338,3 +338,28 @@ Notes of the user (2026-10-23):
 - SIH has a loss tree; why the stops do not map to it is still open (D11).
 - Glidepaths are updated during the year (someone from Nottingham mentioned it): the reference copy to the lake needs an owner and a routine (D7).
 4. Open with Reckitt: the Nottingham Format List, the Hull glidepath master, the volume target.
+
+## 6. Why the EU and the site reports differ: proof on the loaded data (2026-10-26)
+Question of Segun: the sum of `Value` differs between the EU and the site reports. Answer for the three tables (Daily Losses, Time Utilisation, Plan OPT), Hull and Nottingham.
+
+**Method.** The three real `.pbix` files (EU, Hull, Nottingham) hold the tables as Power BI loaded them. `scripts/helper-pbix-extract.py` reads them with `pbixray` into `downloads/pbix_data/` (git-ignored, customer data). Compared up to 15 Sep 2026: the EU file ends on 16 Sep, the site files were refreshed about a week later. Notebooks (committed without outputs): `prompt-response/proof-<table>.ipynb` (site table moved to the EU configuration) and `proof-eu-site-config-<table>.ipynb` (EU table moved to the site configuration, ends with one table: cause x measure). Set `SITE` in the second cell and run.
+
+**Result: configured the same way, the data is the same.** After the EU machine filter is applied to the site table, the rows match key by key (0 keys on one side only, except 1 to 3 keys of 15 Sep) and Good Parts, Total Time, Duration are identical. What differs:
+
+| Cause | Where | Size |
+|---|---|---|
+| EU machine filter (Hull 19 process machines; Nottingham areas / lists, S14, 9 loss names) | every table, both sites; the only cause of the row difference | Hull losses +14,272 stops, +1.98M min; Hull Plan OPT +6,922 rows, Good Parts +155M; Nottingham Time Utilisation +13,697 rows |
+| Targets: other glidepath file and key (EU: regional file, machine-site key; site: own file, machine key) | Plan OPT targets; Hull losses `Value` | Hull `Value` EU 1,136,945 against site 1,210,571; Hull targets 2 to 6 % apart; Nottingham UPDT / PDT targets exactly 100 times apart (site file holds fractions); Nottingham OEE target and `Value` identical |
+| EU union step reads times as hours:minutes (seconds dropped) | Plan OPT times; Nottingham losses union | Hull OEE Time -0.13 %, Nottingham about -0.1 %; Good Parts and Capacity unchanged |
+| Refresh date | all tables | only 7 to 15 Sep; e.g. Hull Capacity 35,900 (0.004 %) |
+
+**Hull `Value` in detail.** Same rows, different value: the EU renames the loss sub groups (Text.Proper plus 12 renames) before the key, uses machine-site and the regional glidepath; the Hull site keeps raw names, key machine, own glidepath file (V7). Each effect alone is about 52,000 and they nearly cancel in the first replica run. Redoing the lookup the site way on the EU rows reproduces the site `Value` except 36 of 224,885 stops.
+
+**Not explained yet (small).**
+- 36 Hull stops with another `Value` after the site-way lookup. Spread over 2025 and 2026. Hypothesis: sub group spelling that differs only by case ("Lack of Resources" / "Lack of resources"); Power BI keeps one spelling per text value. Not confirmed row by row.
+- `Daily Losses EU` has 6 more Nottingham stops (278 min) than the EU Nottingham part before the union.
+- Nottingham losses: 2,651 EU stops (28 machines, September) have no match in the EU Machine Names (losses drop 9 names, Machine Names keeps only packing areas). They count in a plain total but drop out of visuals that use Dept / Area / machine.
+- `Volume Total` is repeated on every stop of a machine and day: its plain sum is not meaningful.
+- Not checked: page and visual level effects (slicers, page filters of the Nottingham pages), Weinheim and Mira.
+
+**First replica attempt (kept for history).** `prompt-response/site-dashboards-reconcile.ipynb` rebuilt each pipeline from the original exports in `sharepoint/source_original` (M steps as functions, rules as switches). It gave the same direction of results for September (machine filter first, then glidepath and sub group names, then seconds) and a matching same-rule check, but it only proves that the replica agrees with itself. Replaced by the proof on the loaded tables. Side findings: original Hull Plan OPT files overlap on 17 / 18 Dec 2025 (40 keys, 3 with other values); the exports hold stops with a tab inside the comment (one field too many; the reader keeps the first n fields); Nottingham losses hold 17,737 stops over all months with a repeated machine + start time, which "Removed Duplicates" drops (September: 1 stop).
