@@ -4,7 +4,8 @@
 var TYPES = [
   'plan_opt',
   'line_losses',
-  'volume_loss_correction'
+  'volume_loss_correction',
+  'run_rates'
 ];
 // Path: .../source/<type>/site=<Site>/<type>_<YYYY-MM>.csv
 var PATTERN = /source\/([a-z_]+)\/site=([^\/]+)\/[a-z_]+_(\d{4}-\d{2})\.csv$/;

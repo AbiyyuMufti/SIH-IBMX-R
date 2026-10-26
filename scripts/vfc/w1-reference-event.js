@@ -5,7 +5,9 @@ var TYPES = [
   'machine_names',
   'shift_naming',
   'glidepaths',
-  'equipment_coding'
+  'equipment_coding',
+  'report_scope',
+  'format_list'
 ];
 // Path: .../reference/<type>/site=<Site>/<file>.csv
 var PATTERN = /reference\/([a-z_]+)\/site=([^\/]+)\/[^\/]+\.csv$/i;

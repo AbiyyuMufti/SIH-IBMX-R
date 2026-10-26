@@ -138,3 +138,10 @@ Own tab `PBI report listener` (`flows/vfc-pbi-listener.json`, 20 nodes, made by 
 
 ## Step 7: report scope, `In EU Report` (2026-10-27)
 The EU machine filters are no longer in the code: rows are kept and get the column `In EU Report` from the report scope file (`config/report_scope.csv`, lake `<root>/reference/report_scope/site=All/`). New lane `SITE SETUP: REPORT SCOPE` after the shift patterns; node `Add machine and scope columns` sets the flag in every table lane. The Machine Names lookup is no longer filtered. Rules, file format, proof and the effect on the EU pages: [report-scope.md](report-scope.md). The machines both reports drop stay in `Build plan rows` and `Build loss rows`.
+
+## Step 8: second tab and the lake watcher (2026-10-27)
+The site dashboard tables `Run_Rates_EU`, `Volume_CoV_EU` and `Format_List_EU` are built in a second tab, `PBI report build 2` ([pbi-report-build-2.md](pbi-report-build-2.md)), because this tab has 176 of 200 nodes. The site setup lanes and the table ends are shared code (`scripts/lib-pbi-report-lanes.js`; this tab's JSON is unchanged by the move apart from one comment). Lake watcher changes (`w1`, `w3`, `w5`, `w6`):
+- New event types: source `run_rates`; reference `report_scope` (rebuilds every month table of all sites, the months back) and `format_list` (rebuilds `Format_List_EU` of the site; was dropped before).
+- A plan OPT file now also rebuilds `Volume_CoV_EU`; Machine Names and Shift Patterns also rebuild `Run_Rates_EU` and `Volume_CoV_EU`.
+- A job is split by tab: the tables of this tab go to global context `jobQueue`, those of the second tab to `jobQueue_2`. Each tab's clock takes its own queue.
+- JOB DONE is watched per tab (global context `lastLog_<flow>`, `done_<flow>`; the debug node shows `JOB DONE pbi-report` or `JOB DONE pbi-report-2`).

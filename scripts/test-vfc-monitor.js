@@ -626,11 +626,11 @@ listenerData.pending = {
 const release = vmFunction('w3-release.js', {});
 release(listenerFlow, node, {}, Buffer, Promise, glob);
 check(
-  globalData['runStatus_pbi-listener'].queuedJobs === 1 &&
+  globalData['runStatus_pbi-listener'].queuedJobs === 2 &&
     globalData['runStatus_pbi-listener'].lastQueuedJob.from === '2026-09',
   'listener status records released job count and range'
 );
-const takeJob = vmFunction('w6-take-job.js', {});
+const takeJob = vmFunction('w6-take-job.js', { __QUEUE__: 'jobQueue' });
 takeJob(listenerFlow, node, {}, Buffer, Promise, glob);
 check(
   globalData['runStatus_pbi-listener'].queuedJobs === 0,
@@ -640,7 +640,7 @@ check(
 globalData['runStatus_pbi-report'] = {
   state: 'running'
 };
-const notePbiLog = vmFunction('w4-note-log.js', {});
+const notePbiLog = vmFunction('w4-note-log.js', { __FLOW__: 'pbi-report' });
 notePbiLog(
   flow,
   node,
@@ -660,8 +660,8 @@ check(
     globalData['runStatus_pbi-report'].lastLog === 'sample failure',
   'PBI log checkpoint records failure without retaining full rows'
 );
-globalData['lastLog'] = Date.now() - 31000;
-globalData.done = false;
+globalData['lastLog_pbi-report'] = Date.now() - 31000;
+globalData['done_pbi-report'] = false;
 const checkQuiet = vmFunction('w5-check-quiet.js', {});
 checkQuiet(flow, node, {}, Buffer, Promise, glob);
 check(
@@ -715,7 +715,7 @@ check(
 );
 check(
   globalData['runStatus_sih-hull'].state === 'queued' &&
-    dailyResult[4].payload.indexOf('[command] ACCEPTED') !== -1 &&
+    dailyResult[5].payload.indexOf('[command] ACCEPTED') !== -1 &&
     globalData.runMonitorCommands[0].result === 'accepted',
   'accepted command reserves status and emits an audit log'
 );
@@ -765,7 +765,7 @@ check(
   check(
     first[0].statusCode === 202 && first[1] !== null &&
       second[0].statusCode === 202 && second[1] === null &&
-      second[4] === null && globalData.runMonitorCommands.length === 1,
+      second[5] === null && globalData.runMonitorCommands.length === 1,
     'a duplicate POST within 5 s is answered again but not run twice'
   );
 }
@@ -1058,8 +1058,10 @@ check(
   'command audit retains only the newest 50 entries'
 );
 
+// In EU Report is a column added after the baseline (report scope, 2026-10-27).
 function mask(value) {
   return JSON.stringify(value)
+    .replace(/,?"In EU Report":(true|false)/g, '')
     .replace(/"loaded_at":\d+/g, '"loaded_at":0')
     .replace(/"ts_utc":"[^"]+"/g, '"ts_utc":"MASKED"');
 }
@@ -1174,6 +1176,7 @@ const builtFlows = [
   'vfc-pbi-daily-hull.json',
   'vfc-rpt-hull.json',
   'vfc-pbi-report.json',
+  'vfc-pbi-report-2.json',
   'vfc-pbi-listener.json'
 ].flatMap((file) => read(file));
 check(checkMonitorFlows(builtFlows).length === 0,

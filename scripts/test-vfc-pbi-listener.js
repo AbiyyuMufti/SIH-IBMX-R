@@ -21,6 +21,8 @@ const check = (ok, text) => {
 };
 
 // Runs a function node code once. Returns what the node returned.
+// Placeholders the builders fill in.
+const FILL = (c) => c.replaceAll('__QUEUE__', 'jobQueue').replaceAll('__FLOW__', 'pbi-report');
 function run(file, msg, store, edit = (c) => c) {
   const ctx = store || new Map();
   const flow = {
@@ -32,7 +34,7 @@ function run(file, msg, store, edit = (c) => c) {
     set: (k, v) => globalCtx.set(k, v)
   };
   const node = { status: () => {}, error: () => {}, warn: () => {} };
-  const body = edit(code(file));
+  const body = edit(FILL(code(file)));
   return new Function('msg', 'flow', 'glob', 'node', body)(msg, flow, glob,
     node);
 }
@@ -96,7 +98,8 @@ e = run('w1-reference-event.js', {
     path: `${REF}format_list/site=All/Format_List.csv`
   }
 });
-check(e === null, 'reference event: format_list is not used, dropped');
+check(e && e.event.type === 'format_list',
+'reference event: format_list is used (Format_List_EU in tab PBI report build 2)');
 e = run('w1-reference-event.js', {
   payload: {
     eventType: 'DELETE',
@@ -197,8 +200,18 @@ const allSites = find((j) => !j.sites && j.tables.join() === monthTables.join() 
   j.to === thisMonth && j.from < j.to);
 check(allSites.length === 2,
 'release: shift names and machine names rebuild the month tables of all sites');
-check(out[0].length === jobs.length && /listener/.test(out[0][0].payload),
-'release: one log line per job');
+const jobs2 = globalCtx.get('jobQueue_2').slice();
+check(out[0].length === jobs.length + jobs2.length && /listener/.test(out[0][0].payload),
+'release: one log line per job of both queues');
+check(jobs2.length > 0 && jobs2.every((j) => j.tables.every((t) =>
+  ['Run_Rates_EU', 'Volume_CoV_EU', 'Format_List_EU'].includes(t))) &&
+  jobs.every((j) => j.tables.every((t) => monthTables.includes(t))),
+'release: the tables of tab PBI report build 2 go to jobQueue_2, the others to jobQueue');
+check(jobs2.some((j) => j.sites && j.sites[0] === 'Hull' && j.from === '2026-07' &&
+  j.tables.join() === 'Volume_CoV_EU'),
+'release: a plan OPT file also rebuilds Volume_CoV_EU (jobQueue_2)');
+check(jobs2.filter((j) => !j.sites && j.tables.join() === 'Run_Rates_EU,Volume_CoV_EU').length === 2,
+'release: shift and machine names rebuild Run_Rates_EU and Volume_CoV_EU of all sites');
 const again = run('w3-release.js', {}, ctx);
 check(again[0].length === 0 && globalCtx.get('jobQueue').length === jobs.length,
 'release: a second check right after queues nothing');
@@ -214,21 +227,21 @@ while (globalCtx.get('jobQueue').length) {
 check(run('w6-take-job.js', {}) === null, 'take job: an empty queue sends nothing');
 
 // ---- JOB DONE watch
-globalCtx.delete('lastLog');
+globalCtx.delete('lastLog_pbi-report');
 check(run('w5-check-quiet.js', {}) === null,
 'job done: nothing before the first log line');
 run('w4-note-log.js', {});
 check(run('w5-check-quiet.js', {}) === null,
 'job done: a log line just now is not quiet yet');
-globalCtx.set('lastLog', Date.now() - 45000);
-globalCtx.set('done', false);
+globalCtx.set('lastLog_pbi-report', Date.now() - 45000);
+globalCtx.set('done_pbi-report', false);
 const quiet = run('w5-check-quiet.js', {});
-check(quiet && /JOB DONE/.test(quiet.payload),
+check(quiet && quiet[0].length === 1 && /JOB DONE pbi-report/.test(quiet[0][0].payload),
 'job done: 45 s without a log line is reported');
 check(run('w5-check-quiet.js', {}) === null,
 'job done: reported once only');
 run('w4-note-log.js', {});
-check(globalCtx.get('done') === false,
+check(globalCtx.get('done_pbi-report') === false,
 'job done: the next log line re-arms it');
 
 // ---- the generated flow

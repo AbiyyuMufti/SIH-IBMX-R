@@ -33,6 +33,14 @@ export const MONITOR_FLOWS = [
     queueKey: 'jobQueue'
   },
   {
+    id: 'pbi-report-2',
+    label: 'PBI report build 2',
+    backfill: 'months',
+    log: true,
+    tables: ['Run_Rates_EU', 'Volume_CoV_EU', 'Format_List_EU'],
+    queueKey: 'jobQueue_2'
+  },
+  {
     id: 'pbi-listener',
     label: 'PBI listener',
     backfill: null,

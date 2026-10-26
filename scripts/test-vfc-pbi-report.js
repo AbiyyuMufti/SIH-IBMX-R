@@ -316,7 +316,7 @@ const lossLake = () => {
     ''
   ].join('\n'));
   lake.set(`${REF}/glidepaths/site=Hull/Glidepath Hull.csv`, [
-    '﻿Site Name,Line,OEE Bucket,01/08/2026,01/09/2026,01/10/2026',
+    '\uFEFFSite Name,Line,OEE Bucket,01/08/2026,01/09/2026,01/10/2026',
     glide('Hull', 'B2 Auto', '% OEE', ['50.5', '56.1', '']),
     glide('Hull', 'B2 Auto', 'Planned Downtime (Total)', ['10', '12.5', '13']),
     glide('Hull', 'B2 Auto', 'Unplanned Downtime (Total)', ['20', '21.5', '']),

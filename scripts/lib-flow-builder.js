@@ -341,7 +341,7 @@ export const writeStep = (key, name) => ({ t: 'write', key, name });
 // the tab and all log lines go to one CSV file per month in the data lake:
 // <root>/logs/<flow name>/log_YYYY-MM.csv. Returns the next free row.
 // quiet: also tap every log line (node Note last log line, global context
-// lastLog) for the JOB DONE watch of another tab.
+// lastLog_<flow>) for the JOB DONE watch of another tab.
 export function addLogLanes(b, r, flowName, quiet = false, status = null) {
   const replace = { __FLOW__: flowName };
   b.lane(r++, 'ERRORS',
@@ -373,7 +373,7 @@ export function addLogLanes(b, r, flowName, quiet = false, status = null) {
       joinTimeout('logJoin', 'Collect log lines', 30),
       debugStep('logDebug', 'Run log', 'line', true, 80),
       ...(quiet ? [{
-        ...fn('noteLast', 'Note last log line', 'w4-note-log.js', []),
+        ...fn('noteLast', 'Note last log line', 'w4-note-log.js', [], replace),
         stack: true, dy: 160
       }] : []),
       delay('logDelay', 'One log batch per 10 s', 10),

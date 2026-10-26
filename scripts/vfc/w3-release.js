@@ -1,30 +1,49 @@
 // Runs on the clock. Takes the entries of flow context "pending" whose wait
-// window is over and turns them into jobs {tables, sites, from, to}. The jobs
-// go to global context "jobQueue" (the tab PBI report build takes them one by
-// one). Out: one log line per job (for a debug node).
+// window is over and turns them into jobs {tables, sites, from, to}. A job
+// goes to the queue of the tab that builds its tables (QUEUE_OF, global
+// context; each tab takes its jobs one by one). Out: one log line per job.
 var SOURCE_WAIT_S = 120;
 var REFERENCE_WAIT_S = 300;
 // Months before the current month that a reference change rebuilds.
 var REFERENCE_MONTHS_BACK = 3;
+// Tab PBI report build takes jobQueue, tab PBI report build 2 jobQueue_2.
+var QUEUE_OF = {
+  Plan_OPT_EU: 'jobQueue',
+  Time_Utilisation_EU: 'jobQueue',
+  Daily_Losses_EU: 'jobQueue',
+  Run_Rates_EU: 'jobQueue_2',
+  Volume_CoV_EU: 'jobQueue_2',
+  Format_List_EU: 'jobQueue_2'
+};
 var MONTH_TABLES = [
+  'Plan_OPT_EU',
+  'Time_Utilisation_EU',
+  'Daily_Losses_EU',
+  'Run_Rates_EU',
+  'Volume_CoV_EU'
+];
+var PLAN_TABLES = [
   'Plan_OPT_EU',
   'Time_Utilisation_EU',
   'Daily_Losses_EU'
 ];
 var TABLES_OF = {
-  plan_opt: MONTH_TABLES,
+  plan_opt: PLAN_TABLES.concat(['Volume_CoV_EU']),
   line_losses: ['Daily_Losses_EU'],
   volume_loss_correction: ['Daily_Losses_EU'],
+  run_rates: ['Run_Rates_EU'],
   machine_names: MONTH_TABLES,
   shift_naming: MONTH_TABLES,
-  glidepaths: MONTH_TABLES,
-  equipment_coding: ['Daily_Losses_EU']
+  glidepaths: PLAN_TABLES,
+  equipment_coding: ['Daily_Losses_EU'],
+  report_scope: MONTH_TABLES,
+  format_list: ['Format_List_EU']
 };
 
 var pending = flow.get('pending') || {};
 var now = Date.now();
 var day = new Date(now).toISOString().slice(0, 10);
-var queue = glob.get('jobQueue') || [];
+var queues = {};
 var lastQueuedJob = null;
 var added = 0;
 var logs = [];
@@ -48,13 +67,28 @@ function addTables(list, tables) {
   });
 }
 
+// One job per queue: the tables of the job are split by the tab that
+// builds them.
 function addJob(job, why) {
-  queue.push(job);
-  lastQueuedJob = job;
-  added++;
-  logs.push({
-    topic: 'log',
-    payload: day + ' [listener] JOB ' + why + ': ' + JSON.stringify(job)
+  var byQueue = {};
+  job.tables.forEach(function (table) {
+    var name = QUEUE_OF[table];
+    byQueue[name] = byQueue[name] || [];
+    byQueue[name].push(table);
+  });
+  Object.keys(byQueue).forEach(function (name) {
+    var part = Object.assign({}, job, {
+      tables: byQueue[name]
+    });
+    queues[name] = queues[name] || glob.get(name) || [];
+    queues[name].push(part);
+    lastQueuedJob = part;
+    added++;
+    logs.push({
+      topic: 'log',
+      payload: day + ' [listener] JOB ' + why + ' (' + name + '): ' +
+        JSON.stringify(part)
+    });
   });
 }
 
@@ -134,14 +168,17 @@ Object.keys(sourceGroups).forEach(function (key) {
 });
 
 flow.set('pending', pending);
-glob.set('jobQueue', queue);
+Object.keys(queues).forEach(function (name) {
+  glob.set(name, queues[name]);
+});
 var waiting = Object.keys(pending).length;
 var status = glob.get('runStatus_pbi-listener') || {};
 status.flow = 'pbi-listener';
 status.state = 'listening';
 status.lastBeatAt = new Date(now).toISOString();
 status.pendingEntries = waiting;
-status.queuedJobs = queue.length;
+status.queuedJobs = (glob.get('jobQueue') || []).length +
+  (glob.get('jobQueue_2') || []).length;
 if (lastQueuedJob) {
   status.lastQueuedJob = {
     tables: (lastQueuedJob.tables || []).join(', ').slice(0, 120),

@@ -16,7 +16,7 @@ function text(value) {
 
 // A byte order mark can sit in the first column name.
 function siteOf(row) {
-  return text(row.Site !== undefined ? row.Site : row['﻿Site']);
+  return text(row.Site !== undefined ? row.Site : row['\uFEFFSite']);
 }
 
 var ok = rows.some(function (row) {

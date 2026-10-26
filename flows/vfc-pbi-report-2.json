@@ -1,0 +1,2351 @@
+[
+  {
+    "id": "ccccf.706c39",
+    "type": "tab",
+    "label": "PBI report build 2",
+    "disabled": false,
+    "allowCycles": false,
+    "info": "Builds Run_Rates_EU, Volume_CoV_EU and Format_List_EU (site dashboards) from the files in the data lake. No API calls. Needs the Config tab."
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "cebbe.720552",
+    "type": "comment",
+    "name": "[1] TRIGGER & TASK SETTINGS",
+    "info": "STAGE 1 - TRIGGER AND TASK SETTINGS. Builds Run_Rates_EU (Provideam run rates, one row per machine and hour), Volume_CoV_EU (plan OPT rows per day, shift and machine) and Format_List_EU (the Format List file of each site) for the site dashboards. Every row gets Dept, Area, Product Type from the Machine Names file and In EU Report from the report scope file (not Format_List_EU). The inject payload is the job: {\"tables\": [...], \"sites\": [...], \"from\": \"YYYY-MM\", \"to\": \"YYYY-MM\"}; a missing list means all, missing months mean last month and this month. The lake watcher queues its jobs in global context jobQueue_2. Nothing is written while the table is true in DRY_RUN of 1.1.",
+    "x": 180,
+    "y": 40,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "d0aad.739e6b",
+    "type": "inject",
+    "name": "Run (edit payload)",
+    "topic": "",
+    "payload": "{\"tables\":[\"Run_Rates_EU\",\"Volume_CoV_EU\",\"Format_List_EU\"],\"sites\":[\"Hull\"],\"from\":\"2026-09\",\"to\":\"2026-10\"}",
+    "payloadType": "json",
+    "repeat": "",
+    "repeatEnd": "0",
+    "endTime": "0",
+    "crontab": "",
+    "offset": "NaN",
+    "once": false,
+    "properties": "",
+    "timezone": "UTC",
+    "betweentimesunit": "m",
+    "showNextExecution": false,
+    "powerMode": false,
+    "x": 140,
+    "y": 120,
+    "wires": [
+      [
+        "d299c.753784"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "d488b.76d09d",
+    "type": "inject",
+    "name": "Job queue check every 10 s",
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "repeat": "10",
+    "repeatEnd": "0",
+    "endTime": "0",
+    "crontab": "",
+    "offset": "NaN",
+    "once": false,
+    "properties": "",
+    "timezone": "UTC",
+    "betweentimesunit": "m",
+    "showNextExecution": false,
+    "powerMode": false,
+    "x": 160,
+    "y": 200,
+    "wires": [
+      [
+        "d677a.7869b6"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "d677a.7869b6",
+    "type": "function",
+    "name": "1.0 Take queued job",
+    "func": "// Runs on a clock. Takes the oldest job that the lake watcher queued in\n// global context QUEUE and sends it to node 1.1 like the inject does.\n// One job per tick, so queued jobs run one after another.\nvar QUEUE = 'jobQueue_2';\nvar queue = glob.get(QUEUE) || [];\nif (!queue.length) {\n  return null;\n}\n\nvar job = queue.shift();\nglob.set(QUEUE, queue);\nvar status = glob.get('runStatus_pbi-listener') || {};\nstatus.flow = 'pbi-listener';\nstatus.state = 'listening';\nstatus.lastBeatAt = new Date().toISOString();\nstatus.queuedJobs = queue.length;\nglob.set('runStatus_pbi-listener', status);\nnode.status({\n  fill: 'green',\n  shape: 'dot',\n  text: queue.length + ' more queued'\n});\nreturn {\n  topic: 'listener job',\n  payload: job\n};\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 400,
+    "y": 200,
+    "wires": [
+      [
+        "d299c.753784"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "d299c.753784",
+    "type": "function",
+    "name": "1.1 TASK SETTINGS (edit here)",
+    "func": "// TASK SETTINGS of the PBI report build: folders, sites, months, dry run.\n// In: msg.payload = the job {tables, sites, from, to}; all optional (months\n// YYYY-MM, default last month and this month). Out: msg.job, settings stored.\n\n// The source this flow builds. A line whose source (1.1 CONFIG: line\n// reportSource, else site reportSource) is this one writes to <root>/report,\n// any other to <root>/candidate/<source>.\nvar SOURCE = 'provideam';\n// Folders below the root folder of 1.1 CONFIG, without a leading slash.\nvar IN_REFERENCE = 'reference';\nvar IN_SOURCE = 'pbi_report/source';\nvar OUT_LIVE = 'report';\nvar OUT_CANDIDATE = 'candidate/' + SOURCE;\nvar DRY_RUN = {\n  Run_Rates_EU: true,\n  Volume_CoV_EU: true,\n  Format_List_EU: true\n};\n\nvar shared = glob.get('cfg');\nif (!shared) {\n  node.status({\n    fill: 'red',\n    shape: 'ring',\n    text: 'CONFIG not run'\n  });\n  node.error('global cfg is missing: deploy or run the Config tab first');\n  return null;\n}\n// The sites of 1.1 CONFIG.\nvar ALL_SITES = shared.sites.map(function (site) {\n  return site.name;\n});\n\nfunction fail(text) {\n  node.status({\n    fill: 'red',\n    shape: 'ring',\n    text: text\n  });\n  node.error(text);\n  return null;\n}\n\n// Months from the first to the last one, both as YYYY-MM.\nfunction monthList(from, to) {\n  var out = [];\n  var year = Number(from.slice(0, 4));\n  var month = Number(from.slice(5, 7));\n  var last = Number(to.slice(0, 4)) * 12 + Number(to.slice(5, 7));\n  while (year * 12 + month <= last) {\n    out.push(year + '-' + (month < 10 ? '0' + month : month));\n    month++;\n    if (month > 12) {\n      month = 1;\n      year++;\n    }\n  }\n  return out;\n}\n\nvar asked = msg.payload && typeof msg.payload === 'object' ? msg.payload : {};\nvar allTables = Object.keys(DRY_RUN);\nvar tables = Array.isArray(asked.tables) ? asked.tables : allTables;\nvar sites = Array.isArray(asked.sites) ? asked.sites : ALL_SITES;\nvar unknown = tables.filter(function (t) {\n  return allTables.indexOf(t) === -1;\n}).concat(sites.filter(function (s) {\n  return ALL_SITES.indexOf(s) === -1;\n}));\nif (unknown.length) {\n  return fail('unknown table or site in the job: ' + unknown.join(', '));\n}\n\nvar now = new Date();\nvar thisMonth = now.toISOString().slice(0, 7);\nvar lastMonth = new Date(\n  Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)\n);\nvar from = asked.from || lastMonth.toISOString().slice(0, 7);\nvar to = asked.to || thisMonth;\nif (!/^\\d{4}-\\d{2}$/.test(from) || !/^\\d{4}-\\d{2}$/.test(to) || from > to) {\n  return fail('from and to must be months YYYY-MM, from not after to');\n}\n\nvar cfg = Object.assign({}, shared);\ncfg.dryRun = DRY_RUN;\ncfg.referenceFolder = shared.root + '/' + IN_REFERENCE;\ncfg.sourceFolder = shared.root + '/' + IN_SOURCE;\ncfg.source = SOURCE;\ncfg.liveFolder = shared.root + '/' + OUT_LIVE;\ncfg.candidateFolder = shared.root + '/' + OUT_CANDIDATE;\nflow.set('cfg', cfg);\n\nmsg.job = {\n  tables: tables,\n  sites: sites,\n  months: monthList(from, to)\n};\nvar writing = tables.filter(function (table) {\n  return !DRY_RUN[table];\n});\nnode.status({\n  fill: writing.length ? 'green' : 'yellow',\n  shape: 'dot',\n  text: writing.length ? writing.length + ' table(s) WRITE' : 'DRY RUN'\n});\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 400,
+    "y": 120,
+    "wires": [
+      [
+        "d8669.7a02cf"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "e363a.f94f83",
+    "type": "link in",
+    "name": "pbi-report-2 BACKFILL",
+    "links": [],
+    "x": 60,
+    "y": 160,
+    "wires": [
+      [
+        "d299c.753784"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "dc447.7d3501",
+    "type": "link out",
+    "name": "to SITE",
+    "mode": "link",
+    "links": [
+      "da558.7b9be8"
+    ],
+    "x": 760,
+    "y": 120,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "d8669.7a02cf",
+    "type": "function",
+    "name": "1.2 Start jobs",
+    "func": "// Starts the jobs of the run. In: msg.job {tables, sites, months}.\n// Out: the site setup (Glidepaths, Machine Names, Shift Patterns), then the\n// month tables of the job, for the sites of the job.\nvar FLOW = 'pbi-report-2';\nvar job = msg.job;\nvar startedAt = new Date().toISOString();\n\nglob.set('runStatus_' + FLOW, {\n  flow: FLOW,\n  state: 'running',\n  source: msg.topic === 'listener job' ? 'listener' : 'manual',\n  startedAt: startedAt,\n  lastBeatAt: startedAt,\n  job: {\n    tables: job.tables.join(', ').slice(0, 120),\n    sites: job.sites.join(', ').slice(0, 120),\n    months: job.months.length\n  },\n  lastLog: ''\n});\n\nnode.status({\n  fill: 'green',\n  shape: 'dot',\n  text: job.tables.length + ' table(s), ' + job.sites.length + ' site(s)'\n});\nreturn {\n  payload: job.sites,\n  job: job,\n  day: new Date().toISOString().slice(0, 10),\n  mode: 'report',\n  loadedAt: Date.now()\n};\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 640,
+    "y": 120,
+    "wires": [
+      [
+        "dc447.7d3501"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "de336.7ece1a",
+    "type": "comment",
+    "name": "[2] SITE SETUP: MACHINE NAMES",
+    "info": "STAGE 2 - the Machine Names file of the site (<root>/reference/machine_names/site=<Site>/, newest .csv) is listed, read and parsed, and the lookup MachineName to Dept, Area and Product Type is stored in flow context, for every machine of the file (the EU scope is the column In EU Report, from the report scope file). A machine missing from the file has empty Dept, Area and Product Type. A site without a file stops here and the log says so.",
+    "x": 180,
+    "y": 260,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "da558.7b9be8",
+    "type": "link in",
+    "name": "SITE",
+    "links": [
+      "dc447.7d3501"
+    ],
+    "x": 60,
+    "y": 340,
+    "wires": [
+      [
+        "e0225.806733"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "e0225.806733",
+    "type": "split",
+    "name": "Split per item",
+    "splt": "\\n",
+    "spltType": "str",
+    "arraySplt": 1,
+    "arraySpltType": "len",
+    "stream": false,
+    "addname": "index",
+    "x": 180,
+    "y": 340,
+    "wires": [
+      [
+        "e2114.82004c"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "e2114.82004c",
+    "type": "function",
+    "name": "2.1 Set machine names folder",
+    "func": "// Sets the folder of one site for the list objects node.\n// In: msg.payload = one site name (after the split). Out: msg.site, msg.what\n// and msg.path = the reference folder of the site, ending with a slash.\nvar TYPE_FOLDER = 'machine_names';\nvar cfg = flow.get('cfg');\n\nmsg.site = msg.payload;\nmsg.what = 'machine names';\nmsg.path = cfg.referenceFolder + '/' + TYPE_FOLDER;\nmsg.path += '/site=' + msg.site + '/';\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 420,
+    "y": 340,
+    "wires": [
+      [
+        "e4003.839965"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "e4003.839965",
+    "type": "list objects",
+    "name": "List objects",
+    "subtenant": "",
+    "path": "",
+    "x": 660,
+    "y": 340,
+    "wires": [
+      [
+        "e5ef2.85327e"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "ebbbf.89fdc9",
+    "type": "link out",
+    "name": "to PLAN FAILED",
+    "mode": "link",
+    "links": [
+      "e9cd0.8864b0"
+    ],
+    "x": 1000,
+    "y": 360,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "e5ef2.85327e",
+    "type": "function",
+    "name": "2.2 Pick the file",
+    "func": "// Picks the newest .csv of the folder list (list objects).\n// Out 1: msg.path for the read node, without data/ten=<tenant>/ or a leading\n// slash. Out 2: a failed item when the folder has no .csv.\nvar TENANT_PREFIX = /^\\/?(data\\/ten=[^\\/]+\\/)?/;\nvar items = Array.isArray(msg.payload) ? msg.payload : [];\nvar files = items.filter(function (item) {\n  return /\\.csv$/i.test(item.key);\n});\n\nif (!files.length) {\n  node.status({\n    fill: 'red',\n    shape: 'ring',\n    text: 'no csv file for ' + msg.site\n  });\n  msg.payload = {\n    name: msg.site,\n    failed: msg.what + ' ' + msg.site + ': no csv file in ' + msg.path,\n    skipped: null,\n    rows: []\n  };\n  return [null, msg];\n}\n\nfiles.sort(function (a, b) {\n  return String(b.lastModified).localeCompare(String(a.lastModified));\n});\nmsg.path = String(files[0].key).replace(TENANT_PREFIX, '');\nnode.status({\n  fill: 'green',\n  shape: 'dot',\n  text: msg.path.slice(-40)\n});\nreturn [msg, null];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 860,
+    "y": 340,
+    "wires": [
+      [
+        "e7de1.86cb97"
+      ],
+      [
+        "ebbbf.89fdc9"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "e7de1.86cb97",
+    "type": "read object",
+    "name": "Read Machine Names file",
+    "path": "",
+    "mode": "object",
+    "x": 1080,
+    "y": 320,
+    "wires": [
+      [
+        "edaae.8b96e2"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "edaae.8b96e2",
+    "type": "csv",
+    "name": "Parse CSV",
+    "sep": ",",
+    "hdrin": true,
+    "hdrout": "",
+    "multi": "mult",
+    "ret": "\\n",
+    "temp": "parser csv",
+    "x": 1280,
+    "y": 340,
+    "wires": [
+      [
+        "ef99d.8d2ffb"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "f377b.90622d",
+    "type": "link out",
+    "name": "to PLAN SHIFTS",
+    "mode": "link",
+    "links": [
+      "f188c.8ec914"
+    ],
+    "x": 1640,
+    "y": 320,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "f566a.91fb46",
+    "type": "link out",
+    "name": "to PLAN FAILED",
+    "mode": "link",
+    "links": [
+      "e9cd0.8864b0"
+    ],
+    "x": 1640,
+    "y": 360,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "ef99d.8d2ffb",
+    "type": "function",
+    "name": "2.3 Build machine lookup",
+    "func": "// Machine lookup of one site from its Machine Names file. In: msg.payload =\n// parsed rows; stores flow context machines_<Site>: MachineName -> Dept,\n// Area, Product Type, for every machine of the file (the EU scope is the\n// column In EU Report, from the report scope file). Out 2: a failed item.\nvar site = msg.site;\nvar rows = Array.isArray(msg.payload) ? msg.payload : [];\nif (!rows.length || rows[0].MachineName === undefined) {\n  msg.payload = {\n    failed: 'machine names ' + site + ': no MachineName column or rows'\n  };\n  return [null, msg];\n}\n\nfunction text(value) {\n  return value === undefined || value === null ? '' : String(value).trim();\n}\n\nvar lookup = {};\nvar kept = 0;\nrows.forEach(function (row) {\n  var name = text(row.MachineName);\n  if (!name) {\n    return;\n  }\n  lookup[name] = {\n    'Dept': text(row.Dept),\n    'Area': text(row.Area),\n    'Product Type': text(row['Product Type'])\n  };\n  kept++;\n});\nflow.set('machines_' + site, lookup);\nnode.status({\n  fill: 'green',\n  shape: 'dot',\n  text: site + ': ' + kept + ' machines'\n});\nmsg.payload = site;\nreturn [msg, null];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 1480,
+    "y": 340,
+    "wires": [
+      [
+        "f377b.90622d"
+      ],
+      [
+        "f566a.91fb46"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "f7559.93945f",
+    "type": "comment",
+    "name": "[3] SITE SETUP: SHIFT PATTERNS",
+    "info": "STAGE 3 - the Shift Patterns file (eu_report/reference/shift_naming/site=All/) is listed, read and parsed, and the lookup raw shift name to Shift is stored in flow context (the report joins ShiftName to the Shift Type column and keeps the Shift; an unknown name gives an empty shift).",
+    "x": 180,
+    "y": 480,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "f188c.8ec914",
+    "type": "link in",
+    "name": "PLAN SHIFTS",
+    "links": [
+      "f377b.90622d"
+    ],
+    "x": 60,
+    "y": 560,
+    "wires": [
+      [
+        "f9448.952d78"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "f9448.952d78",
+    "type": "function",
+    "name": "3.1 Set shift folder",
+    "func": "// Sets the folder of the Shift Patterns file for the list objects node.\n// In: the message of one site (msg.site stays). Out: msg.what and msg.path =\n// eu_report/reference/shift_naming/site=All/, the file of all sites.\nvar cfg = flow.get('cfg');\n\nmsg.what = 'shift patterns';\nmsg.path = cfg.referenceFolder + '/shift_naming/site=All/';\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 200,
+    "y": 560,
+    "wires": [
+      [
+        "fb337.96c691"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "fb337.96c691",
+    "type": "list objects",
+    "name": "List objects",
+    "subtenant": "",
+    "path": "",
+    "x": 400,
+    "y": 560,
+    "wires": [
+      [
+        "fd226.985faa"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "01004.9b91dc",
+    "type": "link out",
+    "name": "to PLAN FAILED",
+    "mode": "link",
+    "links": [
+      "e9cd0.8864b0"
+    ],
+    "x": 740,
+    "y": 580,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "fd226.985faa",
+    "type": "function",
+    "name": "3.2 Pick the file",
+    "func": "// Picks the newest .csv of the folder list (list objects).\n// Out 1: msg.path for the read node, without data/ten=<tenant>/ or a leading\n// slash. Out 2: a failed item when the folder has no .csv.\nvar TENANT_PREFIX = /^\\/?(data\\/ten=[^\\/]+\\/)?/;\nvar items = Array.isArray(msg.payload) ? msg.payload : [];\nvar files = items.filter(function (item) {\n  return /\\.csv$/i.test(item.key);\n});\n\nif (!files.length) {\n  node.status({\n    fill: 'red',\n    shape: 'ring',\n    text: 'no csv file for ' + msg.site\n  });\n  msg.payload = {\n    name: msg.site,\n    failed: msg.what + ' ' + msg.site + ': no csv file in ' + msg.path,\n    skipped: null,\n    rows: []\n  };\n  return [null, msg];\n}\n\nfiles.sort(function (a, b) {\n  return String(b.lastModified).localeCompare(String(a.lastModified));\n});\nmsg.path = String(files[0].key).replace(TENANT_PREFIX, '');\nnode.status({\n  fill: 'green',\n  shape: 'dot',\n  text: msg.path.slice(-40)\n});\nreturn [msg, null];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 600,
+    "y": 560,
+    "wires": [
+      [
+        "ff115.99f8c3"
+      ],
+      [
+        "01004.9b91dc"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "ff115.99f8c3",
+    "type": "read object",
+    "name": "Read Shift Patterns file",
+    "path": "",
+    "mode": "object",
+    "x": 840,
+    "y": 540,
+    "wires": [
+      [
+        "02ef3.9d2af5"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "02ef3.9d2af5",
+    "type": "csv",
+    "name": "Parse CSV",
+    "sep": ",",
+    "hdrin": true,
+    "hdrout": "",
+    "multi": "mult",
+    "ret": "\\n",
+    "temp": "parser csv",
+    "x": 1040,
+    "y": 560,
+    "wires": [
+      [
+        "04de2.9ec40e"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "08bc0.a1f640",
+    "type": "link out",
+    "name": "to SITE SCOPE",
+    "mode": "link",
+    "links": [
+      "06cd1.a05d27"
+    ],
+    "x": 1400,
+    "y": 540,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "0aaaf.a38f59",
+    "type": "link out",
+    "name": "to PLAN FAILED",
+    "mode": "link",
+    "links": [
+      "e9cd0.8864b0"
+    ],
+    "x": 1400,
+    "y": 580,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "04de2.9ec40e",
+    "type": "function",
+    "name": "3.3 Build shift lookup",
+    "func": "// Builds the shift lookup from the Shift Patterns file.\n// In: msg.payload = parsed rows (ShiftName, Shift). Stores flow context\n// shiftMap: raw shift name -> Shift. Out 2: a failed item for an empty file.\nvar rows = Array.isArray(msg.payload) ? msg.payload : [];\nif (rows.length && rows[0].ShiftName === undefined) {\n  // a byte order mark can sit in the first column name\n  rows = rows.map(function (row) {\n    return {\n      ShiftName: row['\\uFEFFShiftName'],\n      Shift: row.Shift\n    };\n  });\n}\nif (!rows.length || rows[0].ShiftName === undefined) {\n  msg.payload = {\n    failed: 'shift patterns: no ShiftName column or rows'\n  };\n  return [null, msg];\n}\n\nvar map = {};\nrows.forEach(function (row) {\n  if (row.ShiftName !== undefined) {\n    map[row.ShiftName] = row.Shift === undefined ? null : row.Shift;\n  }\n});\nflow.set('shiftMap', map);\nnode.status({\n  fill: 'green',\n  shape: 'dot',\n  text: Object.keys(map).length + ' raw shift names'\n});\nmsg.payload = msg.site;\nreturn [msg, null];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 1240,
+    "y": 560,
+    "wires": [
+      [
+        "08bc0.a1f640"
+      ],
+      [
+        "0aaaf.a38f59"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "0c99e.a52872",
+    "type": "comment",
+    "name": "[4] SITE SETUP: REPORT SCOPE",
+    "info": "STAGE 4 - the report scope file (<root>/reference/report_scope/site=All/, newest .csv, one row per rule: Site, Tables, Rule keep or drop, Column, Value) is listed, read and parsed, and the rules of the site are stored in flow context. They set the column In EU Report of every table (false: a row the EU pages leave out, the site pages keep). Then the site goes on to the tables of the job.",
+    "x": 180,
+    "y": 700,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "06cd1.a05d27",
+    "type": "link in",
+    "name": "SITE SCOPE",
+    "links": [
+      "08bc0.a1f640"
+    ],
+    "x": 60,
+    "y": 780,
+    "wires": [
+      [
+        "0e88d.a6c18b"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "0e88d.a6c18b",
+    "type": "function",
+    "name": "4.1 Set report scope folder",
+    "func": "// Sets the folder of the report scope file for the list objects node.\n// In: the message of one site (msg.site stays). Out: msg.what and msg.path =\n// <root>/reference/report_scope/site=All/, one file for all sites.\nvar cfg = flow.get('cfg');\n\nmsg.what = 'report scope';\nmsg.path = cfg.referenceFolder + '/report_scope/site=All/';\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 240,
+    "y": 780,
+    "wires": [
+      [
+        "1077c.a85aa4"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "1077c.a85aa4",
+    "type": "list objects",
+    "name": "List objects",
+    "subtenant": "",
+    "path": "",
+    "x": 480,
+    "y": 780,
+    "wires": [
+      [
+        "1266b.a9f3bd"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "16449.ad25ef",
+    "type": "link out",
+    "name": "to PLAN FAILED",
+    "mode": "link",
+    "links": [
+      "e9cd0.8864b0"
+    ],
+    "x": 820,
+    "y": 800,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "1266b.a9f3bd",
+    "type": "function",
+    "name": "4.2 Pick the file",
+    "func": "// Picks the newest .csv of the folder list (list objects).\n// Out 1: msg.path for the read node, without data/ten=<tenant>/ or a leading\n// slash. Out 2: a failed item when the folder has no .csv.\nvar TENANT_PREFIX = /^\\/?(data\\/ten=[^\\/]+\\/)?/;\nvar items = Array.isArray(msg.payload) ? msg.payload : [];\nvar files = items.filter(function (item) {\n  return /\\.csv$/i.test(item.key);\n});\n\nif (!files.length) {\n  node.status({\n    fill: 'red',\n    shape: 'ring',\n    text: 'no csv file for ' + msg.site\n  });\n  msg.payload = {\n    name: msg.site,\n    failed: msg.what + ' ' + msg.site + ': no csv file in ' + msg.path,\n    skipped: null,\n    rows: []\n  };\n  return [null, msg];\n}\n\nfiles.sort(function (a, b) {\n  return String(b.lastModified).localeCompare(String(a.lastModified));\n});\nmsg.path = String(files[0].key).replace(TENANT_PREFIX, '');\nnode.status({\n  fill: 'green',\n  shape: 'dot',\n  text: msg.path.slice(-40)\n});\nreturn [msg, null];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 680,
+    "y": 780,
+    "wires": [
+      [
+        "1455a.ab8cd6"
+      ],
+      [
+        "16449.ad25ef"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "1455a.ab8cd6",
+    "type": "read object",
+    "name": "Read report scope file",
+    "path": "",
+    "mode": "object",
+    "x": 900,
+    "y": 760,
+    "wires": [
+      [
+        "18338.aebf08"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "18338.aebf08",
+    "type": "csv",
+    "name": "Parse CSV",
+    "sep": ",",
+    "hdrin": true,
+    "hdrout": "",
+    "multi": "mult",
+    "ret": "\\n",
+    "temp": "parser csv",
+    "x": 1100,
+    "y": 780,
+    "wires": [
+      [
+        "1a227.b05821"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "1e005.b38a53",
+    "type": "link out",
+    "name": "to PLAN FAILED",
+    "mode": "link",
+    "links": [
+      "e9cd0.8864b0"
+    ],
+    "x": 1460,
+    "y": 800,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "1a227.b05821",
+    "type": "function",
+    "name": "4.3 Build scope lookup",
+    "func": "// Builds the EU report scope of one site from the report scope file.\n// In: msg.payload = parsed rows (Site, Tables, Rule, Column, Value). Stores\n// flow context scope_<Site>: table -> {keep: {column: [values]}, drop: ...}.\n// Out 2: a failed item when the file has no rows or columns.\nvar RULES = [\n  'keep',\n  'drop'\n];\n\nvar rows = Array.isArray(msg.payload) ? msg.payload : [];\nvar site = msg.site;\n\nfunction text(value) {\n  return value === undefined || value === null ? '' : String(value).trim();\n}\n\n// A byte order mark can sit in the first column name.\nfunction siteOf(row) {\n  return text(row.Site !== undefined ? row.Site : row['﻿Site']);\n}\n\nvar ok = rows.some(function (row) {\n  return row.Tables !== undefined && row.Rule !== undefined;\n});\nif (!ok) {\n  msg.payload = {\n    failed: 'report scope: no Tables / Rule columns or rows'\n  };\n  return [null, msg];\n}\n\nvar scope = {};\nvar ruleCount = 0;\nrows.forEach(function (row) {\n  var rule = text(row.Rule).toLowerCase();\n  var column = text(row.Column);\n  var value = text(row.Value);\n  if (siteOf(row) !== site || RULES.indexOf(rule) === -1 || !column) {\n    return;\n  }\n  text(row.Tables).split(';').forEach(function (name) {\n    var table = text(name);\n    if (!table) {\n      return;\n    }\n    scope[table] = scope[table] || {\n      keep: {},\n      drop: {}\n    };\n    var list = scope[table][rule];\n    list[column] = list[column] || [];\n    list[column].push(value);\n    ruleCount++;\n  });\n});\nflow.set('scope_' + site, scope);\nnode.status({\n  fill: 'green',\n  shape: 'dot',\n  text: site + ': ' + ruleCount + ' scope rules'\n});\nmsg.payload = site;\nreturn [msg, null];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 1300,
+    "y": 780,
+    "wires": [
+      [
+        "1c116.b1f13a"
+      ],
+      [
+        "1e005.b38a53"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "21de3.b6bc85",
+    "type": "link out",
+    "name": "to RUN RATE MONTHS",
+    "mode": "link",
+    "links": [
+      "1fef4.b5236c"
+    ],
+    "x": 1680,
+    "y": 720,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "25bc1.b9eeb7",
+    "type": "link out",
+    "name": "to COV MONTHS",
+    "mode": "link",
+    "links": [
+      "23cd2.b8559e"
+    ],
+    "x": 1680,
+    "y": 760,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "2999f.bd20e9",
+    "type": "link out",
+    "name": "to FORMAT LIST",
+    "mode": "link",
+    "links": [
+      "27ab0.bb87d0"
+    ],
+    "x": 1680,
+    "y": 800,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "1c116.b1f13a",
+    "type": "function",
+    "name": "4.4 Route the site",
+    "func": "// Sends a site on after its lookups are stored, to the tables of the job.\n// In: the site message, msg.job.tables. Out 1: Run_Rates_EU months, out 2:\n// Volume_CoV_EU months, out 3: Format_List_EU (one file per site).\nvar tables = msg.job.tables;\n\nfunction wants(table) {\n  return tables.indexOf(table) !== -1;\n}\n\nnode.status({\n  fill: 'green',\n  shape: 'dot',\n  text: msg.site + ': ' + tables.length + ' table(s)'\n});\nreturn [\n  wants('Run_Rates_EU') ? msg : null,\n  wants('Volume_CoV_EU') ? msg : null,\n  wants('Format_List_EU') ? msg : null\n];\n",
+    "outputs": 3,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 1540,
+    "y": 760,
+    "wires": [
+      [
+        "21de3.b6bc85"
+      ],
+      [
+        "25bc1.b9eeb7"
+      ],
+      [
+        "2999f.bd20e9"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "2b88e.beba02",
+    "type": "comment",
+    "name": "[5] RUN RATES: MONTHS",
+    "info": "STAGE 5 - the run rates month files of the site (<root>/pbi_report/source/run_rates/site=<Site>/run_rates_YYYY-MM.csv, made by the normalizer from the Provideam Run Rates exports) are listed and the months of the job that exist are chosen (a missing month is logged and skipped). One message per month, one per second.",
+    "x": 160,
+    "y": 920,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "1fef4.b5236c",
+    "type": "link in",
+    "name": "RUN RATE MONTHS",
+    "links": [
+      "21de3.b6bc85"
+    ],
+    "x": 60,
+    "y": 1000,
+    "wires": [
+      [
+        "2d77d.c0531b"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "2d77d.c0531b",
+    "type": "function",
+    "name": "5.1 Set run_rates folder",
+    "func": "// Sets the folder of one file type of the site for the list objects node.\n// In: the site message (msg.site). Out: msg.what, msg.filePrefix and msg.path\n// = <root>/<type>/site=<Site>/ (the reference or the source folder).\nvar TYPE = 'run_rates';\nvar ROOT = 'sourceFolder';\nvar cfg = flow.get('cfg');\n\nmsg.what = TYPE;\nmsg.filePrefix = TYPE;\nmsg.path = cfg[ROOT] + '/' + TYPE + '/site=' + msg.site + '/';\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 220,
+    "y": 1000,
+    "wires": [
+      [
+        "2f66c.c1ec34"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "2f66c.c1ec34",
+    "type": "list objects",
+    "name": "List objects",
+    "subtenant": "",
+    "path": "",
+    "x": 440,
+    "y": 1000,
+    "wires": [
+      [
+        "3155b.c3854d"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "37228.c85098",
+    "type": "link out",
+    "name": "to LOG",
+    "mode": "link",
+    "links": [
+      "35339.c6b77f"
+    ],
+    "x": 780,
+    "y": 1020,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "3155b.c3854d",
+    "type": "function",
+    "name": "5.2 Choose months",
+    "func": "// Chooses the month files to build: the months of the job that exist.\n// In: msg.payload = objects of a folder, msg.filePrefix, msg.job.months.\n// Out 1: msg.payload = list of {month, key} (a split follows). Out 2: a log\n// line for months without a file. A missing file would stop a read node.\nvar items = Array.isArray(msg.payload) ? msg.payload : [];\nvar found = [];\nvar missing = [];\nmsg.job.months.forEach(function (month) {\n  var wanted = msg.filePrefix + '_' + month + '.csv';\n  var item = items.filter(function (entry) {\n    return String(entry.key).slice(-wanted.length) === wanted;\n  })[0];\n  if (item) {\n    found.push({\n      month: month,\n      key: item.key\n    });\n  } else {\n    missing.push(month);\n  }\n});\n\nvar line = null;\nif (missing.length) {\n  line = {\n    topic: 'log',\n    payload: msg.day + ' [' + msg.mode + '] ' + msg.site +\n      ': no ' + msg.filePrefix + ' file for ' + missing.join(', ') + ', skipped'\n  };\n}\nnode.status({\n  fill: found.length ? 'green' : 'yellow',\n  shape: 'dot',\n  text: msg.site + ': ' + found.length + ' month(s), ' + missing.length +\n    ' missing'\n});\nif (!found.length) {\n  return [null, line];\n}\nmsg.payload = found;\nreturn [msg, line];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 640,
+    "y": 1000,
+    "wires": [
+      [
+        "3344a.c51e66"
+      ],
+      [
+        "37228.c85098"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "3344a.c51e66",
+    "type": "split",
+    "name": "Split per item",
+    "splt": "\\n",
+    "spltType": "str",
+    "arraySplt": 1,
+    "arraySpltType": "len",
+    "stream": false,
+    "addname": "index",
+    "x": 840,
+    "y": 980,
+    "wires": [
+      [
+        "39117.c9e9b1"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "3cef5.cd1be3",
+    "type": "link out",
+    "name": "to RUN RATE FILE",
+    "mode": "link",
+    "links": [
+      "3b006.cb82ca"
+    ],
+    "x": 1180,
+    "y": 1000,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "39117.c9e9b1",
+    "type": "delay",
+    "name": "One month per second",
+    "pauseType": "rate",
+    "timeout": "1",
+    "timeoutUnits": "seconds",
+    "rate": "1",
+    "nbRateUnits": "1",
+    "rateUnits": "second",
+    "randomFirst": "1",
+    "randomLast": "1",
+    "randomUnits": "seconds",
+    "drop": false,
+    "powerMode": false,
+    "x": 1040,
+    "y": 1000,
+    "wires": [
+      [
+        "3cef5.cd1be3"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "3ede4.ceb4fc",
+    "type": "comment",
+    "name": "[6] RUN RATES: ROWS",
+    "info": "STAGE 6 - one month of one site: the file is read and parsed and the Run_Rates_EU rows are built as the report queries Run Rates H, N, W do: rows without a machine and rows with Good Parts 0 out, shift name from the Shift Patterns file, Weinheim part code cut, Unique Machine Name, Product Key. Out 2 is a check line.",
+    "x": 140,
+    "y": 1140,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "3b006.cb82ca",
+    "type": "link in",
+    "name": "RUN RATE FILE",
+    "links": [
+      "3cef5.cd1be3"
+    ],
+    "x": 60,
+    "y": 1220,
+    "wires": [
+      [
+        "40cd3.d04e15"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "40cd3.d04e15",
+    "type": "function",
+    "name": "6.1 Set month file",
+    "func": "// Sets the month file for the read node.\n// In: msg.payload = {month, key} (one month after the split). Out: msg.month\n// and msg.path = the file, without a tenant folder or a leading slash.\nvar TENANT_PREFIX = /^\\/?(data\\/ten=[^\\/]+\\/)?/;\n\nmsg.month = msg.payload.month;\nmsg.path = String(msg.payload.key).replace(TENANT_PREFIX, '');\ndelete msg.payload;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 200,
+    "y": 1220,
+    "wires": [
+      [
+        "42bc2.d1e72e"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "42bc2.d1e72e",
+    "type": "read object",
+    "name": "Read run rates month file",
+    "path": "",
+    "mode": "object",
+    "x": 440,
+    "y": 1220,
+    "wires": [
+      [
+        "44ab1.d38047"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "44ab1.d38047",
+    "type": "csv",
+    "name": "Parse CSV",
+    "sep": ",",
+    "hdrin": true,
+    "hdrout": "",
+    "multi": "mult",
+    "ret": "\\n",
+    "temp": "parser csv",
+    "x": 640,
+    "y": 1220,
+    "wires": [
+      [
+        "469a0.d51960"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "4a77e.d84b92",
+    "type": "link out",
+    "name": "to RUN RATE TABLE",
+    "mode": "link",
+    "links": [
+      "4888f.d6b279"
+    ],
+    "x": 1000,
+    "y": 1200,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "4c66d.d9e4ab",
+    "type": "link out",
+    "name": "to LOG",
+    "mode": "link",
+    "links": [
+      "35339.c6b77f"
+    ],
+    "x": 1000,
+    "y": 1240,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "469a0.d51960",
+    "type": "function",
+    "name": "6.2 Build run rate rows",
+    "func": "// Builds the Run_Rates_EU rows of one site and month (report queries Run\n// Rates H, N, W). In: msg.payload = parsed run rates month file (one row per\n// machine and hour), flow context shiftMap. Out 1: the table message, out 2:\n// a check log line.\nvar RULES = {\n  Weinheim: {\n    partCutChars: 8\n  }\n};\n\nvar site = msg.site;\nvar rule = RULES[site] || {};\nvar rows = Array.isArray(msg.payload) ? msg.payload : [];\nvar shiftMap = flow.get('shiftMap') || {};\nvar out = [];\nvar count = {\n  noMachine: 0,\n  zeroParts: 0,\n  noShift: {}\n};\n\n// The csv node leaves empty cells out of the row: an empty text is ''.\nfunction asText(value) {\n  return value === undefined || value === null ? '' : String(value);\n}\n\nfunction number(value) {\n  var text = asText(value).trim();\n  return text === '' || isNaN(Number(text)) ? null : Number(text);\n}\n\n// \"YYYY-MM-DD HH:MM:SS\" -> ms of that wall clock time written as UTC.\nfunction hourMs(text) {\n  var parts = /^(\\d{4})-(\\d{2})-(\\d{2}) (\\d{2})/.exec(text);\n  if (!parts) {\n    return null;\n  }\n  return Date.UTC(\n    Number(parts[1]),\n    Number(parts[2]) - 1,\n    Number(parts[3]),\n    Number(parts[4])\n  );\n}\n\nrows.forEach(function (row) {\n  var machine = asText(row.MachineName);\n  if (machine === '') {\n    count.noMachine++;\n    return;\n  }\n  var goodParts = number(row['Good Parts']);\n  if (goodParts === 0) {\n    count.zeroParts++;\n    return;\n  }\n  var part = asText(row.PartName);\n  if (rule.partCutChars) {\n    part = part.slice(rule.partCutChars);\n  }\n  // Trailing spaces go: the report data has none (leading spaces stay).\n  part = part.replace(/\\s+$/, '');\n  var known = shiftMap.hasOwnProperty(row.ShiftName);\n  if (!known) {\n    count.noShift[row.ShiftName] = true;\n  }\n  var unique = machine + '-' + site;\n  out.push({\n    'Date': hourMs(asText(row['YYYY-MM-DD HH'])),\n    'AreaName': asText(row.AreaName),\n    'MachineName': machine,\n    'PartName': part,\n    'ShiftName': known ? shiftMap[row.ShiftName] : null,\n    'Good Parts': goodParts,\n    'Capacity': number(row.Capacity),\n    'SiteName': site,\n    'Unique Machine Name': unique,\n    'Product Key': unique + ' ' + part,\n    'Good Parts - Copy': goodParts,\n    'loaded_at': msg.loadedAt\n  });\n});\n\nvar text = site + ' ' + msg.month + ': read ' + rows.length +\n  ' run rate rows, kept ' + out.length + ' (no machine ' + count.noMachine +\n  ', Good Parts 0: ' + count.zeroParts + ')';\nvar noShift = Object.keys(count.noShift);\nif (noShift.length) {\n  text += ', shift not mapped: ' + noShift.slice(0, 5).join(' / ');\n}\nnode.status({\n  fill: out.length ? 'green' : 'yellow',\n  shape: 'dot',\n  text: site + ' ' + msg.month + ': ' + out.length + ' rows'\n});\nreturn [\n  {\n    table: 'Run_Rates_EU',\n    rows: out,\n    failed: [],\n    skipped: [],\n    itemCount: 1,\n    site: site,\n    month: msg.month,\n    day: msg.day,\n    mode: msg.mode,\n    loadedAt: msg.loadedAt,\n    job: msg.job\n  },\n  {\n    topic: 'log',\n    payload: msg.day + ' [' + msg.mode + '] CHECK ' + text\n  }\n];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 840,
+    "y": 1220,
+    "wires": [
+      [
+        "4a77e.d84b92"
+      ],
+      [
+        "4c66d.d9e4ab"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "4e55c.db7dc4",
+    "type": "comment",
+    "name": "[7] Run_Rates_EU",
+    "info": "STAGE 7 - Dept, Area, Product Type, Data Source and In EU Report are added, the rows are split by the source of their line in 1.1 CONFIG, then decide, parquet, the month path <folder>/Run_Rates_EU/site=<Site>/Run_Rates_EU_<YYYY-MM>_provideam.parquet and write object.",
+    "x": 140,
+    "y": 1360,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "4888f.d6b279",
+    "type": "link in",
+    "name": "RUN RATE TABLE",
+    "links": [
+      "4a77e.d84b92"
+    ],
+    "x": 60,
+    "y": 1440,
+    "wires": [
+      [
+        "5044b.dd16dd"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "5044b.dd16dd",
+    "type": "function",
+    "name": "7.1 Add machine and scope columns",
+    "func": "// Adds the machine columns, the source and the EU scope to the rows of one\n// table month. In: msg.rows of one site and month. Out: the same rows with\n// Dept, Area, Product Type (flow context machines_<Site>), Data Source and\n// In EU Report (flow context scope_<Site>, rules of msg.table).\nvar DATA_SOURCE = 'Provideam';\nvar machines = flow.get('machines_' + msg.site) || {};\nvar scope = (flow.get('scope_' + msg.site) || {})[msg.table] || {\n  keep: {},\n  drop: {}\n};\n\nfunction text(value) {\n  return value === undefined || value === null ? '' : String(value).trim();\n}\n\n// In the EU report: every keep column holds one of its values, no drop\n// column matches. A table without rules is fully in the EU report.\nfunction inEuReport(row) {\n  var kept = Object.keys(scope.keep).every(function (column) {\n    return scope.keep[column].indexOf(text(row[column])) !== -1;\n  });\n  var dropped = Object.keys(scope.drop).some(function (column) {\n    return scope.drop[column].indexOf(text(row[column])) !== -1;\n  });\n  return kept && !dropped;\n}\n\nvar unknown = {};\nvar outside = 0;\nmsg.rows.forEach(function (row) {\n  var machine = machines[row.MachineName];\n  if (!machine) {\n    unknown[row.MachineName] = true;\n  }\n  row['Dept'] = machine ? machine['Dept'] : null;\n  row['Area'] = machine ? machine['Area'] : null;\n  row['Product Type'] = machine ? machine['Product Type'] : null;\n  row['Data Source'] = DATA_SOURCE;\n  row['In EU Report'] = inEuReport(row);\n  if (!row['In EU Report']) {\n    outside++;\n  }\n});\nvar missing = Object.keys(unknown);\nif (missing.length) {\n  var note = 'not in Machine Names (no Dept, Area, Product Type): ';\n  note += missing.slice(0, 5).join(' / ');\n  msg.skipped.push(note);\n}\nif (outside) {\n  msg.skipped.push('In EU Report false: ' + outside + ' rows');\n}\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 260,
+    "y": 1440,
+    "wires": [
+      [
+        "5233a.deaff6"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "5233a.deaff6",
+    "type": "function",
+    "name": "7.2 Split by source",
+    "func": "// Splits the rows of one table month by the source of their line (1.1\n// CONFIG: line reportSource, else site reportSource). In: msg.rows. Out: one\n// message per folder (msg.out = report or candidate/<source>) with its rows.\nvar cfg = flow.get('cfg');\nvar site = cfg.sites.filter(function (entry) {\n  return entry.name === msg.site;\n})[0];\n\n// MachineName of a Config line -> the source of that line.\nvar lineSource = {};\n(site.lines || []).forEach(function (line) {\n  lineSource[line.report] = line.reportSource || site.reportSource;\n});\n\nvar live = [];\nvar candidate = [];\nvar moved = {};\nmsg.rows.forEach(function (row) {\n  var source = lineSource[row.MachineName] || site.reportSource;\n  if (source === cfg.source) {\n    live.push(row);\n    return;\n  }\n  candidate.push(row);\n  moved[row.MachineName] = true;\n});\n\nfunction part(out, rows) {\n  var copy = Object.assign({}, msg);\n  copy.out = out;\n  copy.rows = rows;\n  copy.skipped = msg.skipped.slice();\n  return copy;\n}\n\nvar out = [];\nif (live.length || !candidate.length) {\n  out.push(part(cfg.liveFolder, live));\n}\nif (candidate.length) {\n  var note = 'to ' + cfg.candidateFolder + ': ';\n  note += Object.keys(moved).join(' / ');\n  // shortcut: an old report file of the month is not deleted when all its\n  // rows move to candidate; delete it by hand when a whole site switches.\n  if (!live.length) {\n    note += ' (no rows left for report/: its old file of the month stays)';\n  }\n  var moving = part(cfg.candidateFolder, candidate);\n  moving.skipped.push(note);\n  out.push(moving);\n}\nreturn [out];\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 540,
+    "y": 1440,
+    "wires": [
+      [
+        "54229.e0490f"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "58007.e37b41",
+    "type": "link out",
+    "name": "to LOG",
+    "mode": "link",
+    "links": [
+      "35339.c6b77f"
+    ],
+    "x": 940,
+    "y": 1460,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "54229.e0490f",
+    "type": "function",
+    "name": "7.3 Decide Run_Rates_EU",
+    "func": "// Decides what happens with the table Run_Rates_EU.\n// In: msg.rows, msg.failed, msg.skipped. Out 1: msg.payload = rows for the\n// parquet node. Out 2: a log line. A failed item means nothing is written.\nvar TABLE = 'Run_Rates_EU';\nvar cfg = flow.get('cfg');\nvar rows = msg.rows;\nvar tail = '';\nif (msg.skipped.length) {\n  tail += ' | skipped: ' + msg.skipped.join('; ');\n}\nvar sizes = TABLE + ' ' + rows.length + ' rows from ' +\n  msg.itemCount + ' item(s)';\nif (msg.out) {\n  sizes += ' to ' + msg.out;\n}\n\nfunction logOnly(text) {\n  var line = {\n    topic: 'log',\n    payload: msg.day + ' [' + msg.mode + '] ' + text\n  };\n  return [null, line];\n}\n\nif (msg.failed.length) {\n  node.status({\n    fill: 'red',\n    shape: 'ring',\n    text: 'FAILED, nothing written'\n  });\n  return logOnly(\n    'FAILED, NOTHING WRITTEN: ' + msg.failed.join(' | ') + tail\n  );\n}\nif (!rows.length) {\n  node.status({\n    fill: 'grey',\n    shape: 'ring',\n    text: 'nothing to write'\n  });\n  return logOnly('NOTHING TO WRITE: ' + sizes + tail);\n}\nif (cfg.dryRun[TABLE]) {\n  node.status({\n    fill: 'yellow',\n    shape: 'dot',\n    text: 'dry run ' + rows.length\n  });\n  var firstRows = JSON.stringify(rows.slice(0, 2));\n  return logOnly('DRY RUN: ' + sizes + '. First rows: ' + firstRows + tail);\n}\n\nnode.status({\n  fill: 'green',\n  shape: 'dot',\n  text: 'writing ' + rows.length\n});\nvar writing = {\n  topic: 'log',\n  payload: msg.day + ' [' + msg.mode + '] WRITING ' + sizes + tail\n};\nmsg.payload = rows;\ndelete msg.rows;\nreturn [msg, writing];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 780,
+    "y": 1440,
+    "wires": [
+      [
+        "56118.e1e228"
+      ],
+      [
+        "58007.e37b41"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "56118.e1e228",
+    "type": "parquet",
+    "name": "Write Run_Rates_EU parquet",
+    "option": "write",
+    "columns": [
+      {
+        "column": "Date",
+        "type": "TIMESTAMP_MILLIS"
+      },
+      {
+        "column": "AreaName",
+        "type": "UTF8"
+      },
+      {
+        "column": "MachineName",
+        "type": "UTF8"
+      },
+      {
+        "column": "PartName",
+        "type": "UTF8"
+      },
+      {
+        "column": "ShiftName",
+        "type": "UTF8"
+      },
+      {
+        "column": "Good Parts",
+        "type": "INT64"
+      },
+      {
+        "column": "Capacity",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "SiteName",
+        "type": "UTF8"
+      },
+      {
+        "column": "Unique Machine Name",
+        "type": "UTF8"
+      },
+      {
+        "column": "Product Key",
+        "type": "UTF8"
+      },
+      {
+        "column": "Good Parts - Copy",
+        "type": "INT64"
+      },
+      {
+        "column": "Dept",
+        "type": "UTF8"
+      },
+      {
+        "column": "Area",
+        "type": "UTF8"
+      },
+      {
+        "column": "Product Type",
+        "type": "UTF8"
+      },
+      {
+        "column": "Data Source",
+        "type": "UTF8"
+      },
+      {
+        "column": "In EU Report",
+        "type": "BOOLEAN"
+      },
+      {
+        "column": "loaded_at",
+        "type": "TIMESTAMP_MILLIS"
+      }
+    ],
+    "rcolumns": "",
+    "multi": "multiple",
+    "outputPty": "payload",
+    "outputPtyType": "msg",
+    "engine": "parquetjs",
+    "x": 1040,
+    "y": 1420,
+    "wires": [
+      [
+        "59ef6.e5145a"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "59ef6.e5145a",
+    "type": "function",
+    "name": "7.4 Set Run_Rates_EU month path",
+    "func": "// Sets the file path of one month: <out>/<table>/site=<Site>/<table>_\n// <YYYY-MM>_<source>.parquet, <out> = report or candidate/<source>.\n// In: the parquet node output (msg.out, table, site, month). Out: msg.path.\n// The name is fixed per source: a rerun replaces only this source's month.\nvar cfg = flow.get('cfg');\n\nmsg.path = msg.out + '/' + msg.table + '/site=' + msg.site;\nmsg.path += '/' + msg.table + '_' + msg.month + '_' + cfg.source;\nmsg.path += '.parquet';\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 1320,
+    "y": 1440,
+    "wires": [
+      [
+        "5bde5.e6ad73"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "5bde5.e6ad73",
+    "type": "write object",
+    "name": "Run_Rates_EU to data lake",
+    "path": "",
+    "mode": "object",
+    "x": 1600,
+    "y": 1440,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "5dcd4.e8468c",
+    "type": "comment",
+    "name": "[8] VOLUME COV: MONTHS",
+    "info": "STAGE 8 - the plan OPT month files of the site are listed and the months of the job that exist are chosen. One message per month, one per second.",
+    "x": 160,
+    "y": 1580,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "23cd2.b8559e",
+    "type": "link in",
+    "name": "COV MONTHS",
+    "links": [
+      "25bc1.b9eeb7"
+    ],
+    "x": 60,
+    "y": 1660,
+    "wires": [
+      [
+        "5fbc3.e9dfa5"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "5fbc3.e9dfa5",
+    "type": "function",
+    "name": "8.1 Set plan_opt folder",
+    "func": "// Sets the folder of one file type of the site for the list objects node.\n// In: the site message (msg.site). Out: msg.what, msg.filePrefix and msg.path\n// = <root>/<type>/site=<Site>/ (the reference or the source folder).\nvar TYPE = 'plan_opt';\nvar ROOT = 'sourceFolder';\nvar cfg = flow.get('cfg');\n\nmsg.what = TYPE;\nmsg.filePrefix = TYPE;\nmsg.path = cfg[ROOT] + '/' + TYPE + '/site=' + msg.site + '/';\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 220,
+    "y": 1660,
+    "wires": [
+      [
+        "61ab2.eb78be"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "61ab2.eb78be",
+    "type": "list objects",
+    "name": "List objects",
+    "subtenant": "",
+    "path": "",
+    "x": 440,
+    "y": 1660,
+    "wires": [
+      [
+        "639a1.ed11d7"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "6777f.f04409",
+    "type": "link out",
+    "name": "to LOG",
+    "mode": "link",
+    "links": [
+      "35339.c6b77f"
+    ],
+    "x": 780,
+    "y": 1680,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "639a1.ed11d7",
+    "type": "function",
+    "name": "8.2 Choose months",
+    "func": "// Chooses the month files to build: the months of the job that exist.\n// In: msg.payload = objects of a folder, msg.filePrefix, msg.job.months.\n// Out 1: msg.payload = list of {month, key} (a split follows). Out 2: a log\n// line for months without a file. A missing file would stop a read node.\nvar items = Array.isArray(msg.payload) ? msg.payload : [];\nvar found = [];\nvar missing = [];\nmsg.job.months.forEach(function (month) {\n  var wanted = msg.filePrefix + '_' + month + '.csv';\n  var item = items.filter(function (entry) {\n    return String(entry.key).slice(-wanted.length) === wanted;\n  })[0];\n  if (item) {\n    found.push({\n      month: month,\n      key: item.key\n    });\n  } else {\n    missing.push(month);\n  }\n});\n\nvar line = null;\nif (missing.length) {\n  line = {\n    topic: 'log',\n    payload: msg.day + ' [' + msg.mode + '] ' + msg.site +\n      ': no ' + msg.filePrefix + ' file for ' + missing.join(', ') + ', skipped'\n  };\n}\nnode.status({\n  fill: found.length ? 'green' : 'yellow',\n  shape: 'dot',\n  text: msg.site + ': ' + found.length + ' month(s), ' + missing.length +\n    ' missing'\n});\nif (!found.length) {\n  return [null, line];\n}\nmsg.payload = found;\nreturn [msg, line];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 640,
+    "y": 1660,
+    "wires": [
+      [
+        "65890.eeaaf0"
+      ],
+      [
+        "6777f.f04409"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "65890.eeaaf0",
+    "type": "split",
+    "name": "Split per item",
+    "splt": "\\n",
+    "spltType": "str",
+    "arraySplt": 1,
+    "arraySpltType": "len",
+    "stream": false,
+    "addname": "index",
+    "x": 840,
+    "y": 1640,
+    "wires": [
+      [
+        "6966e.f1dd22"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "6d44c.f50f54",
+    "type": "link out",
+    "name": "to COV FILE",
+    "mode": "link",
+    "links": [
+      "6b55d.f3763b"
+    ],
+    "x": 1180,
+    "y": 1660,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "6966e.f1dd22",
+    "type": "delay",
+    "name": "One month per second",
+    "pauseType": "rate",
+    "timeout": "1",
+    "timeoutUnits": "seconds",
+    "rate": "1",
+    "nbRateUnits": "1",
+    "rateUnits": "second",
+    "randomFirst": "1",
+    "randomLast": "1",
+    "randomUnits": "seconds",
+    "drop": false,
+    "powerMode": false,
+    "x": 1040,
+    "y": 1660,
+    "wires": [
+      [
+        "6d44c.f50f54"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "6f33b.f6a86d",
+    "type": "comment",
+    "name": "[9] VOLUME COV: ROWS",
+    "info": "STAGE 9 - one month of one site: the plan OPT file is read and grouped per day, shift and machine as the report queries Volume CoV H, N, W do: Good Parts Sum, Cap Max (largest Capacity), only groups over 1,000 good parts. Hull groups on the mapped shift, the other sites on the raw shift name. Out 2 is a check line.",
+    "x": 140,
+    "y": 1800,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "6b55d.f3763b",
+    "type": "link in",
+    "name": "COV FILE",
+    "links": [
+      "6d44c.f50f54"
+    ],
+    "x": 60,
+    "y": 1880,
+    "wires": [
+      [
+        "7122a.f84186"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "7122a.f84186",
+    "type": "function",
+    "name": "9.1 Set month file",
+    "func": "// Sets the month file for the read node.\n// In: msg.payload = {month, key} (one month after the split). Out: msg.month\n// and msg.path = the file, without a tenant folder or a leading slash.\nvar TENANT_PREFIX = /^\\/?(data\\/ten=[^\\/]+\\/)?/;\n\nmsg.month = msg.payload.month;\nmsg.path = String(msg.payload.key).replace(TENANT_PREFIX, '');\ndelete msg.payload;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 200,
+    "y": 1880,
+    "wires": [
+      [
+        "73119.f9da9f"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "73119.f9da9f",
+    "type": "read object",
+    "name": "Read plan OPT month file",
+    "path": "",
+    "mode": "object",
+    "x": 440,
+    "y": 1880,
+    "wires": [
+      [
+        "75008.fb73b8"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "75008.fb73b8",
+    "type": "csv",
+    "name": "Parse CSV",
+    "sep": ",",
+    "hdrin": true,
+    "hdrout": "",
+    "multi": "mult",
+    "ret": "\\n",
+    "temp": "parser csv",
+    "x": 640,
+    "y": 1880,
+    "wires": [
+      [
+        "76ef7.fd0cd1"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "7acd5.003f03",
+    "type": "link out",
+    "name": "to COV TABLE",
+    "mode": "link",
+    "links": [
+      "78de6.fea5ea"
+    ],
+    "x": 1000,
+    "y": 1860,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "7cbc4.01d81c",
+    "type": "link out",
+    "name": "to LOG",
+    "mode": "link",
+    "links": [
+      "35339.c6b77f"
+    ],
+    "x": 1000,
+    "y": 1900,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "76ef7.fd0cd1",
+    "type": "function",
+    "name": "9.2 Build volume CoV rows",
+    "func": "// Builds the Volume_CoV_EU rows of one site and month (report queries Volume\n// CoV H, N, W): plan OPT rows grouped per day, shift and machine. In:\n// msg.payload = parsed plan OPT month file, flow context shiftMap. Out 1: the\n// table message, out 2: a check log line.\nvar MIN_GOOD_PARTS = 1000;\n// groupBy 'shift': Hull groups on the mapped shift; 'raw': the other sites\n// group on the raw shift name and map it after (two raw names of one shift\n// give two rows).\nvar RULES = {\n  Hull: {\n    groupBy: 'shift',\n    skip: [\n      'GT4 - Auto'\n    ]\n  },\n  Nottingham: {\n    groupBy: 'raw',\n    skip: [\n      'N11 Auto'\n    ]\n  },\n  Weinheim: {\n    groupBy: 'raw',\n    skip: [\n      'N11 Auto'\n    ]\n  }\n};\n\nvar site = msg.site;\nvar rule = RULES[site] || RULES.Weinheim;\nvar rows = Array.isArray(msg.payload) ? msg.payload : [];\nvar shiftMap = flow.get('shiftMap') || {};\nvar groups = {};\nvar order = [];\n\n// The csv node leaves empty cells out of the row: an empty text is ''.\nfunction asText(value) {\n  return value === undefined || value === null ? '' : String(value);\n}\n\nfunction number(value) {\n  var text = asText(value).trim();\n  return text === '' || isNaN(Number(text)) ? null : Number(text);\n}\n\nfunction shiftOf(raw) {\n  return shiftMap.hasOwnProperty(raw) ? shiftMap[raw] : null;\n}\n\n// Days since 1970-01-01 of a date text YYYY-MM-DD: the value of a DATE column.\nfunction dayNumber(text) {\n  return Date.UTC(\n    Number(text.slice(0, 4)),\n    Number(text.slice(5, 7)) - 1,\n    Number(text.slice(8, 10))\n  ) / 86400000;\n}\n\n// Text.Combine leaves a null part out: no shift gives the machine alone.\nfunction joinParts(parts) {\n  return parts.filter(function (part) {\n    return part !== null && part !== '';\n  }).join(' ');\n}\n\nrows.forEach(function (row) {\n  var machine = asText(row.MachineName);\n  if (machine === '' || rule.skip.indexOf(machine) !== -1) {\n    return;\n  }\n  var date = asText(row['YYYY-MM-DD']);\n  var shiftKey = rule.groupBy === 'shift' ?\n    shiftOf(row.ShiftName) : asText(row.ShiftName);\n  var key = date + '|' + shiftKey + '|' + machine;\n  if (!groups[key]) {\n    groups[key] = {\n      date: date,\n      shiftKey: shiftKey,\n      machine: machine,\n      goodParts: 0,\n      capMax: null\n    };\n    order.push(key);\n  }\n  var group = groups[key];\n  group.goodParts += number(row['Good Parts']) || 0;\n  var capacity = number(row.Capacity);\n  if (capacity !== null && (group.capMax === null || capacity > group.capMax)) {\n    group.capMax = capacity;\n  }\n});\n\nvar out = [];\norder.forEach(function (key) {\n  var group = groups[key];\n  if (!(group.goodParts > MIN_GOOD_PARTS)) {\n    return;\n  }\n  var shift = rule.groupBy === 'shift' ?\n    group.shiftKey : shiftOf(group.shiftKey);\n  out.push({\n    'Date': dayNumber(group.date),\n    'Shift': shift,\n    'MachineName': group.machine,\n    'Good Parts Sum': group.goodParts,\n    'Cap Max': group.capMax,\n    'Shift Machine Key': joinParts([shift, group.machine]),\n    'Unique Machine Name': group.machine + '-' + site,\n    'SiteName': site,\n    'loaded_at': msg.loadedAt\n  });\n});\n\nvar text = site + ' ' + msg.month + ': read ' + rows.length +\n  ' plan rows, ' + order.length + ' day-shift-machine groups, kept ' +\n  out.length + ' (Good Parts over ' + MIN_GOOD_PARTS + ')';\nnode.status({\n  fill: out.length ? 'green' : 'yellow',\n  shape: 'dot',\n  text: site + ' ' + msg.month + ': ' + out.length + ' rows'\n});\nreturn [\n  {\n    table: 'Volume_CoV_EU',\n    rows: out,\n    failed: [],\n    skipped: [],\n    itemCount: 1,\n    site: site,\n    month: msg.month,\n    day: msg.day,\n    mode: msg.mode,\n    loadedAt: msg.loadedAt,\n    job: msg.job\n  },\n  {\n    topic: 'log',\n    payload: msg.day + ' [' + msg.mode + '] CHECK ' + text\n  }\n];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 840,
+    "y": 1880,
+    "wires": [
+      [
+        "7acd5.003f03"
+      ],
+      [
+        "7cbc4.01d81c"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "7eab3.037135",
+    "type": "comment",
+    "name": "[10] Volume_CoV_EU",
+    "info": "STAGE 10 - the same for Volume_CoV_EU: machine and scope columns, split by source, decide, parquet, month path, write object.",
+    "x": 140,
+    "y": 2020,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "78de6.fea5ea",
+    "type": "link in",
+    "name": "COV TABLE",
+    "links": [
+      "7acd5.003f03"
+    ],
+    "x": 60,
+    "y": 2100,
+    "wires": [
+      [
+        "809a2.050a4e"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "809a2.050a4e",
+    "type": "function",
+    "name": "10.1 Add machine and scope columns",
+    "func": "// Adds the machine columns, the source and the EU scope to the rows of one\n// table month. In: msg.rows of one site and month. Out: the same rows with\n// Dept, Area, Product Type (flow context machines_<Site>), Data Source and\n// In EU Report (flow context scope_<Site>, rules of msg.table).\nvar DATA_SOURCE = 'Provideam';\nvar machines = flow.get('machines_' + msg.site) || {};\nvar scope = (flow.get('scope_' + msg.site) || {})[msg.table] || {\n  keep: {},\n  drop: {}\n};\n\nfunction text(value) {\n  return value === undefined || value === null ? '' : String(value).trim();\n}\n\n// In the EU report: every keep column holds one of its values, no drop\n// column matches. A table without rules is fully in the EU report.\nfunction inEuReport(row) {\n  var kept = Object.keys(scope.keep).every(function (column) {\n    return scope.keep[column].indexOf(text(row[column])) !== -1;\n  });\n  var dropped = Object.keys(scope.drop).some(function (column) {\n    return scope.drop[column].indexOf(text(row[column])) !== -1;\n  });\n  return kept && !dropped;\n}\n\nvar unknown = {};\nvar outside = 0;\nmsg.rows.forEach(function (row) {\n  var machine = machines[row.MachineName];\n  if (!machine) {\n    unknown[row.MachineName] = true;\n  }\n  row['Dept'] = machine ? machine['Dept'] : null;\n  row['Area'] = machine ? machine['Area'] : null;\n  row['Product Type'] = machine ? machine['Product Type'] : null;\n  row['Data Source'] = DATA_SOURCE;\n  row['In EU Report'] = inEuReport(row);\n  if (!row['In EU Report']) {\n    outside++;\n  }\n});\nvar missing = Object.keys(unknown);\nif (missing.length) {\n  var note = 'not in Machine Names (no Dept, Area, Product Type): ';\n  note += missing.slice(0, 5).join(' / ');\n  msg.skipped.push(note);\n}\nif (outside) {\n  msg.skipped.push('In EU Report false: ' + outside + ' rows');\n}\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 260,
+    "y": 2100,
+    "wires": [
+      [
+        "82891.06a367"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "82891.06a367",
+    "type": "function",
+    "name": "10.2 Split by source",
+    "func": "// Splits the rows of one table month by the source of their line (1.1\n// CONFIG: line reportSource, else site reportSource). In: msg.rows. Out: one\n// message per folder (msg.out = report or candidate/<source>) with its rows.\nvar cfg = flow.get('cfg');\nvar site = cfg.sites.filter(function (entry) {\n  return entry.name === msg.site;\n})[0];\n\n// MachineName of a Config line -> the source of that line.\nvar lineSource = {};\n(site.lines || []).forEach(function (line) {\n  lineSource[line.report] = line.reportSource || site.reportSource;\n});\n\nvar live = [];\nvar candidate = [];\nvar moved = {};\nmsg.rows.forEach(function (row) {\n  var source = lineSource[row.MachineName] || site.reportSource;\n  if (source === cfg.source) {\n    live.push(row);\n    return;\n  }\n  candidate.push(row);\n  moved[row.MachineName] = true;\n});\n\nfunction part(out, rows) {\n  var copy = Object.assign({}, msg);\n  copy.out = out;\n  copy.rows = rows;\n  copy.skipped = msg.skipped.slice();\n  return copy;\n}\n\nvar out = [];\nif (live.length || !candidate.length) {\n  out.push(part(cfg.liveFolder, live));\n}\nif (candidate.length) {\n  var note = 'to ' + cfg.candidateFolder + ': ';\n  note += Object.keys(moved).join(' / ');\n  // shortcut: an old report file of the month is not deleted when all its\n  // rows move to candidate; delete it by hand when a whole site switches.\n  if (!live.length) {\n    note += ' (no rows left for report/: its old file of the month stays)';\n  }\n  var moving = part(cfg.candidateFolder, candidate);\n  moving.skipped.push(note);\n  out.push(moving);\n}\nreturn [out];\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 540,
+    "y": 2100,
+    "wires": [
+      [
+        "84780.083c80"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "8855e.0b6eb2",
+    "type": "link out",
+    "name": "to LOG",
+    "mode": "link",
+    "links": [
+      "35339.c6b77f"
+    ],
+    "x": 940,
+    "y": 2120,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "84780.083c80",
+    "type": "function",
+    "name": "10.3 Decide Volume_CoV_EU",
+    "func": "// Decides what happens with the table Volume_CoV_EU.\n// In: msg.rows, msg.failed, msg.skipped. Out 1: msg.payload = rows for the\n// parquet node. Out 2: a log line. A failed item means nothing is written.\nvar TABLE = 'Volume_CoV_EU';\nvar cfg = flow.get('cfg');\nvar rows = msg.rows;\nvar tail = '';\nif (msg.skipped.length) {\n  tail += ' | skipped: ' + msg.skipped.join('; ');\n}\nvar sizes = TABLE + ' ' + rows.length + ' rows from ' +\n  msg.itemCount + ' item(s)';\nif (msg.out) {\n  sizes += ' to ' + msg.out;\n}\n\nfunction logOnly(text) {\n  var line = {\n    topic: 'log',\n    payload: msg.day + ' [' + msg.mode + '] ' + text\n  };\n  return [null, line];\n}\n\nif (msg.failed.length) {\n  node.status({\n    fill: 'red',\n    shape: 'ring',\n    text: 'FAILED, nothing written'\n  });\n  return logOnly(\n    'FAILED, NOTHING WRITTEN: ' + msg.failed.join(' | ') + tail\n  );\n}\nif (!rows.length) {\n  node.status({\n    fill: 'grey',\n    shape: 'ring',\n    text: 'nothing to write'\n  });\n  return logOnly('NOTHING TO WRITE: ' + sizes + tail);\n}\nif (cfg.dryRun[TABLE]) {\n  node.status({\n    fill: 'yellow',\n    shape: 'dot',\n    text: 'dry run ' + rows.length\n  });\n  var firstRows = JSON.stringify(rows.slice(0, 2));\n  return logOnly('DRY RUN: ' + sizes + '. First rows: ' + firstRows + tail);\n}\n\nnode.status({\n  fill: 'green',\n  shape: 'dot',\n  text: 'writing ' + rows.length\n});\nvar writing = {\n  topic: 'log',\n  payload: msg.day + ' [' + msg.mode + '] WRITING ' + sizes + tail\n};\nmsg.payload = rows;\ndelete msg.rows;\nreturn [msg, writing];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 780,
+    "y": 2100,
+    "wires": [
+      [
+        "8666f.09d599"
+      ],
+      [
+        "8855e.0b6eb2"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "8666f.09d599",
+    "type": "parquet",
+    "name": "Write Volume_CoV_EU parquet",
+    "option": "write",
+    "columns": [
+      {
+        "column": "Date",
+        "type": "DATE"
+      },
+      {
+        "column": "Shift",
+        "type": "UTF8"
+      },
+      {
+        "column": "MachineName",
+        "type": "UTF8"
+      },
+      {
+        "column": "Good Parts Sum",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "Cap Max",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "Shift Machine Key",
+        "type": "UTF8"
+      },
+      {
+        "column": "Unique Machine Name",
+        "type": "UTF8"
+      },
+      {
+        "column": "SiteName",
+        "type": "UTF8"
+      },
+      {
+        "column": "Dept",
+        "type": "UTF8"
+      },
+      {
+        "column": "Area",
+        "type": "UTF8"
+      },
+      {
+        "column": "Product Type",
+        "type": "UTF8"
+      },
+      {
+        "column": "Data Source",
+        "type": "UTF8"
+      },
+      {
+        "column": "In EU Report",
+        "type": "BOOLEAN"
+      },
+      {
+        "column": "loaded_at",
+        "type": "TIMESTAMP_MILLIS"
+      }
+    ],
+    "rcolumns": "",
+    "multi": "multiple",
+    "outputPty": "payload",
+    "outputPtyType": "msg",
+    "engine": "parquetjs",
+    "x": 1060,
+    "y": 2080,
+    "wires": [
+      [
+        "8a44d.0d07cb"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "8a44d.0d07cb",
+    "type": "function",
+    "name": "10.4 Set Volume_CoV_EU month path",
+    "func": "// Sets the file path of one month: <out>/<table>/site=<Site>/<table>_\n// <YYYY-MM>_<source>.parquet, <out> = report or candidate/<source>.\n// In: the parquet node output (msg.out, table, site, month). Out: msg.path.\n// The name is fixed per source: a rerun replaces only this source's month.\nvar cfg = flow.get('cfg');\n\nmsg.path = msg.out + '/' + msg.table + '/site=' + msg.site;\nmsg.path += '/' + msg.table + '_' + msg.month + '_' + cfg.source;\nmsg.path += '.parquet';\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 1360,
+    "y": 2100,
+    "wires": [
+      [
+        "8c33c.0ea0e4"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "8c33c.0ea0e4",
+    "type": "write object",
+    "name": "Volume_CoV_EU to data lake",
+    "path": "",
+    "mode": "object",
+    "x": 1660,
+    "y": 2100,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "8e22b.1039fd",
+    "type": "comment",
+    "name": "[11] FORMAT LIST",
+    "info": "STAGE 11 - the Format List file of the site (<root>/reference/format_list/site=<Site>/, newest .csv: Site Name, MachineName, Product Name, Brand, Unit Size, Unit Count/Format, Extra Info) is read and Unique Machine Name and Product Key (the key of plan OPT, losses and run rates) are added. A site without a file (Nottingham today) is logged and skipped.",
+    "x": 140,
+    "y": 2240,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "27ab0.bb87d0",
+    "type": "link in",
+    "name": "FORMAT LIST",
+    "links": [
+      "2999f.bd20e9"
+    ],
+    "x": 60,
+    "y": 2320,
+    "wires": [
+      [
+        "9011a.11d316"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "9011a.11d316",
+    "type": "function",
+    "name": "11.1 Set format list folder",
+    "func": "// Sets the folder of one file type of the site for the list objects node.\n// In: the site message (msg.site). Out: msg.what, msg.filePrefix and msg.path\n// = <root>/<type>/site=<Site>/ (the reference or the source folder).\nvar TYPE = 'format_list';\nvar ROOT = 'referenceFolder';\nvar cfg = flow.get('cfg');\n\nmsg.what = TYPE;\nmsg.filePrefix = TYPE;\nmsg.path = cfg[ROOT] + '/' + TYPE + '/site=' + msg.site + '/';\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 240,
+    "y": 2320,
+    "wires": [
+      [
+        "92009.136c2f"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "92009.136c2f",
+    "type": "list objects",
+    "name": "List objects",
+    "subtenant": "",
+    "path": "",
+    "x": 480,
+    "y": 2320,
+    "wires": [
+      [
+        "93ef8.150548"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "97cd6.18377a",
+    "type": "link out",
+    "name": "to PLAN FAILED",
+    "mode": "link",
+    "links": [
+      "e9cd0.8864b0"
+    ],
+    "x": 820,
+    "y": 2340,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "93ef8.150548",
+    "type": "function",
+    "name": "11.2 Pick the file",
+    "func": "// Picks the newest .csv of the folder list (list objects).\n// Out 1: msg.path for the read node, without data/ten=<tenant>/ or a leading\n// slash. Out 2: a failed item when the folder has no .csv.\nvar TENANT_PREFIX = /^\\/?(data\\/ten=[^\\/]+\\/)?/;\nvar items = Array.isArray(msg.payload) ? msg.payload : [];\nvar files = items.filter(function (item) {\n  return /\\.csv$/i.test(item.key);\n});\n\nif (!files.length) {\n  node.status({\n    fill: 'red',\n    shape: 'ring',\n    text: 'no csv file for ' + msg.site\n  });\n  msg.payload = {\n    name: msg.site,\n    failed: msg.what + ' ' + msg.site + ': no csv file in ' + msg.path,\n    skipped: null,\n    rows: []\n  };\n  return [null, msg];\n}\n\nfiles.sort(function (a, b) {\n  return String(b.lastModified).localeCompare(String(a.lastModified));\n});\nmsg.path = String(files[0].key).replace(TENANT_PREFIX, '');\nnode.status({\n  fill: 'green',\n  shape: 'dot',\n  text: msg.path.slice(-40)\n});\nreturn [msg, null];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 680,
+    "y": 2320,
+    "wires": [
+      [
+        "95de7.169e61"
+      ],
+      [
+        "97cd6.18377a"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "95de7.169e61",
+    "type": "read object",
+    "name": "Read Format List file",
+    "path": "",
+    "mode": "object",
+    "x": 920,
+    "y": 2300,
+    "wires": [
+      [
+        "99bc5.19d093"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "99bc5.19d093",
+    "type": "csv",
+    "name": "Parse CSV",
+    "sep": ",",
+    "hdrin": true,
+    "hdrout": "",
+    "multi": "mult",
+    "ret": "\\n",
+    "temp": "parser csv",
+    "x": 1120,
+    "y": 2320,
+    "wires": [
+      [
+        "9bab4.1b69ac"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "9f892.1e9bde",
+    "type": "link out",
+    "name": "to LOG",
+    "mode": "link",
+    "links": [
+      "35339.c6b77f"
+    ],
+    "x": 1480,
+    "y": 2340,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "9bab4.1b69ac",
+    "type": "function",
+    "name": "11.3 Build format rows",
+    "func": "// Builds the Format_List_EU rows of one site (report query Format List EU).\n// In: msg.payload = parsed Format List file of the site. Out 1: the table\n// message (one file per site, no month), out 2: a check log line.\nvar COLUMNS = [\n  'MachineName',\n  'Product Name',\n  'Brand',\n  'Unit Size',\n  'Unit Count/Format',\n  'Extra Info'\n];\n\nvar site = msg.site;\nvar rows = Array.isArray(msg.payload) ? msg.payload : [];\n\n// The csv node leaves empty cells out of the row. As in the report: an\n// empty cell is an empty text and trailing spaces go (leading ones stay).\nfunction cell(value) {\n  if (value === undefined || value === null) {\n    return '';\n  }\n  return String(value).replace(/\\s+$/, '');\n}\n\n// A byte order mark can sit in the first column name.\nfunction siteOf(row) {\n  var value = row['Site Name'];\n  return value !== undefined ? value : row['﻿Site Name'];\n}\n\nvar out = [];\nvar otherSite = 0;\nrows.forEach(function (row) {\n  var machine = cell(row.MachineName);\n  if (machine === '') {\n    return;\n  }\n  var siteName = cell(siteOf(row)) || site;\n  if (siteName !== site) {\n    otherSite++;\n  }\n  var item = {\n    'Site Name': siteName\n  };\n  COLUMNS.forEach(function (column) {\n    item[column] = cell(row[column]);\n  });\n  var unique = machine + '-' + siteName;\n  item['Unique Machine Name'] = unique;\n  item['Product Key'] = unique + ' ' + item['Product Name'];\n  item['loaded_at'] = msg.loadedAt;\n  out.push(item);\n});\n\nvar text = site + ': read ' + rows.length + ' format rows, kept ' +\n  out.length;\nif (otherSite) {\n  text += ', ' + otherSite + ' row(s) name another site in Site Name';\n}\nnode.status({\n  fill: out.length ? 'green' : 'yellow',\n  shape: 'dot',\n  text: site + ': ' + out.length + ' formats'\n});\nreturn [\n  {\n    table: 'Format_List_EU',\n    rows: out,\n    failed: [],\n    skipped: [],\n    itemCount: 1,\n    site: site,\n    day: msg.day,\n    mode: msg.mode,\n    loadedAt: msg.loadedAt,\n    job: msg.job\n  },\n  {\n    topic: 'log',\n    payload: msg.day + ' [' + msg.mode + '] CHECK ' + text\n  }\n];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 1320,
+    "y": 2320,
+    "wires": [
+      [
+        "9d9a3.1d02c5"
+      ],
+      [
+        "9f892.1e9bde"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "a3670.21ce10",
+    "type": "link out",
+    "name": "to LOG",
+    "mode": "link",
+    "links": [
+      "35339.c6b77f"
+    ],
+    "x": 1740,
+    "y": 2320,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "9d9a3.1d02c5",
+    "type": "function",
+    "name": "11.4 Decide Format_List_EU",
+    "func": "// Decides what happens with the table Format_List_EU.\n// In: msg.rows, msg.failed, msg.skipped. Out 1: msg.payload = rows for the\n// parquet node. Out 2: a log line. A failed item means nothing is written.\nvar TABLE = 'Format_List_EU';\nvar cfg = flow.get('cfg');\nvar rows = msg.rows;\nvar tail = '';\nif (msg.skipped.length) {\n  tail += ' | skipped: ' + msg.skipped.join('; ');\n}\nvar sizes = TABLE + ' ' + rows.length + ' rows from ' +\n  msg.itemCount + ' item(s)';\nif (msg.out) {\n  sizes += ' to ' + msg.out;\n}\n\nfunction logOnly(text) {\n  var line = {\n    topic: 'log',\n    payload: msg.day + ' [' + msg.mode + '] ' + text\n  };\n  return [null, line];\n}\n\nif (msg.failed.length) {\n  node.status({\n    fill: 'red',\n    shape: 'ring',\n    text: 'FAILED, nothing written'\n  });\n  return logOnly(\n    'FAILED, NOTHING WRITTEN: ' + msg.failed.join(' | ') + tail\n  );\n}\nif (!rows.length) {\n  node.status({\n    fill: 'grey',\n    shape: 'ring',\n    text: 'nothing to write'\n  });\n  return logOnly('NOTHING TO WRITE: ' + sizes + tail);\n}\nif (cfg.dryRun[TABLE]) {\n  node.status({\n    fill: 'yellow',\n    shape: 'dot',\n    text: 'dry run ' + rows.length\n  });\n  var firstRows = JSON.stringify(rows.slice(0, 2));\n  return logOnly('DRY RUN: ' + sizes + '. First rows: ' + firstRows + tail);\n}\n\nnode.status({\n  fill: 'green',\n  shape: 'dot',\n  text: 'writing ' + rows.length\n});\nvar writing = {\n  topic: 'log',\n  payload: msg.day + ' [' + msg.mode + '] WRITING ' + sizes + tail\n};\nmsg.payload = rows;\ndelete msg.rows;\nreturn [msg, writing];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 1580,
+    "y": 2300,
+    "wires": [
+      [
+        "a1781.2034f7"
+      ],
+      [
+        "a3670.21ce10"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "a1781.2034f7",
+    "type": "parquet",
+    "name": "Write Format_List_EU parquet",
+    "option": "write",
+    "columns": [
+      {
+        "column": "Site Name",
+        "type": "UTF8"
+      },
+      {
+        "column": "MachineName",
+        "type": "UTF8"
+      },
+      {
+        "column": "Product Name",
+        "type": "UTF8"
+      },
+      {
+        "column": "Brand",
+        "type": "UTF8"
+      },
+      {
+        "column": "Unit Size",
+        "type": "UTF8"
+      },
+      {
+        "column": "Unit Count/Format",
+        "type": "UTF8"
+      },
+      {
+        "column": "Extra Info",
+        "type": "UTF8"
+      },
+      {
+        "column": "Unique Machine Name",
+        "type": "UTF8"
+      },
+      {
+        "column": "Product Key",
+        "type": "UTF8"
+      },
+      {
+        "column": "loaded_at",
+        "type": "TIMESTAMP_MILLIS"
+      }
+    ],
+    "rcolumns": "",
+    "multi": "multiple",
+    "outputPty": "payload",
+    "outputPtyType": "msg",
+    "engine": "parquetjs",
+    "x": 1860,
+    "y": 2280,
+    "wires": [
+      [
+        "a555f.236729"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "a555f.236729",
+    "type": "function",
+    "name": "11.5 Set Format_List_EU site path",
+    "func": "// Sets the file path of a table with one file per site (no month):\n// <report>/<table>/site=<Site>/<table>.parquet. In: the parquet node output\n// (msg.table, msg.site). Out: msg.path. A rerun replaces the site's file.\nvar cfg = flow.get('cfg');\n\nmsg.path = cfg.liveFolder + '/' + msg.table + '/site=' + msg.site;\nmsg.path += '/' + msg.table + '.parquet';\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 2160,
+    "y": 2320,
+    "wires": [
+      [
+        "a744e.250042"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "a744e.250042",
+    "type": "write object",
+    "name": "Format_List_EU to data lake",
+    "path": "",
+    "mode": "object",
+    "x": 2460,
+    "y": 2320,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "a933d.26995b",
+    "type": "comment",
+    "name": "[12] SITE SETUP: FAILED",
+    "info": "STAGE 12 - a Machine Names, Shift Patterns, report scope or Format List file that is missing or empty: one log line, nothing is built for that site.",
+    "x": 160,
+    "y": 2460,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "e9cd0.8864b0",
+    "type": "link in",
+    "name": "PLAN FAILED",
+    "links": [
+      "ebbbf.89fdc9",
+      "f566a.91fb46",
+      "01004.9b91dc",
+      "0aaaf.a38f59",
+      "16449.ad25ef",
+      "1e005.b38a53",
+      "97cd6.18377a"
+    ],
+    "x": 60,
+    "y": 2540,
+    "wires": [
+      [
+        "ab22c.283274"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "ad11b.29cb8d",
+    "type": "link out",
+    "name": "to LOG",
+    "mode": "link",
+    "links": [
+      "35339.c6b77f"
+    ],
+    "x": 380,
+    "y": 2540,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "ab22c.283274",
+    "type": "function",
+    "name": "12.1 Describe failure",
+    "func": "// Turns a failed item into a log line. In: msg.payload = {failed: text}\n// (a file that was not found or empty). Out: the log line. Nothing is built\n// for the site, so no table file is written for it in this run.\nvar line = {\n  topic: 'log',\n  payload: msg.day + ' [' + msg.mode + '] FAILED, NOTHING WRITTEN: ' +\n    msg.payload.failed\n};\nreturn line;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 220,
+    "y": 2540,
+    "wires": [
+      [
+        "ad11b.29cb8d"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "af00a.2b64a6",
+    "type": "comment",
+    "name": "[13] ERRORS",
+    "info": "STAGE 13 - a catch node takes every error raised by a node of this tab and turns it into a log line with the name of the node and the message of the API (for example the limit message of evaluateKPIs). Errors of the log nodes themselves are not logged again.",
+    "x": 120,
+    "y": 2680,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "b2de8.2e96d8",
+    "type": "catch",
+    "name": "Catch errors",
+    "scope": null,
+    "uncaught": false,
+    "x": 120,
+    "y": 2760,
+    "wires": [
+      [
+        "b0ef9.2cfdbf"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "b4cd7.302ff1",
+    "type": "link out",
+    "name": "to LOG",
+    "mode": "link",
+    "links": [
+      "35339.c6b77f"
+    ],
+    "x": 460,
+    "y": 2760,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "b0ef9.2cfdbf",
+    "type": "function",
+    "name": "13.1 Describe error",
+    "func": "// Turns an error caught by the catch node into a log line.\n// In: the message of a catch node (msg.error).\n// Out: a log line for the shared log. Errors of the log nodes themselves\n// are dropped (no log loop).\nvar err = msg.error || {};\nvar source = (err.source && err.source.name) || 'unknown node';\n\nfunction textOf(value) {\n  if (value === undefined || value === null) {\n    return '';\n  }\n  if (typeof value === 'string') {\n    return value;\n  }\n  return JSON.stringify(value);\n}\n\n// Takes the API message out of an error body when there is one.\nfunction apiMessage(value) {\n  var body = value;\n  if (typeof value === 'string') {\n    try {\n      body = JSON.parse(value);\n    } catch (e) {\n      return value;\n    }\n  }\n  var data = body && body.data;\n  var list = (data && data.errors) || (body && body.errors);\n  if (list && list.length && list[0].message) {\n    return list[0].message;\n  }\n  return textOf(value);\n}\n\nif (msg.logBatch) {\n  node.status({\n    fill: 'red',\n    shape: 'ring',\n    text: 'log write failed'\n  });\n  return null;\n}\n\nvar text = '';\nif (msg.day) {\n  text += msg.day + ' [' + msg.mode + '] ';\n}\ntext += 'ERROR in ' + source + ': ' + apiMessage(err.message);\nreturn {\n  topic: 'log',\n  payload: text,\n  level: 'error',\n  source: source\n};\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 320,
+    "y": 2760,
+    "wires": [
+      [
+        "b4cd7.302ff1"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "b6bc6.31c90a",
+    "type": "comment",
+    "name": "[14] LOG",
+    "info": "STAGE 14 - every log line arrives here through the link \"to LOG\". 1 turns a line into a row (time, flow, site, production day, level) and shows it in the debug sidebar. The join collects the rows for 30 s, the delay lets one batch pass every 10 s so two writes do not overlap, 3 sets the file of the month and the read node loads the old file. A read of a file that does not exist answers nothing (only a warning), so the same batch also goes through a 10 s wait to the append step. The log is written whatever the dry-run switch says.",
+    "x": 100,
+    "y": 2900,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "35339.c6b77f",
+    "type": "link in",
+    "name": "LOG",
+    "links": [
+      "37228.c85098",
+      "4c66d.d9e4ab",
+      "58007.e37b41",
+      "6777f.f04409",
+      "7cbc4.01d81c",
+      "8855e.0b6eb2",
+      "9f892.1e9bde",
+      "a3670.21ce10",
+      "ad11b.29cb8d",
+      "b4cd7.302ff1"
+    ],
+    "x": 60,
+    "y": 2980,
+    "wires": [
+      [
+        "b8ab5.336223"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "b8ab5.336223",
+    "type": "function",
+    "name": "14.1 Format log line",
+    "func": "// Turns one log message into a row for the log file.\n// In: msg.payload = log text (optional msg.level and msg.source).\n// Out: msg.payload = the row, msg.line = the text for the debug node.\nvar FLOW_NAME = 'pbi-report-2';\nvar cfg = flow.get('cfg') || {};\nvar text = String(msg.payload);\n\nvar seq = (flow.get('logSeq') || 0) + 1;\nflow.set('logSeq', seq);\n\n// Most lines start with the production day and the mode: \"2026-09-01 [x] \".\nvar day = '';\nvar mode = '';\nvar message = text;\nvar parts = /^(\\d{4}-\\d{2}-\\d{2}) \\[([^\\]]*)\\] ([\\s\\S]*)$/.exec(text);\nif (parts) {\n  day = parts[1];\n  mode = parts[2];\n  message = parts[3];\n}\n\nvar level = msg.level;\nif (!level) {\n  if (/FAILED/.test(message)) {\n    level = 'failed';\n  } else if (/NOTHING TO WRITE/.test(message)) {\n    level = 'warn';\n  } else {\n    level = 'info';\n  }\n}\n\nmsg.line = text;\nmsg.payload = {\n  ts_utc: new Date().toISOString(),\n  seq: seq,\n  flow: FLOW_NAME,\n  site: cfg.site || 'all',\n  production_day: day,\n  mode: mode,\n  level: level,\n  source: msg.source || 'flow',\n  message: message\n};\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 200,
+    "y": 2980,
+    "wires": [
+      [
+        "ba9a4.34fb3c",
+        "bc893.369455",
+        "be782.382d6e"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "ba9a4.34fb3c",
+    "type": "join",
+    "name": "Collect log lines",
+    "mode": "custom",
+    "build": "array",
+    "property": "payload",
+    "propertyType": "msg",
+    "key": "topic",
+    "joiner": "\\n",
+    "joinerType": "str",
+    "accumulate": false,
+    "useparts": false,
+    "timeout": "30",
+    "count": "",
+    "reduceRight": false,
+    "reduceExp": "",
+    "reduceInit": "",
+    "reduceInitType": "",
+    "reduceFixup": "",
+    "x": 420,
+    "y": 2940,
+    "wires": [
+      [
+        "c0671.39c687"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "bc893.369455",
+    "type": "debug",
+    "name": "Run log",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "line",
+    "targetType": "msg",
+    "x": 380,
+    "y": 2980,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "be782.382d6e",
+    "type": "function",
+    "name": "14.2 Note last log line",
+    "func": "// Notes the time of the newest log line of the tab in global context\n// lastLog_<flow>. In: every log line (a tap behind the log formatter). Out:\n// nothing. A new line clears done_<flow>, so the next quiet period is shown.\nvar FLOW = 'pbi-report-2';\nglob.set('lastLog_' + FLOW, Date.now());\nglob.set('done_' + FLOW, false);\nvar status = glob.get('runStatus_' + FLOW);\nif (status) {\n  var row = msg.payload || {};\n  var line = String(row.message || msg.line || '');\n  status.lastBeatAt = new Date().toISOString();\n  status.lastLog = line.slice(0, 160);\n  if (row.level === 'failed' || row.level === 'error') {\n    status.state = 'failed';\n  }\n  glob.set('runStatus_' + FLOW, status);\n}\nreturn null;\n",
+    "outputs": 0,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 440,
+    "y": 3020,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "c0671.39c687",
+    "type": "delay",
+    "name": "One log batch per 10 s",
+    "pauseType": "rate",
+    "timeout": "1",
+    "timeoutUnits": "seconds",
+    "rate": "1",
+    "nbRateUnits": "10",
+    "rateUnits": "second",
+    "randomFirst": "1",
+    "randomLast": "1",
+    "randomUnits": "seconds",
+    "drop": false,
+    "powerMode": false,
+    "x": 640,
+    "y": 2980,
+    "wires": [
+      [
+        "c2560.3b5fa0"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "c2560.3b5fa0",
+    "type": "function",
+    "name": "14.3 Build log write",
+    "func": "// Prepares the write of one batch of log rows (the read node runs next).\n// In: msg.payload = array of log rows from the join node.\n// Out: msg.path = file of the month, msg.logRows, msg.logBatchId, no payload.\n// msg.logBatch keeps errors of the log nodes themselves out of the log.\nvar FLOW_NAME = 'pbi-report-2';\nvar cfg = flow.get('cfg') || {};\nvar root = cfg.root || 'logs_without_root';\nvar rows = msg.payload;\nvar month = rows[0].ts_utc.slice(0, 7);\n\nvar batchNo = (flow.get('logBatchNo') || 0) + 1;\nflow.set('logBatchNo', batchNo);\n\nmsg.logRows = rows;\nmsg.path = root + '/logs/' + FLOW_NAME + '/log_' + month + '.csv';\nmsg.logBatch = true;\nmsg.logBatchId = rows[0].ts_utc + '#' + batchNo;\ndelete msg.payload;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 880,
+    "y": 2980,
+    "wires": [
+      [
+        "c444f.3cf8b9",
+        "c633e.3e91d2"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "ca11c.41c404",
+    "type": "link out",
+    "name": "to APPEND",
+    "mode": "link",
+    "links": [
+      "c822d.402aeb"
+    ],
+    "x": 1240,
+    "y": 2980,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "c444f.3cf8b9",
+    "type": "read object",
+    "name": "Read log file",
+    "path": "",
+    "mode": "object",
+    "x": 1080,
+    "y": 2960,
+    "wires": [
+      [
+        "ca11c.41c404"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "cc00b.435d1d",
+    "type": "link out",
+    "name": "to APPEND",
+    "mode": "link",
+    "links": [
+      "c822d.402aeb"
+    ],
+    "x": 1240,
+    "y": 3060,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "c633e.3e91d2",
+    "type": "delay",
+    "name": "Wait for read 10 s",
+    "pauseType": "delay",
+    "timeout": "10",
+    "timeoutUnits": "seconds",
+    "rate": "1",
+    "nbRateUnits": "1",
+    "rateUnits": "second",
+    "randomFirst": "1",
+    "randomLast": "5",
+    "randomUnits": "seconds",
+    "drop": false,
+    "powerMode": false,
+    "x": 1100,
+    "y": 3000,
+    "wires": [
+      [
+        "cc00b.435d1d"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "cdefa.44f636",
+    "type": "comment",
+    "name": "[15] LOG WRITE",
+    "info": "STAGE 15 - adds the rows of the batch to the old file and writes the whole file back (the data lake has no append). Columns: ts_utc, seq, flow, site, production_day, mode, level, source, message. Every field is quoted, line breaks become a space. The batch arrives twice (read answer and the wait) and is written once. If the read gives no answer for a file this flow wrote before, a new file with a time stamp is written, so the history is never replaced.",
+    "x": 120,
+    "y": 3120,
+    "wires": []
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "c822d.402aeb",
+    "type": "link in",
+    "name": "APPEND",
+    "links": [
+      "ca11c.41c404",
+      "cc00b.435d1d"
+    ],
+    "x": 60,
+    "y": 3200,
+    "wires": [
+      [
+        "cfde9.468f4f"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "cfde9.468f4f",
+    "type": "function",
+    "name": "15.1 Append log rows",
+    "func": "// Adds the rows of one batch to the log file of the month.\n// In: msg.payload = the old file (read answered) or nothing (no answer).\n// Out: msg.payload = the whole new file, the data lake has no append.\n// The same batch can arrive twice (read answer, then the wait): once only.\nvar SEPARATOR = ',';\nvar KEEP_IDS = 50;\nvar COLUMNS = [\n  'ts_utc',\n  'seq',\n  'flow',\n  'site',\n  'production_day',\n  'mode',\n  'level',\n  'source',\n  'message'\n];\n\n// Quotes inside a field are doubled, line breaks become a space.\nfunction quote(value) {\n  var text = (value === undefined || value === null) ? '' : String(value);\n  text = text.replace(/\"/g, '\"\"').replace(/[\\r\\n]+/g, ' ');\n  return '\"' + text + '\"';\n}\n\nfunction lineOf(row) {\n  return COLUMNS.map(function (name) {\n    return quote(row[name]);\n  }).join(SEPARATOR);\n}\n\n// The read node gives text, or a serialised buffer.\nfunction decode(payload) {\n  if (typeof payload === 'string') {\n    return payload;\n  }\n  if (payload && payload.type === 'Buffer' && payload.data) {\n    var bin = '';\n    payload.data.forEach(function (byte) {\n      bin += String.fromCharCode(byte);\n    });\n    try {\n      return decodeURIComponent(escape(bin));\n    } catch (e) {\n      return bin;\n    }\n  }\n  return null;\n}\n\nvar rows = msg.logRows.slice();\nrows.sort(function (a, b) {\n  if (a.ts_utc !== b.ts_utc) {\n    return a.ts_utc < b.ts_utc ? -1 : 1;\n  }\n  return a.seq - b.seq;\n});\n\nvar done = flow.get('logDone') || [];\nvar known = flow.get('logKnown') || [];\nif (done.indexOf(msg.logBatchId) >= 0) {\n  return null;\n}\n\nvar path = msg.path;\nvar old = '';\nvar problem = '';\nif (msg.payload === undefined || msg.payload === null) {\n  if (known.indexOf(path) >= 0) {\n    problem = 'read gave no answer for a file written before';\n  }\n} else {\n  old = decode(msg.payload);\n  if (old === null) {\n    old = '';\n    problem = 'old file is not text';\n  }\n}\nif (problem) {\n  // Never replace the old file: write a new one with a time stamp.\n  var stamp = new Date().toISOString().replace(/[-:.TZ]/g, '');\n  path = path.replace(/\\.csv$/, '_' + stamp + '.csv');\n  rows.push({\n    ts_utc: new Date().toISOString(),\n    seq: 0,\n    flow: rows[0].flow,\n    site: rows[0].site,\n    production_day: '',\n    mode: '',\n    level: 'error',\n    source: 'log',\n    message: problem + ', wrote ' + path\n  });\n} else if (known.indexOf(path) < 0) {\n  known.push(path);\n  flow.set('logKnown', known);\n}\n\nvar lines = [];\nif (!old) {\n  lines.push(COLUMNS.map(quote).join(SEPARATOR));\n} else if (old.slice(-1) !== '\\n') {\n  old += '\\n';\n}\nrows.forEach(function (row) {\n  lines.push(lineOf(row));\n});\n\ndone.push(msg.logBatchId);\nflow.set('logDone', done.slice(-KEEP_IDS));\n\nmsg.payload = old + lines.join('\\n') + '\\n';\nmsg.path = path;\ndelete msg.logRows;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 200,
+    "y": 3200,
+    "wires": [
+      [
+        "d1cd8.482868"
+      ]
+    ]
+  },
+  {
+    "z": "ccccf.706c39",
+    "id": "d1cd8.482868",
+    "type": "write object",
+    "name": "Log to data lake",
+    "path": "",
+    "mode": "object",
+    "x": 420,
+    "y": 3200,
+    "wires": []
+  }
+]

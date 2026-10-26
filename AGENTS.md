@@ -2,7 +2,7 @@
 Build and maintain VFC (Node-RED) flows for Siemens Insights Hub (Reckitt OEE) that write the EU report tables, analyse report data, and recreate as-is source structures (Excel, Power BI or other sources) so they can be loaded automatically. API docs in `docs/`. Test tenant: `reckitt`.
 
 Tables:
-- Report (current target): `Plan_OPT_EU`, `Time_Utilisation_EU`, `Daily_Losses_EU`. Add a line here when a new table is built (proposals live in `prompt-response/site-dashboards-analysis.md`)
+- Report (current target): `Plan_OPT_EU`, `Time_Utilisation_EU`, `Daily_Losses_EU` (tab PBI report build), `Run_Rates_EU`, `Volume_CoV_EU`, `Format_List_EU` (tab PBI report build 2, `docs/pbi-report-build-2.md`), `Historical_OEE_EU` (one-time archive, `docs/historical-oee.md`). Every table has `In EU Report` from `config/report_scope.csv` (`docs/report-scope.md`). Add a line here when a new table is built (proposals live in `prompt-response/site-dashboards-analysis.md`)
 - Reference: `pbi_calendar`, `pbi_machine_names`, `pbi_shift_naming`
 - Shift report (postponed, still relevant): `rpt_window`, `rpt_hour`, `rpt_event`, `docs/shift-report-flow.md`
 - History only, not a target for new work: `fact_kpi`, `fact_loss`, `pbi_plan_opt`, `pbi_time_utilisation`, `pbi_daily_losses` (`vfc-site-hull`, `vfc-powerbi-tables`). Docs stay as reference
@@ -17,7 +17,7 @@ Current jobs (each has a handover in `session_handover/`):
 
 Flows in use (docs and tests):
 - Config and reference tab: `docs/report-config.md`, `docs/reference-tables.md`
-- PBI report build: writes the report tables, split by line source
+- PBI report build: writes the report tables, split by line source. PBI report build 2: run rates, Volume CoV, Format List (`docs/pbi-report-build-2.md`, `node scripts/test-vfc-pbi-report-2.js platform=xcelerator`)
 - Hull SIH report daily: `docs/sih-report-daily.md`, `node scripts/test-vfc-sih-report.js platform=legacy|xcelerator`. API tabs run at `runHourLocal` of Config with a local production day, retry an evaluateKPIs 413 hour by hour; heavy days (over 5,000 stops) fail on purpose
 - Run monitor: `docs/run-monitor.md`, monitored flows are ONE list in `scripts/monitor-flows.js`
 - Lake API `docs/lake-api.md`, logging `docs/logging.md` (`node scripts/test-vfc-log.js`)
@@ -29,7 +29,7 @@ Read `docs/README.md` first, then only the doc for the area you are working on. 
 - Never keep rows in flow context: the VFC refuses a value over 2 MB, use the join node
 - A report day must finish in about 50 s; the VFC drops the open messages of a longer day with no error (value calls 4 per second)
 - Calendar rules hold local wall clock times with a Z
-- Max 200 nodes per tab (Hull SIH report daily is at 195)
+- Max 200 nodes per tab (Hull SIH report daily is at 198, PBI report build at 176)
 - `dryRun` is set in the VFC by me, not in dev work: never change the default
 - A file with quotes in a Bash heredoc can fail: use the Write tool. Downloads: a new `--out` folder each time
 

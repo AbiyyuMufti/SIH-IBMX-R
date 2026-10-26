@@ -1,7 +1,8 @@
 """Normalizes the raw Provideam exports of sharepoint/source_original into
 sharepoint/source/<type>/site=<Site>/<type>_<YYYY-MM>.csv  (one file per month).
 
-Types: plan_opt, line_losses, volume_loss_correction (run_rates is not used).
+Types: plan_opt, line_losses, volume_loss_correction, run_rates (hourly rows,
+`YYYY-MM-DD HH` becomes YYYY-MM-DD HH:MM:SS, since 2026-10-27).
 Re-runnable: it rebuilds every month from the raw files; a month file is only
 written when its content changed, so the files to upload are the ones that
 changed (see the list printed at the end).
@@ -19,8 +20,8 @@ Rules
   (hours can pass 24) are kept as text.
 - Weinheim `PartName` and Hull / Nottingham `PartDesc` both become `PartName`.
 - A column `SiteName` is added first.
-- A business day found in several raw files is taken from ONE file: the one
-  with the most rows for that day, tie: the later file name (daily files carry the publish date). Differences are listed.
+- A business day (run rates: hour) found in several raw files is taken from
+  ONE file: the one with the most rows for that day, tie: the later file name (daily files carry the publish date). Differences are listed.
 - Text fields keep their spaces (the report keys on the exact text, for
   example ' Strepsils Packing' and 'Bosch Capsulator '); only the enclosing
   quotes are removed. Dates, numbers and times are trimmed when parsed.
@@ -53,9 +54,16 @@ TYPES = {
     ),
     "line_losses": ("ShiftStartDate", ["StartTime"], []),
     "volume_loss_correction": ("ShiftStartDate", [], ["Loss Units"]),
+    "run_rates": ("YYYY-MM-DD HH", [], ["Good Parts", "Capacity"]),
 }
+# the output format of the business date column (default: the day only)
+DATE_FORMAT = {"run_rates": "%Y-%m-%d %H:%M:%S"}
 # the sum compared with the Total: row of the raw file
-TOTAL_CHECK = {"plan_opt": "Good Parts", "volume_loss_correction": "Loss Units"}
+TOTAL_CHECK = {
+    "plan_opt": "Good Parts",
+    "volume_loss_correction": "Loss Units",
+    "run_rates": "Good Parts",
+}
 RENAME = {"PartDesc": "PartName"}
 
 report = []
@@ -133,7 +141,7 @@ def read_raw_file(path, kind):
     return header, rows, total
 
 
-def normalize_row(site, header, cells, date_col, ts_cols, num_cols):
+def normalize_row(site, header, cells, date_col, ts_cols, num_cols, date_format="%Y-%m-%d"):
     """Returns (output row as list, day ISO string) or (None, reason)."""
     rec = dict(zip(header, cells))
     day = parse_dt(rec[date_col])
@@ -145,7 +153,7 @@ def normalize_row(site, header, cells, date_col, ts_cols, num_cols):
         # their leading and trailing spaces); only enclosing quotes go.
         v = rec[h].strip('"')
         if h == date_col:
-            v = day.strftime("%Y-%m-%d")
+            v = day.strftime(date_format)
         elif h in ts_cols:
             t = parse_dt(v)
             v = t.strftime("%Y-%m-%d %H:%M:%S") if t else v
@@ -156,7 +164,9 @@ def normalize_row(site, header, cells, date_col, ts_cols, num_cols):
             v = num
         out[RENAME.get(h, h)] = v
     names = [RENAME.get(h, h) for h in header]
-    return [site] + [out[x] for x in names], day.strftime("%Y-%m-%d")
+    # The unit a duplicate is decided on: the day, or the hour for run rates
+    # (a monthly export ends inside the first day of the next month).
+    return [site] + [out[x] for x in names], day.strftime(date_format)
 
 
 def main():
@@ -187,7 +197,9 @@ def main():
                 sums = 0.0
                 for cells in rows:
                     raw_rows += 1
-                    out, day = normalize_row(site, header, cells, date_col, ts_cols, num_cols)
+                    out, day = normalize_row(
+                        site, header, cells, date_col, ts_cols, num_cols,
+                        DATE_FORMAT.get(t, "%Y-%m-%d"))
                     if out is None:
                         invalid += 1
                         continue

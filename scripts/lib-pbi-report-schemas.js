@@ -1,4 +1,4 @@
-// The parquet column lists of the three tables of the PBI report build:
+// The parquet column lists of the tables of the PBI report build tabs:
 // the column names, order and types of the Tableau data sources Plan_OPT_EU,
 // Time_Utilisation_EU and Daily_Losses_EU (the extracts with Dept, Area and
 // Product Type joined from Machine Names), then Data Source and our own extra
@@ -70,5 +70,37 @@ export const reportLossSchema = [
   ['target', D],
   ['batch_id', S],
   ['comment_count', I],
+  ['loaded_at', TS]
+];
+
+// Tab PBI report build 2. Run_Rates_EU: one row per machine and hour, Date
+// is the hour (wall clock written as UTC).
+export const reportRunRateSchema = [
+  ['Date', TS],
+  ...str(['AreaName', 'MachineName', 'PartName', 'ShiftName']),
+  ['Good Parts', I],
+  ['Capacity', D],
+  ...str(['SiteName', 'Unique Machine Name', 'Product Key']),
+  ['Good Parts - Copy', I],
+  ...machineCols,
+  ['loaded_at', TS]
+];
+
+// Volume_CoV_EU: one row per day, shift and machine with more than 1,000
+// good parts. SiteName is ours (the report table has none).
+export const reportCovSchema = [
+  ['Date', DATE],
+  ...str(['Shift', 'MachineName']),
+  ['Good Parts Sum', D],
+  ['Cap Max', D],
+  ...str(['Shift Machine Key', 'Unique Machine Name', 'SiteName']),
+  ...machineCols,
+  ['loaded_at', TS]
+];
+
+// Format_List_EU: the Format List file of each site, one file per site.
+export const reportFormatSchema = [
+  ...str(['Site Name', 'MachineName', 'Product Name', 'Brand', 'Unit Size',
+    'Unit Count/Format', 'Extra Info', 'Unique Machine Name', 'Product Key']),
   ['loaded_at', TS]
 ];
