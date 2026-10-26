@@ -145,6 +145,9 @@ Checked on the 10 files whose `PlanOPT` / `LineLosses` hold a day (IWKA 1 to 3, 
 - Decision (user, 2026-10-26): the Plan / LineLosses conversion was for a Power BI project that was stopped; build from `Base` directly, use the macro output only as a test.
 - Diagram of all this, the columns and the mapping to the three report tables: `diagrams/chartres-source-map.drawio` (`node scripts/helper-chartres-diagram-data.js`, `node scripts/build-drawio-chartres.js`).
 
+## 4b. One row per Base column (Excel)
+`node scripts/helper-chartres-base-columns.js` then `python -I scripts/helper-chartres-base-columns-xlsx.py` write `downloads/chartres-base-columns.xlsx` (git-ignored, it holds product names): sheet 1 the 383 columns of the reference template (CREAM IWKA 2 2026) with French name, entry code, English, type, example, meaning, formula, target table, how sure, and in how many of the 18 files of 2026 the name exists; sheet 2 the 665 columns of the other lines that are not in the reference. The `People` columns hold labour time in person-minutes (for example 2250), not a headcount.
+
 ## 5. Open points
 1. DOR L3: which file is the OEE source (Laura).
 2. Meaning of `TOP`, `TOR`, `TU`, `NR` (confirm with the site; the check formulas suggest TU + NR + the eight loss totals = TO) and what a repeated date means (correction or second entry).
