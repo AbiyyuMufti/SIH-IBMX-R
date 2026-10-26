@@ -21,5 +21,3 @@ sharepoint/
 graphify-out/
 session_handover/
 # exports of the shift report tables for the notebook (real values)
-!prompt-response/site-dashboards-reconcile.ipynb
-!prompt-response/proof-*.ipynb
