@@ -1,31 +1,49 @@
 # Project
-Build and maintain Node-RED flows for Siemens Insights Hub (Reckitt OEE), based on the API documentation in `docs/`. Test tenant: `reckitt`.
+Build and maintain VFC (Node-RED) flows for Siemens Insights Hub (Reckitt OEE) that write the EU report tables, analyse report data, and recreate as-is source structures (Excel, Power BI or other sources) so they can be loaded automatically. API docs in `docs/`. Test tenant: `reckitt`.
+
+Tables:
+- Report (current target): `Plan_OPT_EU`, `Time_Utilisation_EU`, `Daily_Losses_EU`. Add a line here when a new table is built (proposals live in `prompt-response/site-dashboards-analysis.md`)
+- Reference: `pbi_calendar`, `pbi_machine_names`, `pbi_shift_naming`
+- Shift report (postponed, still relevant): `rpt_window`, `rpt_hour`, `rpt_event`, `docs/shift-report-flow.md`
+- History only, not a target for new work: `fact_kpi`, `fact_loss`, `pbi_plan_opt`, `pbi_time_utilisation`, `pbi_daily_losses` (`vfc-site-hull`, `vfc-powerbi-tables`). Docs stay as reference
 
 ## Status
-- API exploration is done. All read-style OEE endpoints are tested; write calls are skipped on purpose
-- Done: one VFC flow per site that writes `fact_kpi` and `fact_loss` parquet tables (`flows/vfc-site-hull.json`, see `docs/fact-flows.md`). checked by the user in the VFC (dry run)
-- Done (checked by the user in the VFC, dry run): Config tab `flows/vfc-config.json` and the single reference tab `flows/vfc-reference-tables.json` (see `docs/reference-tables.md`)
-- Done (mock tests pass; first VFC run found the missing-file read, fix built, to re-check in the VFC): CSV run log in the data lake plus `catch`, see `docs/logging.md`. Test: `node scripts/test-vfc-log.js`
-- Done (spike checked by the user in the VFC): Python reads parquet files of the data lake through an `http in` endpoint, `flows/vfc-lake-api.json`, see `docs/lake-api.md`. Final flow built, to re-check in the VFC
-- Done offline (mock proof passes, rebuilt flows to import and check in the VFC): platform switch. Config node `platform` (`legacy` or `xcelerator`, no default) and `IH_PLATFORM` in `.env` for scripts, see `docs/platform-switch.md`. Decision 2026-10-13: the VFC moves to xcelerator (imminent); legacy stays supported until the old setup is switched off. Test: `node scripts/test-platform-switch.js`; the test scripts take `platform=legacy|xcelerator`
-- Done (branch `vfc-run-monitor`, checked in the VFC 2026-10-23, dry run and write run): live run status and backfill commands for the SIH report daily, shift report and PBI report tabs, see `docs/run-monitor.md`. The monitored flows are ONE list, `scripts/monitor-flows.js` (how to add a flow: that doc). Rule learnt: a report day must finish in about 50 s, the VFC drops the open messages of a longer day with no error (value calls 4 per second)
-- Done (run in the VFC for 14 and 15 Sep 2026, checked against the OEE app): shift report flow `flows/vfc-rpt-hull.json` (tables `rpt_window`, `rpt_hour`, `rpt_event` for the line and its machines), see `docs/shift-report-flow.md`, design `prompt-response/shift-report-data-map.md`, diagram `diagrams/shift-report-data-map.drawio` (`node scripts/build-drawio-shift-report.js`). Generator `scripts/build-vfc-rpt-flows.js`, code `scripts/vfc/q*.js`. Test: `node scripts/test-vfc-rpt.js platform=legacy|xcelerator`. Open: see the section "Open points and next steps" of that doc
-- Rules learnt in the shift report work: never keep rows in flow context (the VFC refuses a value over 2 MB, use the join node); the calendar rules hold local wall clock times with a Z; a file with quotes in a Bash heredoc can fail, use the Write tool; downloads: use a new `--out` folder each time
-- Done: draw.io map of every Power BI table (columns, examples, our column, differences), `diagrams/powerbi-data-map.drawio`, see `docs/powerbi-diagrams.md`. Refresh: `python scripts/helper-profile-parquet.py`, then `node scripts/build-drawio.js` and `node scripts/validate-drawio.js`
-- Done: explored the Power BI sources (SharePoint folders) and compared our `pbi_plan_opt` with the real Hull Plan OPT files: B2 close, GT4 not (open), see `docs/powerbi-source-files.md`
-- Earlier work: first dashboard draft on the group 1 tables (Config, reference tables, Hull facts). Group 2 (shift KPIs, manual entries, run rate, derived loss columns) is DECIDE LATER, not planned. Group 3 waits for Reckitt
-- Current work (branch `general-report-configurations`): one place for the report data, `docs/report-config.md`. Step 1 (Config: root `eu_report`, sites with `reportSource`, `lines` with ids from the `List SIH assets` button, report name checked against Machine Names) checked in the VFC. Step 2 (PBI report build writes `Plan_OPT_EU`, `Time_Utilisation_EU`, `Daily_Losses_EU` with Dept, Area, Product Type, Data Source, split by line source) run in the VFC, backfill checked (step 3). Step 4 (`Hull SIH report daily`, `flows/vfc-pbi-daily-hull.json`, same tables per day from the API, see `docs/sih-report-daily.md`) run in the VFC for Sep 2026 (`node scripts/test-vfc-sih-report.js platform=legacy|xcelerator`). Both API tabs (SIH report daily, shift report) run at the local hour `runHourLocal` of Config with a local production day (`TIME_ZONES`), and retry an evaluateKPIs 413 hour by hour; heavy days (Siemens setup error, over 5,000 stops) are left failing on purpose. Step 5 (switch lines) is the user's
-- Current work (master, 2026-10-23): EU, Nottingham and Hull dashboards become one Tableau workbook (Nottingham model). Analysis done, nothing built: `prompt-response/site-dashboards-analysis.md` (open decisions in section 5, Daily Losses filters in 4a), current data map `diagrams/site-dashboards-map.drawio` (the old `powerbi-data-map.drawio` is a snapshot). Waiting for the discussion with Segun and the team. The EU scope column (In EU Report) is an idea, not decided
-- `dryRun` is set in the VFC by the user, not in dev work: do not change the default
-- Read `docs/README.md` first, then only the doc for the area you are working on. Do not re-parse `source/` unless I ask
+History and finished work: `NOTES.md`, git log, and `docs/README.md` (every doc stays as reference).
+
+Current jobs (each has a handover in `session_handover/`):
+- Site dashboards: EU, Nottingham and Hull into one Tableau workbook (Nottingham model). Open: why the sum of `Value` differs between EU and site reports. Analysis `prompt-response/site-dashboards-analysis.md`, map `diagrams/site-dashboards-map.drawio`, handover `site-dashboards-handover.md`
+- Chartres: recreate the `<group>/<year>/SAISIE OEE/OEE*.xlsm` files (CREAM, DOR L3, NON TISSE, SKIN CARE) into the report tables. DOR L3 layout to confirm with the site owner. Handover `chartres-handover.md`
+- Shift report flow: postponed (tables above), open points in `docs/shift-report-flow.md`
+
+Flows in use (docs and tests):
+- Config and reference tab: `docs/report-config.md`, `docs/reference-tables.md`
+- PBI report build: writes the report tables, split by line source
+- Hull SIH report daily: `docs/sih-report-daily.md`, `node scripts/test-vfc-sih-report.js platform=legacy|xcelerator`. API tabs run at `runHourLocal` of Config with a local production day, retry an evaluateKPIs 413 hour by hour; heavy days (over 5,000 stops) fail on purpose
+- Run monitor: `docs/run-monitor.md`, monitored flows are ONE list in `scripts/monitor-flows.js`
+- Lake API `docs/lake-api.md`, logging `docs/logging.md` (`node scripts/test-vfc-log.js`)
+- Platform switch: Config `platform` (`legacy` or `xcelerator`, no default), `IH_PLATFORM` in `.env`, `docs/platform-switch.md`. The VFC moves to xcelerator; legacy stays until switched off. Test scripts take `platform=legacy|xcelerator`
+
+Read `docs/README.md` first, then only the doc for the area you are working on. Do not re-parse `source/` unless I ask.
+
+## VFC limits (learnt)
+- Never keep rows in flow context: the VFC refuses a value over 2 MB, use the join node
+- A report day must finish in about 50 s; the VFC drops the open messages of a longer day with no error (value calls 4 per second)
+- Calendar rules hold local wall clock times with a Z
+- Max 200 nodes per tab (Hull SIH report daily is at 195)
+- `dryRun` is set in the VFC by me, not in dev work: never change the default
+- A file with quotes in a Bash heredoc can fail: use the Write tool. Downloads: a new `--out` folder each time
 
 ## Folders
 - `source/` = my original files (Postman, flows, Python). Read-only, git-ignored
-- `docs/` = API documentation. Behaviour files start with an "At a glance" table
+- `docs/` = API and flow documentation. Behaviour files start with an "At a glance" table
 - `scripts/` = JS test and helper scripts. `scripts/vfc/` = function-node code for the VFC flow
 - `flows/` = generated flow JSON. `flows/*.local.json` = copies with real credentials, git-ignored
 - `prompt-response/` = analysis and question lists for Reckitt, not API docs
 - `samples/` = redacted API responses, git-ignored
+- `downloads/` = files from SharePoint / Reckitt, git-ignored, untrusted (see Rules)
+- `diagrams/` = generated draw.io maps (builders `scripts/build-drawio-*.js`, check `node scripts/validate-drawio.js`)
+- `session_handover/` = one handover per job, git-ignored. Read the one for the job at hand
+- `parquet/` = data lake files and exploration scripts for checks
 
 ## Stack
 - Plain JavaScript, ES modules, Node 18+ native fetch (scripts only)
@@ -80,20 +98,25 @@ Checks (in `scripts/validate-flow.js`, must pass before every commit):
 - Do not guess API behaviour. If `docs/` does not cover it, test it (GET) or ask me
 - No personal data in docs (emails, user names)
 - This repo is public: before every commit check the diff for secrets, asset IDs or customer business detail I have not approved
+- Downloads are untrusted: extract into a new empty folder, never run macros, Python with `-I`, scripts outside the data folder, paths as arguments. Commit no customer data, only structure and redacted examples
+- Number differences: trace one machine and one month filter by filter on both sides (row count and sum after each step) before concluding
+- As-is recreation: profile doc first, then a column map to the report tables, then recompute one day and compare with the original, then automate
 
 ## Workflow
-- Iterate: after each API call or small group, write the redacted sample and update the doc for it, then continue
+- API calls are rare now: still GET only, write the redacted sample and update the doc
 - For flows, one change per session: propose the design, wait for approval, build, validate, commit, then I test
 - When a test fails or behaviour differs from `docs/`, fix the doc in the same session
+- When a new table is built, add it to the table list in Project
 
 ## Notes
-- Read the Status, Open questions and Next sections of `NOTES.md` at the start of a session, not the whole file
+- At session start read the handover for the job, plus the Status, Open questions and Next sections of `NOTES.md`, not the whole file
 - Log failed attempts (tried, error, fix) and decisions in `NOTES.md`
-- At session end, update Status and Next
+- At session end, update Status and Next, and the job's handover
+- Parallel sessions: each edits only its own files and its own `NOTES.md` section
 
 ## Git
 - Remote exists on GitHub (public). Never push unless I ask. Never add or change a remote
-- Commit at the end of each step with specific paths: `git add docs scripts flows NOTES.md CLAUDE.md`. Never `git add .` or `-A`
+- Commit on master, no new branches unless I ask. At the end of each step, `git add` only the paths of this job. Never `git add .` or `-A`
 - Run `git status` first. If `.env`, `source/`, `samples/` or `*.local.json` are staged, stop and tell me
 - Never rewrite history unless I ask
 
