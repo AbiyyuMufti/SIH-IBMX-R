@@ -23,7 +23,7 @@ TABLES = {
            'Plan OPT H', 'Time Utilisation H', 'Daily Line Losses H',
            'Plan OPT N', 'Time Utilisation N', 'Daily Line Losses N',
            'Machine Names EU', 'Run Rates EU', 'Volume CoV EU',
-           'Format List EU'],
+           'Format List EU', 'Targets Losses EU'],
     'hull': ['New Plan OPT', 'Time Utilisation', 'New Daily Line Losses',
              'New Machine Names'],
     'nott': ['Plan OPT N', 'Time Utilisation N', 'Daily Line Losses N',

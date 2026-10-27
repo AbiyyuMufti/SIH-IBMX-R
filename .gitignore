@@ -21,3 +21,4 @@ sharepoint/
 graphify-out/
 session_handover/
 # exports of the shift report tables for the notebook (real values)
+*.png
