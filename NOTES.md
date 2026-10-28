@@ -14,8 +14,10 @@
   five report metadata calls returned empty arrays for missing and invalid
   `dataSetType`; a minimal `objectbyperiod` POST returned HTTP 500. This is the
   second 5xx, so live calls stopped. Added the API, report and mapping docs,
-  the two-page explanation and endpoint inventory, passed the local client
-  checks and ran `graphify update .`. Only the scoped commit remains.
+  the two-page explanation, endpoint inventory and live-test request/results
+  log, passed the local client checks and ran `graphify update .`. The live
+  test log lists query parameters, summarized responses and skipped probes:
+  `docs/inventory/provideam.live-tests.md`. Only the scoped doc commit remains.
   Handover:
   `session_handover/provideam-api-handover.md`.
 - Site dashboards BUILD (2026-10-27, master, unattended session, 4 commits 62f924a..fded567): D1 `In EU Report` from `config/report_scope.csv` (proof: the true rows equal the old flow's rows in every column); second tab `PBI report build 2` with `Run_Rates_EU`, `Volume_CoV_EU`, `Format_List_EU` (99.4 / 99.7 / 100 % of the EU report's rows matched); run monitor tab Configuration; `Historical_OEE_EU` converted locally (71,345 rows), not uploaded. Nothing run in the VFC. Handover `session_handover/site-dashboards-build-handover.md`.

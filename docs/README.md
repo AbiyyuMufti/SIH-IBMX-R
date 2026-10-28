@@ -63,6 +63,7 @@
 | [api-summary.md](api-summary.md) | What exists across all sources, coverage by service, the untested write calls |
 | [inventory.md](inventory.md) | Per-source-file lists of every outbound call (`inventory/`), including Node-RED tab and node names |
 | [provideam.swagger.json.md](inventory/provideam.swagger.json.md) | Generated Provideam Swagger inventory: method, path, tag, summary, parameters, allowlist and live status |
+| [provideam.live-tests.md](inventory/provideam.live-tests.md) | Provideam requests actually sent, query parameters, summarized response counts/shapes, and tests skipped with reasons |
 | [auth-checklist.md](auth-checklist.md) | Where each credential comes from in the source files (locations only) and questions for your colleague |
 | [test-log.md](test-log.md) | How each finding was obtained: script, sample and result per test |
 
