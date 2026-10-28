@@ -14,6 +14,7 @@ Current jobs (each has a handover in `session_handover/`):
 - Site dashboards: EU, Nottingham and Hull into one Tableau workbook (Nottingham model). The `Value` difference is explained (analysis section 6, proof notebooks `analysis/proof-*.ipynb` on the loaded tables of the real `.pbix` files; small items open). Analysis `prompt-response/site-dashboards-analysis.md`, map `diagrams/site-dashboards-map.drawio`, handover `site-dashboards-handover.md`
 - Chartres: recreate the `<group>/<year>/SAISIE OEE/OEE*.xlsm` files (CREAM, NON TISSE, SKIN CARE; DOR L3 is management level, no OEE entry) from the sheet `Base` into the report tables. Doc `docs/chartres-source-files.md`, diagram `diagrams/chartres-source-map.drawio`. History 2025 and 2026 converted locally (`scripts/chartres-convert.js`, `docs/chartres-convert.md`), not uploaded; waiting for the site's answers and the reference file. New days will be entered in SIH. Handover `chartres-handover.md`
 - Shift report flow: postponed (tables above), open points in `docs/shift-report-flow.md`
+- Provideam API: read the Hull and (then Nottingham) report data live from the Provideam REST API instead of the emailed CSV files. Doc `docs/provideam-api.md`, handover `provideam-api-handover.md`
 
 Flows in use (docs and tests):
 - Config and reference tab: `docs/report-config.md`, `docs/reference-tables.md`
@@ -92,7 +93,7 @@ Checks (in `scripts/validate-flow.js`, must pass before every commit):
 ## Rules
 - Never print or write secrets (tokens, passwords, keys) in docs, logs, commits or chat
 - Secrets live in `.env` (read via process.env), git-ignored. If you find one in a file, tell me file and location only
-- GET only by default. Ask before any POST/PUT/PATCH/DELETE, except read-style POSTs I already approved (token, `evaluateKPIs`, `evaluate`, `timeModelCategoryDistribution`)
+- GET only by default. Ask before any POST/PUT/PATCH/DELETE, except read-style POSTs I already approved (token, `evaluateKPIs`, `evaluate`, `timeModelCategoryDistribution`, `POST /api/v1/report/*` and `POST /api/v1/services/get` on the Provideam API (host rb-api.provideam.com, header `apiKey`, key in `.env` as PROVIDEAM_API_KEY))
 - Never modify `source/`. Never run the Python files in `source/`
 - Python is allowed for reading and checking data (for example the parquet files from the data lake in `parquet/`) and for small helper scripts I ask for. I approve each run in the permission prompt
 - Do not guess API behaviour. If `docs/` does not cover it, test it (GET) or ask me
