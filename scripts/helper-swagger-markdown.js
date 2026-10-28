@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ALLOWED_REQUESTS } from './provideam-client.js';
@@ -20,6 +20,24 @@ const VERIFIED_REQUESTS = new Set(
     : [],
 );
 const spec = JSON.parse(await readFile(specPath, 'utf8'));
+const samplesPath = resolve(root, 'samples/provideam');
+const observedErrors = new Map();
+for (const name of await readdir(samplesPath)) {
+  if (!name.endsWith('-empty-request.json')) {
+    continue;
+  }
+  const sample = JSON.parse(
+    await readFile(resolve(samplesPath, name), 'utf8'),
+  );
+  const { method, path } = sample.request ?? {};
+  const status = Number(sample.response?.status);
+  if (method && path && status >= 400) {
+    observedErrors.set(
+      `${String(method).toUpperCase()} ${path}`,
+      `HTTP ${status} observed`,
+    );
+  }
+}
 
 function resolveReference(reference) {
   if (!reference?.startsWith('#/')) {
@@ -74,7 +92,9 @@ const lines = [
   '# Provideam Swagger endpoint inventory',
   '',
   'Generated from `samples/provideam/swagger.json` by',
-  '`node scripts/helper-swagger-markdown.js`.',
+  '`node scripts/helper-swagger-markdown.js`. Status distinguishes verified',
+  'live responses, observed HTTP errors from saved request samples, and',
+  'inferred-only operations.',
   '',
   '| Method | Path | Tag | Summary | Parameters | Allowlisted | Status |',
   '|---|---|---|---|---|---|---|',
@@ -111,7 +131,7 @@ for (const [path, pathItem] of Object.entries(spec.paths ?? {})) {
       allowlisted: ALLOWED_REQUESTS.has(key) ? 'Yes' : 'No',
       status: VERIFIED_REQUESTS.has(key)
         ? 'verified live'
-        : 'inferred only',
+        : observedErrors.get(key) ?? 'inferred only',
     });
   }
 }

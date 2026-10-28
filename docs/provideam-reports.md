@@ -5,7 +5,7 @@
 | **Purpose** | Record candidate V4 calls for the five Hull reports whose emailed CSV files feed the SharePoint source |
 | **Status** | No report response has been verified. Endpoint names below are guesses from the API operation names and the initial investigation checklist |
 | **Request model** | Swagger defines `ReportRequestModel`, but not valid values for its selections |
-| **Response model** | Missing from Swagger. The only report response observed was HTTP 500 for an empty request |
+| **Response model** | Missing from Swagger. All eight report POST routes returned HTTP 500 to an empty request |
 | **Samples** | Redacted request attempts and metadata responses are in ignored `samples/provideam/` |
 
 ## What the Swagger spec establishes
@@ -30,9 +30,11 @@ keys, functions, periods or loss values. The `getavailableobjects`,
 deliberately invalid `dataSetType` values. No valid values were found.
 
 The Swagger spec gives no response schema for the report operations. Do not
-infer a response shape from their names. The report POST methods are read-style
-calls, but a minimal empty `objectbyperiod` request returned HTTP 500. Further
-live calls stopped after this second 5xx in the investigation.
+infer a response shape from their names. Each of the eight report POST routes
+was later probed sequentially with the minimal JSON body `{}`; all returned
+HTTP 500. This shows only that the empty-body probes failed. It does not show
+whether a valid `ReportRequestModel` would work. The response from
+`userview/userview` was not saved because it may contain user data.
 
 ## Report candidates
 
@@ -45,8 +47,8 @@ columns below are not tested API behavior.
   segment and part. The normalized source type is `plan_opt`.
 - **Candidate endpoints:** `POST /api/v1/report/objectbyperiod` or
   `POST /api/v1/report/periodbyobject` — **guess**.
-- **Attempt:** an empty `ReportRequestModel` to `objectbyperiod` returned
-  HTTP 500. No machine/day request was made.
+- **Empty-body probes:** `objectbyperiod` and `periodbyobject` each returned
+  HTTP 500 for `{}`. No valid machine/day request is known.
 - **Working request:** none known.
 - **Response schema:** unknown; no Swagger response schema or successful
   response.
@@ -60,7 +62,8 @@ columns below are not tested API behavior.
 - **Purpose in the source files:** hourly Good Parts and Capacity by area,
   machine, part and shift. The normalized source type is `run_rates`.
 - **Candidate endpoint:** `POST /api/v1/report/objectyieldlog` — **guess**.
-- **Working request:** none known; this route has not been called.
+- **Empty-body probe:** `{}` returned HTTP 500.
+- **Working request:** none known.
 - **Response schema:** unknown.
 - **Source quirks to check:** hourly grain, hour boundary, part and shift
   labels, and whether API values are numbers or preformatted text.
@@ -72,7 +75,9 @@ columns below are not tested API behavior.
   `volume_loss_correction`.
 - **Candidate endpoints:** `POST /api/v1/report/objectbyperiodandloss` or
   `POST /api/v1/report/periodbyobjectandloss` — **guess**.
-- **Working request:** none known; these routes have not been called.
+- **Empty-body probes:** `objectbyperiodandloss` and
+  `periodbyobjectandloss` each returned HTTP 500 for `{}`.
+- **Working request:** none known.
 - **Response schema:** unknown.
 - **Source quirks to check:** loss Group, SubGroup and Desc labels, duration
   units, Loss Units, and the 06:00 production-day boundary.
@@ -83,7 +88,8 @@ columns below are not tested API behavior.
   shift, loss hierarchy, duration and comment. The normalized source type is
   `line_losses`.
 - **Candidate endpoint:** `POST /api/v1/report/objectmodelog` — **guess**.
-- **Working request:** none known; this route has not been called.
+- **Empty-body probe:** `{}` returned HTTP 500.
+- **Working request:** none known.
 - **Response schema:** unknown.
 - **Source quirks to check:** event grain, local versus UTC time, and whether
   the comment text is returned.
@@ -94,10 +100,19 @@ columns below are not tested API behavior.
   This report is not currently represented by a normalized source type.
 - **Candidate endpoint:** `POST /api/v1/report/currentstatus` — **guess based
   only on the operation name**.
-- **Working request:** none known; this route has not been called.
+- **Empty-body probe:** `{}` returned HTTP 500.
+- **Working request:** none known.
 - **Response schema:** unknown.
 - **Source quirks to check:** whether the endpoint returns a period report or
   only a current snapshot, and how its percentages are calculated.
+
+### User View Report
+
+- **Endpoint:** `POST /api/v1/report/userview/userview`.
+- **Empty-body probe:** `{}` returned HTTP 500.
+- **Working request and response schema:** unknown.
+- **Privacy:** The response body was not saved because this endpoint may
+  include user data.
 
 ## Request placeholder
 

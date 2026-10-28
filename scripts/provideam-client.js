@@ -39,6 +39,8 @@ export const ALLOWED_REQUESTS = new Set([
   'POST /api/v1/report/objectbyperiodandloss',
   'POST /api/v1/report/periodbyobject',
   'POST /api/v1/report/periodbyobjectandloss',
+  'POST /api/v1/report/currentstatus',
+  'POST /api/v1/report/userview/userview',
   'POST /api/v1/report/objectmodelog',
   'POST /api/v1/report/objectyieldlog',
 ]);

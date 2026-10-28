@@ -1,23 +1,21 @@
 # NOTES
 
 ## Status
-- Provideam V4 API exploration (2026-10-28, in progress): checked worktree and
-  project docs; the optional handover was absent. Retrieved the live Swagger
-  spec through `scripts/provideam-client.js` (fixed host, `apiKey`, exact
-  method/path allowlist) into ignored `samples/provideam/swagger.json`.
-  `scripts/helper-swagger-markdown.js` generates
-  `docs/inventory/provideam.swagger.json.md` (54 operations). The live
-  hierarchy confirms all three requested plants are visible; machine GETs
-  were tested for two Hull
-  candidates; `getmachinecurrentvalues` returned one HTTP 500 and a later
-  HTTP 200 on the first candidate. The
-  five report metadata calls returned empty arrays for missing and invalid
-  `dataSetType`; a minimal `objectbyperiod` POST returned HTTP 500. This is the
-  second 5xx, so live calls stopped. Added the API, report and mapping docs,
-  the two-page explanation, endpoint inventory and live-test request/results
-  log, passed the local client checks and ran `graphify update .`. The live
-  test log lists query parameters, summarized responses and skipped probes:
-  `docs/inventory/provideam.live-tests.md`. Only the scoped doc commit remains.
+- Provideam V4 API exploration (2026-10-28, requested tests complete): captured
+  the 54-operation Swagger inventory and live results. The hierarchy confirms
+  Hull, Nottingham and Weinheim are visible. Machine/reference reads were
+  tested on two selected Hull machines; one `getmachinecurrentvalues` request
+  returned HTTP 500 before a later HTTP 200 on the same machine. Selection
+  details remain in ignored samples. All five report metadata GETs returned
+  empty arrays with missing
+  and invalid `dataSetType`; all eight report POSTs returned HTTP 500 when
+  called sequentially with `{}`. This does not establish how valid
+  `ReportRequestModel` bodies behave. The User View response body was not
+  saved; only status was retained. Updated API/report/mapping/explanation
+  docs, the Swagger inventory generator, and live request/results log.
+  Team deck: ignored `session_handover/provideam-test-results-reckitt.pptx`.
+  Client tests and `graphify update .` pass. Handover:
+  `session_handover/provideam-api-handover.md`.
   Handover:
   `session_handover/provideam-api-handover.md`.
 - Site dashboards BUILD (2026-10-27, master, unattended session, 4 commits 62f924a..fded567): D1 `In EU Report` from `config/report_scope.csv` (proof: the true rows equal the old flow's rows in every column); second tab `PBI report build 2` with `Run_Rates_EU`, `Volume_CoV_EU`, `Format_List_EU` (99.4 / 99.7 / 100 % of the EU report's rows matched); run monitor tab Configuration; `Historical_OEE_EU` converted locally (71,345 rows), not uploaded. Nothing run in the VFC. Handover `session_handover/site-dashboards-build-handover.md`.
@@ -57,9 +55,14 @@ Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `sc
   the second machine. The remaining independent GET probes completed.
 - 2026-10-28 Provideam report validation: the five `getavailable*` endpoints
   returned HTTP 200 with `[]` for both a missing and a deliberately invalid
-  `dataSetType`; they did not reveal accepted values. A minimal
-  `POST /api/v1/report/objectbyperiod` with `{}` returned HTTP 500. This was
-  the second 5xx observed, so stopped all further live calls as instructed.
+  `dataSetType`; they did not reveal accepted values. The empty-body
+  `POST /api/v1/report/objectbyperiod` returned HTTP 500. After the user
+  explicitly requested the remaining report probes, all seven other report
+  POST routes were called sequentially with `{}` and also returned HTTP 500.
+  These failures do not establish whether valid report bodies work. The
+  `userview/userview` body was not saved because the endpoint may contain user
+  data. Added the two requested paths to the exact client allowlist; offline
+  client/redaction checks pass.
 - 2026-10-26 site dashboards: rebuilt the three pipelines in Python from the original exports (`site-dashboards-reconcile.ipynb`) to prove why EU and site differ. It worked, but only proved that the replica agrees with itself and was hard for a human to follow. Fix: read the tables Power BI already loaded from the real `.pbix` files (pbixray) and compare those; six small step-by-step notebooks. Also: exports with a tab inside a comment break `pd.read_csv` (one field too many), fixed by keeping the first n fields; the numpy 1 / 2 import message of numexpr and bottleneck is harmless for pandas.
 - Tried: listing source/ with awk `$NF`. Error: file names with spaces were truncated, so the queue had wrong names and the helper script got ENOENT. Fix: re-listed with `ls`; queue now has full names.
 - Tried: a Bash call that included a `python3 --version` check. Error: denied by the deny rule on `python`/`python3`. Fix: removed it, not needed (Python is never executed).
@@ -145,10 +148,9 @@ Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `sc
 - Many Node-RED calls are copies across tabs; distinct endpoints are far fewer than the call counts.
 
 ## Next
-- NEXT (Provideam API, 2026-10-28): commit the scoped changes on `master`.
-  Live calls remain paused after the second HTTP 500. Ask the Provideam owner
-  for valid `dataSetType` values and a minimal working report request, then
-  resume one-machine/one-day comparison. Handover:
+- NEXT (Provideam API, 2026-10-28): ask the Provideam owner for valid
+  `dataSetType` values and a minimal working report request, then resume
+  one-machine/one-day comparison. Handover:
   `session_handover/provideam-api-handover.md`.
 - NEXT (site dashboards, 2026-10-27): the user reads `session_handover/site-dashboards-build-handover.md`, uploads the scope file, the run rates files and (after a look) the Historical OEE files, imports the four flows and tests them in the VFC (list in the handover). Ask Nottingham for a Format List (starter: `node scripts/helper-format-list-starter.js Nottingham`). Discuss with Segun: Nottingham loss rows that are In EU Report true now carry Dept / Area (4,129 rows in Aug and Sep 2026).
 - NEXT (Chartres, 2026-10-26): Laura's answers, then the reference file (Dept, Area, Product Type, path format), then upload of `downloads/chartres-convert/<run>/report/` after the user's go. Handover `session_handover/chartres-handover.md`.

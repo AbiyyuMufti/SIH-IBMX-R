@@ -5,8 +5,8 @@
 | **Host** | `https://rb-api.provideam.com` |
 | **Auth** | `apiKey` request header; value loaded from `PROVIDEAM_API_KEY` in `.env`. This is not the Insights Hub API or Bearer auth |
 | **Pagination** | List requests use `Skip` and `Take`; the Swagger cap is 100, except `machine/getmodes` (1000). Requests are sent sequentially, at least 300 ms apart |
-| **Gotchas** | Swagger has no report response schemas. Missing and invalid `dataSetType` values returned HTTP 200 with `[]`. A minimal report POST returned HTTP 500; further live calls stopped after a second 5xx |
-| **Status** | Live hierarchy and most requested machine GETs verified 2026-10-28. Report output is not verified. See [provideam-reports.md](provideam-reports.md) and [provideam-report-mapping.md](provideam-report-mapping.md) |
+| **Gotchas** | Swagger has no report response schemas. Missing and invalid `dataSetType` values returned HTTP 200 with `[]`. All eight tested report POST routes returned HTTP 500 to an empty `{}` body; no valid request was established |
+| **Status** | Live hierarchy and most requested machine GETs verified 2026-10-28. Report endpoints were probed, but no report data was returned. See [provideam-reports.md](provideam-reports.md) and [provideam-report-mapping.md](provideam-report-mapping.md) |
 | **Safe client** | [`scripts/provideam-client.js`](../scripts/provideam-client.js): fixed host and exact method/path allowlist; rejects redirects; does not retry; redacts sensitive and operator/user fields before saving samples |
 
 ## What was verified
@@ -41,10 +41,15 @@ The five metadata endpoints are:
 | `GET /api/v1/report/getavailableperiods` | HTTP 200, `[]` | HTTP 200, `[]` |
 
 These results do not reveal valid dataset types. Do not treat the empty lists as
-evidence that a report has no fields or no periods. A minimal
-`POST /api/v1/report/objectbyperiod` with an empty JSON object returned HTTP
-500. This was the second 5xx observed during the investigation, so no further
-live calls were made.
+evidence that a report has no fields or no periods.
+
+All eight report POST routes that were in scope were subsequently probed
+sequentially with an empty JSON object `{}`. Every one returned HTTP 500. The
+`userview/userview` response was not saved because it may contain user data.
+These validation probes do not prove that the endpoints fail with a valid
+`ReportRequestModel`; no accepted request body is known. See the detailed
+[live test log](inventory/provideam.live-tests.md) for each route and its
+saved evidence.
 
 ## Request example
 

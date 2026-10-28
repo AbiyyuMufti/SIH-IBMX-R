@@ -6,8 +6,9 @@
 Nottingham and Weinheim hierarchies, and most tested machine data. That proves
 the service is reachable. It does not yet prove the reports can replace the
 emailed files. The report metadata
-lookups returned empty arrays, and the first report request returned HTTP 500.
-No API report rows could be compared with the SharePoint source.
+lookups returned empty arrays. All eight report POST routes returned HTTP 500
+when tested with the minimal empty body `{}`. No API report rows could be
+compared with the SharePoint source; a valid request body has not been tested.
 
 ## b. How to call it
 
@@ -29,9 +30,9 @@ if (!response.ok) {
 }
 ```
 
-No working report POST example is known. The only report POST attempted was
-the smallest empty request below, and it returned HTTP 500. This is not a
-valid report configuration:
+No working report POST example is known. The smallest empty request below
+returned HTTP 500 on all eight report POST routes. This is not a valid report
+configuration:
 
 ```js
 const response = await request(
@@ -76,8 +77,10 @@ comment content remain unknown. See
 - A zero-row machine list may return `machines: null` with
   `totalRowCount: 0`.
 - One current-values call returned HTTP 500; a later call for that selected
-  machine returned HTTP 200. The report validation POST returned HTTP 500.
-  Further live calls stopped after the second 5xx.
+  machine returned HTTP 200. All eight empty-body report POST probes returned
+  HTTP 500; no valid request was available to test.
+- The `userview/userview` response was not saved because this endpoint may
+  contain user data.
 - The report response schemas and valid request values are absent from the
   Swagger spec.
 

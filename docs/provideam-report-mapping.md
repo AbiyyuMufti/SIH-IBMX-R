@@ -4,14 +4,15 @@
 |---|---|
 | **Goal** | Determine whether Provideam API reports can replace the emailed CSV inputs to the existing report build |
 | **Scope** | Layer 1 (Provideam report) or layer 2 (normalized source CSV) only; no redesign of the report tables |
-| **Status** | Source columns are known locally. API column mappings and numeric comparisons are blocked because no report call returned data |
-| **Sites** | Hull is the comparison target. The key can also see Nottingham, but no Nottingham report comparison was made after the repeated 5xx stop |
+| **Status** | All eight report POST routes returned HTTP 500 to an empty `{}` probe. No report rows were returned, so API column mappings and numeric comparisons remain blocked |
+| **Sites** | Hull is the comparison target. The key can also see Nottingham, but no site-specific report comparison was possible |
 
 ## Candidate API call to normalized source
 
 The source column lists below were read from the local normalized Hull CSV
 headers. “API output” is intentionally not filled in: no report response
-schema or column set was obtained.
+schema or column set was obtained. The empty-body POST probes did not specify
+a site, machine or production day.
 
 | Provideam report | Candidate API call | Status | Normalized source type | Observed source columns | API output / normalizer change |
 |---|---|---|---|---|---|
@@ -22,7 +23,9 @@ schema or column set was obtained.
 | Performance Availability | `currentstatus` | Guess based on its operation name only | No normalized source type found | No local normalized Performance Availability file | Unknown. First establish whether this is a period report or a current snapshot |
 
 These are endpoint candidates, not approved mappings. The operation names alone
-do not prove which report definition they implement.
+do not prove which report definition they implement. All listed report routes
+were probed with `{}` and returned HTTP 500. These empty-body results do not
+prove that a correctly populated request would fail.
 
 ## Hull comparison checklist
 
@@ -47,10 +50,10 @@ which columns or normalizer rules should change.
 
 ## Nottingham
 
-The API hierarchy confirmed that Nottingham is visible to the key. It was not
-queried for report data: the five metadata endpoints returned empty arrays and
-the initial report validation call returned HTTP 500. The investigation
-stopped after the second 5xx. No differences from Hull are established.
+The API hierarchy confirmed that Nottingham is visible to the key. The report
+POST probes used empty bodies and were not specific to a Nottingham machine or
+day; they all returned HTTP 500. No report rows or differences from Hull are
+established.
 
 ## What is needed to continue
 

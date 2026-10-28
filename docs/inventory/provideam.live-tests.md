@@ -115,10 +115,23 @@ parameter, then with `dataSetType=__invalid_probe__`.
 - **Result:** HTTP 500. No report rows or usable response schema were
   obtained.
 - **Sample:** `samples/provideam/objectbyperiod-empty-request.json`.
-- **Skipped after error:** The other candidate report POSTs were not called:
-  `objectbyperiodandloss`, `periodbyobject`, `periodbyobjectandloss`,
-  `objectmodelog`, `objectyieldlog` and `currentstatus`. The investigation
-  stopped after this was the second HTTP 500 observed, as required.
+- **Follow-up:** After the user explicitly requested tests of the remaining
+  report routes, each allowlisted route was called once, sequentially, with
+  the same minimal `{}` body. Every response was HTTP 500:
+
+  | Request | Result | Saved evidence |
+  |---|---|---|
+  | `POST /api/v1/report/objectbyperiodandloss` | HTTP 500 | `samples/provideam/api-v1-report-objectbyperiodandloss-empty-request.json` |
+  | `POST /api/v1/report/periodbyobject` | HTTP 500 | `samples/provideam/api-v1-report-periodbyobject-empty-request.json` |
+  | `POST /api/v1/report/periodbyobjectandloss` | HTTP 500 | `samples/provideam/api-v1-report-periodbyobjectandloss-empty-request.json` |
+  | `POST /api/v1/report/currentstatus` | HTTP 500 | `samples/provideam/api-v1-report-currentstatus-empty-request.json` |
+  | `POST /api/v1/report/userview/userview` | HTTP 500 | Status-only sample; response body not saved because this endpoint may contain user data |
+  | `POST /api/v1/report/objectmodelog` | HTTP 500 | `samples/provideam/api-v1-report-objectmodelog-empty-request.json` |
+  | `POST /api/v1/report/objectyieldlog` | HTTP 500 | `samples/provideam/api-v1-report-objectyieldlog-empty-request.json` |
+
+- **Interpretation:** All seven remaining requested routes returned HTTP 500
+  to the empty-body probe. This does not prove that a valid
+  `ReportRequestModel` would fail. No valid request body is known.
 - **Not established:** Valid `dataSetType` values, report request contents,
   report response columns, dates, numeric values and row counts.
 

@@ -1,7 +1,9 @@
 # Provideam Swagger endpoint inventory
 
 Generated from `samples/provideam/swagger.json` by
-`node scripts/helper-swagger-markdown.js`.
+`node scripts/helper-swagger-markdown.js`. Status distinguishes verified
+live responses, observed HTTP errors from saved request samples, and
+inferred-only operations.
 
 | Method | Path | Tag | Summary | Parameters | Allowlisted | Status |
 |---|---|---|---|---|---|---|
@@ -39,19 +41,19 @@ Generated from `samples/provideam/swagger.json` by
 | POST | `/api/v1/machine/updatemachinecurrentvalues` | Machine | Update Machine Current Values. Requires Machine Admin access. |  | No | inferred only |
 | GET | `/api/v1/mode/getmodetypes` | Mode | Get Mode Types |  | Yes | verified live |
 | GET | `/api/v1/plant/getall` | Plant |  | FilterName (query, string); Skip (query, integer (int32)); Take (query, integer (int32)); Active (query, boolean) | Yes | verified live |
-| POST | `/api/v1/report/currentstatus` | Report | Current Status Report |  | No | inferred only |
+| POST | `/api/v1/report/currentstatus` | Report | Current Status Report |  | Yes | HTTP 500 observed |
 | GET | `/api/v1/report/getavailablefields` | Report | Get Available Fields | dataSetType (query, string) | Yes | verified live |
 | GET | `/api/v1/report/getavailablefunctions` | Report | Get Available Functions | dataSetType (query, string) | Yes | verified live |
 | GET | `/api/v1/report/getavailablelosses` | Report | Get Available Losses | dataSetType (query, string) | Yes | verified live |
 | GET | `/api/v1/report/getavailableobjects` | Report | Get Available Objects | dataSetType (query, string) | Yes | verified live |
 | GET | `/api/v1/report/getavailableperiods` | Report | Get Available Periods | dataSetType (query, string) | Yes | verified live |
-| POST | `/api/v1/report/objectbyperiod` | Report | Object By Period Report |  | Yes | inferred only |
-| POST | `/api/v1/report/objectbyperiodandloss` | Report | Object By Period And Loss Report |  | Yes | inferred only |
-| POST | `/api/v1/report/objectmodelog` | Report | Object Mode Log Report |  | Yes | inferred only |
-| POST | `/api/v1/report/objectyieldlog` | Report | Object Yield Log Report |  | Yes | inferred only |
-| POST | `/api/v1/report/periodbyobject` | Report | Period By Object Report |  | Yes | inferred only |
-| POST | `/api/v1/report/periodbyobjectandloss` | Report | Period By Object And Loss Report |  | Yes | inferred only |
-| POST | `/api/v1/report/userview/userview` | Report | User View Report |  | No | inferred only |
+| POST | `/api/v1/report/objectbyperiod` | Report | Object By Period Report |  | Yes | HTTP 500 observed |
+| POST | `/api/v1/report/objectbyperiodandloss` | Report | Object By Period And Loss Report |  | Yes | HTTP 500 observed |
+| POST | `/api/v1/report/objectmodelog` | Report | Object Mode Log Report |  | Yes | HTTP 500 observed |
+| POST | `/api/v1/report/objectyieldlog` | Report | Object Yield Log Report |  | Yes | HTTP 500 observed |
+| POST | `/api/v1/report/periodbyobject` | Report | Period By Object Report |  | Yes | HTTP 500 observed |
+| POST | `/api/v1/report/periodbyobjectandloss` | Report | Period By Object And Loss Report |  | Yes | HTTP 500 observed |
+| POST | `/api/v1/report/userview/userview` | Report | User View Report |  | Yes | HTTP 500 observed |
 | POST | `/api/v1/services/get` | Services |  |  | No | inferred only |
 | POST | `/api/v1/services/start` | Services |  | serviceId (query, integer (int32)) | No | inferred only |
 | POST | `/api/v1/services/stop` | Services |  | serviceId (query, integer (int32)) | No | inferred only |
