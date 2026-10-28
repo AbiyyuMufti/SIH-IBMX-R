@@ -1,6 +1,23 @@
 # NOTES
 
 ## Status
+- Provideam V4 API exploration (2026-10-28, in progress): checked worktree and
+  project docs; the optional handover was absent. Retrieved the live Swagger
+  spec through `scripts/provideam-client.js` (fixed host, `apiKey`, exact
+  method/path allowlist) into ignored `samples/provideam/swagger.json`.
+  `scripts/helper-swagger-markdown.js` generates
+  `docs/inventory/provideam.swagger.json.md` (54 operations). The live
+  hierarchy confirms all three requested plants are visible; machine GETs
+  were tested for two Hull
+  candidates; `getmachinecurrentvalues` returned one HTTP 500 and a later
+  HTTP 200 on the first candidate. The
+  five report metadata calls returned empty arrays for missing and invalid
+  `dataSetType`; a minimal `objectbyperiod` POST returned HTTP 500. This is the
+  second 5xx, so live calls stopped. Added the API, report and mapping docs,
+  the two-page explanation and endpoint inventory, passed the local client
+  checks and ran `graphify update .`. Only the scoped commit remains.
+  Handover:
+  `session_handover/provideam-api-handover.md`.
 - Site dashboards BUILD (2026-10-27, master, unattended session, 4 commits 62f924a..fded567): D1 `In EU Report` from `config/report_scope.csv` (proof: the true rows equal the old flow's rows in every column); second tab `PBI report build 2` with `Run_Rates_EU`, `Volume_CoV_EU`, `Format_List_EU` (99.4 / 99.7 / 100 % of the EU report's rows matched); run monitor tab Configuration; `Historical_OEE_EU` converted locally (71,345 rows), not uploaded. Nothing run in the VFC. Handover `session_handover/site-dashboards-build-handover.md`.
 - Run monitor DONE (2026-10-23, branch `vfc-run-monitor`, merged to master): stall cause found and fixed (a report day over about 60 s loses its open messages in the VFC; value calls now 4 per second, collected by a join). Dry run and write run of all three report flows checked in the VFC and in the downloaded files. Flow list in `scripts/monitor-flows.js` (the VFC monitor tab works as it is; re-import only when a flow is added). dryRun is OFF in the three report tabs since the write test: the user decides when to switch it back.
 - Site dashboards proof (2026-10-26, master): Segun's `Value` question answered on the loaded tables of the three real `.pbix` files (`scripts/helper-pbix-extract.py`, needs `pip install pbixray`, output `downloads/pbix_data/`). Configured the same way, EU and site data are the same; differences = EU machine filter (only cause of row differences), glidepath file / key (targets, Hull `Value`), seconds dropped in the EU union, refresh date. Analysis section 6, six notebooks `analysis/proof-*.ipynb`. Small items open (36 Hull `Value` stops, 6 extra Nottingham stops in the union). Handover `session_handover/site-dashboards-handover.md`.
@@ -25,6 +42,22 @@ Outputs: `docs/inventory/<file>.md` (6), `docs/inventory.md` (index), `docs/auth
 Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `scripts/helper-postman-markdown.js`, `scripts/helper-nodered-outline.js`.
 
 ## Failed attempts
+- 2026-10-28 Provideam exploration: `graphify explain "Open"` was ambiguous
+  across five nodes. Re-ran a focused graph query for NOTES and the Provideam
+  docs before reading the requested ranges.
+- 2026-10-28 Provideam hierarchy: the first traversal stopped when an area
+  returned `machines: null` with `totalRowCount: 0`. A focused repeat confirmed
+  the empty-page shape; the hierarchy reader now treats that exact zero-row
+  response as empty and completed the target plants.
+- 2026-10-28 Provideam machine probes: one
+  `GET /api/v1/machine/getmachinecurrentvalues` returned HTTP 500; a later
+  saved response for the first candidate was HTTP 200. It was not tested on
+  the second machine. The remaining independent GET probes completed.
+- 2026-10-28 Provideam report validation: the five `getavailable*` endpoints
+  returned HTTP 200 with `[]` for both a missing and a deliberately invalid
+  `dataSetType`; they did not reveal accepted values. A minimal
+  `POST /api/v1/report/objectbyperiod` with `{}` returned HTTP 500. This was
+  the second 5xx observed, so stopped all further live calls as instructed.
 - 2026-10-26 site dashboards: rebuilt the three pipelines in Python from the original exports (`site-dashboards-reconcile.ipynb`) to prove why EU and site differ. It worked, but only proved that the replica agrees with itself and was hard for a human to follow. Fix: read the tables Power BI already loaded from the real `.pbix` files (pbixray) and compare those; six small step-by-step notebooks. Also: exports with a tab inside a comment break `pd.read_csv` (one field too many), fixed by keeping the first n fields; the numpy 1 / 2 import message of numexpr and bottleneck is harmless for pandas.
 - Tried: listing source/ with awk `$NF`. Error: file names with spaces were truncated, so the queue had wrong names and the helper script got ENOENT. Fix: re-listed with `ls`; queue now has full names.
 - Tried: a Bash call that included a `python3 --version` check. Error: denied by the deny rule on `python`/`python3`. Fix: removed it, not needed (Python is never executed).
@@ -37,6 +70,18 @@ Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `sc
 - Run monitor GET route follow-up (2026-10-21): the VFC does not accept the optional `:view?` endpoint. Use the fixed `/reports-monitor/` route and select page/status/history with `msg.req.query.view`; update the page to call that same endpoint with query parameters.
 
 ## Decisions
+- 2026-10-28 Provideam: use a separate fixed-host client and `apiKey`
+  authentication; permit only individually allowlisted method/path pairs.
+  The first live request was only the Swagger GET. Never save raw responses
+  before removing password, salt, token and API-key fields.
+- 2026-10-28 Provideam: only the requested plant names are printed during the
+  hierarchy probe; live machine names and IDs are kept in ignored samples.
+  Selected the one-day comparison sample by source overlap across plan OPT,
+  run rates, volume loss correction and line losses.
+- 2026-10-28 Provideam: do not infer valid report dataset types or response
+  schemas from empty metadata results or HTTP 500s. Mark candidate report
+  routes as guesses and leave SharePoint comparisons open until a successful
+  small report response can be obtained.
 - 2026-10-02: test tenant is **reckitt** (user decision). Credentials were reused from other projects, which is why they appear in several source files.
 - Auth needs one POST (token request); ask the user before sending it in step 6.
 - Phase B will add JS call scripts in `scripts/` (one per API area, GET only, secrets from `.env`).
@@ -80,6 +125,10 @@ Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `sc
 5. `farhan-flows.json` tab `Delete Timeseries`: flow vars `tokenUrl`, `clientID`, `tokenSecret` are never set in the file.
 6. Node-RED `DELETE` call in Paul-Flow tab `OEE` (id 8d4e5b58.d17f08) builds a URL without asset ID/aspect in the path as written; looks incomplete.
 7. SIH vs Provideam differences in the report tables (loss reasons are alarm texts, equipment, shift names, site filters, AreaName, ...): list in `docs/sih-report-daily.md`, section "SIH and Provideam: known differences". The user will ask about them later (2026-10-21).
+8. Provideam report discovery: valid `dataSetType` values, report request
+   values and response schemas are still unknown. The five metadata calls
+   returned empty arrays; the minimal report call returned HTTP 500. Ask the
+   Provideam owner for a working one-machine, one-day example before resuming.
 
 ## Secrets found (location only, values not recorded anywhere)
 - Testing Postman: item `Get Token`, `request.auth.basic`.
@@ -94,6 +143,11 @@ Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `sc
 - Many Node-RED calls are copies across tabs; distinct endpoints are far fewer than the call counts.
 
 ## Next
+- NEXT (Provideam API, 2026-10-28): commit the scoped changes on `master`.
+  Live calls remain paused after the second HTTP 500. Ask the Provideam owner
+  for valid `dataSetType` values and a minimal working report request, then
+  resume one-machine/one-day comparison. Handover:
+  `session_handover/provideam-api-handover.md`.
 - NEXT (site dashboards, 2026-10-27): the user reads `session_handover/site-dashboards-build-handover.md`, uploads the scope file, the run rates files and (after a look) the Historical OEE files, imports the four flows and tests them in the VFC (list in the handover). Ask Nottingham for a Format List (starter: `node scripts/helper-format-list-starter.js Nottingham`). Discuss with Segun: Nottingham loss rows that are In EU Report true now carry Dept / Area (4,129 rows in Aug and Sep 2026).
 - NEXT (Chartres, 2026-10-26): Laura's answers, then the reference file (Dept, Area, Product Type, path format), then upload of `downloads/chartres-convert/<run>/report/` after the user's go. Handover `session_handover/chartres-handover.md`.
 - NEXT (run monitor): nothing planned. Open data question for Reckitt: an idle line day (B2 Auto 2026-10-13) has no loss row. Optional: the asset counter of a finished day can show fewer assets (lost checkpoint updates); retry on HTTP 502 (no room on the SIH daily tab, 198/200 nodes).

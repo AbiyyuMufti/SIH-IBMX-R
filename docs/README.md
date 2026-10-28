@@ -40,6 +40,10 @@
 | [chartres-convert.md](chartres-convert.md) | The script that converts the Chartres workbooks (2025, 2026) into Plan_OPT_EU, Time_Utilisation_EU and Daily_Losses_EU parquet files: rows, column rules, data choices, checks | Built and run locally 2026-10-26, not uploaded |
 | [chartres-mapping-spec.md](chartres-mapping-spec.md) | Self-contained mapping spec Base to the three tables, for writing a converter script or a VBA macro with any AI assistant | Written 2026-10-27 |
 | [provideam-source.md](provideam-source.md) | Provideam is the real source of the Hull board: reports, email, Power Automate, SharePoint; what differs from our assumptions | Read 2026-10-13 |
+| [provideam-api.md](provideam-api.md) | Provideam V4 host, `apiKey` auth, verified hierarchy and machine reads, request limits, report metadata results and failures | Partly verified live 2026-10-28 |
+| [provideam-reports.md](provideam-reports.md) | Candidate API calls for the five emailed reports, the Swagger request model and report behavior still unknown | Endpoints are guesses; no report response verified |
+| [provideam-report-mapping.md](provideam-report-mapping.md) | Candidate API-to-normalized-source map, local column headers, comparison checklist and blockers | API comparison blocked by HTTP 500 |
+| [provideam-explained.md](provideam-explained.md) | Short plain-language introduction to the Provideam API investigation and next step | Summary of findings |
 | [sharepoint-files.md](sharepoint-files.md) | What the downloaded SharePoint files contain, how the report uses them and how they fit Insights Hub (names, rules, coverage); what is completed and what is missing | Analysed 2026-10-14 |
 | [pbi-report-build-2.md](pbi-report-build-2.md) | Second build tab: `Run_Rates_EU`, `Volume_CoV_EU`, `Format_List_EU` for the site dashboards; the run_rates type of the normalizer; Format List starter | Built 2026-10-27, checked against the EU report tables; not run in the VFC yet |
 | [historical-oee.md](historical-oee.md) | `Historical_OEE_EU`: one-time conversion of the Provideam Historical OEE archives (Hull, Nottingham, 2022 to Nov 2024) and its upload script | Converted 2026-10-27, local; upload waits for the user |
@@ -58,6 +62,7 @@
 | [endpoints.md](endpoints.md) | Flat table of every tested call, plus conventions (headers, units, paging, errors) |
 | [api-summary.md](api-summary.md) | What exists across all sources, coverage by service, the untested write calls |
 | [inventory.md](inventory.md) | Per-source-file lists of every outbound call (`inventory/`), including Node-RED tab and node names |
+| [provideam.swagger.json.md](inventory/provideam.swagger.json.md) | Generated Provideam Swagger inventory: method, path, tag, summary, parameters, allowlist and live status |
 | [auth-checklist.md](auth-checklist.md) | Where each credential comes from in the source files (locations only) and questions for your colleague |
 | [test-log.md](test-log.md) | How each finding was obtained: script, sample and result per test |
 
