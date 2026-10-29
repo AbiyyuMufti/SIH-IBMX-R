@@ -3,10 +3,10 @@
 | At a glance | |
 |---|---|
 | **Purpose** | Record candidate V4 calls for the five Hull reports whose emailed CSV files feed the SharePoint source |
-| **Status** | No report response has been verified. Endpoint names below are guesses from the API operation names and the initial investigation checklist |
+| **Status** | On 2026-10-30, retimed requests returned HTTP 200 for 30/38 definitions; reports 15-22 remained HTTP 500 after additional actual-date retries |
 | **Request model** | Swagger defines `ReportRequestModel`, but not valid values for its selections |
-| **Response model** | Missing from Swagger. All eight report POST routes returned HTTP 500 to an empty request |
-| **Samples** | Redacted request attempts and metadata responses are in ignored `samples/provideam/` |
+| **Response model** | Missing from Swagger. Report 23 returned an object with a `processedData` array; 30 rows were observed and raw values were not saved |
+| **Samples** | Request/result notes are in the ignored local `downloads/provideam-samples/`; prior redacted probes are in ignored `samples/provideam/` |
 
 ## What the Swagger spec establishes
 
@@ -27,7 +27,23 @@ This describes field types, not accepted object names, field names, grouping
 keys, functions, periods or loss values. The `getavailableobjects`,
 `getavailablefields`, `getavailablefunctions`, `getavailablelosses` and
 `getavailableperiods` endpoints returned empty arrays for missing and
-deliberately invalid `dataSetType` values. No valid values were found.
+deliberately invalid `dataSetType` values. The UI's DataSet Templates list
+later supplied six names; each returned HTTP 200 with metadata when queried.
+
+| `dataSetType` | UI description | Objects | Fields | Functions | Losses | Periods |
+|---|---|---:|---:|---:|---:|---:|
+| `dsObjectByPeriod` | Production Trend | 30 | 74 | 133 | 0 | 12 |
+| `dsPeriodByObject` | Production Object | 31 | 74 | 138 | 0 | 12 |
+| `dsObjectByPeriodAndLoss` | OEE Loss By Period | 30 | 80 | 140 | 8 | 11 |
+| `dsPeriodByObjectAndLoss` | OEE Loss By Object | 30 | 80 | 140 | 8 | 11 |
+| `dsObjectModeLog` | Mode Log Report | 31 | 86 | 0 | 5 | 11 |
+| `dsObjectYieldLog` | Yield Log Report | 29 | 84 | 0 | 5 | 11 |
+
+Counts are the metadata array lengths observed on 2026-10-29 for this tenant.
+The source investigation associates Production Trend with Plan OPT, OEE Loss
+By Object with Volume Loss Correction, and Mode Log with Daily Line Losses.
+Yield Log is a likely template family for Packing Hourly Run Rates based on
+the UI label; that mapping still needs a successful report response.
 
 The Swagger spec gives no response schema for the report operations. Do not
 infer a response shape from their names. Each of the eight report POST routes
@@ -36,37 +52,99 @@ HTTP 500. This shows only that the empty-body probes failed. It does not show
 whether a valid `ReportRequestModel` would work. The response from
 `userview/userview` was not saved because it may contain user data.
 
-The user later supplied a populated Object By Period example. Sent once to
-`POST /api/v1/report/objectbyperiod`, with its machine placeholder replaced
-by the selected Hull machine ID, it also returned HTTP 500 with no JSON body.
-That example uses `applyDSTimeCorrection` and singular `objectParam`, while
-the downloaded Swagger model declares `applyStdTimeCorrection` and plural
-`objectParams`. No retry with altered property names was made.
+The first populated example was sent with an unresolved machine placeholder
+substituted and returned HTTP 500. Retimed testing on 2026-10-30 preserved the
+saved caller, machine selections and report definitions, replacing only period
+values and using `application/json-patch+json`. Report 23 returned HTTP 200
+with 30 rows under `processedData`.
+
+## UI-captured report definitions
+
+The user supplied 38 report definitions captured from the Provideam UI. All
+use `POST /api/v1/Report/ObjectByPeriod`; the JSON payloads are not all the
+same (37 distinct payloads, with entries 35 and 36 identical). Each saved
+body was sent unchanged once, sequentially, on 2026-10-29.
+
+- **Result:** 38 of 38 returned HTTP 500 with an empty response body for the
+  exact saved bodies tested on 2026-10-29. This was not a valid test of 38
+  fully populated report requests.
+- **Rows and schema:** None returned for those unchanged bodies; see the
+  retimed results below for successful responses.
+- **Stored evidence:** The local, ignored report files contain each status
+  and response-shape note. Raw report rows were not saved.
+- **Invalid inputs found on review:** 32 bodies contain instruction/example
+  text in their period values. Report 23 succeeds with that period replaced
+  by an actual date. The successful request used the same caller and machine
+  selections as the failed test, so those were not the cause for this report.
+- **Corrected report 23 result:** HTTP 200; 30 rows under `processedData`.
+  The response keys are recorded in the numbered local report file; raw
+  values were not saved.
+- **Limit of evidence:** The period value and content type both changed from
+  the initial request, so their individual effects are not isolated. The
+  result does not verify the other 37 report definitions or their mappings.
+- **Interpretation:** These results do not identify which saved report is
+  scheduled by Power Automate or which CSV it writes to SharePoint.
+
+## Retimed report tests (2026-10-30)
+
+- Replaced only the time selection in each saved payload. Kept each saved
+  `userId`, machine selection, fields, functions and other payload values.
+- Used `Content-Type: application/json-patch+json`.
+- `pdDay`: `[2026-10-29T00:00:00]`; `pdCustom`:
+  `[2026-10-28T00:00:00,2026-10-29T00:00:00]`; `pdMonth`: `[10,2026]`.
+- **Result:** 30/38 returned HTTP 200 with a `processedData` array. Six
+  successful responses had zero rows. The other 8 (reports 15-22) returned
+  HTTP 500.
+- Reports 15-22 were retried with actual `pdCustom` ranges: report 15 for
+  `[2026-10-29T00:00:00,2026-10-30T00:00:00]`; reports 16-22 for the full
+  October range `[2026-10-01T00:00:00,2026-11-01T00:00:00]`. All eight still
+  returned HTTP 500. Those templates share custom-function entries, but this
+  is only a correlation; the error cause is unknown.
+- Only status, row count and response-shape metadata were recorded; report
+  values were not saved. See the ignored local
+  `downloads/provideam-samples/provideam-retimed-results.json` and the
+  per-report index for outcomes.
+
+The existing source investigation identifies the SharePoint report families
+as Plan OPT (Production Trend), Packing Hourly Run Rates, OEE Loss (Group by
+Object), and Mode Log. Performance Availability is also described, but was
+not found in the Power BI model. The successful report definition, scheduled
+report's exact Power Automate schedule and destination are not established by
+the successful response; see [provideam-source.md](provideam-source.md).
 
 ## Report candidates
 
-“Guess” means the endpoint has not returned report data. Requests and expected
-columns below are not tested API behavior.
+The operation candidates below were hypotheses before the UI captures. All 38
+captured definitions use `POST /api/v1/Report/ObjectByPeriod`; their mapping to
+the source report families and their expected columns remain unverified.
 
 ### Plan OPT — Production Trend, day
 
 - **Purpose in the source files:** production by date, area, machine, shift
   segment and part. The normalized source type is `plan_opt`.
-- **Candidate endpoints:** `POST /api/v1/report/objectbyperiod` or
-  `POST /api/v1/report/periodbyobject` — **guess**.
+- **Captured UI route:** `POST /api/v1/Report/ObjectByPeriod`, shared by all
+  38 saved definitions. Corrected report 23 returned 30 rows; whether it is
+  the SharePoint Plan OPT definition remains unconfirmed.
 - **Empty-body probes:** `objectbyperiod` and `periodbyobject` each returned
-  HTTP 500 for `{}`. No valid machine/day request is known.
-- **Provided-schema probe:** The supplied populated request to
+  HTTP 500 for `{}`. A corrected report 23 machine/day request is documented
+  below.
+- **Provided-schema probe:** The first supplied populated request to
   `objectbyperiod` returned HTTP 500; see
   `samples/provideam/objectbyperiod-provided-schema.json` for the redacted
   request and response status.
-- **Schema discrepancy:** The supplied `applyDSTimeCorrection` /
-  `objectParam` property names differ from the Swagger model's
-  `applyStdTimeCorrection` / `objectParams`. Whether the Swagger spelling
-  succeeds is untested.
-- **Working request:** none known.
-- **Response schema:** unknown; no Swagger response schema or successful
-  response.
+- **Schema discrepancy:** The first supplied request used
+  `applyDSTimeCorrection`; the successful report 23 request uses
+  `applyStdTimeCorrection` and singular `objectParam` / `periodParam`.
+  Therefore the Swagger boolean spelling and singular wrappers work in the
+  successful request.
+- **Working request:** report 23 with `pdDay: ["[2026-10-29T00:00:00]"]`
+  and `Content-Type: application/json-patch+json`.
+- **Observed response:** 30 rows under `processedData`, with fields
+  `fdYYYYMMDD`, `fdAreaName`, `fdMachineName`, `fdShiftName`,
+  `fdShiftStartTime`, `fdPartName`, `fnGoodParts_0`, `fnDefectParts_0`,
+  `fnTarget_0`, `fnCapacity_0`, `fnOEE_0`, `fnTotalTime_0`,
+  `fnPlannedOpT_0`, `fnOEETime_0`, and `fnDowntimeUnits_0`, plus `rowDesc`.
+  No Swagger response schema exists.
 - **Source quirks to check after a successful call:** the source day is
   06:00–06:00; file dates are one day later; values are formatted text,
   including comma-grouped numbers, percentages and `HH:MM:SS` durations.
@@ -76,10 +154,14 @@ columns below are not tested API behavior.
 
 - **Purpose in the source files:** hourly Good Parts and Capacity by area,
   machine, part and shift. The normalized source type is `run_rates`.
-- **Candidate endpoint:** `POST /api/v1/report/objectyieldlog` — **guess**.
+- **Captured UI route:** `POST /api/v1/Report/ObjectByPeriod`, shared by all
+  38 saved definitions. The Yield Log DataSetType is a possible match, not a
+  confirmed mapping.
+- **Retimed calls:** Related saved templates returned HTTP 200; see the
+  numbered local report index. The exact SharePoint definition is not
+  identified.
 - **Empty-body probe:** `{}` returned HTTP 500.
-- **Working request:** none known.
-- **Response schema:** unknown.
+- **Response schema:** no Swagger response schema.
 - **Source quirks to check:** hourly grain, hour boundary, part and shift
   labels, and whether API values are numbers or preformatted text.
 
@@ -88,8 +170,9 @@ columns below are not tested API behavior.
 - **Purpose in the source files:** daily loss time and units grouped by
   machine and loss hierarchy. The normalized source type is
   `volume_loss_correction`.
-- **Candidate endpoints:** `POST /api/v1/report/objectbyperiodandloss` or
-  `POST /api/v1/report/periodbyobjectandloss` — **guess**.
+- **Captured UI route:** `POST /api/v1/Report/ObjectByPeriod`, shared by all
+  38 saved definitions. The `dsPeriodByObjectAndLoss` template label matches
+  this source family, but no successful output confirms a saved definition.
 - **Empty-body probes:** `objectbyperiodandloss` and
   `periodbyobjectandloss` each returned HTTP 500 for `{}`.
 - **Working request:** none known.
@@ -102,7 +185,9 @@ columns below are not tested API behavior.
 - **Purpose in the source files:** loss events with start time, machine, part,
   shift, loss hierarchy, duration and comment. The normalized source type is
   `line_losses`.
-- **Candidate endpoint:** `POST /api/v1/report/objectmodelog` — **guess**.
+- **Captured UI route:** `POST /api/v1/Report/ObjectByPeriod`, shared by all
+  38 saved definitions. The `dsObjectModeLog` template label matches this
+  source family, but no successful output confirms a saved definition.
 - **Empty-body probe:** `{}` returned HTTP 500.
 - **Working request:** none known.
 - **Response schema:** unknown.
@@ -113,11 +198,13 @@ columns below are not tested API behavior.
 
 - **Purpose in the source files:** daily Availability and Performance values.
   This report is not currently represented by a normalized source type.
-- **Candidate endpoint:** `POST /api/v1/report/currentstatus` — **guess based
-  only on the operation name**.
+- **Captured UI route:** `POST /api/v1/Report/ObjectByPeriod`, shared by all
+  38 saved definitions. No dedicated Availability/Performance DataSetType
+  was identified.
+- **Retimed calls:** Reports 07 and 31 returned HTTP 200 with 43 and 21 rows;
+  no row values were saved.
 - **Empty-body probe:** `{}` returned HTTP 500.
-- **Working request:** none known.
-- **Response schema:** unknown.
+- **Response schema:** no Swagger response schema.
 - **Source quirks to check:** whether the endpoint returns a period report or
   only a current snapshot, and how its percentages are calculated.
 

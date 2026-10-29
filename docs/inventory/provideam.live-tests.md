@@ -110,6 +110,21 @@ parameter, then with `dataSetType=__invalid_probe__`.
 | `GET /api/v1/report/getavailablelosses` | HTTP 200, empty array | HTTP 200, empty array |
 | `GET /api/v1/report/getavailableperiods` | HTTP 200, empty array | HTTP 200, empty array |
 
+The user then supplied six DataSet Template names. Each was passed as
+`dataSetType` to all five metadata endpoints. All 30 GETs returned HTTP 200:
+
+| `dataSetType` | Objects | Fields | Functions | Losses | Periods |
+|---|---:|---:|---:|---:|---:|
+| `dsObjectByPeriod` | 30 | 74 | 133 | 0 | 12 |
+| `dsPeriodByObject` | 31 | 74 | 138 | 0 | 12 |
+| `dsObjectByPeriodAndLoss` | 30 | 80 | 140 | 8 | 11 |
+| `dsPeriodByObjectAndLoss` | 30 | 80 | 140 | 8 | 11 |
+| `dsObjectModeLog` | 31 | 86 | 0 | 5 | 11 |
+| `dsObjectYieldLog` | 29 | 84 | 0 | 5 | 11 |
+
+Counts are metadata array lengths observed on 2026-10-29. No metadata item
+values were added to this log.
+
 - **Report request sent:** `POST /api/v1/report/objectbyperiod`, JSON body
   `{}`.
 - **Result:** HTTP 500. No report rows or usable response schema were
@@ -148,6 +163,51 @@ parameter, then with `dataSetType=__invalid_probe__`.
 - **Not established:** Valid `dataSetType` values, report request contents,
   report response columns, dates, numeric values and row counts.
 
+### UI-captured report definitions (2026-10-29)
+
+- **Requests:** 38 sequential `POST /api/v1/Report/ObjectByPeriod` calls,
+  using the individual JSON bodies captured from the Provideam UI unchanged.
+- **Result:** All 38 returned HTTP 500 with an empty response body.
+- **Bodies:** All 38 parse as JSON; there are 37 distinct payloads, with
+  definitions 35 and 36 identical. The bodies use singular `objectParam` and
+  `periodParam`; Swagger declares `objectParams` and `periodParams`. The
+  same caller ID was used for all 38; it also worked in the corrected report
+  23 request, so it was not the cause for that report. Thirty-two contain
+  instruction/example text in their period values. These were not valid tests
+  of 38 fully populated report requests.
+- **Evidence:** Per-report outcomes are recorded alongside the ignored local
+  report definitions. No raw response data was saved.
+- **Correction (2026-10-30):** Report 23 was tested with
+  `pdDay: ["[2026-10-29T00:00:00]"]` and
+  `Content-Type: application/json-patch+json`; it returned HTTP 200 with 30
+  `processedData` rows. The same caller and machine selections as the failed
+  test were used, so they were not the issue for report 23. Period value and
+  content type both changed; their separate effects are not isolated.
+  Response values were inspected in memory and not saved.
+- **SharePoint mapping:** The successful report 23 output does not identify
+  which definition is scheduled or which Power Automate flow writes it.
+
+### Retimed UI-captured report definitions (2026-10-30)
+
+- **Requests:** All 38 report definitions were sent sequentially to
+  `POST /api/v1/report/objectbyperiod`, changing only the period value in each
+  saved request. Caller ID, machine selection and remaining payload values
+  were kept unchanged. Content type was
+  `application/json-patch+json`.
+- **Periods:** `pdDay` used `[2026-10-29T00:00:00]`; `pdCustom` used
+  `[2026-10-28T00:00:00,2026-10-29T00:00:00]`; `pdMonth` used `[10,2026]`.
+- **Result:** 30/38 returned HTTP 200 with `processedData`; six successful
+  responses had zero rows. Reports 15-22 returned HTTP 500.
+- **Retries:** Report 15 was retried with
+  `[2026-10-29T00:00:00,2026-10-30T00:00:00]`; reports 16-22 were retried
+  with the full October range
+  `[2026-10-01T00:00:00,2026-11-01T00:00:00]`. All eight still returned
+  HTTP 500. These eight templates share custom-function entries, but the
+  cause has not been established.
+- **Evidence:** Per-report status and row counts are in the ignored
+  `downloads/provideam-samples/provideam-retimed-results.json` and the local
+  report index. No row values were saved.
+
 ## Deliberately not called
 
 These requests were skipped by scope or safety rule; they were not tested:
@@ -162,9 +222,9 @@ These requests were skipped by scope or safety rule; they were not tested:
 
 ## Can this replace the emailed CSV inputs?
 
-Not proven. Hierarchy and most machine/reference GETs work, but no report call
-returned usable rows. Therefore no API output was compared with the
+Not proven. Thirty report calls returned `processedData`, but no row values
+were saved for source comparison. API output has not been compared with the
 normalized SharePoint source for row counts, columns, daily boundaries,
 numeric sums, formatted values, machine-name exclusions or Mode Log comments.
 See [provideam-report-mapping.md](../provideam-report-mapping.md) for the
-comparison checklist and the request to ask the Provideam API owner.
+comparison checklist.

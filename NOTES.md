@@ -5,9 +5,10 @@
   `diagrams/migration-plan.drawio` showing the current manual route, email and
   SharePoint Power Automate options, VFC + Microsoft Graph, and direct Provideam
   integration. Both Power Automate routes need Premium. Graph is blocked by the
-  24-hour personal token and needs an Entra ID app registration per site. The
-  Provideam API is reachable, but all eight report POST routes returned HTTP
-  500 for the minimal `{}` body; no valid report request or rows are known.
+  24-hour personal token and needs an Entra ID app registration per site.
+  Retimed Provideam report tests returned HTTP 200 for 30/38 definitions.
+  Reports 15-22 remained HTTP 500 after actual date-range retries. Row values
+  were not saved, and comparison with the source remains open.
 - Provideam V4 API exploration (2026-10-28, requested tests complete): captured
   the 54-operation Swagger inventory and live results. The hierarchy confirms
   Hull, Nottingham and Weinheim are visible. Machine/reference reads were
@@ -25,8 +26,22 @@
   Team deck: ignored `session_handover/provideam-test-results-reckitt.pptx`.
   Client tests and `graphify update .` pass. Handover:
   `session_handover/provideam-api-handover.md`.
-  Handover:
-  `session_handover/provideam-api-handover.md`.
+- Provideam report payloads (2026-10-29/30): retimed all 38 saved report
+  payloads by changing only the period value; kept caller ID, machine
+  selection, fields and functions unchanged. All requests used
+  `application/json-patch+json`. Thirty returned HTTP 200; six had zero rows.
+  Reports 15-22 returned HTTP 500 on the first retimed run and remained 500
+  after one-day and full-October range retries. These eight share
+  custom-function entries, a correlation not a proven cause. Row values were
+  not saved; exact Power Automate/SharePoint mappings and source comparisons
+  remain open. The six UI-provided DataSetType names returned metadata from
+  all 30 GETs.
+- Provideam SharePoint mapping (2026-10-30): documented source directories,
+  their current report-table destinations, and the numbered JSON definitions
+  whose selected fields look like Plan OPT or Run Rates exports. Loss-report
+  candidates remain unconfirmed; no saved definition is confirmed as the one
+  scheduled by Antoni to write a SharePoint destination. See
+  `docs/provideam-sharepoint-mapping.md` and the Provideam API handover.
 - Site dashboards BUILD (2026-10-27, master, unattended session, 4 commits 62f924a..fded567): D1 `In EU Report` from `config/report_scope.csv` (proof: the true rows equal the old flow's rows in every column); second tab `PBI report build 2` with `Run_Rates_EU`, `Volume_CoV_EU`, `Format_List_EU` (99.4 / 99.7 / 100 % of the EU report's rows matched); run monitor tab Configuration; `Historical_OEE_EU` converted locally (71,345 rows), not uploaded. Nothing run in the VFC. Handover `session_handover/site-dashboards-build-handover.md`.
 - Run monitor DONE (2026-10-23, branch `vfc-run-monitor`, merged to master): stall cause found and fixed (a report day over about 60 s loses its open messages in the VFC; value calls now 4 per second, collected by a join). Dry run and write run of all three report flows checked in the VFC and in the downloaded files. Flow list in `scripts/monitor-flows.js` (the VFC monitor tab works as it is; re-import only when a flow is added). dryRun is OFF in the three report tabs since the write test: the user decides when to switch it back.
 - Site dashboards proof (2026-10-26, master): Segun's `Value` question answered on the loaded tables of the three real `.pbix` files (`scripts/helper-pbix-extract.py`, needs `pip install pbixray`, output `downloads/pbix_data/`). Configured the same way, EU and site data are the same; differences = EU machine filter (only cause of row differences), glidepath file / key (targets, Hull `Value`), seconds dropped in the EU union, refresh date. Analysis section 6, six notebooks `analysis/proof-*.ipynb`. Small items open (36 Hull `Value` stops, 6 extra Nottingham stops in the union). Handover `session_handover/site-dashboards-handover.md`.
@@ -146,10 +161,10 @@ Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `sc
 5. `farhan-flows.json` tab `Delete Timeseries`: flow vars `tokenUrl`, `clientID`, `tokenSecret` are never set in the file.
 6. Node-RED `DELETE` call in Paul-Flow tab `OEE` (id 8d4e5b58.d17f08) builds a URL without asset ID/aspect in the path as written; looks incomplete.
 7. SIH vs Provideam differences in the report tables (loss reasons are alarm texts, equipment, shift names, site filters, AreaName, ...): list in `docs/sih-report-daily.md`, section "SIH and Provideam: known differences". The user will ask about them later (2026-10-21).
-8. Provideam report discovery: valid `dataSetType` values, report request
-   values and response schemas are still unknown. The five metadata calls
-   returned empty arrays; the minimal report call returned HTTP 500. Ask the
-   Provideam owner for a working one-machine, one-day example before resuming.
+8. Provideam report discovery: 30/38 retimed calls returned HTTP 200, while
+   reports 15-22 returned HTTP 500 after actual date-range retries. Compare
+   successful report rows with the matching source, investigate the eight
+   failing templates, and identify the definitions scheduled to SharePoint.
 
 ## Secrets found (location only, values not recorded anywhere)
 - Testing Postman: item `Get Token`, `request.auth.basic`.
@@ -167,11 +182,15 @@ Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `sc
 - NEXT (OEE ingestion strategy, 2026-10-29): confirm whether Premium Power
   Automate licensing or per-site Entra ID app registrations can be provided.
   Until then, keep the current manual SharePoint-to-lake copy as the fallback;
-  Provideam API report ingestion is blocked until the owner supplies a valid
-  report request (the eight empty-body probes returned HTTP 500).
-- NEXT (Provideam API, 2026-10-28): ask the Provideam owner for valid
-  `dataSetType` values and a minimal working report request, then resume
-  one-machine/one-day comparison. Handover:
+  Provideam report requests have since been tested with actual period values:
+  30/38 returned HTTP 200 and reports 15-22 remained HTTP 500 after retries.
+  Exact SharePoint report mappings remain unconfirmed.
+- NEXT (Provideam API, 2026-10-30): compare successful retimed reports with the
+  matching SharePoint source (row values must be captured on a rerun),
+  investigate why reports 15-22 return HTTP 500, and identify which numbered
+  definitions the email/Power Automate schedules use for each SharePoint
+  destination. See `docs/provideam-sharepoint-mapping.md`.
+  Handover:
   `session_handover/provideam-api-handover.md`.
 - NEXT (site dashboards, 2026-10-27): the user reads `session_handover/site-dashboards-build-handover.md`, uploads the scope file, the run rates files and (after a look) the Historical OEE files, imports the four flows and tests them in the VFC (list in the handover). Ask Nottingham for a Format List (starter: `node scripts/helper-format-list-starter.js Nottingham`). Discuss with Segun: Nottingham loss rows that are In EU Report true now carry Dept / Area (4,129 rows in Aug and Sep 2026).
 - NEXT (Chartres, 2026-10-26): Laura's answers, then the reference file (Dept, Area, Product Type, path format), then upload of `downloads/chartres-convert/<run>/report/` after the user's go. Handover `session_handover/chartres-handover.md`.

@@ -36,12 +36,55 @@ await assert.rejects(
 );
 
 assert.ok(ALLOWED_REQUESTS.has('GET /api/v1/plant/getall'));
+assert.ok(ALLOWED_REQUESTS.has('POST /api/v1/Report/ObjectByPeriod'));
 assert.ok(ALLOWED_REQUESTS.has('POST /api/v1/report/objectbyperiod'));
 assert.equal(
   [...ALLOWED_REQUESTS].some((entry) =>
     /account|operator|contactlist|services\/(start|stop)|setpart|setmachine|updatemachine/i.test(entry),
   ),
   false,
+);
+
+await assert.rejects(
+  request('POST', '/api/v1/report/objectbyperiod', {
+    body: {},
+    contentType: 'text/plain',
+  }),
+  /content type is not allowlisted/,
+);
+
+const originalFetch = globalThis.fetch;
+const originalApiKey = process.env.PROVIDEAM_API_KEY;
+let capturedRequest;
+process.env.PROVIDEAM_API_KEY = 'offline-test-key';
+globalThis.fetch = async (url, options) => {
+  capturedRequest = { url: String(url), options };
+  return {
+    status: 500,
+    ok: false,
+    text: async () => '{"error":"offline test"}',
+  };
+};
+try {
+  await request('POST', '/api/v1/report/objectbyperiod', {
+    body: { probe: true },
+    contentType: 'application/json-patch+json',
+  });
+} finally {
+  globalThis.fetch = originalFetch;
+  if (originalApiKey === undefined) {
+    delete process.env.PROVIDEAM_API_KEY;
+  } else {
+    process.env.PROVIDEAM_API_KEY = originalApiKey;
+  }
+}
+assert.equal(
+  capturedRequest.options.headers['Content-Type'],
+  'application/json-patch+json',
+);
+assert.equal(
+  capturedRequest.options.body,
+  JSON.stringify({ probe: true }),
 );
 
 assert.deepEqual(

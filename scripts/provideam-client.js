@@ -35,6 +35,7 @@ export const ALLOWED_REQUESTS = new Set([
   'GET /api/v1/report/getavailablefunctions',
   'GET /api/v1/report/getavailablelosses',
   'GET /api/v1/report/getavailableperiods',
+  'POST /api/v1/Report/ObjectByPeriod',
   'POST /api/v1/report/objectbyperiod',
   'POST /api/v1/report/objectbyperiodandloss',
   'POST /api/v1/report/periodbyobject',
@@ -100,6 +101,13 @@ export async function request(method, path, options = {}) {
   if (verb === 'POST' && options.body === undefined) {
     throw new Error('Provideam POST requests require an explicit body');
   }
+  const contentType = options.contentType ?? 'application/json';
+  if (
+    contentType !== 'application/json' &&
+    contentType !== 'application/json-patch+json'
+  ) {
+    throw new Error('Provideam request content type is not allowlisted');
+  }
 
   const apiKey = process.env.PROVIDEAM_API_KEY;
   if (!apiKey) {
@@ -122,7 +130,7 @@ export async function request(method, path, options = {}) {
       Accept: 'application/json',
       ...(options.body === undefined
         ? {}
-        : { 'Content-Type': 'application/json' }),
+        : { 'Content-Type': contentType }),
     },
     ...(options.body === undefined
       ? {}

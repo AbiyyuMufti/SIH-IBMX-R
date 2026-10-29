@@ -5,8 +5,8 @@
 | **Host** | `https://rb-api.provideam.com` |
 | **Auth** | `apiKey` request header; value loaded from `PROVIDEAM_API_KEY` in `.env`. This is not the Insights Hub API or Bearer auth |
 | **Pagination** | List requests use `Skip` and `Take`; the Swagger cap is 100, except `machine/getmodes` (1000). Requests are sent sequentially, at least 300 ms apart |
-| **Gotchas** | Swagger has no report response schemas. Missing and invalid `dataSetType` values returned HTTP 200 with `[]`. All eight tested report POST routes returned HTTP 500 to an empty `{}` body; no valid request was established |
-| **Status** | Live hierarchy and most requested machine GETs verified 2026-10-28. Report endpoints were probed, but no report data was returned. See [provideam-reports.md](provideam-reports.md) and [provideam-report-mapping.md](provideam-report-mapping.md) |
+| **Gotchas** | Swagger has no report response schemas. Missing and invalid `dataSetType` values returned HTTP 200 with `[]`. Retimed report tests returned HTTP 200 for 30/38 definitions; reports 15-22 returned HTTP 500 even with actual date ranges |
+| **Status** | All 38 report definitions were retried 2026-10-30 with actual periods. Thirty returned HTTP 200; raw row values were not saved. See [provideam-reports.md](provideam-reports.md) and [provideam-report-mapping.md](provideam-report-mapping.md) |
 | **Safe client** | [`scripts/provideam-client.js`](../scripts/provideam-client.js): fixed host and exact method/path allowlist; rejects redirects; does not retry; redacts sensitive and operator/user fields before saving samples |
 
 ## What was verified
@@ -43,16 +43,30 @@ The five metadata endpoints are:
 These results do not reveal valid dataset types. Do not treat the empty lists as
 evidence that a report has no fields or no periods.
 
+The user later supplied six DataSet Template names. GET requests using those
+names returned HTTP 200 with metadata; the observed metadata counts are listed
+in [provideam-reports.md](provideam-reports.md). The earlier missing/invalid
+probes therefore should not be used to conclude that the metadata is empty.
+
 All eight report POST routes were probed sequentially with an empty JSON
-object `{}`; every one returned HTTP 500. A later populated
-`objectbyperiod` request based on a user-supplied example also returned HTTP
-500. That example used property names that differ from the downloaded Swagger
-model (`applyDSTimeCorrection` / `objectParam` versus
-`applyStdTimeCorrection` / `objectParams`). No valid report response has been
-obtained. The `userview/userview` response was not saved because it may
-contain user data. See the detailed
+object `{}`; every one returned HTTP 500. On 2026-10-30, the 38 saved report
+definitions were retried with only their period values replaced by actual
+dates/months; the saved caller IDs, machine selections and report fields were
+preserved. All used `Content-Type: application/json-patch+json`. Thirty
+returned HTTP 200 and eight (reports 15-22) returned HTTP 500, including after
+additional actual-date range retries. Successful responses contained a
+`processedData` array; row values were not saved. See the detailed
 [live test log](inventory/provideam.live-tests.md) for request evidence and
 the schema discrepancy.
+
+The first 38 requests used saved period instruction text unchanged. The
+2026-10-30 retest replaced only each period value, retained the saved caller,
+machine selection, fields and functions, and used
+`Content-Type: application/json-patch+json`. Thirty of 38 returned HTTP 200;
+reports 15-22 returned HTTP 500. Their templates include custom functions,
+but that shared trait has not been proven to cause the errors. See
+`downloads/provideam-samples/provideam-retimed-results.json` for sanitized
+status and row-count summaries; no report row values were saved.
 
 ## Request example
 
@@ -70,7 +84,7 @@ if (!response.ok) {
 }
 ```
 
-The report POST wrapper is implemented, but no report body is known to work:
+The empty-body request below is an error probe, not a working report body:
 
 ```js
 const response = await request(
