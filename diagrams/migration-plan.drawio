@@ -1,4 +1,4 @@
-<mxfile host="drawio" version="26.0.16" pages="2">
+<mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/26.0.16 Chrome/132.0.6834.196 Electron/34.2.0 Safari/537.36" version="26.0.16" pages="3">
   <diagram name="1 Migration plan and switch" id="mig1">
     <mxGraphModel dx="1000" dy="700" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
       <root>
@@ -100,7 +100,7 @@
         <mxCell id="m1e9" value="B. switch&lt;br&gt;line by line" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=3;strokeColor=#9673a6;fontSize=10;labelBackgroundColor=#ffffff;" parent="1" source="m1h2" target="m1h3" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="m1n1" value="&lt;b&gt;For step B, Provideam data needs more than a manual copy&lt;/b&gt;&lt;br&gt;Receive the same Provideam report emails as the person who makes the report, so every file and every late edit lands in the data lake without a hand copy (to-be path below, sheet 2)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
+        <mxCell id="m1n1" value="&lt;b&gt;For step B, Provideam data needs more than a manual copy&lt;/b&gt;&lt;br&gt;The email-triggered Power Automate route needs a Premium license. Until that is available, the current manual copy remains the working path. The alternatives and blockers are on sheet 3." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
           <mxGeometry x="200" y="800" width="620" height="80" as="geometry" />
         </mxCell>
         <mxCell id="m1n2" value="&lt;b&gt;For step B, SIH data needs the configuration finished&lt;/b&gt;&lt;br&gt;Lines and report names in Config, one SIH tab per site, Insights Hub OEE setup that gives rows matching Provideam (sheet 2)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
@@ -109,7 +109,7 @@
         <mxCell id="m2title" value="&lt;b&gt;How the switch works: one Config, two sources, one report folder (branch general-report-configurations)&lt;/b&gt;" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=top;fontSize=16;" parent="1" vertex="1">
           <mxGeometry x="40" y="930" width="1700" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="m2sub" value="Both flows build the same three tables. Each flow sends the rows of a line to report/ when the line's source in Config is its own source, else to candidate/&amp;lt;source&amp;gt;/. The file name ends with the source (_provideam, _sih), so the two flows never overwrite each other. The report reads the whole report/ folder: switching a line is one Config change, nothing changes in the report." style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=top;fontSize=11;" parent="1" vertex="1">
+        <mxCell id="m2sub" value="Both flows build the same three tables. Each flow sends the rows of a line to report/ when the line&#39;s source in Config is its own source, else to candidate/&amp;lt;source&amp;gt;/. The file name ends with the source (_provideam, _sih), so the two flows never overwrite each other. The report reads the whole report/ folder: switching a line is one Config change, nothing changes in the report." style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=top;fontSize=11;" parent="1" vertex="1">
           <mxGeometry x="40" y="965" width="1700" height="40" as="geometry" />
         </mxCell>
         <mxCell id="m2cfg" value="&lt;b&gt;1.1 CONFIG&lt;/b&gt; (Config tab, one place for all flows)&lt;br&gt;root: eu_report&lt;br&gt;sites[]: reportSource = provideam | sih, timeZone, runHourLocal&lt;br&gt;lines[]: id, sih name, report name (MachineName), optional reportSource, shiftReport" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
@@ -124,7 +124,7 @@
         <mxCell id="m2pv2" value="&lt;b&gt;NOW: manual copy&lt;/b&gt; from SharePoint to pbi_report/source/" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
           <mxGeometry x="290" y="1140" width="220" height="70" as="geometry" />
         </mxCell>
-        <mxCell id="m2pv2b" value="&lt;b&gt;TO BE: emails received directly&lt;/b&gt; (same distribution as the report owner), each CSV uploaded to pbi_report/source/ as it arrives, late edits included. No SharePoint, no hand copy" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;dashed=1;strokeWidth=2;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
+        <mxCell id="m2pv2b" value="&lt;b&gt;EMAIL-TRIGGERED POWER AUTOMATE&lt;/b&gt;&lt;br&gt;Receive the same report emails, then upload each CSV to pbi_report/source/ as it arrives. Blocked: Power Automate Premium license required." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;dashed=1;strokeWidth=2;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
           <mxGeometry x="290" y="1230" width="220" height="120" as="geometry" />
         </mxCell>
         <mxCell id="m2pv3" value="&lt;b&gt;PBI report build&lt;/b&gt; (VFC)&lt;br&gt;Reads the CSV and reference files, no API calls. To be: started by the lake watcher" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
@@ -353,7 +353,7 @@
         <mxCell id="m3b3" value="&lt;b&gt;Needed (ask Reckitt)&lt;/b&gt;: receive the same Provideam report emails as the person who makes the report, for every site and report type. This also confirms the full list of raw files" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left;verticalAlign=top;spacing=8;strokeWidth=2;" parent="1" vertex="1">
           <mxGeometry x="820" y="370" width="230" height="160" as="geometry" />
         </mxCell>
-        <mxCell id="m3b4" value="&lt;b&gt;Land each CSV&lt;/b&gt; in eu_report/pbi_report/source/ automatically, the way the current Outlook rules and Power Automate fill SharePoint" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;dashed=1;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
+        <mxCell id="m3b4" value="&lt;b&gt;Land each CSV&lt;/b&gt; in eu_report/pbi_report/source/ from the email trigger. Blocked until a Power Automate Premium license is available." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;dashed=1;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
           <mxGeometry x="1100" y="370" width="230" height="160" as="geometry" />
         </mxCell>
         <mxCell id="m3b5" value="&lt;b&gt;Lake watcher&lt;/b&gt; starts the PBI report build when a file lands. Built, not run in the VFC yet" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;verticalAlign=top;spacing=8;" parent="1" vertex="1">
@@ -400,6 +400,197 @@
         </mxCell>
         <mxCell id="m3ec1" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" parent="1" source="m3c1" target="m3c2" edge="1">
           <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram name="3. OEE data-ingestion options" id="mig4">
+    <mxGraphModel dx="2367" dy="1640" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="yTNY0yTjTxJOhV6eXUCl-2" value="" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="20" width="1500" height="1110" as="geometry" />
+        </mxCell>
+        <mxCell id="m4title" value="&lt;b&gt;OEE data ingestion: options and blockers&lt;/b&gt;" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=top;fontSize=15;fontColor=#16324f;" parent="1" vertex="1">
+          <mxGeometry x="40" y="25" width="1500" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="m4sub" value="Reports are rebuilt from files in the SIH Data Lake. The routes below differ only in how Provideam files arrive; the manual copy is the current fallback." style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=top;fontSize=15;fontColor=#526579;" parent="1" vertex="1">
+          <mxGeometry x="40" y="70" width="1500" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="m4leg1" value="Current route" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f1f5f9;strokeColor=#64748b;fontSize=15;fontColor=#16324f;" parent="1" vertex="1">
+          <mxGeometry x="40" y="115" width="150" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="m4leg2" value="Main blocker" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=15;fontColor=#7f1d1d;" parent="1" vertex="1">
+          <mxGeometry x="210" y="115" width="190" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="m4leg3" value="Authentication blocker" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=15;fontColor=#7c5b00;" parent="1" vertex="1">
+          <mxGeometry x="420" y="115" width="185" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="m4l1" value="&lt;b&gt;NOW&lt;/b&gt;&lt;br&gt;manual route" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e2e8f0;strokeColor=#64748b;fontSize=15;fontColor=#16324f;" parent="1" vertex="1">
+          <mxGeometry x="40" y="180" width="180" height="82" as="geometry" />
+        </mxCell>
+        <mxCell id="m4c11" value="&lt;b&gt;Provideam&lt;/b&gt;&lt;br&gt;Daily report emails, sent as CSV" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f1f5f9;strokeColor=#64748b;fontSize=15;fontColor=#16324f;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="250" y="170" width="230" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="m4c12" value="&lt;b&gt;Outlook + Power Automate&lt;/b&gt;&lt;br&gt;Files are filed in the site SharePoint" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f1f5f9;strokeColor=#64748b;fontSize=15;fontColor=#16324f;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="510" y="170" width="230" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="m4c13" value="&lt;b&gt;Manual copy&lt;/b&gt;&lt;br&gt;A person copies files from SharePoint to SIH" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f1f5f9;strokeColor=#64748b;fontSize=15;fontColor=#16324f;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="770" y="170" width="230" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="m4c14" value="&lt;b&gt;SIH Data Lake&lt;/b&gt;&lt;br&gt;Report tables rebuilt from the files" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dceeff;strokeColor=#2f75b5;strokeWidth=2;fontSize=15;fontColor=#16324f;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="1030" y="170" width="230" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="m4c15" value="&lt;b&gt;Tableau and reports&lt;/b&gt;&lt;br&gt;Read the lake tables" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=15;fontColor=#16324f;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="1290" y="170" width="230" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="m4e11" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#64748b;strokeWidth=2;fontSize=15;" parent="1" source="m4c11" target="m4c12" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m4e12" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#64748b;strokeWidth=2;fontSize=15;" parent="1" source="m4c12" target="m4c13" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m4e13" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#64748b;strokeWidth=2;fontSize=15;" parent="1" source="m4c13" target="m4c14" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m4e14" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#64748b;strokeWidth=2;fontSize=15;" parent="1" source="m4c14" target="m4c15" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m4l2" value="&lt;b&gt;OPTION 2&lt;/b&gt;&lt;br&gt;Power Automate from email" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=15;fontColor=#7f1d1d;" parent="1" vertex="1">
+          <mxGeometry x="40" y="570" width="180" height="82" as="geometry" />
+        </mxCell>
+        <mxCell id="m4c21" value="&lt;b&gt;Provideam&lt;/b&gt;&lt;br&gt;Daily report emails" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f3ff;strokeColor=#0070c0;fontSize=15;fontColor=#16324f;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="250" y="560" width="230" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="m4c22" value="&lt;b&gt;Shared mailbox&lt;/b&gt;&lt;br&gt;Receives the report emails" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f3ff;strokeColor=#0070c0;fontSize=15;fontColor=#16324f;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="510" y="560" width="230" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="m4c23" value="&lt;b&gt;Power Automate&lt;/b&gt;&lt;br&gt;Email trigger and upload" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=2;fontSize=15;fontColor=#7f1d1d;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="770" y="560" width="230" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="m4c24" value="&lt;b&gt;SIH Data Lake&lt;/b&gt;&lt;br&gt;CSV lands automatically" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dceeff;strokeColor=#2f75b5;strokeWidth=2;fontSize=15;fontColor=#16324f;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="1030" y="560" width="230" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="m4c25" value="&lt;b&gt;Rebuilt tables&lt;/b&gt;&lt;br&gt;Tableau and reports read them" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=15;fontColor=#16324f;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="1290" y="560" width="230" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="m4e21" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#0070c0;strokeWidth=2;fontSize=15;" parent="1" source="m4c21" target="m4c22" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m4e22" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#0070c0;strokeWidth=2;fontSize=15;" parent="1" source="m4c22" target="m4c23" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m4e23" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#0070c0;strokeWidth=2;fontSize=15;" parent="1" source="m4c23" target="m4c24" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m4e24" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#0070c0;strokeWidth=2;fontSize=15;" parent="1" source="m4c24" target="m4c25" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m4block2" value="&lt;b&gt;BLOCKER:&lt;/b&gt;&amp;nbsp;Current Power Automate license is not premium — &lt;b&gt;Power Automate Premium license&lt;/b&gt; required for this email-triggered route." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fdecec;strokeColor=#b85450;fontSize=15;fontColor=#7f1d1d;align=left;spacingLeft=12;" parent="1" vertex="1">
+          <mxGeometry x="250" y="668" width="1270" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="m4l3" value="&lt;b&gt;OPTION 3&lt;/b&gt;&lt;br&gt;Power Automate watches SharePoint" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=15;fontColor=#7f1d1d;" parent="1" vertex="1">
+          <mxGeometry x="40" y="760" width="180" height="82" as="geometry" />
+        </mxCell>
+        <mxCell id="m4c31" value="&lt;b&gt;SharePoint&lt;/b&gt;&lt;br&gt;A new CSV file arrives" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f3ff;strokeColor=#0070c0;fontSize=15;fontColor=#16324f;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="250" y="750" width="230" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="m4c32" value="&lt;b&gt;Power Automate&lt;/b&gt;&lt;br&gt;Watches the SharePoint folder" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=2;fontSize=15;fontColor=#7f1d1d;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="510" y="750" width="230" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="m4c33" value="&lt;b&gt;Upload CSV&lt;/b&gt;&lt;br&gt;Put the file in the SIH Data Lake" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f3ff;strokeColor=#0070c0;fontSize=15;fontColor=#16324f;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="770" y="750" width="230" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="m4c34" value="&lt;b&gt;SIH Data Lake&lt;/b&gt;&lt;br&gt;Build report tables from files" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dceeff;strokeColor=#2f75b5;strokeWidth=2;fontSize=15;fontColor=#16324f;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="1030" y="750" width="230" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="m4c35" value="&lt;b&gt;Tableau and reports&lt;/b&gt;&lt;br&gt;Read the rebuilt tables" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=15;fontColor=#16324f;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="1290" y="750" width="230" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="m4e31" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#0070c0;strokeWidth=2;fontSize=15;" parent="1" source="m4c31" target="m4c32" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m4e32" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#0070c0;strokeWidth=2;fontSize=15;" parent="1" source="m4c32" target="m4c33" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m4e33" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#0070c0;strokeWidth=2;fontSize=15;" parent="1" source="m4c33" target="m4c34" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m4e34" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#0070c0;strokeWidth=2;fontSize=15;" parent="1" source="m4c34" target="m4c35" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m4block3" value="&lt;b&gt;BLOCKER:&lt;/b&gt;&amp;nbsp;Current Power Automate license is not premium —&amp;nbsp;&lt;b&gt;Power Automate Premium license&lt;/b&gt;&amp;nbsp;required for this email-triggered route." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fdecec;strokeColor=#b85450;fontSize=15;fontColor=#7f1d1d;align=left;spacingLeft=12;" parent="1" vertex="1">
+          <mxGeometry x="250" y="858" width="1270" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="m4l4" value="&lt;b&gt;OPTION 4&lt;/b&gt;&lt;br&gt;VFC + Microsoft Graph" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=15;fontColor=#7c5b00;" parent="1" vertex="1">
+          <mxGeometry x="40" y="950" width="180" height="82" as="geometry" />
+        </mxCell>
+        <mxCell id="m4c41" value="&lt;b&gt;SharePoint&lt;/b&gt;&lt;br&gt;New file in a site folder" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e0f2f1;strokeColor=#00897b;fontSize=15;fontColor=#16324f;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="250" y="940" width="230" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="m4c42" value="&lt;b&gt;Microsoft Graph&lt;/b&gt;&lt;br&gt;VFC requests the new file" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e0f2f1;strokeColor=#00897b;fontSize=15;fontColor=#16324f;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="510" y="940" width="230" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="m4c43" value="&lt;b&gt;VFC&lt;/b&gt;&lt;br&gt;Download, process or prepare the file" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e0f2f1;strokeColor=#00897b;fontSize=15;fontColor=#16324f;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="770" y="940" width="230" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="m4c44" value="&lt;b&gt;SIH Data Lake&lt;/b&gt;&lt;br&gt;Store the file or processed data" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dceeff;strokeColor=#2f75b5;strokeWidth=2;fontSize=15;fontColor=#16324f;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="1030" y="940" width="230" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="m4c45" value="&lt;b&gt;Tableau and reports&lt;/b&gt;&lt;br&gt;Read the rebuilt tables" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=15;fontColor=#16324f;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="1290" y="940" width="230" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="m4e41" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#00897b;strokeWidth=2;fontSize=15;" parent="1" source="m4c41" target="m4c42" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m4e42" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#00897b;strokeWidth=2;fontSize=15;" parent="1" source="m4c42" target="m4c43" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m4e43" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#00897b;strokeWidth=2;fontSize=15;" parent="1" source="m4c43" target="m4c44" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m4e44" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#00897b;strokeWidth=2;fontSize=15;" parent="1" source="m4c44" target="m4c45" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m4block4" value="&lt;b&gt;BLOCKER:&lt;/b&gt;&amp;nbsp;The personal GRAPH_TOKEN expires after 24 hours and cannot currently be renewed automatically —&amp;nbsp;&amp;nbsp;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(124, 91, 0), rgb(186, 158, 80));&quot;&gt;Automation needs an &lt;/span&gt;&lt;b style=&quot;background-color: transparent; color: light-dark(rgb(124, 91, 0), rgb(186, 158, 80));&quot;&gt;Entra ID &lt;/b&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(124, 91, 0), rgb(186, 158, 80));&quot;&gt;app registration for each site (&lt;/span&gt;&lt;b style=&quot;background-color: transparent; color: light-dark(rgb(124, 91, 0), rgb(186, 158, 80));&quot;&gt;tenant ID, client ID &lt;/b&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(124, 91, 0), rgb(186, 158, 80));&quot;&gt;and &lt;/span&gt;&lt;b style=&quot;background-color: transparent; color: light-dark(rgb(124, 91, 0), rgb(186, 158, 80));&quot;&gt;client secret&lt;/b&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(124, 91, 0), rgb(186, 158, 80));&quot;&gt;).&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=15;fontColor=#7c5b00;align=left;spacingLeft=12;" parent="1" vertex="1">
+          <mxGeometry x="250" y="1048" width="1270" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="m4l5" value="&lt;b&gt;OPTION 1&lt;/b&gt;&lt;br&gt;Provideam API reports" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=15;fontColor=#7f1d1d;" parent="1" vertex="1">
+          <mxGeometry x="40" y="350" width="180" height="82" as="geometry" />
+        </mxCell>
+        <mxCell id="m4c51" value="&lt;b&gt;Provideam API&lt;/b&gt;&lt;br&gt;Reachable. Hierarchy and machine GETs were verified." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f3ff;strokeColor=#0070c0;fontSize=15;fontColor=#16324f;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="250" y="340" width="230" height="112" as="geometry" />
+        </mxCell>
+        <mxCell id="m4c52" value="&lt;b&gt;Report requests&lt;/b&gt;&lt;br&gt;All 8 report POST routes returned HTTP 500 when tested with the minimal {} body." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=2;fontSize=15;fontColor=#7f1d1d;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="510" y="340" width="230" height="112" as="geometry" />
+        </mxCell>
+        <mxCell id="m4c53" value="&lt;b&gt;BLOCKED&lt;/b&gt;&lt;br&gt;No report rows returned. Need valid ReportRequestModel values and a working one-machine, one-day example from the API owner." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;fontSize=15;fontColor=#7c5b00;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="770" y="340" width="230" height="112" as="geometry" />
+        </mxCell>
+        <mxCell id="m4c54" value="&lt;b&gt;SIH Data Lake&lt;/b&gt;&lt;br&gt;Only after report calls return usable data" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dceeff;strokeColor=#2f75b5;strokeWidth=2;fontSize=15;fontColor=#16324f;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="1030" y="340" width="230" height="112" as="geometry" />
+        </mxCell>
+        <mxCell id="m4c55" value="&lt;b&gt;Tableau and reports&lt;/b&gt;&lt;br&gt;Unchanged if a working feed is established" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=15;fontColor=#16324f;align=left;spacing=8;" parent="1" vertex="1">
+          <mxGeometry x="1290" y="340" width="230" height="112" as="geometry" />
+        </mxCell>
+        <mxCell id="m4e51" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#0070c0;strokeWidth=2;fontSize=15;" parent="1" source="m4c51" target="m4c52" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m4e52" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#b85450;strokeWidth=2;fontSize=15;" parent="1" source="m4c52" target="m4c53" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m4e53" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#9673a6;dashed=1;strokeWidth=2;fontSize=15;" parent="1" source="m4c53" target="m4c54" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m4e54" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#9673a6;dashed=1;strokeWidth=2;fontSize=15;" parent="1" source="m4c54" target="m4c55" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m4block5" value="&lt;b&gt;BLOCKER&lt;/b&gt; — All 8 report POST routes returned HTTP 500 with the minimal {} body. No report rows were returned. A valid request has not been tested; need valid ReportRequestModel values and a working one-machine, one-day example from the API owner." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fdecec;strokeColor=#b85450;fontSize=15;fontColor=#7f1d1d;align=left;spacingLeft=12;" parent="1" vertex="1">
+          <mxGeometry x="250" y="458" width="1270" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="m4note" value="&lt;b&gt;Blocker summary:&lt;/b&gt; both Power Automate routes need Premium. Graph needs per-site Entra ID app registrations. The Provideam API is reachable, but report retrieval remains blocked pending a valid request; the empty-body probes returned HTTP 500." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8fafc;strokeColor=#cbd5e1;fontSize=15;fontColor=#334155;align=left;spacingLeft=12;" parent="1" vertex="1">
+          <mxGeometry x="40" y="1140" width="1480" height="52" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>

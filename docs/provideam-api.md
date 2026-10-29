@@ -43,13 +43,16 @@ The five metadata endpoints are:
 These results do not reveal valid dataset types. Do not treat the empty lists as
 evidence that a report has no fields or no periods.
 
-All eight report POST routes that were in scope were subsequently probed
-sequentially with an empty JSON object `{}`. Every one returned HTTP 500. The
-`userview/userview` response was not saved because it may contain user data.
-These validation probes do not prove that the endpoints fail with a valid
-`ReportRequestModel`; no accepted request body is known. See the detailed
-[live test log](inventory/provideam.live-tests.md) for each route and its
-saved evidence.
+All eight report POST routes were probed sequentially with an empty JSON
+object `{}`; every one returned HTTP 500. A later populated
+`objectbyperiod` request based on a user-supplied example also returned HTTP
+500. That example used property names that differ from the downloaded Swagger
+model (`applyDSTimeCorrection` / `objectParam` versus
+`applyStdTimeCorrection` / `objectParams`). No valid report response has been
+obtained. The `userview/userview` response was not saved because it may
+contain user data. See the detailed
+[live test log](inventory/provideam.live-tests.md) for request evidence and
+the schema discrepancy.
 
 ## Request example
 

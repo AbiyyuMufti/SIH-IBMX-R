@@ -36,6 +36,13 @@ HTTP 500. This shows only that the empty-body probes failed. It does not show
 whether a valid `ReportRequestModel` would work. The response from
 `userview/userview` was not saved because it may contain user data.
 
+The user later supplied a populated Object By Period example. Sent once to
+`POST /api/v1/report/objectbyperiod`, with its machine placeholder replaced
+by the selected Hull machine ID, it also returned HTTP 500 with no JSON body.
+That example uses `applyDSTimeCorrection` and singular `objectParam`, while
+the downloaded Swagger model declares `applyStdTimeCorrection` and plural
+`objectParams`. No retry with altered property names was made.
+
 ## Report candidates
 
 “Guess” means the endpoint has not returned report data. Requests and expected
@@ -49,6 +56,14 @@ columns below are not tested API behavior.
   `POST /api/v1/report/periodbyobject` — **guess**.
 - **Empty-body probes:** `objectbyperiod` and `periodbyobject` each returned
   HTTP 500 for `{}`. No valid machine/day request is known.
+- **Provided-schema probe:** The supplied populated request to
+  `objectbyperiod` returned HTTP 500; see
+  `samples/provideam/objectbyperiod-provided-schema.json` for the redacted
+  request and response status.
+- **Schema discrepancy:** The supplied `applyDSTimeCorrection` /
+  `objectParam` property names differ from the Swagger model's
+  `applyStdTimeCorrection` / `objectParams`. Whether the Swagger spelling
+  succeeds is untested.
 - **Working request:** none known.
 - **Response schema:** unknown; no Swagger response schema or successful
   response.

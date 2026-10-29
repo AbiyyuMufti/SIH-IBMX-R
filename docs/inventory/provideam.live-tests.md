@@ -132,6 +132,19 @@ parameter, then with `dataSetType=__invalid_probe__`.
 - **Interpretation:** All seven remaining requested routes returned HTTP 500
   to the empty-body probe. This does not prove that a valid
   `ReportRequestModel` would fail. No valid request body is known.
+- **Provided-schema probe:** The user supplied an Object By Period body with
+  `userId`, `formattedJson`, `applyDSTimeCorrection`,
+  `includeGrandTotals`, `objects[].objectParam.oeeMachineID`,
+  `fields[].fieldName`, and `functions[].funcName/index`. The placeholder
+  machine value `"a"` was replaced with the selected Hull machine ID. The
+  body was sent once to `POST /api/v1/report/objectbyperiod`; it returned
+  HTTP 500 with no JSON response body. The redacted sample is
+  `samples/provideam/objectbyperiod-provided-schema.json`.
+- **Schema discrepancy:** The supplied body uses `applyDSTimeCorrection` and
+  singular `objectParam`. The saved Swagger model instead declares
+  `applyStdTimeCorrection` and plural `objectParams`. No corrected-body retry
+  was made, so the outcome does not establish whether the Swagger-shaped
+  request succeeds.
 - **Not established:** Valid `dataSetType` values, report request contents,
   report response columns, dates, numeric values and row counts.
 

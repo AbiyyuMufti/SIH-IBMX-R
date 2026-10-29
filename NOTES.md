@@ -1,6 +1,13 @@
 # NOTES
 
 ## Status
+- OEE ingestion strategy (2026-10-29): added a styled third page to
+  `diagrams/migration-plan.drawio` showing the current manual route, email and
+  SharePoint Power Automate options, VFC + Microsoft Graph, and direct Provideam
+  integration. Both Power Automate routes need Premium. Graph is blocked by the
+  24-hour personal token and needs an Entra ID app registration per site. The
+  Provideam API is reachable, but all eight report POST routes returned HTTP
+  500 for the minimal `{}` body; no valid report request or rows are known.
 - Provideam V4 API exploration (2026-10-28, requested tests complete): captured
   the 54-operation Swagger inventory and live results. The hierarchy confirms
   Hull, Nottingham and Weinheim are visible. Machine/reference reads were
@@ -10,8 +17,10 @@
   empty arrays with missing
   and invalid `dataSetType`; all eight report POSTs returned HTTP 500 when
   called sequentially with `{}`. This does not establish how valid
-  `ReportRequestModel` bodies behave. The User View response body was not
-  saved; only status was retained. Updated API/report/mapping/explanation
+  `ReportRequestModel` bodies behave. A user-supplied populated
+  `objectbyperiod` body also returned HTTP 500; it used property names
+  differing from the downloaded Swagger model. The User View response body
+  was not saved; only status was retained. Updated API/report/mapping/explanation
   docs, the Swagger inventory generator, and live request/results log.
   Team deck: ignored `session_handover/provideam-test-results-reckitt.pptx`.
   Client tests and `graphify update .` pass. Handover:
@@ -63,6 +72,13 @@ Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `sc
   `userview/userview` body was not saved because the endpoint may contain user
   data. Added the two requested paths to the exact client allowlist; offline
   client/redaction checks pass.
+- 2026-10-29 Provideam report probe: the user supplied an Object By Period
+  request body. Replaced its `"a"` machine placeholder with the selected Hull
+  machine ID and sent it once. It returned HTTP 500 with no JSON response.
+  The example uses `applyDSTimeCorrection` and `objectParam`; the saved
+  Swagger model says `applyStdTimeCorrection` and `objectParams`. No corrected
+  retry was made. Redacted sample:
+  `samples/provideam/objectbyperiod-provided-schema.json`.
 - 2026-10-26 site dashboards: rebuilt the three pipelines in Python from the original exports (`site-dashboards-reconcile.ipynb`) to prove why EU and site differ. It worked, but only proved that the replica agrees with itself and was hard for a human to follow. Fix: read the tables Power BI already loaded from the real `.pbix` files (pbixray) and compare those; six small step-by-step notebooks. Also: exports with a tab inside a comment break `pd.read_csv` (one field too many), fixed by keeping the first n fields; the numpy 1 / 2 import message of numexpr and bottleneck is harmless for pandas.
 - Tried: listing source/ with awk `$NF`. Error: file names with spaces were truncated, so the queue had wrong names and the helper script got ENOENT. Fix: re-listed with `ls`; queue now has full names.
 - Tried: a Bash call that included a `python3 --version` check. Error: denied by the deny rule on `python`/`python3`. Fix: removed it, not needed (Python is never executed).
@@ -148,6 +164,11 @@ Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `sc
 - Many Node-RED calls are copies across tabs; distinct endpoints are far fewer than the call counts.
 
 ## Next
+- NEXT (OEE ingestion strategy, 2026-10-29): confirm whether Premium Power
+  Automate licensing or per-site Entra ID app registrations can be provided.
+  Until then, keep the current manual SharePoint-to-lake copy as the fallback;
+  Provideam API report ingestion is blocked until the owner supplies a valid
+  report request (the eight empty-body probes returned HTTP 500).
 - NEXT (Provideam API, 2026-10-28): ask the Provideam owner for valid
   `dataSetType` values and a minimal working report request, then resume
   one-machine/one-day comparison. Handover:
@@ -595,3 +616,23 @@ Tried: Power BI flow with `Keep dim_asset` expecting an array. Error: "the file 
 - Site answers (2026-10-26): DOR L3 is management level (no OEE entry, compilation of the lines, out of scope); CUPIDON and DAISY were dropped this year (no 2026 data); Chartres will share the Glidepaths, the path format and the reference file in a few days. Doc, diagram (pages 1, 4, 8) and handover updated. NEXT (Chartres): when the reference file arrives, Machine Names and targets for Chartres, then the dictionary from the Category sheets, the column map, a one-day recompute against the workbook (details in the handover). Open decisions: Total Time vs Planned OPT (TOP / TOR), Good Parts net of waste, failing and repeated days, losses without shift, shift names, not-counted time.
 - Excel column list moved to `analysis/chartres-base-columns.xlsx` (tracked, user's choice; the analysis copy was the older version without the written-by column, no manual edits lost). Writer default path changed.
 - Conversion built (2026-10-26): `scripts/chartres-convert.js` + `scripts/helper-chartres-write-parquet.py`, doc `docs/chartres-convert.md`. 2025 and 2026 only (2024 is another format, sheet TRS of DOR files: out, user). Targets from the site file `Copie de Target 2026.xlsx`, 2025 uses 2026 (user). Chartres moves to OEE entry in SIH: no automation of the workbooks (user). Failed attempt: first run took the day from the stored `Date` column, which is one day off on some 2025 rows (78 false repeated days); fixed by ANNEE / MOIS / JOUR (19 real). NR is negative on 910 days: not loaded. Checked against the CREAM macro exports (plan equal on 149 of 161 days; losses differ by the not-counted time and NR, traced on IWKA 1 2026-08-06). Local only, not uploaded.
+
+## SharePoint to lake proof (2026-10-29)
+- Built a one-file VFC proof: `flows/vfc-sharepoint-lake-proof.json`,
+  source in `scripts/vfc/s*-proof-*.js`, instructions in
+  `docs/sharepoint-lake-proof.md`. It uses a pasted Graph token, then the
+  existing Config tab's Insights Hub credentials and the signed-URL upload.
+  No real credentials were added to the generated flow.
+- User decisions: prove one file first; keep flow cycles disabled; this proof
+  is manual and one-shot. The broader flow follows after the user's VFC test.
+- Failed attempts: builder caught two function lines over 80 characters;
+  wrapped them. Offline `deepStrictEqual` rejected VM-created object
+  prototypes; the test now compares JSON shape and simulates Buffer
+  serialization. Standard mock test needed `platform=xcelerator`; rerun passed.
+- Checks: flow validation and `node scripts/test-vfc-sharepoint-proof.js`
+  pass. Actual Graph download and lake PUT remain unverified until the user
+  imports and runs the flow in VFC.
+- Next: import the proof, run Config with xcelerator, fill the four Graph
+  settings placeholders, run one small file, and report the debug line and
+  lake result. Then design/build the recurring sync.
+  Handover: `session_handover/sharepoint-lake-flow-handover.md`.
