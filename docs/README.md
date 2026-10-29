@@ -52,6 +52,7 @@
 | [shift-report-flow.md](shift-report-flow.md) | The flow that writes the three shift report tables (`rpt_window`, `rpt_hour`, `rpt_event`) for the line and its machines, with a local production day | Run in the VFC (14, 15 Sep), checked against the OEE app |
 | [lake-api.md](lake-api.md) | Python downloads parquet files or folder lists from the data lake through an `http in` endpoint of the VFC (spike checked in the VFC, final flow built) | Spike in the VFC |
 | [datalake-files.md](datalake-files.md) | List, download and upload data lake files from a script with signed URLs (`scripts/datalake-download.js`, `datalake-upload.js`) | Tested 2026-10-14 on xcelerator: list, download and upload work |
+| [sharepoint-lake-proof.md](sharepoint-lake-proof.md) | One-file VFC proof of downloading a SharePoint file into memory and uploading it to the lake | VFC runtime proof pending |
 | [logging.md](logging.md) | The CSV run log in the data lake (one file per month and flow) and the error catch | Mock only |
 | [run-monitor.md](run-monitor.md) | Report status, monthly log history and validated backfill commands; VFC access keys and link wiring | Built and mock-tested offline; VFC runtime check remains |
 | [fact-flows.md](fact-flows.md) | The per-site flows that write `fact_kpi` and `fact_loss`, and how to add a site | Hull, dry run in the VFC |
