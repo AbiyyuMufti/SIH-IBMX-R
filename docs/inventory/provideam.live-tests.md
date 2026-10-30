@@ -83,7 +83,8 @@ configuration is complete or correct.
   A returned HTTP 200 with a JSON object of current machine values. The object
   contains production, mode, shift and current-time fields; values are not
   reproduced here.
-- **Skipped:** The equivalent call for machine B was not made after the error.
+- **Retry 2026-10-30:** machine A (B2 Auto) HTTP 200 again; machine B (SP6)
+  HTTP 500 with no body. The error is per machine, not a first-call glitch.
   Do not assume it works for every machine.
 - **Sample:** `samples/provideam/machine-1-current-values.json`.
 

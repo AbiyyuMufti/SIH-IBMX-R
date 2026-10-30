@@ -4,7 +4,7 @@
 |---|---|
 | **Purpose** | Map the SharePoint source folders to report tables, then identify which saved Provideam JSON definitions have a CSV-compatible shape |
 | **Scope** | SharePoint inputs only. Insights Hub API sources are excluded |
-| **Status** | Folder-to-table mappings come from the SharePoint files and Power BI model. JSON matches are schema-based candidates; no exact Power Automate schedule or destination has been confirmed |
+| **Status** | Plan OPT and Run Rates: the monthly SharePoint files are proven row for row against reports 11/12 (Hull), 25/24 (Nottingham) and 34/33 (Weinheim) on 2026-10-30. Line Losses and Volume Loss Correction: no saved definition produces them. The Power Automate schedule itself is still not seen |
 | **Evidence** | [`sharepoint-files.md`](sharepoint-files.md), [`provideam-source.md`](provideam-source.md), [`pbi-report-build.md`](pbi-report-build.md), [`pbi-report-build-2.md`](pbi-report-build-2.md), and the local numbered report index |
 
 ## SharePoint folders and their destinations
@@ -30,6 +30,48 @@ The report tables in the current build are `Plan_OPT_EU`,
 `Time_Utilisation_EU`, `Daily_Losses_EU`, `Run_Rates_EU`, `Volume_CoV_EU` and
 `Format_List_EU`. `Time_Utilisation_EU` and `Volume_CoV_EU` are derived from
 Plan OPT, not separate SharePoint source types.
+
+## Proof against the original exports (2026-10-30)
+
+Each monthly definition was rerun for September 2026 (`pdMonth` =
+`[9,2026]`, saved caller, machines, fields and functions unchanged) and
+compared with the raw export in `sharepoint/source_original/` (UTF-16, tab
+separated, lines end with a tab and CR; not the normalized month files).
+
+| SharePoint file (Sep 2026) | Report | API rows / CSV rows | Keys matched | Measure check |
+|---|---|---|---|---|
+| `plan_opt/site=Hull/Hull_Sep2026-monthly_opt_volume.csv` | 11 Hull Monthly New Plan OPT | 967 / 967 | 967, none missing either side | Good Parts equal per key (within 1); sums differ only by CSV rounding |
+| `run_rates/site=Hull/Hull_Sep2026-monthly_run_rates.csv` | 12 Hull Monthly Packing Hourly Run Rates | 7871 / 7871 | 7871 | Good Parts sum identical |
+| `plan_opt/site=Nottingham/Sep2026-notts_monthly_opt_volume.csv` | 25 Nottingham Monthly Plan OPT | 2744 / 2744 | 2744 | as above |
+| `run_rates/site=Nottingham/Sep2026-notts_monthly_run_rates.csv` | 24 Nottingham Monthly Hourly Run Rates | 19906 / 19906 | 19906 | as above |
+| Weinheim Sep 2026 Plan OPT | 34 Weinheim Monthly Plan OPT | 124 / 124 | 124 | sums identical |
+| `run_rates/site=Weinheim/Sep2026-wein_monthly_run_rates.csv` | 33 Weinheim Monthly Hourly Run Rates | 886 / 886 | 886 | Good Parts sum identical |
+
+The field list of each definition is the CSV header in the same order
+(`fdYYYYMMDD` -> `YYYY-MM-DD`, `fnGoodParts` -> `Good Parts`, ...). The API
+adds one grand-total row (968 vs 967) and returns raw numbers: OEE as a
+fraction, times in seconds, ISO timestamps. The export formats them (`57.3%`,
+`08:00:00`, `01/09/2026 06:00:00`, thousands separators). Capacity in the run
+rate exports is rounded per hour, so its sum differs slightly.
+
+Still missing:
+
+- **Line Losses** (`StartTime, MachineName, PartDesc, ShiftName,
+  OEELossLvl3Group/SubGroup/Desc, Duration, ShiftStartDate, Comment`): event
+  rows from a Mode Log dataset. None of the 38 saved definitions (all
+  `ObjectByPeriod`) can produce it. Need Antoni's Mode Log report definition
+  (`/api/v1/report/objectmodelog`).
+- **Volume Loss Correction** (`ShiftStartDate, MachineName,
+  OEELossLvl3Group/SubGroup/Desc, Time, Loss Units`): per loss description
+  time and units. No saved definition selects the loss description fields with
+  `fnLossDescTime` / `fnLossDescUnits` (both exist in the function catalogue).
+  Need that definition.
+- **Daily and "Current Month" files** (`*_Current_Month_*`, `*-daily_*`): not
+  compared. Same columns as the monthly files, so likely the daily/custom
+  siblings (e.g. 23/28/38, 30/27/37), not proven.
+- `daily_performance_availability.csv` in `downloads/` has the columns of
+  reports 07/31 (date, machine, Availability, Performance); not compared.
+- Which Power Automate flow or email rule writes each file (names only).
 
 ## Saved JSON definitions that look like the SharePoint exports
 

@@ -42,6 +42,14 @@
   candidates remain unconfirmed; no saved definition is confirmed as the one
   scheduled by Antoni to write a SharePoint destination. See
   `docs/provideam-sharepoint-mapping.md` and the Provideam API handover.
+- Provideam failures and SharePoint proof (2026-10-30): reports 15-22 HTTP 500
+  = more than 18 entries in `functions` (bisected on report 15); two calls of
+  at most 18 functions each return HTTP 200. `getmachinecurrentvalues` fails
+  for SP6 only. Plan OPT and Run Rates monthly exports of Sep 2026 (Hull,
+  Nottingham, Weinheim) equal reports 11/12, 25/24, 34/33 row for row (keys
+  and values, raw files in `sharepoint/source_original/`). Line Losses and
+  Volume Loss Correction have no saved definition (Mode Log / loss
+  description reports needed from Antoni).
 - Site dashboards BUILD (2026-10-27, master, unattended session, 4 commits 62f924a..fded567): D1 `In EU Report` from `config/report_scope.csv` (proof: the true rows equal the old flow's rows in every column); second tab `PBI report build 2` with `Run_Rates_EU`, `Volume_CoV_EU`, `Format_List_EU` (99.4 / 99.7 / 100 % of the EU report's rows matched); run monitor tab Configuration; `Historical_OEE_EU` converted locally (71,345 rows), not uploaded. Nothing run in the VFC. Handover `session_handover/site-dashboards-build-handover.md`.
 - Run monitor DONE (2026-10-23, branch `vfc-run-monitor`, merged to master): stall cause found and fixed (a report day over about 60 s loses its open messages in the VFC; value calls now 4 per second, collected by a join). Dry run and write run of all three report flows checked in the VFC and in the downloaded files. Flow list in `scripts/monitor-flows.js` (the VFC monitor tab works as it is; re-import only when a flow is added). dryRun is OFF in the three report tabs since the write test: the user decides when to switch it back.
 - Site dashboards proof (2026-10-26, master): Segun's `Value` question answered on the loaded tables of the three real `.pbix` files (`scripts/helper-pbix-extract.py`, needs `pip install pbixray`, output `downloads/pbix_data/`). Configured the same way, EU and site data are the same; differences = EU machine filter (only cause of row differences), glidepath file / key (targets, Hull `Value`), seconds dropped in the EU union, refresh date. Analysis section 6, six notebooks `analysis/proof-*.ipynb`. Small items open (36 Hull `Value` stops, 6 extra Nottingham stops in the union). Handover `session_handover/site-dashboards-handover.md`.

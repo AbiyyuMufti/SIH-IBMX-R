@@ -3,7 +3,7 @@
 | At a glance | |
 |---|---|
 | **Purpose** | Record candidate V4 calls for the five Hull reports whose emailed CSV files feed the SharePoint source |
-| **Status** | On 2026-10-30, retimed requests returned HTTP 200 for 30/38 definitions; reports 15-22 remained HTTP 500 after additional actual-date retries |
+| **Status** | 30/38 retimed definitions return HTTP 200 unchanged. Reports 15-22 return HTTP 500 because they ask for more than 18 standard functions (found 2026-10-30); split into two calls they return HTTP 200 |
 | **Request model** | Swagger defines `ReportRequestModel`, but not valid values for its selections |
 | **Response model** | Missing from Swagger. Report 23 returned an object with a `processedData` array; 30 rows were observed and raw values were not saved |
 | **Samples** | Request/result notes are in the ignored local `downloads/provideam-samples/`; prior redacted probes are in ignored `samples/provideam/` |
@@ -98,8 +98,19 @@ body was sent unchanged once, sequentially, on 2026-10-29.
 - Reports 15-22 were retried with actual `pdCustom` ranges: report 15 for
   `[2026-10-29T00:00:00,2026-10-30T00:00:00]`; reports 16-22 for the full
   October range `[2026-10-01T00:00:00,2026-11-01T00:00:00]`. All eight still
-  returned HTTP 500. Those templates share custom-function entries, but this
-  is only a correlation; the error cause is unknown.
+  returned HTTP 500.
+- **Cause found (2026-10-30, report 15, one day):** the request fails when
+  `functions` holds more than 18 entries. Base 4 + both loss-group functions
+  + the first 12 subgroups (18) returns HTTP 200; adding a 13th returns
+  HTTP 500, whichever 12 subgroups are taken first. Each subgroup alone with
+  both groups returns HTTP 200, the custom function is not the cause
+  (removing it still fails), and `includeGrandTotals`, field subtotals and
+  `pdDay` do not change the result. Reports 15-22 have 20 functions.
+- **Workaround:** two calls with the same fields, period and machines, each
+  with at most 18 functions (for example: without the two
+  `fnPCLossGroupByCapacity` entries, and with only those two), then join on
+  the field columns. Both halves returned HTTP 200 for reports 15-22
+  (report 22 Tubs: 0 rows on 2026-10-29). Not reported to Provideam yet.
 - Only status, row count and response-shape metadata were recorded; report
   values were not saved. See the ignored local
   `downloads/provideam-samples/provideam-retimed-results.json` and the
