@@ -1,0 +1,386 @@
+{
+  "tested": "2026-10-29",
+  "endpoint": "/api/v1/Report/ObjectByPeriod",
+  "results": [
+    {
+      "number": "01",
+      "file": "01-b2-packing-hourly-run-rates.md",
+      "title": "B2 Packing Hourly Run Rates",
+      "status": 500,
+      "ok": false,
+      "elapsed_ms": 6304,
+      "shape": null,
+      "response_body": "empty"
+    },
+    {
+      "number": "02",
+      "file": "02-bottles-sku-batch-search.md",
+      "title": "Bottles SKU / Batch Search",
+      "status": 500,
+      "ok": false,
+      "elapsed_ms": 262,
+      "shape": null,
+      "response_body": "empty"
+    },
+    {
+      "number": "03",
+      "file": "03-custom-dates-new-plan-opt-report.md",
+      "title": "Custom Dates New Plan OPT Report",
+      "status": 500,
+      "ok": false,
+      "elapsed_ms": 336,
+      "shape": null,
+      "response_body": "empty"
+    },
+    {
+      "number": "04",
+      "file": "04-custom-nottingham-packing-hourly-run-rates.md",
+      "title": "Custom Nottingham Packing Hourly Run Rates",
+      "status": 500,
+      "ok": false,
+      "elapsed_ms": 285,
+      "shape": null,
+      "response_body": "empty"
+    },
+    {
+      "number": "05",
+      "file": "05-custom-nottingham-plan-opt-report.md",
+      "title": "Custom Nottingham Plan OPT Report",
+      "status": 500,
+      "ok": false,
+      "elapsed_ms": 318,
+      "shape": null,
+      "response_body": "empty"
+    },
+    {
+      "number": "06",
+      "file": "06-custom-packing-hourly-run-rates.md",
+      "title": "Custom Packing Hourly Run Rates",
+      "status": 500,
+      "ok": false,
+      "elapsed_ms": 273,
+      "shape": null,
+      "response_body": "empty"
+    },
+    {
+      "number": "07",
+      "file": "07-custom-performance-availability-daily-report.md",
+      "title": "Custom PERFORMANCE AVAILABILITY DAILY REPORT",
+      "status": 500,
+      "ok": false,
+      "elapsed_ms": 303,
+      "shape": null,
+      "response_body": "empty"
+    },
+    {
+      "number": "08",
+      "file": "08-custom-weinheim-packing-hourly-run-rates.md",
+      "title": "Custom Weinheim Packing Hourly Run Rates",
+      "status": 500,
+      "ok": false,
+      "elapsed_ms": 323,
+      "shape": null,
+      "response_body": "empty"
+    },
+    {
+      "number": "09",
+      "file": "09-custom-weinheim-plan-opt-report.md",
+      "title": "Custom Weinheim Plan OPT Report",
+      "status": 500,
+      "ok": false,
+      "elapsed_ms": 338,
+      "shape": null,
+      "response_body": "empty"
+    },
+    {
+      "number": "10",
+      "file": "10-gemma-nottingham-plan-opt-report.md",
+      "title": "Gemma Nottingham Plan OPT Report",
+      "status": 500,
+      "ok": false,
+      "elapsed_ms": 309,
+      "shape": null,
+      "response_body": "empty"
+    },
+    {
+      "number": "11",
+      "file": "11-hull-monthly-new-plan-opt-report.md",
+      "title": "Hull Monthly New Plan OPT Report",
+      "status": 500,
+      "ok": false,
+      "elapsed_ms": 373,
+      "shape": null,
+      "response_body": "empty"
+    },
+    {
+      "number": "12",
+      "file": "12-hull-monthly-packing-hourly-run-rates.md",
+      "title": "Hull Monthly Packing Hourly Run Rates",
+      "status": 500,
+      "ok": false,
+      "elapsed_ms": 285,
+      "shape": null,
+      "response_body": "empty"
+    },
+    {
+      "number": "13",
+      "file": "13-hull-not-staffed-scheduled-capex-times.md",
+      "title": "Hull Not Staffed, Scheduled & CAPEX times",
+      "status": 500,
+      "ok": false,
+      "elapsed_ms": 491,
+      "shape": null,
+      "response_body": "empty"
+    },
+    {
+      "number": "14",
+      "file": "14-hull-site-oee-report-new-std-custom.md",
+      "title": "Hull Site OEE Report (New Std) - Custom",
+      "status": 500,
+      "ok": false,
+      "elapsed_ms": 349,
+      "shape": null,
+      "response_body": "empty"
+    },
+    {
+      "number": "15",
+      "file": "15-hull-site-oee-report-detail-for-checks.md",
+      "title": "Hull Site OEE Report Detail for Checks",
+      "status": 500,
+      "ok": false,
+      "elapsed_ms": 349,
+      "shape": null,
+      "response_body": "empty"
+    },
+    {
+      "number": "16",
+      "file": "16-monthly-blisters-glidepath-hull-site-oee.md",
+      "title": "Monthly Blisters Glidepath Hull Site OEE",
+      "status": 500,
+      "ok": false,
+      "elapsed_ms": 374,
+      "shape": null,
+      "response_body": "empty"
+    },
+    {
+      "number": "17",
+      "file": "17-monthly-bottles-glidepath-hull-site-oee.md",
+      "title": "Monthly Bottles Glidepath Hull Site OEE",
+      "status": 500,
+      "ok": false,
+      "elapsed_ms": 307,
+      "shape": null,
+      "response_body": "empty"
+    },
+    {
+      "number": "18",
+      "file": "18-monthly-glidepath-hull-site.md",
+      "title": "Monthly Glidepath Hull Site",
+      "status": 500,
+      "ok": false,
+      "elapsed_ms": 261,
+      "shape": null,
+      "response_body": "empty"
+    },
+    {
+      "number": "19",
+      "file": "19-monthly-sachets-glidepath-hull-site-oee.md",
+      "title": "Monthly Sachets Glidepath Hull Site OEE",
+      "status": 500,
+      "ok": false,
+      "elapsed_ms": 302,
+      "shape": null,
+      "response_body": "empty"
+    },
+    {
+      "number": "20",
+      "file": "20-monthly-sticks-glidepath-hull-site-oee-report.md",
+      "title": "Monthly Sticks Glidepath Hull Site OEE Report",
+      "status": 500,
+      "ok": false,
+      "elapsed_ms": 325,
+      "shape": null,
+      "response_body": "empty"
+    },
+    {
+      "number": "21",
+      "file": "21-monthly-tubes-glidepath-hull-site-oee.md",
+      "title": "Monthly Tubes Glidepath Hull Site OEE",
+      "status": 500,
+      "ok": false,
+      "elapsed_ms": 311,
+      "shape": null,
+      "response_body": "empty"
+    },
+    {
+      "number": "22",
+      "file": "22-monthly-tubs-glidepath-hull-site-oee.md",
+      "title": "Monthly Tubs Glidepath Hull Site OEE",
+      "status": 500,
+      "ok": false,
+      "elapsed_ms": 311,
+      "shape": null,
+      "response_body": "empty"
+    },
+    {
+      "number": "23",
+      "file": "23-new-plan-opt-report.md",
+      "title": "New Plan OPT Report",
+      "status": 500,
+      "ok": false,
+      "elapsed_ms": 395,
+      "shape": null,
+      "response_body": "empty"
+    },
+    {
+      "number": "24",
+      "file": "24-nottingham-monthly-hourly-run-rates.md",
+      "title": "Nottingham Monthly Hourly Run Rates",
+      "status": 500,
+      "ok": false,
+      "elapsed_ms": 233,
+      "shape": null,
+      "response_body": "empty"
+    },
+    {
+      "number": "25",
+      "file": "25-nottingham-monthly-plan-opt-report.md",
+      "title": "Nottingham Monthly Plan OPT Report",
+      "status": 500,
+      "ok": false,
+      "elapsed_ms": 326,
+      "shape": null,
+      "response_body": "empty"
+    },
+    {
+      "number": "26",
+      "file": "26-nottingham-oee-old-historical-data.md",
+      "title": "Nottingham OEE OLD Historical DATA",
+      "status": 500,
+      "ok": false,
+      "elapsed_ms": 299,
+      "shape": null,
+      "response_body": "empty"
+    },
+    {
+      "number": "27",
+      "file": "27-nottingham-packing-hourly-run-rates.md",
+      "title": "Nottingham Packing Hourly Run Rates",
+      "status": 500,
+      "ok": false,
+      "elapsed_ms": 319,
+      "shape": null,
+      "response_body": "empty"
+    },
+    {
+      "number": "28",
+      "file": "28-nottingham-plan-opt-report.md",
+      "title": "Nottingham Plan OPT Report",
+      "status": 500,
+      "ok": false,
+      "elapsed_ms": 310,
+      "shape": null,
+      "response_body": "empty"
+    },
+    {
+      "number": "29",
+      "file": "29-oee-old-historical-data.md",
+      "title": "OEE OLD Historical DATA",
+      "status": 500,
+      "ok": false,
+      "elapsed_ms": 294,
+      "shape": null,
+      "response_body": "empty"
+    },
+    {
+      "number": "30",
+      "file": "30-packing-hourly-run-rates.md",
+      "title": "Packing Hourly Run Rates",
+      "status": 500,
+      "ok": false,
+      "elapsed_ms": 336,
+      "shape": null,
+      "response_body": "empty"
+    },
+    {
+      "number": "31",
+      "file": "31-performance-availability-daily-report.md",
+      "title": "PERFORMANCE AVAILABILITY DAILY REPORT",
+      "status": 500,
+      "ok": false,
+      "elapsed_ms": 304,
+      "shape": null,
+      "response_body": "empty"
+    },
+    {
+      "number": "32",
+      "file": "32-sap-oee-targets.md",
+      "title": "SAP OEE Targets",
+      "status": 500,
+      "ok": false,
+      "elapsed_ms": 296,
+      "shape": null,
+      "response_body": "empty"
+    },
+    {
+      "number": "33",
+      "file": "33-weinheim-monthly-hourly-run-rates.md",
+      "title": "Weinheim Monthly Hourly Run Rates",
+      "status": 500,
+      "ok": false,
+      "elapsed_ms": 308,
+      "shape": null,
+      "response_body": "empty"
+    },
+    {
+      "number": "34",
+      "file": "34-weinheim-monthly-plan-opt-report.md",
+      "title": "Weinheim Monthly Plan OPT Report",
+      "status": 500,
+      "ok": false,
+      "elapsed_ms": 308,
+      "shape": null,
+      "response_body": "empty"
+    },
+    {
+      "number": "35",
+      "file": "35-weinheim-oee-old-historical-data.md",
+      "title": "Weinheim OEE OLD Historical DATA",
+      "status": 500,
+      "ok": false,
+      "elapsed_ms": 298,
+      "shape": null,
+      "response_body": "empty"
+    },
+    {
+      "number": "36",
+      "file": "36-weinheim-oee-old-historical-data.md",
+      "title": "Weinheim OEE OLD Historical DATA",
+      "status": 500,
+      "ok": false,
+      "elapsed_ms": 310,
+      "shape": null,
+      "response_body": "empty"
+    },
+    {
+      "number": "37",
+      "file": "37-weinheim-packing-hourly-run-rates.md",
+      "title": "Weinheim Packing Hourly Run Rates",
+      "status": 500,
+      "ok": false,
+      "elapsed_ms": 446,
+      "shape": null,
+      "response_body": "empty"
+    },
+    {
+      "number": "38",
+      "file": "38-weinheim-plan-opt-report.md",
+      "title": "Weinheim Plan OPT Report",
+      "status": 500,
+      "ok": false,
+      "elapsed_ms": 367,
+      "shape": null,
+      "response_body": "empty"
+    }
+  ]
+}

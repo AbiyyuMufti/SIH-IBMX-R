@@ -65,7 +65,7 @@ machine selection, fields and functions, and used
 `Content-Type: application/json-patch+json`. Thirty of 38 returned HTTP 200;
 reports 15-22 returned HTTP 500. Their templates include custom functions,
 but that shared trait has not been proven to cause the errors. See
-`downloads/provideam-samples/provideam-retimed-results.json` for sanitized
+`docs/provideam-samples/provideam-retimed-results.json` for sanitized
 status and row-count summaries; no report row values were saved.
 
 ## Request example

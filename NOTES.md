@@ -50,6 +50,11 @@
   and values, raw files in `sharepoint/source_original/`). Line Losses and
   Volume Loss Correction have no saved definition (Mode Log / loss
   description reports needed from Antoni).
+- Provideam lake proof (2026-10-30): `flows/vfc-provideam-lake-proof.json`
+  calls one saved report for one day from the VFC and stores the raw JSON in
+  `mufti_test/provideam/`. Offline test passes; VFC run pending (does the VFC
+  allow outbound calls to rb-api.provideam.com?). Doc
+  `docs/provideam-lake-proof.md`.
 - Site dashboards BUILD (2026-10-27, master, unattended session, 4 commits 62f924a..fded567): D1 `In EU Report` from `config/report_scope.csv` (proof: the true rows equal the old flow's rows in every column); second tab `PBI report build 2` with `Run_Rates_EU`, `Volume_CoV_EU`, `Format_List_EU` (99.4 / 99.7 / 100 % of the EU report's rows matched); run monitor tab Configuration; `Historical_OEE_EU` converted locally (71,345 rows), not uploaded. Nothing run in the VFC. Handover `session_handover/site-dashboards-build-handover.md`.
 - Run monitor DONE (2026-10-23, branch `vfc-run-monitor`, merged to master): stall cause found and fixed (a report day over about 60 s loses its open messages in the VFC; value calls now 4 per second, collected by a join). Dry run and write run of all three report flows checked in the VFC and in the downloaded files. Flow list in `scripts/monitor-flows.js` (the VFC monitor tab works as it is; re-import only when a flow is added). dryRun is OFF in the three report tabs since the write test: the user decides when to switch it back.
 - Site dashboards proof (2026-10-26, master): Segun's `Value` question answered on the loaded tables of the three real `.pbix` files (`scripts/helper-pbix-extract.py`, needs `pip install pbixray`, output `downloads/pbix_data/`). Configured the same way, EU and site data are the same; differences = EU machine filter (only cause of row differences), glidepath file / key (targets, Hull `Value`), seconds dropped in the EU union, refresh date. Analysis section 6, six notebooks `analysis/proof-*.ipynb`. Small items open (36 Hull `Value` stops, 6 extra Nottingham stops in the union). Handover `session_handover/site-dashboards-handover.md`.

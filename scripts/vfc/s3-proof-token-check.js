@@ -1,5 +1,5 @@
 // Checks and retains the Insights Hub token for the proof.
-// In: token HTTP response. Out: the same message for Graph listing.
+// In: token HTTP response. Out: the same message with msg.lakeToken.
 var token = msg.payload && msg.payload.access_token;
 
 if (msg.statusCode !== 200 || !token) {
@@ -10,6 +10,6 @@ if (msg.statusCode !== 200 || !token) {
 
 msg.lakeToken = token;
 delete msg.payload;
-msg._proofStage = 'SharePoint listing';
-node.status({ fill: 'blue', shape: 'dot', text: 'building Graph request' });
+msg._proofStage = 'lake token';
+node.status({ fill: 'blue', shape: 'dot', text: 'lake token ready' });
 return msg;

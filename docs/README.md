@@ -41,9 +41,9 @@
 | [chartres-mapping-spec.md](chartres-mapping-spec.md) | Self-contained mapping spec Base to the three tables, for writing a converter script or a VBA macro with any AI assistant | Written 2026-10-27 |
 | [provideam-source.md](provideam-source.md) | Provideam is the real source of the Hull board: reports, email, Power Automate, SharePoint; what differs from our assumptions | Read 2026-10-13 |
 | [provideam-api.md](provideam-api.md) | Provideam V4 host, `apiKey` auth, verified hierarchy and machine reads, report metadata templates and report failures | Hierarchy verified 2026-10-28; report tests updated 2026-10-30 |
-| [provideam-reports.md](provideam-reports.md) | UI-captured report definitions, Swagger request model, DataSetType metadata and report behavior | Retimed tests: 30/38 HTTP 200; reports 15-22 HTTP 500 |
+| [provideam-reports.md](provideam-reports.md) | UI-captured report definitions, Swagger request model, DataSetType metadata and report behavior | 30/38 HTTP 200 as saved; 15-22 work split in two calls (18-function limit) |
 | [provideam-report-mapping.md](provideam-report-mapping.md) | Candidate DataSetType-to-source mapping, local column headers, comparison checklist and blockers | Source-family mapping tentative; row-level comparison remains open |
-| [provideam-sharepoint-mapping.md](provideam-sharepoint-mapping.md) | SharePoint source folders to report tables, plus numbered Provideam JSON candidates by export shape | Folder destinations documented; exact scheduled JSON definitions unconfirmed |
+| [provideam-sharepoint-mapping.md](provideam-sharepoint-mapping.md) | SharePoint source folders to report tables, plus numbered Provideam JSON candidates by export shape | Plan OPT / Run Rates proven row for row (Sep 2026); Line Losses and Volume Correction have no definition |
 | [provideam-explained.md](provideam-explained.md) | Short plain-language introduction to the Provideam API investigation and next step | Summary of findings |
 | [sharepoint-files.md](sharepoint-files.md) | What the downloaded SharePoint files contain, how the report uses them and how they fit Insights Hub (names, rules, coverage); what is completed and what is missing | Analysed 2026-10-14 |
 | [pbi-report-build-2.md](pbi-report-build-2.md) | Second build tab: `Run_Rates_EU`, `Volume_CoV_EU`, `Format_List_EU` for the site dashboards; the run_rates type of the normalizer; Format List starter | Built 2026-10-27, checked against the EU report tables; not run in the VFC yet |
@@ -54,6 +54,7 @@
 | [lake-api.md](lake-api.md) | Python downloads parquet files or folder lists from the data lake through an `http in` endpoint of the VFC (spike checked in the VFC, final flow built) | Spike in the VFC |
 | [datalake-files.md](datalake-files.md) | List, download and upload data lake files from a script with signed URLs (`scripts/datalake-download.js`, `datalake-upload.js`) | Tested 2026-10-14 on xcelerator: list, download and upload work |
 | [sharepoint-lake-proof.md](sharepoint-lake-proof.md) | One-file VFC proof of downloading a SharePoint file into memory and uploading it to the lake | VFC runtime proof pending |
+| [provideam-lake-proof.md](provideam-lake-proof.md) | One-report VFC proof: call the Provideam API and store the raw JSON in the lake (`mufti_test/provideam`) | Built and tested offline; VFC run pending |
 | [logging.md](logging.md) | The CSV run log in the data lake (one file per month and flow) and the error catch | Mock only |
 | [run-monitor.md](run-monitor.md) | Report status, monthly log history and validated backfill commands; VFC access keys and link wiring | Built and mock-tested offline; VFC runtime check remains |
 | [fact-flows.md](fact-flows.md) | The per-site flows that write `fact_kpi` and `fact_loss`, and how to add a site | Hull, dry run in the VFC |

@@ -78,7 +78,7 @@ Still missing:
 This comparison treats each saved request as a report definition: its selected
 fields and functions indicate the output columns and grain. The numbered
 Markdown payloads and index are local, ignored files under
-`downloads/provideam-samples/`; report numbers below refer to the index
+`docs/provideam-samples/`; report numbers below refer to the index
 `Antoni Szklarski reports.md` there.
 
 | SharePoint source | Candidate report numbers | Why the shape matches | Assessment |

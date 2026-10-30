@@ -206,7 +206,7 @@ values were added to this log.
   HTTP 500. These eight templates share custom-function entries, but the
   cause has not been established.
 - **Evidence:** Per-report status and row counts are in the ignored
-  `downloads/provideam-samples/provideam-retimed-results.json` and the local
+  `docs/provideam-samples/provideam-retimed-results.json` and the local
   report index. No row values were saved.
 
 ## Deliberately not called

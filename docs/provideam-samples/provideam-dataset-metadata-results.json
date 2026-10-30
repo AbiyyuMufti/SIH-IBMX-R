@@ -1,0 +1,366 @@
+{
+  "tested": "2026-10-29",
+  "evidence": "UI-supplied DataSet Templates list",
+  "calls": [
+    {
+      "dataSetType": "dsObjectByPeriod",
+      "kind": "objects",
+      "path": "/api/v1/report/getavailableobjects",
+      "status": 200,
+      "ok": true,
+      "summary": {
+        "type": "array",
+        "count": 30,
+        "item_keys": []
+      }
+    },
+    {
+      "dataSetType": "dsObjectByPeriod",
+      "kind": "fields",
+      "path": "/api/v1/report/getavailablefields",
+      "status": 200,
+      "ok": true,
+      "summary": {
+        "type": "array",
+        "count": 74,
+        "item_keys": []
+      }
+    },
+    {
+      "dataSetType": "dsObjectByPeriod",
+      "kind": "functions",
+      "path": "/api/v1/report/getavailablefunctions",
+      "status": 200,
+      "ok": true,
+      "summary": {
+        "type": "array",
+        "count": 133,
+        "item_keys": []
+      }
+    },
+    {
+      "dataSetType": "dsObjectByPeriod",
+      "kind": "losses",
+      "path": "/api/v1/report/getavailablelosses",
+      "status": 200,
+      "ok": true,
+      "summary": {
+        "type": "array",
+        "count": 0,
+        "item_keys": []
+      }
+    },
+    {
+      "dataSetType": "dsObjectByPeriod",
+      "kind": "periods",
+      "path": "/api/v1/report/getavailableperiods",
+      "status": 200,
+      "ok": true,
+      "summary": {
+        "type": "array",
+        "count": 12,
+        "item_keys": []
+      }
+    },
+    {
+      "dataSetType": "dsPeriodByObject",
+      "kind": "objects",
+      "path": "/api/v1/report/getavailableobjects",
+      "status": 200,
+      "ok": true,
+      "summary": {
+        "type": "array",
+        "count": 31,
+        "item_keys": []
+      }
+    },
+    {
+      "dataSetType": "dsPeriodByObject",
+      "kind": "fields",
+      "path": "/api/v1/report/getavailablefields",
+      "status": 200,
+      "ok": true,
+      "summary": {
+        "type": "array",
+        "count": 74,
+        "item_keys": []
+      }
+    },
+    {
+      "dataSetType": "dsPeriodByObject",
+      "kind": "functions",
+      "path": "/api/v1/report/getavailablefunctions",
+      "status": 200,
+      "ok": true,
+      "summary": {
+        "type": "array",
+        "count": 138,
+        "item_keys": []
+      }
+    },
+    {
+      "dataSetType": "dsPeriodByObject",
+      "kind": "losses",
+      "path": "/api/v1/report/getavailablelosses",
+      "status": 200,
+      "ok": true,
+      "summary": {
+        "type": "array",
+        "count": 0,
+        "item_keys": []
+      }
+    },
+    {
+      "dataSetType": "dsPeriodByObject",
+      "kind": "periods",
+      "path": "/api/v1/report/getavailableperiods",
+      "status": 200,
+      "ok": true,
+      "summary": {
+        "type": "array",
+        "count": 12,
+        "item_keys": []
+      }
+    },
+    {
+      "dataSetType": "dsObjectByPeriodAndLoss",
+      "kind": "objects",
+      "path": "/api/v1/report/getavailableobjects",
+      "status": 200,
+      "ok": true,
+      "summary": {
+        "type": "array",
+        "count": 30,
+        "item_keys": []
+      }
+    },
+    {
+      "dataSetType": "dsObjectByPeriodAndLoss",
+      "kind": "fields",
+      "path": "/api/v1/report/getavailablefields",
+      "status": 200,
+      "ok": true,
+      "summary": {
+        "type": "array",
+        "count": 80,
+        "item_keys": []
+      }
+    },
+    {
+      "dataSetType": "dsObjectByPeriodAndLoss",
+      "kind": "functions",
+      "path": "/api/v1/report/getavailablefunctions",
+      "status": 200,
+      "ok": true,
+      "summary": {
+        "type": "array",
+        "count": 140,
+        "item_keys": []
+      }
+    },
+    {
+      "dataSetType": "dsObjectByPeriodAndLoss",
+      "kind": "losses",
+      "path": "/api/v1/report/getavailablelosses",
+      "status": 200,
+      "ok": true,
+      "summary": {
+        "type": "array",
+        "count": 8,
+        "item_keys": []
+      }
+    },
+    {
+      "dataSetType": "dsObjectByPeriodAndLoss",
+      "kind": "periods",
+      "path": "/api/v1/report/getavailableperiods",
+      "status": 200,
+      "ok": true,
+      "summary": {
+        "type": "array",
+        "count": 11,
+        "item_keys": []
+      }
+    },
+    {
+      "dataSetType": "dsPeriodByObjectAndLoss",
+      "kind": "objects",
+      "path": "/api/v1/report/getavailableobjects",
+      "status": 200,
+      "ok": true,
+      "summary": {
+        "type": "array",
+        "count": 30,
+        "item_keys": []
+      }
+    },
+    {
+      "dataSetType": "dsPeriodByObjectAndLoss",
+      "kind": "fields",
+      "path": "/api/v1/report/getavailablefields",
+      "status": 200,
+      "ok": true,
+      "summary": {
+        "type": "array",
+        "count": 80,
+        "item_keys": []
+      }
+    },
+    {
+      "dataSetType": "dsPeriodByObjectAndLoss",
+      "kind": "functions",
+      "path": "/api/v1/report/getavailablefunctions",
+      "status": 200,
+      "ok": true,
+      "summary": {
+        "type": "array",
+        "count": 140,
+        "item_keys": []
+      }
+    },
+    {
+      "dataSetType": "dsPeriodByObjectAndLoss",
+      "kind": "losses",
+      "path": "/api/v1/report/getavailablelosses",
+      "status": 200,
+      "ok": true,
+      "summary": {
+        "type": "array",
+        "count": 8,
+        "item_keys": []
+      }
+    },
+    {
+      "dataSetType": "dsPeriodByObjectAndLoss",
+      "kind": "periods",
+      "path": "/api/v1/report/getavailableperiods",
+      "status": 200,
+      "ok": true,
+      "summary": {
+        "type": "array",
+        "count": 11,
+        "item_keys": []
+      }
+    },
+    {
+      "dataSetType": "dsObjectModeLog",
+      "kind": "objects",
+      "path": "/api/v1/report/getavailableobjects",
+      "status": 200,
+      "ok": true,
+      "summary": {
+        "type": "array",
+        "count": 31,
+        "item_keys": []
+      }
+    },
+    {
+      "dataSetType": "dsObjectModeLog",
+      "kind": "fields",
+      "path": "/api/v1/report/getavailablefields",
+      "status": 200,
+      "ok": true,
+      "summary": {
+        "type": "array",
+        "count": 86,
+        "item_keys": []
+      }
+    },
+    {
+      "dataSetType": "dsObjectModeLog",
+      "kind": "functions",
+      "path": "/api/v1/report/getavailablefunctions",
+      "status": 200,
+      "ok": true,
+      "summary": {
+        "type": "array",
+        "count": 0,
+        "item_keys": []
+      }
+    },
+    {
+      "dataSetType": "dsObjectModeLog",
+      "kind": "losses",
+      "path": "/api/v1/report/getavailablelosses",
+      "status": 200,
+      "ok": true,
+      "summary": {
+        "type": "array",
+        "count": 5,
+        "item_keys": []
+      }
+    },
+    {
+      "dataSetType": "dsObjectModeLog",
+      "kind": "periods",
+      "path": "/api/v1/report/getavailableperiods",
+      "status": 200,
+      "ok": true,
+      "summary": {
+        "type": "array",
+        "count": 11,
+        "item_keys": []
+      }
+    },
+    {
+      "dataSetType": "dsObjectYieldLog",
+      "kind": "objects",
+      "path": "/api/v1/report/getavailableobjects",
+      "status": 200,
+      "ok": true,
+      "summary": {
+        "type": "array",
+        "count": 29,
+        "item_keys": []
+      }
+    },
+    {
+      "dataSetType": "dsObjectYieldLog",
+      "kind": "fields",
+      "path": "/api/v1/report/getavailablefields",
+      "status": 200,
+      "ok": true,
+      "summary": {
+        "type": "array",
+        "count": 84,
+        "item_keys": []
+      }
+    },
+    {
+      "dataSetType": "dsObjectYieldLog",
+      "kind": "functions",
+      "path": "/api/v1/report/getavailablefunctions",
+      "status": 200,
+      "ok": true,
+      "summary": {
+        "type": "array",
+        "count": 0,
+        "item_keys": []
+      }
+    },
+    {
+      "dataSetType": "dsObjectYieldLog",
+      "kind": "losses",
+      "path": "/api/v1/report/getavailablelosses",
+      "status": 200,
+      "ok": true,
+      "summary": {
+        "type": "array",
+        "count": 5,
+        "item_keys": []
+      }
+    },
+    {
+      "dataSetType": "dsObjectYieldLog",
+      "kind": "periods",
+      "path": "/api/v1/report/getavailableperiods",
+      "status": 200,
+      "ok": true,
+      "summary": {
+        "type": "array",
+        "count": 11,
+        "item_keys": []
+      }
+    }
+  ]
+}

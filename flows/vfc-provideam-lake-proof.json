@@ -1,0 +1,335 @@
+[
+  {
+    "id": "2fc57.8ec471",
+    "type": "tab",
+    "label": "Provideam lake proof",
+    "disabled": false,
+    "allowCycles": false,
+    "info": "Manual proof: one Provideam report day stored as-is in the lake."
+  },
+  {
+    "z": "2fc57.8ec471",
+    "id": "31b46.905d8a",
+    "type": "comment",
+    "name": "[1] ONE-REPORT PROVIDEAM TO LAKE PROOF",
+    "info": "STAGE 1 - STAGE 1 - call one Provideam report for one day (the pasted saved body, period replaced) and store the response text as it came in the lake under mufti_test/provideam. Run the Config tab first with xcelerator selected. One-shot proof: no schedule, no split of bodies with more than 18 functions.",
+    "x": 220,
+    "y": 40,
+    "wires": []
+  },
+  {
+    "z": "2fc57.8ec471",
+    "id": "35924.938fbc",
+    "type": "inject",
+    "name": "Run Provideam proof",
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "repeat": "",
+    "repeatEnd": "0",
+    "endTime": "0",
+    "crontab": "",
+    "offset": "NaN",
+    "once": false,
+    "properties": "",
+    "timezone": "UTC",
+    "betweentimesunit": "m",
+    "showNextExecution": false,
+    "powerMode": false,
+    "x": 140,
+    "y": 120,
+    "wires": [
+      [
+        "33a35.91f6a3"
+      ]
+    ]
+  },
+  {
+    "z": "2fc57.8ec471",
+    "id": "33a35.91f6a3",
+    "type": "function",
+    "name": "1.1 Load proof settings",
+    "func": "// Loads the Provideam proof settings and the shared Insights Hub Config.\n// In: manual trigger. Out: one report request body with the day set,\n// the lake base address and the lake folder.\nvar PROVIDEAM_API_KEY = 'PASTE_PROVIDEAM_API_KEY_HERE';\n// Paste one saved body from docs/provideam-samples/<nn>-*.md (JSON text).\nvar REPORT_BODY_JSON = 'PASTE_REPORT_BODY_JSON_HERE';\nvar REPORT_NAME = 'new-plan-opt-report';\n// Production day YYYY-MM-DD. Empty = yesterday (UTC date).\nvar DAY = '';\nvar LAKE_FOLDER = 'mufti_test/provideam';\nvar PROVIDEAM_URL = 'https://rb-api.provideam.com';\nPROVIDEAM_URL += '/api/v1/Report/ObjectByPeriod';\nvar cfg = glob.get('cfg');\n\nif (!cfg || cfg.platform !== 'xcelerator' || !cfg.xcTenantId) {\n  msg.proofFailureReason = 'Run Config with xcelerator selected first';\n  node.error(msg.proofFailureReason, msg);\n  return null;\n}\nif (PROVIDEAM_API_KEY.indexOf('PASTE_') === 0 ||\n  REPORT_BODY_JSON.indexOf('PASTE_') === 0) {\n  msg.proofFailureReason = 'Fill in the Provideam proof settings';\n  node.error(msg.proofFailureReason, msg);\n  return null;\n}\n\nvar body;\ntry {\n  body = JSON.parse(REPORT_BODY_JSON);\n} catch (e) {\n  msg.proofFailureReason = 'REPORT_BODY_JSON is not valid JSON';\n  node.error(msg.proofFailureReason, msg);\n  return null;\n}\n\nvar day = DAY;\nif (!day) {\n  var d = new Date(Date.now() - 86400000);\n  day = d.toISOString().slice(0, 10);\n}\nif (!/^\\d{4}-\\d\\d-\\d\\d$/.test(day)) {\n  msg.proofFailureReason = 'DAY must be YYYY-MM-DD';\n  node.error(msg.proofFailureReason, msg);\n  return null;\n}\n// Provideam period text: one day as [<day>T00:00:00].\nbody.periods = [\n  {\n    periodParam: {\n      pdDay: ['[' + day + 'T00:00:00]']\n    }\n  }\n];\n\nmsg.proof = {\n  apiKey: PROVIDEAM_API_KEY,\n  url: PROVIDEAM_URL,\n  body: body,\n  day: day,\n  lakeFolder: LAKE_FOLDER\n};\nmsg.proofFile = {\n  name: REPORT_NAME + '_' + day + '.json'\n};\nmsg.lakeBase = 'https://api.eu1.siemens.app/datalake-';\nmsg.lakeBase += cfg.xcTenantId + '/v3';\nmsg._proofStage = 'settings';\nnode.status({ fill: 'green', shape: 'dot', text: 'settings ready' });\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 380,
+    "y": 120,
+    "wires": [
+      [
+        "37813.9528d5"
+      ]
+    ]
+  },
+  {
+    "z": "2fc57.8ec471",
+    "id": "37813.9528d5",
+    "type": "function",
+    "name": "1.2 Build Provideam request",
+    "func": "// Builds the Provideam report request (read-style POST).\n// In: proof settings. Out: an HTTP request for one report day.\n// Provideam answers HTTP 500 to a body with more than 18 functions.\nmsg.method = 'POST';\nmsg.url = msg.proof.url;\nmsg.headers = {\n  'apiKey': msg.proof.apiKey,\n  'Content-Type': 'application/json-patch+json',\n  'Accept': 'application/json'\n};\nmsg.payload = JSON.stringify(msg.proof.body);\nmsg._proofStage = 'Provideam report';\nnode.status({ fill: 'blue', shape: 'dot', text: 'calling Provideam' });\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 640,
+    "y": 120,
+    "wires": [
+      [
+        "39702.96c1ee"
+      ]
+    ]
+  },
+  {
+    "z": "2fc57.8ec471",
+    "id": "39702.96c1ee",
+    "type": "http request",
+    "name": "POST Provideam report",
+    "method": "use",
+    "ret": "txt",
+    "url": "",
+    "timeout": "",
+    "mindspherePath": "",
+    "useMindsphereAuth": false,
+    "isAdmin": false,
+    "x": 900,
+    "y": 120,
+    "wires": [
+      [
+        "3b5f1.985b07"
+      ]
+    ]
+  },
+  {
+    "z": "2fc57.8ec471",
+    "id": "3b5f1.985b07",
+    "type": "function",
+    "name": "1.3 Check Provideam rows",
+    "func": "// Checks the Provideam response and keeps its text as it came.\n// In: report response as text. Out: the bytes to store and the row count.\nif (msg.statusCode !== 200) {\n  msg.proofFailureReason = 'Provideam HTTP ' + msg.statusCode;\n  node.error(msg.proofFailureReason, msg);\n  return null;\n}\n\nvar text = String(msg.payload || '');\nvar rows;\ntry {\n  rows = JSON.parse(text).processedData;\n} catch (e) {\n  msg.proofFailureReason = 'Provideam response is not JSON';\n  node.error(msg.proofFailureReason, msg);\n  return null;\n}\nif (!Array.isArray(rows)) {\n  msg.proofFailureReason = 'Provideam response has no processedData';\n  node.error(msg.proofFailureReason, msg);\n  return null;\n}\n\nmsg.fileBytes = Buffer.from(text, 'utf8');\nmsg.fileSize = msg.fileBytes.length;\nmsg.rowCount = rows.length;\ndelete msg.proof.apiKey;\ndelete msg.headers;\ndelete msg.payload;\nnode.status({\n  fill: 'blue',\n  shape: 'dot',\n  text: rows.length + ' rows from Provideam'\n});\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 1160,
+    "y": 120,
+    "wires": [
+      [
+        "3d4e0.99f420"
+      ]
+    ]
+  },
+  {
+    "z": "2fc57.8ec471",
+    "id": "3d4e0.99f420",
+    "type": "function",
+    "name": "1.4 Build lake token request",
+    "func": "// Builds the Insights Hub client-credentials request.\n// In: proof settings. Out: an HTTP request for the lake token.\nvar cfg = glob.get('cfg');\n\nif (!cfg || !cfg.clientId || !cfg.clientSecret || !cfg.tokenUrl) {\n  msg.proofFailureReason = 'Insights Hub credentials are missing in Config';\n  node.error(msg.proofFailureReason, msg);\n  return null;\n}\n\nmsg.method = 'POST';\nmsg.url = cfg.tokenUrl;\nmsg.headers = {\n  'Authorization': 'Basic ' + Buffer.from(\n    cfg.clientId + ':' + cfg.clientSecret\n  ).toString('base64'),\n  'Accept': 'application/json'\n};\nif (cfg.tokenForm) {\n  msg.headers['Content-Type'] = 'application/x-www-form-urlencoded';\n  msg.payload = 'grant_type=client_credentials';\n} else {\n  delete msg.payload;\n}\nmsg._proofStage = 'Insights Hub token';\nnode.status({ fill: 'blue', shape: 'dot', text: 'requesting lake token' });\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 1440,
+    "y": 120,
+    "wires": [
+      [
+        "3f3cf.9b8d39"
+      ]
+    ]
+  },
+  {
+    "z": "2fc57.8ec471",
+    "id": "3f3cf.9b8d39",
+    "type": "http request",
+    "name": "POST lake token",
+    "method": "use",
+    "ret": "obj",
+    "url": "",
+    "timeout": "",
+    "mindspherePath": "",
+    "useMindsphereAuth": false,
+    "isAdmin": false,
+    "x": 1680,
+    "y": 120,
+    "wires": [
+      [
+        "412be.9d2652"
+      ]
+    ]
+  },
+  {
+    "z": "2fc57.8ec471",
+    "id": "412be.9d2652",
+    "type": "function",
+    "name": "1.5 Check lake token",
+    "func": "// Checks and retains the Insights Hub token for the proof.\n// In: token HTTP response. Out: the same message with msg.lakeToken.\nvar token = msg.payload && msg.payload.access_token;\n\nif (msg.statusCode !== 200 || !token) {\n  msg.proofFailureReason = 'Insights Hub token HTTP ' + msg.statusCode;\n  node.error(msg.proofFailureReason, msg);\n  return null;\n}\n\nmsg.lakeToken = token;\ndelete msg.payload;\nmsg._proofStage = 'lake token';\nnode.status({ fill: 'blue', shape: 'dot', text: 'lake token ready' });\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 1900,
+    "y": 120,
+    "wires": [
+      [
+        "431ad.9ebf6b"
+      ]
+    ]
+  },
+  {
+    "z": "2fc57.8ec471",
+    "id": "431ad.9ebf6b",
+    "type": "function",
+    "name": "1.6 Prepare lake upload URL",
+    "func": "// Requests a lake upload URL for the stored report text.\n// In: lake token and file bytes. Out: an authenticated lake URL request.\nvar folder = String(msg.proof.lakeFolder || '');\nfolder = folder.replace(/^\\/+|\\/+$/g, '');\nvar name = msg.proofFile.name;\nvar validPath = /^[A-Za-z0-9 .!*'()_/-]+$/;\n\nif (!folder || folder.indexOf('..') !== -1 ||\n  folder.indexOf('data/ten=') === 0 || !validPath.test(folder) ||\n  !/^[A-Za-z0-9 .!*'()_-]+$/.test(name)) {\n  msg.proofFailureReason = 'Invalid lake path or file name';\n  node.error(msg.proofFailureReason, msg);\n  return null;\n}\n\nmsg.lakePath = folder + '/' + name;\nmsg.method = 'POST';\nmsg.url = msg.lakeBase + '/generateUploadObjectUrls';\nmsg.headers = {\n  'Authorization': 'Bearer ' + msg.lakeToken,\n  'Content-Type': 'application/json',\n  'Accept': 'application/json'\n};\nmsg.payload = {\n  paths: [\n    { path: msg.lakePath }\n  ]\n};\nmsg._proofStage = 'lake signed URL';\nnode.status({\n  fill: 'blue',\n  shape: 'dot',\n  text: 'requesting lake upload URL'\n});\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 2160,
+    "y": 120,
+    "wires": [
+      [
+        "4509c.a05884"
+      ]
+    ]
+  },
+  {
+    "z": "2fc57.8ec471",
+    "id": "4509c.a05884",
+    "type": "http request",
+    "name": "POST upload URL",
+    "method": "use",
+    "ret": "obj",
+    "url": "",
+    "timeout": "",
+    "mindspherePath": "",
+    "useMindsphereAuth": false,
+    "isAdmin": false,
+    "x": 2400,
+    "y": 120,
+    "wires": [
+      [
+        "46f8b.a1f19d"
+      ]
+    ]
+  },
+  {
+    "z": "2fc57.8ec471",
+    "id": "46f8b.a1f19d",
+    "type": "function",
+    "name": "1.7 Prepare signed PUT",
+    "func": "// Builds the unauthenticated PUT request for the signed lake URL.\n// In: signed-URL response and file bytes. Out: a binary HTTP PUT request.\nvar body = msg.payload;\nvar signedUrl = body && body.objectUrls &&\n  body.objectUrls[0] && body.objectUrls[0].signedUrl;\nvar bytes = msg.fileBytes;\n\nif (bytes && bytes.type === 'Buffer' && Array.isArray(bytes.data)) {\n  bytes = Buffer.from(bytes.data);\n}\n\nif (msg.statusCode !== 201 || !signedUrl) {\n  msg.proofFailureReason = 'Lake signed URL HTTP ' + msg.statusCode;\n  node.error(msg.proofFailureReason, msg);\n  return null;\n}\nif (!Buffer.isBuffer(bytes)) {\n  msg.proofFailureReason = 'Downloaded bytes are not a binary Buffer';\n  node.error(msg.proofFailureReason, msg);\n  return null;\n}\n\nmsg.signedUrl = signedUrl;\nmsg.method = 'PUT';\nmsg.url = signedUrl;\nmsg.headers = {};\nmsg.payload = bytes;\ndelete msg.fileBytes;\nmsg._proofStage = 'lake file upload';\nnode.status({ fill: 'blue', shape: 'dot', text: 'uploading one file' });\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 2620,
+    "y": 120,
+    "wires": [
+      [
+        "48e7a.a38ab6"
+      ]
+    ]
+  },
+  {
+    "z": "2fc57.8ec471",
+    "id": "48e7a.a38ab6",
+    "type": "http request",
+    "name": "PUT signed URL",
+    "method": "use",
+    "ret": "txt",
+    "url": "",
+    "timeout": "",
+    "mindspherePath": "",
+    "useMindsphereAuth": false,
+    "isAdmin": false,
+    "x": 2840,
+    "y": 120,
+    "wires": [
+      [
+        "4ad69.a523cf"
+      ]
+    ]
+  },
+  {
+    "z": "2fc57.8ec471",
+    "id": "4ad69.a523cf",
+    "type": "function",
+    "name": "1.8 Report upload",
+    "func": "// Reports the stored file without exposing keys, tokens or signed URLs.\n// In: signed PUT response. Out: a short debug message.\nif (msg.statusCode !== 200) {\n  msg.proofFailureReason = 'Lake PUT HTTP ' + msg.statusCode;\n  node.error(msg.proofFailureReason, msg);\n  return null;\n}\n\nvar text = 'UPLOADED ' + msg.proofFile.name;\ntext += ' (' + msg.rowCount + ' rows, ' + msg.fileSize + ' bytes) to ';\ntext += msg.lakePath;\nmsg.payload = text;\ndelete msg.proof;\ndelete msg.lakeToken;\ndelete msg.signedUrl;\ndelete msg.url;\ndelete msg.headers;\ndelete msg.method;\ndelete msg.fileBytes;\ndelete msg._proofStage;\nnode.status({ fill: 'green', shape: 'dot', text: 'lake upload complete' });\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 3040,
+    "y": 120,
+    "wires": [
+      [
+        "4cc58.a6bce8"
+      ]
+    ]
+  },
+  {
+    "z": "2fc57.8ec471",
+    "id": "4cc58.a6bce8",
+    "type": "debug",
+    "name": "Proof result",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "x": 3240,
+    "y": 120,
+    "wires": []
+  },
+  {
+    "z": "2fc57.8ec471",
+    "id": "4eb47.a85601",
+    "type": "comment",
+    "name": "[2] SAFE FAILURE",
+    "info": "STAGE 2 - STAGE 2 - catch failures and report only a short sanitized reason. API key, tokens and signed URLs are not included.",
+    "x": 140,
+    "y": 260,
+    "wires": []
+  },
+  {
+    "z": "2fc57.8ec471",
+    "id": "52925.ab8833",
+    "type": "catch",
+    "name": "Catch proof failures",
+    "scope": null,
+    "uncaught": false,
+    "x": 140,
+    "y": 340,
+    "wires": [
+      [
+        "50a36.a9ef1a"
+      ]
+    ]
+  },
+  {
+    "z": "2fc57.8ec471",
+    "id": "50a36.a9ef1a",
+    "type": "function",
+    "name": "2.1 Report safe failure",
+    "func": "// Reports a sanitized proof failure.\n// In: a caught error. Out: a short debug message without request details.\nvar stage = msg._proofStage || 'proof';\nvar reason = msg.proofFailureReason || 'request failed';\nvar name = msg.proofFile && msg.proofFile.name;\nvar text = 'FAILED ' + stage;\n\nif (name) {\n  text += ' ' + name;\n}\ntext += ': ' + reason;\nmsg.payload = text;\ndelete msg.proof;\ndelete msg.lakeToken;\ndelete msg.signedUrl;\ndelete msg.url;\ndelete msg.headers;\ndelete msg.method;\ndelete msg.fileBytes;\ndelete msg._proofStage;\ndelete msg.proofFailureReason;\nnode.status({ fill: 'red', shape: 'ring', text: 'proof failed' });\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 380,
+    "y": 340,
+    "wires": [
+      [
+        "54814.ad214c"
+      ]
+    ]
+  },
+  {
+    "z": "2fc57.8ec471",
+    "id": "54814.ad214c",
+    "type": "debug",
+    "name": "Proof failure",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "x": 600,
+    "y": 340,
+    "wires": []
+  }
+]

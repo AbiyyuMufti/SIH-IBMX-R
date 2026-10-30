@@ -103,7 +103,7 @@
     "id": "3b5f1.985b07",
     "type": "function",
     "name": "1.3 Check lake token",
-    "func": "// Checks and retains the Insights Hub token for the proof.\n// In: token HTTP response. Out: the same message for Graph listing.\nvar token = msg.payload && msg.payload.access_token;\n\nif (msg.statusCode !== 200 || !token) {\n  msg.proofFailureReason = 'Insights Hub token HTTP ' + msg.statusCode;\n  node.error(msg.proofFailureReason, msg);\n  return null;\n}\n\nmsg.lakeToken = token;\ndelete msg.payload;\nmsg._proofStage = 'SharePoint listing';\nnode.status({ fill: 'blue', shape: 'dot', text: 'building Graph request' });\nreturn msg;\n",
+    "func": "// Checks and retains the Insights Hub token for the proof.\n// In: token HTTP response. Out: the same message with msg.lakeToken.\nvar token = msg.payload && msg.payload.access_token;\n\nif (msg.statusCode !== 200 || !token) {\n  msg.proofFailureReason = 'Insights Hub token HTTP ' + msg.statusCode;\n  node.error(msg.proofFailureReason, msg);\n  return null;\n}\n\nmsg.lakeToken = token;\ndelete msg.payload;\nmsg._proofStage = 'lake token';\nnode.status({ fill: 'blue', shape: 'dot', text: 'lake token ready' });\nreturn msg;\n",
     "outputs": 1,
     "language": "javascript",
     "noerr": 0,

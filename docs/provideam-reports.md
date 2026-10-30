@@ -6,7 +6,7 @@
 | **Status** | 30/38 retimed definitions return HTTP 200 unchanged. Reports 15-22 return HTTP 500 because they ask for more than 18 standard functions (found 2026-10-30); split into two calls they return HTTP 200 |
 | **Request model** | Swagger defines `ReportRequestModel`, but not valid values for its selections |
 | **Response model** | Missing from Swagger. Report 23 returned an object with a `processedData` array; 30 rows were observed and raw values were not saved |
-| **Samples** | Request/result notes are in the ignored local `downloads/provideam-samples/`; prior redacted probes are in ignored `samples/provideam/` |
+| **Samples** | Request/result notes are in `docs/provideam-samples/`; prior redacted probes are in ignored `samples/provideam/` |
 
 ## What the Swagger spec establishes
 
@@ -113,7 +113,7 @@ body was sent unchanged once, sequentially, on 2026-10-29.
   (report 22 Tubs: 0 rows on 2026-10-29). Not reported to Provideam yet.
 - Only status, row count and response-shape metadata were recorded; report
   values were not saved. See the ignored local
-  `downloads/provideam-samples/provideam-retimed-results.json` and the
+  `docs/provideam-samples/provideam-retimed-results.json` and the
   per-report index for outcomes.
 
 The existing source investigation identifies the SharePoint report families
