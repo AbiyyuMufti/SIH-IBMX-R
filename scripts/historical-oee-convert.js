@@ -142,7 +142,7 @@ for (const input of inputs) {
     const row = {
       Date: dayNumber(date),
       MachineName: machine,
-      SiteName: site,
+      Site: site,
       'Unique Machine Name': `${machine}-${site}`,
       OEE: fraction(r.OEE),
       Availability: fraction(r.Availability),

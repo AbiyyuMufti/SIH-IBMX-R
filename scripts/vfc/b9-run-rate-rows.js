@@ -7,6 +7,12 @@ var RULES = {
     partCutChars: 8
   }
 };
+// Sites whose raw shift name holds the crew colour ("MonDay - Blue"): the
+// Hull site report splits it into Shift Time and Shift Colour (empty: Pink).
+var COLOUR_SITES = [
+  'Hull'
+];
+var NO_COLOUR = 'Pink';
 
 var site = msg.site;
 var rule = RULES[site] || {};
@@ -27,6 +33,16 @@ function asText(value) {
 function number(value) {
   var text = asText(value).trim();
   return text === '' || isNaN(Number(text)) ? null : Number(text);
+}
+
+// Days since 1970-01-01 of "YYYY-MM-DD ..." (a DATE column value).
+function dayNumber(text) {
+  var parts = /^(\d{4})-(\d{2})-(\d{2})/.exec(text);
+  if (!parts) {
+    return null;
+  }
+  return Date.UTC(Number(parts[1]), Number(parts[2]) - 1, Number(parts[3])) /
+    86400000;
 }
 
 // "YYYY-MM-DD HH:MM:SS" -> ms of that wall clock time written as UTC.
@@ -65,18 +81,30 @@ rows.forEach(function (row) {
     count.noShift[row.ShiftName] = true;
   }
   var unique = machine + '-' + site;
+  var raw = asText(row.ShiftName);
+  var shiftTime = known ? shiftMap[row.ShiftName] : null;
+  var colour = null;
+  if (COLOUR_SITES.indexOf(site) !== -1) {
+    var at = raw.indexOf('-');
+    shiftTime = (at === -1 ? raw : raw.slice(0, at)).trim();
+    colour = at === -1 ? '' : raw.slice(at + 1).trim();
+    colour = colour === '' ? NO_COLOUR : colour;
+  }
+  var hourText = asText(row['YYYY-MM-DD HH']);
   out.push({
-    'Date': hourMs(asText(row['YYYY-MM-DD HH'])),
     'AreaName': asText(row.AreaName),
+    'Capacity': number(row.Capacity),
+    'Date': dayNumber(hourText),
+    'Good Parts': goodParts,
     'MachineName': machine,
     'PartName': part,
-    'ShiftName': known ? shiftMap[row.ShiftName] : null,
-    'Good Parts': goodParts,
-    'Capacity': number(row.Capacity),
-    'SiteName': site,
+    'Product Key': machine + ' ' + part,
+    'Shift Colour': colour,
+    'Shift Time': shiftTime,
+    'ShiftName': raw,
+    'Site': site,
+    'Hour': hourMs(hourText),
     'Unique Machine Name': unique,
-    'Product Key': unique + ' ' + part,
-    'Good Parts - Copy': goodParts,
     'loaded_at': msg.loadedAt
   });
 });

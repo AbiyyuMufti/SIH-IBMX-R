@@ -57,6 +57,15 @@ function dayNumber(text) {
   ) / 86400000;
 }
 
+// "H:MM:SS" (hours can pass 24) -> seconds, or null.
+function seconds(value) {
+  var parts = /^(\d+):(\d{2}):(\d{2})$/.exec(asText(value).trim());
+  if (!parts) {
+    return null;
+  }
+  return Number(parts[1]) * 3600 + Number(parts[2]) * 60 + Number(parts[3]);
+}
+
 // Text.Combine leaves a null part out: no shift gives the machine alone.
 function joinParts(parts) {
   return parts.filter(function (part) {
@@ -79,12 +88,17 @@ rows.forEach(function (row) {
       shiftKey: shiftKey,
       machine: machine,
       goodParts: 0,
-      capMax: null
+      capMax: null,
+      timeSecs: null
     };
     order.push(key);
   }
   var group = groups[key];
   group.goodParts += number(row['Good Parts']) || 0;
+  var secs = seconds(row['Total Time']);
+  if (secs !== null) {
+    group.timeSecs = (group.timeSecs || 0) + secs;
+  }
   var capacity = number(row.Capacity);
   if (capacity !== null && (group.capMax === null || capacity > group.capMax)) {
     group.capMax = capacity;
@@ -101,11 +115,12 @@ order.forEach(function (key) {
     group.shiftKey : shiftOf(group.shiftKey);
   out.push({
     'Date': dayNumber(group.date),
-    'Shift': shift,
     'MachineName': group.machine,
+    'Shift Colour': shift,
     'Good Parts Sum': group.goodParts,
-    'Cap Max': group.capMax,
     'Shift Machine Key': joinParts([shift, group.machine]),
+    'Cap Max': group.capMax,
+    'Time on Shift': group.timeSecs === null ? null : group.timeSecs * 1000,
     'Unique Machine Name': group.machine + '-' + site,
     'SiteName': site,
     'loaded_at': msg.loadedAt

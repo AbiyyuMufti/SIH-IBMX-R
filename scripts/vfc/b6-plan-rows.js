@@ -34,6 +34,12 @@ var RULES = {
   }
 };
 var UTIL_ALL_TIME = 1440;
+// Sites whose raw shift name holds the crew colour ("MonDay - Blue"), as the
+// Hull site report splits it; an empty colour there is Pink.
+var COLOUR_SITES = [
+  'Hull'
+];
+var NO_COLOUR = 'Pink';
 
 var site = msg.site;
 var rule = RULES[site] || {};
@@ -97,6 +103,37 @@ function replaceText(text) {
     out = out.split(pair[0]).join(pair[1]);
   });
   return out;
+}
+
+// The colour after the first "-" of the raw shift name (Hull report rule).
+function shiftColour(raw) {
+  if (COLOUR_SITES.indexOf(site) === -1) {
+    return null;
+  }
+  var at = asText(raw).indexOf('-');
+  var colour = at === -1 ? '' : asText(raw).slice(at + 1).trim();
+  return colour === '' ? NO_COLOUR : colour;
+}
+
+// "60.2%" -> 0.602 (the report's Percentage type).
+function fraction(value) {
+  var text = asText(value).replace('%', '').trim();
+  if (text === '' || isNaN(Number(text))) {
+    return null;
+  }
+  return Math.round(Number(text) * 10) / 1000;
+}
+
+// Milliseconds of the day of "YYYY-MM-DD HH:MM:SS" (a time of day is
+// written on 1970-01-01: the parquet node cannot write 1899-12-30).
+function timeOfDay(value) {
+  var parts = /(\d{2}):(\d{2}):(\d{2})$/.exec(asText(value).trim());
+  if (!parts) {
+    return null;
+  }
+  var secs = Number(parts[1]) * 3600 + Number(parts[2]) * 60 +
+    Number(parts[3]);
+  return secs * 1000;
 }
 
 rows.forEach(function (row) {
@@ -169,6 +206,12 @@ rows.forEach(function (row) {
     'UPDT Target': target.updt === undefined ? null : target.updt,
     'PDT Target': target.pdt === undefined ? null : target.pdt,
     'OEE Target': target.oee === undefined ? null : target.oee,
+    'Defect Parts': number(row['Defect Parts']),
+    'OEE': fraction(row.OEE),
+    'Shift Colour': shiftColour(row.ShiftName),
+    'ShiftStartTime': timeOfDay(row.ShiftStartTime),
+    'Target': number(row.Target),
+    'Targets Key': machine + ' ' + monthText,
     'source_hours': null,
     'loaded_at': msg.loadedAt
   });

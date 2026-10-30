@@ -145,3 +145,20 @@ The site dashboard tables `Run_Rates_EU`, `Volume_CoV_EU` and `Format_List_EU` a
 - A plan OPT file now also rebuilds `Volume_CoV_EU`; Machine Names and Shift Patterns also rebuild `Run_Rates_EU` and `Volume_CoV_EU`.
 - A job is split by tab: the tables of this tab go to global context `jobQueue`, those of the second tab to `jobQueue_2`. Each tab's clock takes its own queue.
 - JOB DONE is watched per tab (global context `lastLog_<flow>`, `done_<flow>`; the debug node shows `JOB DONE pbi-report` or `JOB DONE pbi-report-2`).
+
+## Step 9: Segun's site dashboard schema (2026-10-30)
+Source of the target: Segun's working tables in `Sandbox/site_draft/` (Tableau site dashboards, Hull first). Our tables keep their folders and file names (`eu_report/report/<table>/site=<Site>/<table>_<YYYY-MM>_provideam.parquet`) and take his column names, order and types, then our own columns (`Data Source`, `In EU Report`, `loaded_at`, ...). Schemas: `pbiPlanSchema`, `pbiLossSchema` in `scripts/lib-pbi-report-schemas.js` (the SIH flow and the Chartres conversion keep the older `reportPlanSchema` / `reportLossSchema` for now).
+
+| Table | Change |
+|---|---|
+| `Plan_OPT_EU` | new: `Defect Parts`, `OEE` (fraction of `72.9%`), `Shift Colour` (Hull: the text after `-` of the raw shift name, none = `Pink`; other sites empty), `ShiftStartTime` (time of day on 1970-01-01), `Target` (the export's column), `Targets Key` (machine + space + `01/MM/YYYY`), `Brand`, `Unit Size`, `Unit Count/Format`, `Extra Info` |
+| `Daily_Losses_EU` | `Duration` whole minutes (INT64), `Value` a number, new `Shift colour` (Hull rule), `Batch ID` (empty), the 4 Format List columns. `Merged`, `ShiftName - Copy`, `Volume Key.1` stay out (not used). `Shift Time` is ours |
+| `Time_Utilisation_EU` | no change |
+
+Format List columns: new site setup lane `FORMAT LIST` (both tabs), lookup `formats_<Site>` keyed MachineName (trailing spaces removed) + `-Site` + space + PartName, added in `Add machine and scope columns` for Plan OPT, losses and run rates. A site without a file (Nottingham) gets empty columns, no failure.
+
+Segun's own `Plan_OPT_EU` has `Targets Key`, `Target`, `OEE`, `ShiftStartTime`, `Shift Colour` (and likely the format columns) on the wrong rows (an `SP2` row carries the key of `Analgesics Processing`, a Nottingham row a Hull machine): we compute them per row, so they do not equal his.
+
+Checked against his files (rows `In EU Report` true, 2024-12 to 15 Sep 2026): Nottingham plan 20,677 / 20,677 rows and Good Parts equal; Hull plan 16,610 / 16,640; losses 99.7 % (Hull) and 99.9 % (Nottingham) of his rows, Duration 99.4 % / 99.8 %. His plan and loss tables hold only `In EU Report` true rows.
+
+Local build (no VFC, same code): `node scripts/local-report-build.js <out> sites=Hull,Nottingham`, then `python -I scripts/helper-chartres-write-parquet.py <out>` and `node scripts/datalake-upload-tree.js <out>/report eu_report/report --overwrite`. Run on 2026-10-30 for 2024-12 to 2026-10 (237 files, every existing lake file of these tables replaced, none left over).

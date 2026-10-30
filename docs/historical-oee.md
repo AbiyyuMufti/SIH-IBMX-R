@@ -42,3 +42,6 @@ The upload skips a file that already exists in the lake; to replace one, run `no
 
 ## Later
 This is also the pattern for archiving our own old data: one row per machine and day with a few numbers, written once.
+
+## Segun's column order (2026-10-30)
+The schema now follows Segun's `Site_Historical_OEE`: `Site` (was `SiteName`), `Date`, `MachineName`, `OEE`, `Availability`, `Performance`, `Dept`, `Area`, `Product Type`, then ours. The converted files of 2026-10-27 were reshaped (same rows) and uploaded to `eu_report/report/Historical_OEE_EU/site=<Site>/Historical_OEE_EU_archive.parquet`. Segun's own file has dates 2023-01-01 to 2026-12-31 and `Performance` as 0 or 1: both look wrong; ours keeps the export's dates (2022-01 to 2024-11) and fractions.

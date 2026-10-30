@@ -180,12 +180,15 @@ function timeOfDay(text) {
   return secs === null ? null : secs * 1000;
 }
 
-// The target as text with a decimal point, like the report (15.0, 3.9).
-function valueText(number) {
-  if (number === null) {
+// The colour after the first "-" of the raw shift name, Hull only (the Hull
+// site report splits it there); an empty colour is Pink.
+function shiftColour(raw) {
+  if (site !== 'Hull') {
     return null;
   }
-  return Number.isInteger(number) ? number + '.0' : String(number);
+  var at = asText(raw).indexOf('-');
+  var colour = at === -1 ? '' : asText(raw).slice(at + 1).trim();
+  return colour === '' ? 'Pink' : colour;
 }
 
 function dayText(day) {
@@ -270,7 +273,8 @@ rows.forEach(function (row) {
       'OEELossLvl3Group': group,
       'OEELossLvl3SubGroup': sub,
       'OEELossLvl3Desc': desc,
-      'Duration': durationSeconds === null ? null : durationSeconds * 1000,
+      'Duration': duration,
+      'Shift colour': shiftColour(row.ShiftName),
       'SiteName': site,
       'Unique Machine Name': unique,
       'Breakdown Types': breakdownTypes,
@@ -284,11 +288,11 @@ rows.forEach(function (row) {
       'Equipment': name,
       'Lvl 3 Loss Name': desc,
       'Loss Target Key': unique + ' ' + sub + ' ' + monthText,
-      'Value': valueText(value),
+      'Value': value,
       'Volume Total': capacity === undefined ? null : capacity,
       'Loss Final Level': desc,
       'target': value === null ? null : value / 100,
-      'batch_id': null,
+      'Batch ID': null,
       'comment_count': null,
       'loaded_at': msg.loadedAt
     });

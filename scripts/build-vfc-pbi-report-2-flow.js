@@ -13,7 +13,8 @@ import {
   listNode, csvNode, addLogLanes, applyLayout, compactLanes, measureSpacing
 } from './lib-flow-builder.js';
 import {
-  reportRunRateSchema, reportCovSchema, reportFormatSchema
+  reportRunRateSchema, reportCovSchema, reportFormatSchema,
+  reportPdtSchema, reportUpdtSchema
 } from './lib-pbi-report-schemas.js';
 import {
   monthEnd, siteSetupLanes, setupFailedLane
@@ -21,7 +22,8 @@ import {
 
 const FLOW_ID = 'pbi-report-2';
 const QUEUE = 'jobQueue_2';
-const TABLES = ['Run_Rates_EU', 'Volume_CoV_EU', 'Format_List_EU'];
+const TABLES = ['Run_Rates_EU', 'Volume_CoV_EU', 'Format_List_EU',
+  'Site_PDT_Targets', 'Site_UPDT_Targets'];
 const FILE = 'vfc-pbi-report-2.json';
 
 // The months of one file type of the site: list the folder, keep the months
@@ -43,6 +45,16 @@ const rowSteps = (prefix, what, builder, file, out) => [
   readStep(`${prefix}Read`, `Read ${what} month file`),
   csvNode(`${prefix}Csv`),
   fn(`${prefix}Rows`, builder, file, [out, 'LOG'], {}, true)
+];
+
+// The end of a table with one file per site: decide, parquet, site path,
+// write object.
+const targetEnd = (table, schema, prefix) => [
+  fn(`${prefix}Decide`, `Decide ${table}`, 'r5-decide.js', ['next', 'LOG'],
+    { __TABLE__: table }),
+  { t: 'parquet', key: `${prefix}Pq`, table, schema },
+  fn(`${prefix}Path`, `Set ${table} site path`, 'b9-site-path.js', ['next']),
+  { t: 'write', key: `${prefix}Write`, table }
 ];
 
 function buildFlow() {
@@ -106,7 +118,7 @@ function buildFlow() {
 
   r = siteSetupLanes(b, r, 'SITE', true,
     fn('siteRoute', 'Route the site', 'b9-route-tables.js',
-      ['RUN RATE MONTHS', 'COV MONTHS', 'FORMAT LIST'], {}, true));
+      ['RUN RATE MONTHS', 'COV MONTHS', 'FORMAT LIST', 'TARGETS'], {}, true));
 
   lane(r++, 'RUN RATES: MONTHS',
     'the run rates month files of the site (<root>/pbi_report/source/run_rates/site=<Site>/run_rates_YYYY-MM.csv, made by the normalizer from the Provideam Run Rates exports) are listed and the months of the job that exist are chosen (a missing month is logged and skipped). One message per month, one per second.',
@@ -156,6 +168,25 @@ function buildFlow() {
         ['next']),
       { t: 'write', key: 'flWrite', table: 'Format_List_EU' }
     ]);
+  lane(r++, 'TARGETS',
+    'the Glidepaths file of the site (<root>/reference/glidepaths/site=<Site>/, newest .csv) is read and the buckets Planned Downtime (Total) and Unplanned Downtime (Total) become Site_PDT_Targets and Site_UPDT_Targets: one row per line and month column, the target as a fraction (25.9 gives 0.259), Volume Key = line + month (01/MM/YYYY).',
+    [
+      linkInStep('TARGETS'),
+      fn('tgFolder', 'Set glidepaths folder', 'b7-set-folder.js', ['next'],
+        { __TYPE__: 'glidepaths', __ROOT__: 'referenceFolder' }),
+      listNode('tgList'),
+      fn('tgPick', 'Pick the file', 'b3-pick-file.js',
+        ['next', 'PLAN FAILED']),
+      readStep('tgRead', 'Read Glidepaths file'),
+      csvNode('tgCsv'),
+      fn('tgRows', 'Build target rows', 'b9-target-rows.js',
+        ['next', 'UPDT TABLE', 'LOG'], {}, true),
+      ...targetEnd('Site_PDT_Targets', reportPdtSchema, 'pd')
+    ]);
+  lane(r++, 'Site_UPDT_Targets',
+    'the same for Site_UPDT_Targets: decide, parquet, the site path <folder>/Site_UPDT_Targets/site=<Site>/Site_UPDT_Targets.parquet and write object.',
+    [linkInStep('UPDT TABLE'),
+      ...targetEnd('Site_UPDT_Targets', reportUpdtSchema, 'ud')]);
   r = setupFailedLane(b, r,
     'Machine Names, Shift Patterns, report scope or Format List');
   addLogLanes(b, r, FLOW_ID, true);

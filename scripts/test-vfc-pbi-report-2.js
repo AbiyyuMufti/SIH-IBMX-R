@@ -106,16 +106,18 @@ check(JSON.stringify(tableWrites(stats)) ===
 let rr = rowsOf(stats, RR);
 check(rr.length === 3, 'run rates: rows without a machine and with Good Parts 0 are left out: ' + rr.length);
 const b2 = rr.find((r) => r.MachineName === 'B2 Auto' && r['Good Parts'] === 1500);
-check(b2.Date === Date.UTC(2026, 8, 1, 6) && b2.ShiftName === 'Day' && b2.Capacity === 2400,
-  'run rates: Date is the hour (wall clock as UTC), shift mapped, capacity');
-check(b2['Unique Machine Name'] === 'B2 Auto-Hull' && b2['Product Key'] === 'B2 Auto-Hull NFC 12 X 100ML' &&
-  b2['Good Parts - Copy'] === 1500, 'run rates: unique machine name, product key, Good Parts - Copy');
+check(b2.Date === 20697 && b2.Hour === Date.UTC(2026, 8, 1, 6) && b2.ShiftName === 'FriDay' &&
+  b2['Shift Time'] === 'FriDay' && b2['Shift Colour'] === 'Pink' && b2.Capacity === 2400,
+  'run rates: Date is the day, Hour the hour, ShiftName raw, Hull shift time and colour (none: Pink)');
+check(b2['Unique Machine Name'] === 'B2 Auto-Hull' && b2['Product Key'] === 'B2 Auto NFC 12 X 100ML' &&
+  b2.Site === 'Hull' && b2.Brand === 'Nurofen' && b2['Extra Info'] === null,
+  'run rates: unique machine name, product key machine + part, Site, Format List columns (empty cell: null)');
 check(b2.Dept === 'Liquids Pack' && b2['Data Source'] === 'Provideam' && b2['In EU Report'] === true,
   'run rates: machine columns and In EU Report');
 check(rr.find((r) => r.MachineName === 'Senokot Press')['In EU Report'] === false,
   'run rates scope: Senokot Press is In EU Report false (Run_Rates_EU rule)');
-check(rr.find((r) => r['Good Parts'] === 10).ShiftName === null && /shift not mapped: Mystery/.test(logText(stats)),
-  'run rates: an unknown shift is empty and logged');
+check(rr.find((r) => r['Good Parts'] === 10).ShiftName === 'Mystery' && /shift not mapped: Mystery/.test(logText(stats)),
+  'run rates: an unknown shift keeps its raw name and is logged');
 stats = await run(job(['Run_Rates_EU'], ['Weinheim']));
 rr = rowsOf(stats, RR);
 check(rr.length === 1 && rr[0].PartName === 'Kukident,DE,12x40g', 'run rates Weinheim: the part code (8 characters) is cut');
@@ -128,7 +130,7 @@ stats = await run(job(['Volume_CoV_EU'], ['Hull']));
 check(stats.errors.length === 0, 'volume CoV: no error: ' + stats.errors.join(' | '));
 let cov = rowsOf(stats, COV);
 const day1 = cov.filter((r) => r.MachineName === 'B2 Auto' && r.Date === 20697);
-check(day1.length === 1 && day1[0]['Good Parts Sum'] === 1500 && day1[0]['Cap Max'] === 1500 && day1[0].Shift === 'Day',
+check(day1.length === 1 && day1[0]['Good Parts Sum'] === 1500 && day1[0]['Cap Max'] === 1500 && day1[0]['Shift Colour'] === 'Day',
   'volume CoV Hull: FriDay and MonDay are one group on the mapped shift Day, sum 1500, Cap Max 1500');
 check(!cov.some((r) => r.Date === 20698), 'volume CoV: a group with 900 good parts (not over 1,000) is left out');
 check(!cov.some((r) => r.MachineName === 'GT4 - Auto'), 'volume CoV Hull: GT4 - Auto is left out');
@@ -138,7 +140,7 @@ check(cov.find((r) => r.MachineName === '4 Tonne')['In EU Report'] === false && 
   'volume CoV scope: 4 Tonne In EU Report false');
 stats = await run(job(['Volume_CoV_EU'], ['Nottingham']));
 cov = rowsOf(stats, COV);
-check(cov.length === 1 && cov[0]['Good Parts Sum'] === 1200 && cov[0].Shift === 'Day',
+check(cov.length === 1 && cov[0]['Good Parts Sum'] === 1200 && cov[0]['Shift Colour'] === 'Day',
   'volume CoV Nottingham: groups on the raw shift (800 and 1200 apart, only 1200 is over 1,000), N11 Auto left out: ' +
   JSON.stringify(cov.map((r) => [r.MachineName, r['Good Parts Sum']])));
 
@@ -168,11 +170,11 @@ check(tableWrites(stats).length === 0 && /DRY RUN: Run_Rates_EU 3 rows/.test(log
 
 // ---- column names and types
 const EXPECT = {
-  [RR]: ['Date', 'AreaName', 'MachineName', 'PartName', 'ShiftName', 'Good Parts', 'Capacity', 'SiteName',
-    'Unique Machine Name', 'Product Key', 'Good Parts - Copy', 'Dept', 'Area', 'Product Type', 'Data Source',
-    'In EU Report', 'loaded_at'],
-  [COV]: ['Date', 'Shift', 'MachineName', 'Good Parts Sum', 'Cap Max', 'Shift Machine Key', 'Unique Machine Name',
-    'SiteName', 'Dept', 'Area', 'Product Type', 'Data Source', 'In EU Report', 'loaded_at'],
+  [RR]: ['Area', 'AreaName', 'Capacity', 'Date', 'Dept', 'Good Parts', 'MachineName', 'PartName', 'Product Key',
+    'Product Type', 'Shift Colour', 'Shift Time', 'ShiftName', 'Site', 'Brand', 'Unit Size', 'Unit Count/Format',
+    'Extra Info', 'Hour', 'Unique Machine Name', 'Data Source', 'In EU Report', 'loaded_at'],
+  [COV]: ['Date', 'MachineName', 'Shift Colour', 'Good Parts Sum', 'Shift Machine Key', 'Cap Max', 'Time on Shift',
+    'Dept', 'Area', 'Product Type', 'Unique Machine Name', 'SiteName', 'Data Source', 'In EU Report', 'loaded_at'],
   [FMT]: ['Site Name', 'MachineName', 'Product Name', 'Brand', 'Unit Size', 'Unit Count/Format', 'Extra Info',
     'Unique Machine Name', 'Product Key', 'loaded_at']
 };

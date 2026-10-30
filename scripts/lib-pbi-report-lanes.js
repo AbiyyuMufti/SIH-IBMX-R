@@ -52,6 +52,20 @@ export function siteSetupLanes(b, r, inKey, splitSites, routeStep) {
       csvNode('plShiftCsv'),
       fn('plShiftLookup', 'Build shift lookup', 'b5-shift-lookup.js',
         ['next', 'PLAN FAILED']),
+      end('SITE FORMATS')
+    ]);
+  b.lane(r++, 'SITE SETUP: FORMAT LIST',
+    'the Format List file of the site (<root>/reference/format_list/site=<Site>/, newest .csv) is listed, read and parsed, and the lookup Product Key to Brand, Unit Size, Unit Count/Format, Extra Info is stored in flow context (formats_<Site>). A site without a file (Nottingham) gets an empty lookup and goes on: its format columns stay empty.',
+    [
+      linkInStep('SITE FORMATS'),
+      fn('fmFolder', 'Set format list folder', 'b5-format-folder.js',
+        ['next']),
+      listNode('fmList'),
+      fn('fmPick', 'Pick the format file', 'b5-format-pick.js',
+        ['next', 'SITE SCOPE']),
+      readStep('fmRead', 'Read Format List file'),
+      csvNode('fmCsv'),
+      fn('fmLookup', 'Build format lookup', 'b5-format-lookup.js', ['next']),
       end('SITE SCOPE')
     ]);
   b.lane(r++, 'SITE SETUP: REPORT SCOPE',

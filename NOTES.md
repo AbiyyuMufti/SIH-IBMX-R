@@ -1,6 +1,16 @@
 # NOTES
 
 ## Status
+- Segun's site dashboard schema (2026-10-30, Hull presentation): the PBI report
+  build tabs write Segun's columns (`docs/pbi-report-build.md` step 9,
+  `docs/pbi-report-build-2.md`), new tables `Site_PDT_Targets` /
+  `Site_UPDT_Targets`, Format List join. Built locally with the flow code
+  (`scripts/local-report-build.js`) for Hull and Nottingham 2024-12 to 2026-10
+  and uploaded to `eu_report/report/` (every old file replaced). New Glidepath
+  files converted before upload (Site Name added, Hull V7 bucket names mapped
+  back, Nottingham Total buckets were fractions: x100). Run rates history and
+  current months uploaded to the source. Not run in the VFC: import the two
+  tabs before the next VFC run, or the old flow writes the old schema again.
 - OEE ingestion strategy (2026-10-29): added a styled third page to
   `diagrams/migration-plan.drawio` showing the current manual route, email and
   SharePoint Power Automate options, VFC + Microsoft Graph, and direct Provideam

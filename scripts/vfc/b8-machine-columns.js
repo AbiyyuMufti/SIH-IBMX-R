@@ -1,9 +1,23 @@
-// Adds the machine columns, the source and the EU scope to the rows of one
-// table month. In: msg.rows of one site and month. Out: the same rows with
-// Dept, Area, Product Type (flow context machines_<Site>), Data Source and
-// In EU Report (flow context scope_<Site>, rules of msg.table).
+// Adds machine, source, EU scope and Format List columns to one table month.
+// In: msg.rows of one site and month. Out: the rows with Dept, Area, Product
+// Type (machines_<Site>), Data Source, In EU Report (scope_<Site>) and, for
+// FORMAT_TABLES, Brand ... (formats_<Site>, key MachineName-Site PartName).
 var DATA_SOURCE = 'Provideam';
+var FORMAT_TABLES = [
+  'Plan_OPT_EU',
+  'Daily_Losses_EU',
+  'Run_Rates_EU'
+];
+var FORMAT_COLUMNS = [
+  'Brand',
+  'Unit Size',
+  'Unit Count/Format',
+  'Extra Info'
+];
 var machines = flow.get('machines_' + msg.site) || {};
+var formats = flow.get('formats_' + msg.site) || {};
+var withFormat = FORMAT_TABLES.indexOf(msg.table) !== -1;
+var noFormat = 0;
 var scope = (flow.get('scope_' + msg.site) || {})[msg.table] || {
   keep: {},
   drop: {}
@@ -40,7 +54,22 @@ msg.rows.forEach(function (row) {
   if (!row['In EU Report']) {
     outside++;
   }
+  if (withFormat) {
+    // Trailing spaces of the machine go on both sides ('Bosch Capsulator ').
+    var key = String(row.MachineName).replace(/\s+$/, '') + '-' + msg.site +
+      ' ' + row.PartName;
+    var format = formats[key];
+    if (!format) {
+      noFormat++;
+    }
+    FORMAT_COLUMNS.forEach(function (column) {
+      row[column] = format ? format[column] : null;
+    });
+  }
 });
+if (noFormat) {
+  msg.skipped.push('not in Format List: ' + noFormat + ' rows');
+}
 var missing = Object.keys(unknown);
 if (missing.length) {
   var note = 'not in Machine Names (no Dept, Area, Product Type): ';

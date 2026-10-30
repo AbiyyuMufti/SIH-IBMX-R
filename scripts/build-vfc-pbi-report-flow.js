@@ -16,7 +16,7 @@ import {
   addLogLanes, applyLayout, compactLanes, measureSpacing
 } from './lib-flow-builder.js';
 import {
-  reportPlanSchema, reportUtilSchema, reportLossSchema
+  pbiPlanSchema, reportUtilSchema, pbiLossSchema
 } from './lib-pbi-report-schemas.js';
 import {
   monthEnd, siteSetupLanes, setupFailedLane
@@ -130,7 +130,7 @@ function buildFlow() {
     'Dept, Area, Product Type from the machine lookup of the site, Data Source = Provideam and In EU Report from the scope rules are added, the rows are split by the source of their line in 1.1 CONFIG (a line on Provideam: <root>/report, any other: <root>/candidate/provideam, one message per folder), then decide (nothing is written in dry-run mode or for an empty month), parquet, the month path <folder>/Plan_OPT_EU/site=<Site>/Plan_OPT_EU_<YYYY-MM>_provideam.parquet and write object. A rerun replaces the month.',
     [
       linkInStep('PLAN TABLE'),
-      ...monthEnd('Plan_OPT_EU', reportPlanSchema)
+      ...monthEnd('Plan_OPT_EU', pbiPlanSchema)
     ]);
   lane(r++, 'Time_Utilisation_EU',
     'the same for Time_Utilisation_EU: one row per machine and day, total, planned and OEE time summed in minutes, All Time 1440.',
@@ -215,7 +215,7 @@ function buildFlow() {
     'the same for Daily_Losses_EU: machine columns, split by source, decide, parquet, the month path <folder>/Daily_Losses_EU/site=<Site>/Daily_Losses_EU_<YYYY-MM>_provideam.parquet and write object.',
     [
       linkInStep('LOSS TABLE'),
-      ...monthEnd('Daily_Losses_EU', reportLossSchema)
+      ...monthEnd('Daily_Losses_EU', pbiLossSchema)
     ]);
   r = setupFailedLane(b, r,
     'Glidepaths, Machine Names, Shift Patterns, report scope or Equipment Coding');

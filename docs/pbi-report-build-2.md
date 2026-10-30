@@ -39,3 +39,10 @@ Unmatched run rates: 118 Nottingham rows of machine `Kilian ` (trailing space in
 2. Dry run Hull, Sep 2026, all three tables: three `DRY RUN` log lines, Format List 286 rows, Run Rates and Volume CoV with rows; Nottingham Format List: one `FAILED` line.
 3. Write run (set `DRY_RUN` false for the table in 1.1): files in `eu_report/report/<table>/site=Hull/`.
 4. Run monitor: the flow `PBI report build 2` is listed; connect the link `to pbi-report-2 BACKFILL` of the monitor tab with the link in `pbi-report-2 BACKFILL` of this tab.
+
+## Segun's site dashboard schema and the target tables (2026-10-30)
+- `Run_Rates_EU` takes the columns of Segun's `Site_Run_Rate`: `Date` is the day (our `Hour` keeps the hour), `ShiftName` the raw name, `Shift Time` (Hull: raw name before `-`; other sites the mapped shift), `Shift Colour` (Hull: after `-`, none = `Pink`), `Site`, `Product Key` = machine + space + part (no site), Area, Dept, Product Type and the Format List columns. Checked: Hull Good Parts and rows equal to his per month, Dec 2024 to Sep 2026.
+- `Volume_CoV_EU` takes the columns of his `Sheet1 (Volume CoV)`: `Shift` is now `Shift Colour`, new `Time on Shift` (summed Total Time of the group as a time), `Good Parts Sum` INT64. His table only has the Hull Liquids and Dries lines.
+- New tables `Site_PDT_Targets` and `Site_UPDT_Targets` (lane `TARGETS`): the Glidepaths file of each site, buckets `Planned Downtime (Total)` and `Unplanned Downtime (Total)`, one row per line and month column: `Site`, `Line`, `OEE Bucket`, `Date` (DATE), the target as a fraction (25.9 gives 0.259), `Volume Key` = line + space + `01/MM/YYYY`. One file per site: `<root>/report/<table>/site=<Site>/<table>.parquet`. His Hull rows are percent and his Nottingham rows fractions; ours are fractions for both.
+- The run rates history (Dec 2024 to Jul 2026, Hull and Nottingham) was normalized and uploaded on 2026-10-30.
+- Not yet: the lake watcher (`w3-release.js`) does not queue the target tables when a Glidepaths file changes, and the run monitor (`scripts/monitor-flows.js`) does not list them.

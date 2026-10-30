@@ -91,7 +91,7 @@ const RENAME = {
   'Write Daily_Losses_EU parquet': {
     Date: ['date', dayText], Time: ['time', timeText], MachineName: 'machine_name', PartName: 'part_name',
     ShiftName: 'shift_name', OEELossLvl3Group: 'loss_lvl3_group', OEELossLvl3SubGroup: 'loss_lvl3_sub_group',
-    OEELossLvl3Desc: 'loss_lvl3_desc', Duration: ['duration', (ms) => (ms === null ? null : Math.floor(ms / 60000))],
+    OEELossLvl3Desc: 'loss_lvl3_desc', Duration: 'duration',
     SiteName: 'site_name', 'Unique Machine Name': 'unique_machine_name', 'Breakdown Types': 'breakdown_types',
     ShiftStartDate: ['shift_start_date', dayText], Comment: 'comment', 'Product Key': 'product_key',
     'Volume Key': 'volume_key', 'Loss Units': 'loss_units', Equipment: 'equipment',
@@ -437,7 +437,11 @@ const TABLEAU = {
     ['PartName', 'UTF8'], ['Good Parts', 'INT64'], ['Capacity', 'DOUBLE'], ['Total Time', 'INT64'],
     ['Planned OpT', 'INT64'], ['OEE Time', 'INT64'], ['Downtime Units', 'DOUBLE'], ['SiteName', 'UTF8'],
     ['Unique Machine Name', 'UTF8'], ['Product Key', 'UTF8'], ['UPDT Target', 'DOUBLE'],
-    ['PDT Target', 'DOUBLE'], ['OEE Target', 'DOUBLE'], ['Dept', 'UTF8'], ['Area', 'UTF8'], ['Product Type', 'UTF8'], ['Data Source', 'UTF8'], ['In EU Report', 'BOOLEAN'], ['source_hours', 'INT64'],
+    ['PDT Target', 'DOUBLE'], ['OEE Target', 'DOUBLE'], ['Dept', 'UTF8'], ['Area', 'UTF8'], ['Product Type', 'UTF8'],
+    ['Defect Parts', 'INT64'], ['OEE', 'DOUBLE'], ['Shift Colour', 'UTF8'], ['ShiftStartTime', 'TIMESTAMP_MILLIS'],
+    ['Target', 'DOUBLE'], ['Targets Key', 'UTF8'], ['Brand', 'UTF8'], ['Unit Size', 'UTF8'],
+    ['Unit Count/Format', 'UTF8'], ['Extra Info', 'UTF8'],
+    ['Data Source', 'UTF8'], ['In EU Report', 'BOOLEAN'], ['source_hours', 'INT64'],
     ['loaded_at', 'TIMESTAMP_MILLIS']
   ],
   [UTIL]: [
@@ -447,14 +451,16 @@ const TABLEAU = {
   ],
   [LOSS]: [
     ['Date', 'DATE'], ['Time', 'TIMESTAMP_MILLIS'], ['MachineName', 'UTF8'], ['PartName', 'UTF8'],
-    ['Shift Time', 'UTF8'], ['ShiftName', 'UTF8'], ['OEELossLvl3Group', 'UTF8'],
-    ['OEELossLvl3SubGroup', 'UTF8'], ['OEELossLvl3Desc', 'UTF8'], ['Duration', 'TIMESTAMP_MILLIS'],
+    ['ShiftName', 'UTF8'], ['OEELossLvl3Group', 'UTF8'],
+    ['OEELossLvl3SubGroup', 'UTF8'], ['OEELossLvl3Desc', 'UTF8'], ['Duration', 'INT64'],
     ['SiteName', 'UTF8'], ['Unique Machine Name', 'UTF8'], ['Breakdown Types', 'UTF8'],
     ['ShiftStartDate', 'DATE'], ['Comment', 'UTF8'], ['Product Key', 'UTF8'], ['Volume Key', 'UTF8'],
-    ['Loss Units', 'DOUBLE'], ['Time in Mins', 'DOUBLE'], ['Equipment Loss Key', 'UTF8'],
-    ['Equipment', 'UTF8'], ['Lvl 3 Loss Name', 'UTF8'], ['Loss Target Key', 'UTF8'], ['Value', 'UTF8'],
-    ['Volume Total', 'DOUBLE'], ['Loss Final Level', 'UTF8'], ['Dept', 'UTF8'], ['Area', 'UTF8'], ['Product Type', 'UTF8'], ['Data Source', 'UTF8'], ['In EU Report', 'BOOLEAN'], ['target', 'DOUBLE'], ['batch_id', 'UTF8'],
-    ['comment_count', 'INT64'], ['loaded_at', 'TIMESTAMP_MILLIS']
+    ['Loss Units', 'DOUBLE'], ['Equipment', 'UTF8'], ['Loss Target Key', 'UTF8'], ['Value', 'DOUBLE'],
+    ['Volume Total', 'DOUBLE'], ['Loss Final Level', 'UTF8'], ['Batch ID', 'UTF8'], ['Dept', 'UTF8'], ['Area', 'UTF8'],
+    ['Product Type', 'UTF8'], ['Equipment Loss Key', 'UTF8'], ['Lvl 3 Loss Name', 'UTF8'], ['Shift colour', 'UTF8'],
+    ['Time in Mins', 'DOUBLE'], ['Brand', 'UTF8'], ['Unit Size', 'UTF8'], ['Unit Count/Format', 'UTF8'],
+    ['Extra Info', 'UTF8'], ['Shift Time', 'UTF8'], ['Data Source', 'UTF8'], ['In EU Report', 'BOOLEAN'],
+    ['target', 'DOUBLE'], ['comment_count', 'INT64'], ['loaded_at', 'TIMESTAMP_MILLIS']
   ]
 };
 Object.entries(TABLEAU).forEach(([node, expected]) => {
@@ -481,11 +487,16 @@ check(planRaw['Total Time'] === 600 && planRaw['Good Parts'] === 1500 && planRaw
 const lossRaw = rawRowsOf(stats, LOSS).find((r) => r.OEELossLvl3Desc === 'Capper');
 check(lossRaw.Date === 20697 && lossRaw.ShiftStartDate === 20697 && lossRaw.Time === 29700000,
   'tableau loss row: Date and ShiftStartDate are day numbers, Time is the ms of the day (08:15:00)');
-check(lossRaw.Duration === 1845000 && lossRaw['Time in Mins'] === 30.75,
-  'tableau loss row: Duration and Time in Mins keep the seconds (00:30:45)');
+check(lossRaw.Duration === 30 && lossRaw['Time in Mins'] === 30.75,
+  'tableau loss row: Duration in whole minutes, Time in Mins keeps the seconds (00:30:45)');
 check(lossRaw['Shift Time'] === 'Day' && lossRaw.ShiftName === 'Day' && lossRaw['Equipment Loss Key'] === 'B2 Auto Capper' &&
-  lossRaw['Lvl 3 Loss Name'] === 'Capper' && lossRaw['Loss Final Level'] === 'Capper' && lossRaw.Value === '2.0',
-  'tableau loss row: Shift Time, Equipment Loss Key, Lvl 3 Loss Name, Value as text with a decimal point (2.0)');
+  lossRaw['Lvl 3 Loss Name'] === 'Capper' && lossRaw['Loss Final Level'] === 'Capper' && lossRaw.Value === 2,
+  'tableau loss row: Shift Time, Equipment Loss Key, Lvl 3 Loss Name, Value as a number (2)');
+check(lossRaw['Shift colour'] === 'Pink' && lossRaw['Batch ID'] === null && lossRaw.Brand === null,
+  'tableau loss row: Hull shift name without a colour gives Pink; no Format List file: Brand empty');
+check(planRaw['Targets Key'] === 'B2 Auto 01/09/2026' && planRaw['Shift Colour'] !== undefined &&
+  'OEE' in planRaw && 'Defect Parts' in planRaw && 'ShiftStartTime' in planRaw,
+  'tableau plan row: Targets Key = machine + month start, the plan export columns are kept: ' + planRaw['Targets Key']);
 
 // ---- 14. machine columns and the split by line source ----
 const HULL_MN = `${REF}/machine_names/site=Hull/Hull_MachineNames.csv`;
