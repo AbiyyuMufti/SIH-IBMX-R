@@ -106,6 +106,7 @@ Checks (in `scripts/validate-flow.js`, must pass before every commit):
 ## Workflow
 - API calls are rare now: still GET only, write the redacted sample and update the doc
 - For flows, one change per session: propose the design, wait for approval, build, validate, commit, then I test
+- Every file I must import, open, edit or upload is named by its full repo path as a link, in chat and in docs, every time it comes up. For a VFC import give a table: file to import, tab it replaces, what to do after import. Credentials never mean "edit the placeholders": import the filled `flows/*.local.json` (Config: `node scripts/make-local-config.js`)
 - When a test fails or behaviour differs from `docs/`, fix the doc in the same session
 - When a new table is built, add it to the table list in Project
 

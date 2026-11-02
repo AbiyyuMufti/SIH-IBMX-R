@@ -44,9 +44,15 @@ The CSV text rules are those of the October check ([provideam-reports.md](provid
 - Not run in the VFC yet.
 
 ## Import (VFC)
-1. Config tab: fill in `provideam.apiKey`, Apply.
-2. `PBI report build` and `PBI report build 2`: import, set `DRY_RUN` of the tables to false.
-3. `Provideam fetch`: import, connect `to pbi-report BACKFILL` and `to pbi-report-2 BACKFILL` to the link ins of the two tabs, set `DRY_RUN = false` in 1.1 when the dry run looks right.
-4. Run monitor: import (new flow in the list, Provideam key hidden), set `COMMAND_KEY` again, connect the BACKFILL link outs.
-5. Delete the tab `PBI report listener`.
-6. Backfill 1 to 2 Nov 2026 with the inject (its default payload).
+First run `node scripts/make-local-config.js`: it writes [flows/vfc-config.local.json](../flows/vfc-config.local.json), the committed Config with platform, tenant, technical user and Provideam key filled from `.env` (git-ignored). The other files hold no secret: import them straight from `flows/`. Do not use the older `flows/*.local.json` copies of the other tabs (2026-10-20, old schema).
+
+| # | Import this file | Replaces tab | After import |
+|---|---|---|---|
+| 1 | [flows/vfc-config.local.json](../flows/vfc-config.local.json) | `Config` | nothing to fill; click Apply |
+| 2 | [flows/vfc-pbi-report.json](../flows/vfc-pbi-report.json) | `PBI report build` | node `1.1 TASK SETTINGS (edit here)`: `DRY_RUN` of the 3 tables to false |
+| 3 | [flows/vfc-pbi-report-2.json](../flows/vfc-pbi-report-2.json) | `PBI report build 2` (new tab) | node `1.1 TASK SETTINGS (edit here)`: `DRY_RUN` of the 5 tables to false |
+| 4 | [flows/vfc-provideam-fetch.json](../flows/vfc-provideam-fetch.json) | `Provideam fetch` (new tab) | connect link out `to pbi-report BACKFILL` to link in `pbi-report BACKFILL` (tab 2) and `to pbi-report-2 BACKFILL` to `pbi-report-2 BACKFILL` (tab 3) |
+| 5 | [flows/vfc-run-monitor.json](../flows/vfc-run-monitor.json) | `Run monitor` | node `2.1 Build monitor page`: `COMMAND_KEY` again; connect its 5 `to <flow> BACKFILL` link outs |
+| 6 | (none) | `PBI report listener` | delete the tab |
+
+Then Deploy, and in `Provideam fetch` click `Backfill (edit payload)` (1 to 2 Nov) with `DRY_RUN = true` in node `1.1 FETCH SETTINGS (edit here)`: the debug `Run log` shows the row count per site and type. If it looks right, set `DRY_RUN = false` and click it again.
