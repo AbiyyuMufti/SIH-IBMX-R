@@ -4,12 +4,14 @@
 // eu_report/report as stage JSON ({schema, rows}) for
 // helper-chartres-write-parquet.py. No network.
 // Usage: node scripts/local-report-build.js <out dir> [sites=Hull,Nottingham]
-//   [from=2024-12] [to=2026-10] [tables=Plan_OPT_EU,...]
+//   [from=2024-12] [to=2026-10] [days=2026-11-01,...] [tables=Plan_OPT_EU,...]
+//   [root=<dir with reference/ and source/>]
 // Then: python -I scripts/helper-chartres-write-parquet.py <out dir>
 //       node scripts/datalake-upload-tree.js <out dir>/report eu_report/report
 //         --overwrite                     (WRITES to the data lake)
 import { readFileSync, readdirSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { runFlow } from './lib-vfc-runner.js';
 
 const TAB1 = ['Plan_OPT_EU', 'Time_Utilisation_EU', 'Daily_Losses_EU'];
@@ -32,10 +34,14 @@ const sites = arg('sites', 'Hull,Nottingham').split(',');
 const from = arg('from', '2024-12');
 const to = arg('to', '2026-10');
 const tables = arg('tables', [...TAB1, ...TAB2].join(',')).split(',');
+// days=YYYY-MM-DD,... builds the day files (tab Provideam fetch) instead of months.
+const days = arg('days', '') ? arg('days', '').split(',') : null;
 
 const read = (f) => JSON.parse(readFileSync(new URL('../flows/' + f, import.meta.url), 'utf8'));
 const config = read('vfc-config.json');
-const root = new URL('../sharepoint/', import.meta.url);
+// root=<dir> reads reference/ and source/ from another folder (a test copy).
+const root = arg('root', '') ? pathToFileURL(arg('root', '').replace(/\/?$/, '/')) :
+  new URL('../sharepoint/', import.meta.url);
 
 // The lake as the flows see it: every local reference and source file.
 const lake = new Map();
@@ -60,7 +66,7 @@ for (const [file, tabTables] of [['vfc-pbi-report.json', TAB1], ['vfc-pbi-report
   const flow = read(file);
   const stats = await runFlow(flow, {
     startDay: new Date().toISOString().slice(0, 10),
-    startPayload: { tables: job, sites, from, to },
+    startPayload: days ? { tables: job, sites, days } : { tables: job, sites, from, to },
     write: true, configNodes: config, platform: 'xcelerator', lake,
     clientId: 'x', clientSecret: 'y',
     fetchImpl: async () => { throw new Error('no API call expected'); }

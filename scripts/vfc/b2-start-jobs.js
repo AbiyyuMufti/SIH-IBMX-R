@@ -8,7 +8,7 @@ var startedAt = new Date().toISOString();
 glob.set('runStatus_' + FLOW, {
   flow: FLOW,
   state: 'running',
-  source: msg.topic === 'listener job' ? 'listener' : 'manual',
+  source: msg.topic === 'provideam fetch' ? 'provideam fetch' : 'manual',
   startedAt: startedAt,
   lastBeatAt: startedAt,
   job: {

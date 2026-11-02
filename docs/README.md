@@ -54,6 +54,7 @@
 | [lake-api.md](lake-api.md) | Python downloads parquet files or folder lists from the data lake through an `http in` endpoint of the VFC (spike checked in the VFC, final flow built) | Spike in the VFC |
 | [datalake-files.md](datalake-files.md) | List, download and upload data lake files from a script with signed URLs (`scripts/datalake-download.js`, `datalake-upload.js`) | Tested 2026-10-14 on xcelerator: list, download and upload work |
 | [sharepoint-lake-proof.md](sharepoint-lake-proof.md) | One-file VFC proof of downloading a SharePoint file into memory and uploading it to the lake | VFC runtime proof pending |
+| [provideam-fetch.md](provideam-fetch.md) | The tab Provideam fetch: every day the Provideam report API for each site, type and production day, the source day files, the job of the two build tabs; report bodies in the lake, API key in Config | Built 2026-11-02, tested offline (fake API and the real answers of 1 Nov); not run in the VFC yet |
 | [provideam-lake-proof.md](provideam-lake-proof.md) | One-report VFC proof: call the Provideam API (report 23 built in) and show the rows; lake write dropped for now | Reworked 2026-11-02, tested offline; VFC run pending |
 | [logging.md](logging.md) | The CSV run log in the data lake (one file per month and flow) and the error catch | Mock only |
 | [run-monitor.md](run-monitor.md) | Report status, monthly log history and validated backfill commands; VFC access keys and link wiring | Built and mock-tested offline; VFC runtime check remains |

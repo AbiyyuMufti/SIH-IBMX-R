@@ -1,6 +1,7 @@
 // TASK SETTINGS of the PBI report build: folders, sites, months, dry run.
-// In: msg.payload = the job {tables, sites, from, to}; all optional (months
-// YYYY-MM, default last month and this month). Out: msg.job, settings stored.
+// In: the job {tables, sites, from, to} (months YYYY-MM, default last and
+// this month) or {tables, sites, days} (days YYYY-MM-DD: the day files of
+// Provideam fetch, used like months). Out: msg.job, settings stored.
 
 // The source this flow builds. A line whose source (1.1 CONFIG: line
 // reportSource, else site reportSource) is this one writes to <root>/report,
@@ -80,6 +81,13 @@ var to = asked.to || thisMonth;
 if (!/^\d{4}-\d{2}$/.test(from) || !/^\d{4}-\d{2}$/.test(to) || from > to) {
   return fail('from and to must be months YYYY-MM, from not after to');
 }
+var days = Array.isArray(asked.days) ? asked.days : null;
+var badDays = (days || []).filter(function (day) {
+  return !/^\d{4}-\d{2}-\d{2}$/.test(day);
+});
+if (badDays.length || (days && !days.length)) {
+  return fail('days must be a list of days YYYY-MM-DD');
+}
 
 var cfg = Object.assign({}, shared);
 cfg.dryRun = DRY_RUN;
@@ -93,7 +101,7 @@ flow.set('cfg', cfg);
 msg.job = {
   tables: tables,
   sites: sites,
-  months: monthList(from, to)
+  months: days || monthList(from, to)
 };
 var writing = tables.filter(function (table) {
   return !DRY_RUN[table];

@@ -683,3 +683,10 @@ Tried: Power BI flow with `Keep dim_asset` expecting an array. Error: "the file 
   settings placeholders, run one small file, and report the debug line and
   lake result. Then design/build the recurring sync.
   Handover: `session_handover/sharepoint-lake-flow-handover.md`.
+
+## Provideam API replaces SharePoint (2026-11-02)
+- Found and checked two request bodies the saved reports lacked: Mode Log (`report/objectmodelog`, line losses, part = `fdPartDesc`) and loss by object (`report/periodbyobjectandloss`, needs `losses: [{lossParam: {lsOEELossLvl3Desc: []}}]`). October 2026 Hull and Nottingham, all four source types: 1-28 Oct equal to the SharePoint files; October month files rebuilt from the API and uploaded (user approved). Doc `docs/provideam-reports.md`.
+- Failed attempts: monthly report 11 (Hull plan OPT, month) did not answer in 5 min, then network timeouts: one call per day instead. Machines from the October file only would drop machines idle in October (S14, Senokot Press): bodies take the machines of all export months 2024-12 to 2026-10. A first CSV conversion used `fdPartName` (part code) for losses: the export has `fdPartDesc`.
+- Built tab `Provideam fetch` (50 nodes): daily 07:00 UTC, last 3 production days from 2026-11-01, day files `<type>_<YYYY-MM-DD>.csv`, job `{sites, days}` to both build tabs through their BACKFILL link ins. Build tabs accept days; listener tab and job queue removed; Run monitor derives `quiet` from the last log line. Config `provideam: {baseUrl, apiKey}` (hidden by the monitor). Bodies and `report_scope.csv` uploaded to the lake. Run rates of the October month file got 1 Nov 00:00-05:00 (production day 31 Oct). Doc `docs/provideam-fetch.md`.
+- `test-vfc-monitor.js` had a fixed date (2026-10-22) that the 7-day status pruning now removes: failed on master before this change; fixed with the current time.
+- Next: the user imports Config, both build tabs, Provideam fetch, Run monitor; deletes the listener; connects the BACKFILL links; dry run, then backfill 1-2 Nov. Then the SIH daily tab to the Segun schema (`pbiPlanSchema`, `pbiLossSchema`). Chartres and Novy Dwor config postponed (user).

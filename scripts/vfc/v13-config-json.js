@@ -3,7 +3,8 @@
 // rows (empty when msg.scopeMissing). Out: the JSON response.
 var HIDDEN = [
   'clientId',
-  'clientSecret'
+  'clientSecret',
+  'provideam'
 ];
 var SCOPE_COLUMNS = [
   'Site',

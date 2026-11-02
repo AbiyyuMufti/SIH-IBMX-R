@@ -1,0 +1,811 @@
+[
+  {
+    "id": "5d49f.b58de9",
+    "type": "tab",
+    "label": "Provideam fetch",
+    "disabled": false,
+    "allowCycles": false,
+    "info": "Calls the Provideam report API every day and writes the source day files of the PBI report build tabs. Needs the Config tab."
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "5f38e.b72702",
+    "type": "comment",
+    "name": "[1] TRIGGERS & FETCH SETTINGS",
+    "info": "STAGE 1 - TRIGGERS AND FETCH SETTINGS. The clock runs every day at 07:00 UTC and fetches the last 3 production days (DAYS_BACK in 1.1, again every day so late corrections arrive). Backfill: edit the inject payload {\"start\":\"YYYY-MM-DD\",\"end\":\"YYYY-MM-DD\"} (production days, optional \"sites\") and click it; the Run monitor sends the same through the link in BACKFILL. 1.1 is the only node to edit: sites, days, dry run (true by default: nothing is written and no build starts). The API key is in 1.1 CONFIG of the Config tab. 1.1 sends one task per day, site and report type (plan OPT, run rates, line losses, loss correction).",
+    "x": 180,
+    "y": 40,
+    "wires": []
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "6127d.b8c01b",
+    "type": "inject",
+    "name": "Every day 07:00 UTC",
+    "topic": "",
+    "repeat": "",
+    "repeatEnd": "0",
+    "endTime": "0",
+    "offset": "NaN",
+    "once": false,
+    "properties": "",
+    "timezone": "UTC",
+    "betweentimesunit": "m",
+    "showNextExecution": false,
+    "powerMode": false,
+    "x": 140,
+    "y": 100,
+    "wires": [
+      [
+        "6316c.ba5934"
+      ]
+    ],
+    "payload": "",
+    "payloadType": "date",
+    "crontab": "0 7 * * *"
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "6505b.bbf24d",
+    "type": "inject",
+    "name": "Backfill (edit payload)",
+    "topic": "",
+    "repeat": "",
+    "repeatEnd": "0",
+    "endTime": "0",
+    "offset": "NaN",
+    "once": false,
+    "properties": "",
+    "timezone": "UTC",
+    "betweentimesunit": "m",
+    "showNextExecution": false,
+    "powerMode": false,
+    "x": 160,
+    "y": 140,
+    "wires": [
+      [
+        "6316c.ba5934"
+      ]
+    ],
+    "payload": "{\"start\":\"2026-11-01\",\"end\":\"2026-11-02\"}",
+    "payloadType": "json",
+    "crontab": ""
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "e9c95.79e52c",
+    "type": "link in",
+    "name": "provideam-fetch BACKFILL",
+    "links": [],
+    "x": 60,
+    "y": 200,
+    "wires": [
+      [
+        "6316c.ba5934"
+      ]
+    ]
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "68e39.bf247f",
+    "type": "link out",
+    "name": "to TASKS",
+    "mode": "link",
+    "links": [
+      "66f4a.bd8b66"
+    ],
+    "x": 620,
+    "y": 120,
+    "wires": []
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "6316c.ba5934",
+    "type": "function",
+    "name": "1.1 FETCH SETTINGS (edit here)",
+    "func": "// FETCH SETTINGS of the Provideam fetch: sites, days, dry run.\n// In: the daily clock (no payload) or the backfill {start, end} (production\n// days YYYY-MM-DD, optional sites). Out: msg.payload = one task\n// {site, type, day} per site, report type and day (a split follows).\n\n// Sites to fetch. A site also needs reportSource 'provideam' in 1.1 CONFIG\n// and its report bodies in <root>/reference/provideam_reports/site=<Site>/.\nvar SITES = [\n  'Hull',\n  'Nottingham'\n];\n// The clock run fetches this many production days before today, again\n// every day, so late corrections in Provideam reach the report.\nvar DAYS_BACK = 3;\n// The first day of the day files. The days before are month files that\n// this tab never touches.\nvar FIRST_DAY = '2026-11-01';\n// Longest backfill in days.\nvar MAX_DAYS = 14;\n// true: fetch and convert only, write no file and start no build.\nvar DRY_RUN = true;\nvar TYPES = [\n  'plan_opt',\n  'run_rates',\n  'line_losses',\n  'volume_loss_correction'\n];\nvar FLOW = 'provideam-fetch';\nvar IN_BODIES = 'reference/provideam_reports';\nvar OUT_SOURCE = 'pbi_report/source';\n\nfunction fail(text) {\n  node.status({\n    fill: 'red',\n    shape: 'ring',\n    text: text\n  });\n  node.error(text);\n  return null;\n}\n\n// Days from the first to the last one, both YYYY-MM-DD.\nfunction dayList(from, to) {\n  var out = [];\n  var t = Date.parse(from + 'T00:00:00Z');\n  var last = Date.parse(to + 'T00:00:00Z');\n  while (t <= last) {\n    out.push(new Date(t).toISOString().slice(0, 10));\n    t += 86400000;\n  }\n  return out;\n}\n\nvar shared = glob.get('cfg');\nif (!shared) {\n  return fail('global cfg is missing: deploy or run the Config tab first');\n}\nvar api = shared.provideam || {};\nif (!api.baseUrl || !api.apiKey || /^PUT_/.test(api.apiKey)) {\n  return fail('fill in provideam.apiKey in 1.1 CONFIG');\n}\n\nvar p = msg.payload && typeof msg.payload === 'object' ? msg.payload : {};\nvar backfill = !!(p.start && p.end);\nvar sites = Array.isArray(p.sites) ? p.sites : SITES;\nvar notProvideam = sites.filter(function (name) {\n  var site = shared.sites.filter(function (s) {\n    return s.name === name;\n  })[0];\n  return !site || site.reportSource !== 'provideam';\n});\nif (notProvideam.length) {\n  return fail('not a Provideam site in 1.1 CONFIG: ' + notProvideam.join(', '));\n}\n\nvar days;\nif (backfill) {\n  var isDay = /^\\d{4}-\\d{2}-\\d{2}$/;\n  if (!isDay.test(p.start) || !isDay.test(p.end) || p.start > p.end) {\n    return fail('start and end must be days YYYY-MM-DD, start not after end');\n  }\n  if (p.start < FIRST_DAY) {\n    return fail('days before ' + FIRST_DAY + ' are month files: not fetched');\n  }\n  days = dayList(p.start, p.end);\n  if (days.length > MAX_DAYS) {\n    return fail('a backfill takes ' + MAX_DAYS + ' days at most');\n  }\n} else {\n  var today = Date.parse(new Date().toISOString().slice(0, 10) + 'T00:00:00Z');\n  days = dayList(\n    new Date(today - DAYS_BACK * 86400000).toISOString().slice(0, 10),\n    new Date(today - 86400000).toISOString().slice(0, 10)\n  ).filter(function (day) {\n    return day >= FIRST_DAY;\n  });\n}\nif (!days.length) {\n  node.status({\n    fill: 'grey',\n    shape: 'ring',\n    text: 'no day on or after ' + FIRST_DAY\n  });\n  return null;\n}\n\nvar cfg = Object.assign({}, shared);\ncfg.dryRun = DRY_RUN;\ncfg.bodyFolder = shared.root + '/' + IN_BODIES;\ncfg.sourceFolder = shared.root + '/' + OUT_SOURCE;\nflow.set('cfg', cfg);\n\n// One task per day, site and type, the days in order.\nvar tasks = [];\ndays.forEach(function (day) {\n  sites.forEach(function (site) {\n    TYPES.forEach(function (type) {\n      tasks.push({\n        site: site,\n        type: type,\n        day: day\n      });\n    });\n  });\n});\nvar runId = new Date().toISOString();\nflow.set('fetchRun', {\n  id: runId,\n  sites: sites,\n  days: days,\n  expected: tasks.length,\n  done: 0\n});\nglob.set('runStatus_' + FLOW, {\n  flow: FLOW,\n  state: 'running',\n  source: backfill ? 'backfill' : 'schedule',\n  dryRun: DRY_RUN,\n  startedAt: runId,\n  lastBeatAt: runId,\n  job: {\n    sites: sites.join(', '),\n    days: days[0] + ' to ' + days[days.length - 1]\n  },\n  lastLog: ''\n});\n\nnode.status({\n  fill: DRY_RUN ? 'yellow' : 'green',\n  shape: 'dot',\n  text: tasks.length + ' calls' + (DRY_RUN ? ', DRY RUN' : '')\n});\nmsg.payload = tasks;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 440,
+    "y": 120,
+    "wires": [
+      [
+        "68e39.bf247f"
+      ]
+    ]
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "6ad28.c0bd98",
+    "type": "comment",
+    "name": "[2] CALLS",
+    "info": "STAGE 2 - one message per task, one every 2 s (Provideam answers in 1 to 7 s; a day of one site and type is at most about 1.3 MB). 1 sets the body file <root>/reference/provideam_reports/site=<Site>/<type>.json (the saved report body, its machines and, for the correction, the loss groups the export keeps), the read node loads it, 2 puts the day in it and builds the POST with the API key of 1.1 CONFIG, 3 turns the answer into the CSV text of the SharePoint export. A missing body file stops the task without an error (read node): the run then waits for the join timeout and the log shows the lost call.",
+    "x": 100,
+    "y": 260,
+    "wires": []
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "66f4a.bd8b66",
+    "type": "link in",
+    "name": "TASKS",
+    "links": [
+      "68e39.bf247f"
+    ],
+    "x": 60,
+    "y": 340,
+    "wires": [
+      [
+        "6cc17.c256b1"
+      ]
+    ]
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "6cc17.c256b1",
+    "type": "split",
+    "name": "Split per item",
+    "splt": "\\n",
+    "spltType": "str",
+    "arraySplt": 1,
+    "arraySpltType": "len",
+    "stream": false,
+    "addname": "index",
+    "x": 180,
+    "y": 340,
+    "wires": [
+      [
+        "6eb06.c3efca"
+      ]
+    ]
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "6eb06.c3efca",
+    "type": "delay",
+    "name": "One call per 2 s",
+    "pauseType": "rate",
+    "timeout": "1",
+    "timeoutUnits": "seconds",
+    "rate": "1",
+    "nbRateUnits": "2",
+    "rateUnits": "second",
+    "randomFirst": "1",
+    "randomLast": "1",
+    "randomUnits": "seconds",
+    "drop": false,
+    "powerMode": false,
+    "x": 380,
+    "y": 340,
+    "wires": [
+      [
+        "709f5.c588e3"
+      ]
+    ]
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "709f5.c588e3",
+    "type": "function",
+    "name": "2.1 Set body file",
+    "func": "// Sets the report body file of one task for the read node.\n// In: msg.payload = one task {site, type, day} (after the split). Out:\n// msg.task and msg.path = <root>/reference/provideam_reports/site=<Site>/\n// <type>.json (the body and the settings of the Provideam report).\nvar cfg = flow.get('cfg');\n\nmsg.task = msg.payload;\nmsg.path = cfg.bodyFolder + '/site=' + msg.task.site + '/';\nmsg.path += msg.task.type + '.json';\ndelete msg.payload;\ndelete msg.parts;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 580,
+    "y": 340,
+    "wires": [
+      [
+        "728e4.c721fc"
+      ]
+    ]
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "728e4.c721fc",
+    "type": "read object",
+    "name": "Read body file",
+    "path": "",
+    "mode": "object",
+    "x": 780,
+    "y": 340,
+    "wires": [
+      [
+        "747d3.c8bb15"
+      ]
+    ]
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "747d3.c8bb15",
+    "type": "function",
+    "name": "2.2 Build Provideam request",
+    "func": "// Builds the Provideam report call of one task (read-style POST).\n// In: msg.payload = the body file {body, keepTypes}, msg.task. Out: the\n// HTTP request for the task's day (msg.method, url, headers, payload).\n// Provideam answers HTTP 500 to a body with more than 18 functions.\nvar PATHS = {\n  plan_opt: '/api/v1/Report/ObjectByPeriod',\n  run_rates: '/api/v1/Report/ObjectByPeriod',\n  line_losses: '/api/v1/report/objectmodelog',\n  volume_loss_correction: '/api/v1/report/periodbyobjectandloss'\n};\nvar cfg = flow.get('cfg');\n\n// The read node gives a Buffer, a copied message a {type, data} object.\nfunction text(value) {\n  if (value && value.type === 'Buffer' && Array.isArray(value.data)) {\n    return Buffer.from(value.data).toString('utf8');\n  }\n  return String(value);\n}\n\nvar file = msg.payload;\nif (!file || typeof file !== 'object' || Buffer.isBuffer(file) ||\n  file.type === 'Buffer') {\n  try {\n    file = JSON.parse(text(msg.payload));\n  } catch (e) {\n    node.error('FAILED body file is not JSON: ' + msg.path, msg);\n    return null;\n  }\n}\nif (!file.body) {\n  node.error('FAILED body file has no body: ' + msg.path, msg);\n  return null;\n}\n\nvar body = file.body;\nbody.periods = [\n  {\n    periodParam: {\n      pdDay: ['[' + msg.task.day + 'T00:00:00]']\n    }\n  }\n];\nmsg.task.keepTypes = file.keepTypes || null;\nmsg.method = 'POST';\nmsg.url = cfg.provideam.baseUrl + PATHS[msg.task.type];\nmsg.headers = {\n  'apiKey': cfg.provideam.apiKey,\n  'Content-Type': 'application/json-patch+json',\n  'Accept': 'application/json'\n};\nmsg.payload = JSON.stringify(body);\ndelete msg.path;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 1020,
+    "y": 340,
+    "wires": [
+      [
+        "766c2.ca542e"
+      ]
+    ]
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "766c2.ca542e",
+    "type": "http request",
+    "name": "POST Provideam report",
+    "method": "use",
+    "ret": "obj",
+    "url": "",
+    "timeout": "",
+    "mindspherePath": "",
+    "useMindsphereAuth": false,
+    "isAdmin": false,
+    "x": 1280,
+    "y": 340,
+    "wires": [
+      [
+        "785b1.cbed47"
+      ]
+    ]
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "7c38f.cf1f79",
+    "type": "link out",
+    "name": "to WRITE",
+    "mode": "link",
+    "links": [
+      "7a4a0.cd8660"
+    ],
+    "x": 1660,
+    "y": 300,
+    "wires": []
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "8016d.d251ab",
+    "type": "link out",
+    "name": "to RUN DONE",
+    "mode": "link",
+    "links": [
+      "7e27e.d0b892"
+    ],
+    "x": 1660,
+    "y": 340,
+    "wires": []
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "83f4b.d583dd",
+    "type": "link out",
+    "name": "to LOG",
+    "mode": "link",
+    "links": [
+      "8205c.d3eac4"
+    ],
+    "x": 1660,
+    "y": 380,
+    "wires": []
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "785b1.cbed47",
+    "type": "function",
+    "name": "2.3 Make source CSV",
+    "func": "// Turns the Provideam answer of one task into the source CSV file, the text\n// the SharePoint exports had (docs/provideam-reports.md, October 2026).\n// In: the HTTP answer, msg.task. Out 1: the file for the write node (not in\n// dry run), out 2: the task result for the join, out 3: a log line.\nvar HEADS = {\n  plan_opt: [\n    'SiteName',\n    'YYYY-MM-DD',\n    'AreaName',\n    'MachineName',\n    'ShiftName',\n    'ShiftStartTime',\n    'PartName',\n    'Good Parts',\n    'Defect Parts',\n    'Target',\n    'Capacity',\n    'OEE',\n    'Total Time',\n    'Planned OpT',\n    'OEE Time',\n    'Downtime Units'\n  ],\n  run_rates: [\n    'SiteName',\n    'AreaName',\n    'MachineName',\n    'YYYY-MM-DD HH',\n    'PartName',\n    'ShiftName',\n    'Good Parts',\n    'Capacity'\n  ],\n  line_losses: [\n    'SiteName',\n    'StartTime',\n    'MachineName',\n    'PartName',\n    'ShiftName',\n    'OEELossLvl3Group',\n    'OEELossLvl3SubGroup',\n    'OEELossLvl3Desc',\n    'Duration',\n    'ShiftStartDate',\n    'Comment'\n  ],\n  volume_loss_correction: [\n    'SiteName',\n    'ShiftStartDate',\n    'MachineName',\n    'OEELossLvl3Group',\n    'OEELossLvl3SubGroup',\n    'OEELossLvl3Desc',\n    'Time',\n    'Loss Units'\n  ]\n};\nvar cfg = flow.get('cfg');\nvar task = msg.task;\nvar site = task.site;\n\nfunction pad(n) {\n  return n < 10 ? '0' + n : String(n);\n}\n// Seconds as HH:MM:SS. Provideam rounds a half second to even\n// (11376.5 s = 03:09:36).\nfunction hms(value) {\n  var n = Number(value) || 0;\n  var s = Math.round(n);\n  if (Math.abs(n % 1) === 0.5 && s % 2) {\n    s -= 1;\n  }\n  return pad(Math.floor(s / 3600)) + ':' + pad(Math.floor(s % 3600 / 60)) +\n    ':' + pad(s % 60);\n}\nfunction fix2(value) {\n  return (Number(value) || 0).toFixed(2);\n}\nfunction whole(value) {\n  return Math.round(Number(value) || 0);\n}\n// 0.5125 is 51.3%: round half up after the float noise is cut.\nfunction percent(value) {\n  var tenths = Number(((Number(value) || 0) * 1000).toPrecision(12));\n  return (Math.round(tenths) / 10).toFixed(1) + '%';\n}\nfunction stamp(value) {\n  return String(value || '').replace('T', ' ').slice(0, 19);\n}\n// 10/29/2026 12:00:00 AM -> 2026-10-29\nfunction usDate(value) {\n  var m = /^(\\d+)\\/(\\d+)\\/(\\d{4})/.exec(String(value || ''));\n  return m ? m[3] + '-' + pad(Number(m[1])) + '-' + pad(Number(m[2])) : '';\n}\n// The export has no quotes around a value (the API has them on some part\n// names) and no tabs (comments).\nfunction cell(value) {\n  var s = value === null || value === undefined ? '' : String(value);\n  s = s.replace(/^\"(.*)\"$/, '$1').replace(/\\t/g, ' ');\n  if (/[\",\\n\\r]/.test(s)) {\n    s = '\"' + s.replace(/\"/g, '\"\"') + '\"';\n  }\n  return s;\n}\n\nfunction rowOf(x) {\n  if (task.type === 'plan_opt') {\n    return [\n      site,\n      x.fdYYYYMMDD,\n      x.fdAreaName,\n      x.fdMachineName,\n      x.fdShiftName,\n      stamp(x.fdShiftStartTime),\n      x.fdPartName,\n      whole(x.fnGoodParts_0),\n      whole(x.fnDefectParts_0),\n      fix2(x.fnTarget_0),\n      fix2(x.fnCapacity_0),\n      percent(x.fnOEE_0),\n      hms(x.fnTotalTime_0),\n      hms(x.fnPlannedOpT_0),\n      hms(x.fnOEETime_0),\n      fix2(x.fnDowntimeUnits_0)\n    ];\n  }\n  if (task.type === 'run_rates') {\n    return [\n      site,\n      x.fdAreaName,\n      x.fdMachineName,\n      x.fdYYYYMMDDHH + ':00',\n      x.fdPartName,\n      x.fdShiftName,\n      whole(x.fnGoodParts_0),\n      whole(x.fnCapacity_0)\n    ];\n  }\n  if (task.type === 'line_losses') {\n    return [\n      site,\n      stamp(x.fdStartTime),\n      x.fdMachineName,\n      x.fdPartDesc,\n      x.fdShiftName,\n      x.fdOEELossLvl3Type,\n      x.fdOEELossLvl3SubGroup,\n      x.fdOEELossLvl3Desc,\n      hms(x.fdTime),\n      String(x.fdShiftStartDate || '').slice(0, 10),\n      x.fdModeComment\n    ];\n  }\n  return [\n    site,\n    usDate(x.fdShiftStartDate),\n    x.fdMachineName,\n    x.fdOEELossLvl3Type,\n    x.fdOEELossLvl3SubGroup,\n    x.fdOEELossLvl3Desc,\n    hms(x.fnTime_0),\n    fix2(x.fnLossUnits_0)\n  ];\n}\n\n// Which answer rows are file rows: the export has no Run events, and the\n// correction keeps only the loss groups of the site (keepTypes).\nfunction wanted(x) {\n  if (x.rowDesc === 'GrandTotal' || !x.fdMachineName) {\n    return false;\n  }\n  if (task.type === 'line_losses') {\n    return x.fdOEELossLvl3Type !== 'Run';\n  }\n  if (task.type === 'volume_loss_correction') {\n    return (task.keepTypes || []).indexOf(x.fdOEELossLvl3Type) !== -1;\n  }\n  return true;\n}\n\nvar answer = msg.payload;\nif (typeof answer === 'string') {\n  try {\n    answer = JSON.parse(answer);\n  } catch (e) {\n    answer = null;\n  }\n}\nvar key = task.type === 'volume_loss_correction' ?\n  'processedLossData' : 'processedData';\nvar rows = answer && Array.isArray(answer[key]) ? answer[key] : null;\nvar where = task.day + ' [fetch] ' + site + ' ' + task.type;\nvar result = {\n  site: site,\n  type: task.type,\n  day: task.day,\n  ok: false,\n  rows: 0\n};\nvar file = null;\nvar line;\n\nif (msg.statusCode !== 200 || !rows) {\n  line = where + ': FAILED Provideam HTTP ' + msg.statusCode;\n  if (msg.statusCode === 200) {\n    line += ', no ' + key;\n  }\n} else {\n  var out = [HEADS[task.type].join(',')];\n  rows.forEach(function (x) {\n    if (wanted(x)) {\n      out.push(rowOf(x).map(cell).join(','));\n    }\n  });\n  result.ok = true;\n  result.rows = out.length - 1;\n  var path = cfg.sourceFolder + '/' + task.type + '/site=' + site + '/';\n  path += task.type + '_' + task.day + '.csv';\n  line = where + ': ' + result.rows + ' rows';\n  if (cfg.dryRun) {\n    line += ', dry run (not written)';\n  } else {\n    line += ' to ' + path;\n    file = {\n      path: path,\n      payload: out.join('\\n') + '\\n'\n    };\n  }\n}\n\n// The join sends when the last task of the run arrives (msg.complete).\nvar run = flow.get('fetchRun') || {};\nrun.done = (run.done || 0) + 1;\nflow.set('fetchRun', run);\nvar joinMsg = {\n  payload: result\n};\nif (run.done >= run.expected) {\n  joinMsg.complete = true;\n}\n\nnode.status({\n  fill: result.ok ? 'green' : 'red',\n  shape: 'dot',\n  text: (run.done || 0) + '/' + (run.expected || '?') + ' ' + site + ' ' +\n    task.type\n});\nreturn [\n  file,\n  joinMsg,\n  {\n    topic: 'log',\n    payload: line\n  }\n];\n",
+    "outputs": 3,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 1520,
+    "y": 340,
+    "wires": [
+      [
+        "7c38f.cf1f79"
+      ],
+      [
+        "8016d.d251ab"
+      ],
+      [
+        "83f4b.d583dd"
+      ]
+    ]
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "85e3a.d71cf6",
+    "type": "comment",
+    "name": "[3] WRITE SOURCE FILE",
+    "info": "STAGE 3 - the day file <root>/pbi_report/source/<type>/site=<Site>/<type>_<YYYY-MM-DD>.csv. A rerun of the day replaces it.",
+    "x": 160,
+    "y": 480,
+    "wires": []
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "7a4a0.cd8660",
+    "type": "link in",
+    "name": "WRITE",
+    "links": [
+      "7c38f.cf1f79"
+    ],
+    "x": 60,
+    "y": 560,
+    "wires": [
+      [
+        "87d29.d8b60f"
+      ]
+    ]
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "87d29.d8b60f",
+    "type": "write object",
+    "name": "Source file to data lake",
+    "path": "",
+    "mode": "object",
+    "x": 220,
+    "y": 560,
+    "wires": []
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "89c18.da4f28",
+    "type": "comment",
+    "name": "[4] RUN DONE",
+    "info": "STAGE 4 - the join collects the task results and sends when the last task arrives (or after 10 minutes, if a call was lost). 1 counts them and builds the job {sites, days}: a day is built when every type of a site came back. The wait gives the last writes 30 s, then the job goes to the link in BACKFILL of PBI report build and PBI report build 2 (connect the two link outs after import). The build tabs list the source folder and read only the files that exist.",
+    "x": 120,
+    "y": 700,
+    "wires": []
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "7e27e.d0b892",
+    "type": "link in",
+    "name": "RUN DONE",
+    "links": [
+      "8016d.d251ab"
+    ],
+    "x": 60,
+    "y": 780,
+    "wires": [
+      [
+        "8bb07.dbe841"
+      ]
+    ]
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "8bb07.dbe841",
+    "type": "join",
+    "name": "Collect task results",
+    "mode": "custom",
+    "build": "array",
+    "property": "payload",
+    "propertyType": "msg",
+    "key": "topic",
+    "joiner": "\\n",
+    "joinerType": "str",
+    "accumulate": false,
+    "useparts": false,
+    "timeout": "600",
+    "count": "",
+    "reduceRight": false,
+    "reduceExp": "",
+    "reduceInit": "",
+    "reduceInitType": "",
+    "reduceFixup": "",
+    "x": 200,
+    "y": 780,
+    "wires": [
+      [
+        "8d9f6.dd815a"
+      ]
+    ]
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "917d4.e0b38c",
+    "type": "link out",
+    "name": "to LOG",
+    "mode": "link",
+    "links": [
+      "8205c.d3eac4"
+    ],
+    "x": 600,
+    "y": 800,
+    "wires": []
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "8d9f6.dd815a",
+    "type": "function",
+    "name": "4.1 Build the build job",
+    "func": "// Checks the run and builds the job of the two PBI report build tabs.\n// In: msg.payload = the task results {site, type, day, ok, rows} (join).\n// Out 1: the job {sites, days} (to a wait, then the BACKFILL links of the\n// build tabs), not in dry run. Out 2: the summary log line.\nvar TYPES = 4;\nvar cfg = flow.get('cfg') || {};\nvar run = flow.get('fetchRun') || {};\nvar results = Array.isArray(msg.payload) ? msg.payload : [];\n\n// A day is built when every report type of a site came back.\nvar okCount = {};\nresults.forEach(function (r) {\n  if (r && r.ok) {\n    var key = r.site + '|' + r.day;\n    okCount[key] = (okCount[key] || 0) + 1;\n  }\n});\nvar days = (run.days || []).filter(function (day) {\n  return (run.sites || []).some(function (site) {\n    return okCount[site + '|' + day] === TYPES;\n  });\n});\nvar failed = results.filter(function (r) {\n  return r && !r.ok;\n}).length;\nvar lost = (run.expected || 0) - results.length;\n\nvar line = new Date().toISOString().slice(0, 10) + ' [fetch] run: ';\nline += results.length + ' of ' + run.expected + ' calls back';\nif (failed || lost > 0) {\n  line += ', FAILED ' + failed + ' calls, ' + Math.max(lost, 0) + ' lost';\n}\nline += ', days to build: ' + (days.length ? days.join(', ') : 'none');\nif (cfg.dryRun) {\n  line += ' (dry run: no build)';\n}\n\nvar job = null;\nif (days.length && !cfg.dryRun) {\n  job = {\n    topic: 'provideam fetch',\n    payload: {\n      sites: run.sites,\n      days: days\n    }\n  };\n}\nnode.status({\n  fill: failed || lost > 0 ? 'red' : 'green',\n  shape: 'dot',\n  text: days.length + ' day(s) to build'\n});\nreturn [\n  job,\n  {\n    topic: 'log',\n    payload: line\n  }\n];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 440,
+    "y": 780,
+    "wires": [
+      [
+        "8f8e5.df1a73"
+      ],
+      [
+        "917d4.e0b38c"
+      ]
+    ]
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "8f8e5.df1a73",
+    "type": "delay",
+    "name": "Wait for writes 30 s",
+    "pauseType": "delay",
+    "timeout": "30",
+    "timeoutUnits": "seconds",
+    "rate": "1",
+    "nbRateUnits": "1",
+    "rateUnits": "second",
+    "randomFirst": "1",
+    "randomLast": "5",
+    "randomUnits": "seconds",
+    "drop": false,
+    "powerMode": false,
+    "x": 680,
+    "y": 760,
+    "wires": [
+      [
+        "936c3.e24ca5",
+        "955b2.e3e5be"
+      ]
+    ]
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "936c3.e24ca5",
+    "type": "link out",
+    "name": "to pbi-report BACKFILL",
+    "mode": "link",
+    "links": [],
+    "x": 820,
+    "y": 740,
+    "wires": []
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "955b2.e3e5be",
+    "type": "link out",
+    "name": "to pbi-report-2 BACKFILL",
+    "mode": "link",
+    "links": [],
+    "x": 820,
+    "y": 780,
+    "wires": []
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "974a1.e57ed7",
+    "type": "comment",
+    "name": "[5] ERRORS",
+    "info": "STAGE 5 - a catch node takes every error raised by a node of this tab and turns it into a log line with the name of the node and the message of the API (for example the limit message of evaluateKPIs). Errors of the log nodes themselves are not logged again.",
+    "x": 120,
+    "y": 920,
+    "wires": []
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "9b27f.e8b109",
+    "type": "catch",
+    "name": "Catch errors",
+    "scope": null,
+    "uncaught": false,
+    "x": 120,
+    "y": 1000,
+    "wires": [
+      [
+        "99390.e717f0"
+      ]
+    ]
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "9d16e.ea4a22",
+    "type": "link out",
+    "name": "to LOG",
+    "mode": "link",
+    "links": [
+      "8205c.d3eac4"
+    ],
+    "x": 460,
+    "y": 1000,
+    "wires": []
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "99390.e717f0",
+    "type": "function",
+    "name": "5.1 Describe error",
+    "func": "// Turns an error caught by the catch node into a log line.\n// In: the message of a catch node (msg.error).\n// Out: a log line for the shared log. Errors of the log nodes themselves\n// are dropped (no log loop).\nvar err = msg.error || {};\nvar source = (err.source && err.source.name) || 'unknown node';\n\nfunction textOf(value) {\n  if (value === undefined || value === null) {\n    return '';\n  }\n  if (typeof value === 'string') {\n    return value;\n  }\n  return JSON.stringify(value);\n}\n\n// Takes the API message out of an error body when there is one.\nfunction apiMessage(value) {\n  var body = value;\n  if (typeof value === 'string') {\n    try {\n      body = JSON.parse(value);\n    } catch (e) {\n      return value;\n    }\n  }\n  var data = body && body.data;\n  var list = (data && data.errors) || (body && body.errors);\n  if (list && list.length && list[0].message) {\n    return list[0].message;\n  }\n  return textOf(value);\n}\n\nif (msg.logBatch) {\n  node.status({\n    fill: 'red',\n    shape: 'ring',\n    text: 'log write failed'\n  });\n  return null;\n}\n\nvar text = '';\nif (msg.day) {\n  text += msg.day + ' [' + msg.mode + '] ';\n}\ntext += 'ERROR in ' + source + ': ' + apiMessage(err.message);\nreturn {\n  topic: 'log',\n  payload: text,\n  level: 'error',\n  source: source\n};\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 320,
+    "y": 1000,
+    "wires": [
+      [
+        "9d16e.ea4a22"
+      ]
+    ]
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "9f05d.ebe33b",
+    "type": "comment",
+    "name": "[6] LOG",
+    "info": "STAGE 6 - every log line arrives here through the link \"to LOG\". 1 turns a line into a row (time, flow, site, production day, level) and shows it in the debug sidebar. The join collects the rows for 30 s, the delay lets one batch pass every 10 s so two writes do not overlap, 3 sets the file of the month and the read node loads the old file. A read of a file that does not exist answers nothing (only a warning), so the same batch also goes through a 10 s wait to the append step. The log is written whatever the dry-run switch says.",
+    "x": 100,
+    "y": 1140,
+    "wires": []
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "8205c.d3eac4",
+    "type": "link in",
+    "name": "LOG",
+    "links": [
+      "83f4b.d583dd",
+      "917d4.e0b38c",
+      "9d16e.ea4a22"
+    ],
+    "x": 60,
+    "y": 1220,
+    "wires": [
+      [
+        "a0f4c.ed7c54"
+      ]
+    ]
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "a0f4c.ed7c54",
+    "type": "function",
+    "name": "6.1 Format log line",
+    "func": "// Turns one log message into a row for the log file.\n// In: msg.payload = log text (optional msg.level and msg.source).\n// Out: msg.payload = the row, msg.line = the text for the debug node.\nvar FLOW_NAME = 'provideam-fetch';\nvar cfg = flow.get('cfg') || {};\nvar text = String(msg.payload);\n\nvar seq = (flow.get('logSeq') || 0) + 1;\nflow.set('logSeq', seq);\n\n// Most lines start with the production day and the mode: \"2026-09-01 [x] \".\nvar day = '';\nvar mode = '';\nvar message = text;\nvar parts = /^(\\d{4}-\\d{2}-\\d{2}) \\[([^\\]]*)\\] ([\\s\\S]*)$/.exec(text);\nif (parts) {\n  day = parts[1];\n  mode = parts[2];\n  message = parts[3];\n}\n\nvar level = msg.level;\nif (!level) {\n  if (/FAILED/.test(message)) {\n    level = 'failed';\n  } else if (/NOTHING TO WRITE/.test(message)) {\n    level = 'warn';\n  } else {\n    level = 'info';\n  }\n}\n\nmsg.line = text;\nmsg.payload = {\n  ts_utc: new Date().toISOString(),\n  seq: seq,\n  flow: FLOW_NAME,\n  site: cfg.site || 'all',\n  production_day: day,\n  mode: mode,\n  level: level,\n  source: msg.source || 'flow',\n  message: message\n};\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 200,
+    "y": 1220,
+    "wires": [
+      [
+        "a2e3b.ef156d",
+        "a4d2a.f0ae86",
+        "a6c19.f2479f"
+      ]
+    ]
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "a2e3b.ef156d",
+    "type": "join",
+    "name": "Collect log lines",
+    "mode": "custom",
+    "build": "array",
+    "property": "payload",
+    "propertyType": "msg",
+    "key": "topic",
+    "joiner": "\\n",
+    "joinerType": "str",
+    "accumulate": false,
+    "useparts": false,
+    "timeout": "30",
+    "count": "",
+    "reduceRight": false,
+    "reduceExp": "",
+    "reduceInit": "",
+    "reduceInitType": "",
+    "reduceFixup": "",
+    "x": 420,
+    "y": 1180,
+    "wires": [
+      [
+        "a8b08.f3e0b8"
+      ]
+    ]
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "a4d2a.f0ae86",
+    "type": "debug",
+    "name": "Run log",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "line",
+    "targetType": "msg",
+    "x": 380,
+    "y": 1220,
+    "wires": []
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "a6c19.f2479f",
+    "type": "function",
+    "name": "6.2 Note last log line",
+    "func": "// Notes the time of the newest log line of the tab in global context\n// lastLog_<flow>. In: every log line (a tap behind the log formatter). Out:\n// nothing. A new line clears done_<flow>, so the next quiet period is shown.\nvar FLOW = 'provideam-fetch';\nglob.set('lastLog_' + FLOW, Date.now());\nglob.set('done_' + FLOW, false);\nvar status = glob.get('runStatus_' + FLOW);\nif (status) {\n  var row = msg.payload || {};\n  var line = String(row.message || msg.line || '');\n  status.lastBeatAt = new Date().toISOString();\n  status.lastLog = line.slice(0, 160);\n  if (row.level === 'failed' || row.level === 'error') {\n    status.state = 'failed';\n  }\n  glob.set('runStatus_' + FLOW, status);\n}\nreturn null;\n",
+    "outputs": 0,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 440,
+    "y": 1260,
+    "wires": []
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "a8b08.f3e0b8",
+    "type": "delay",
+    "name": "One log batch per 10 s",
+    "pauseType": "rate",
+    "timeout": "1",
+    "timeoutUnits": "seconds",
+    "rate": "1",
+    "nbRateUnits": "10",
+    "rateUnits": "second",
+    "randomFirst": "1",
+    "randomLast": "1",
+    "randomUnits": "seconds",
+    "drop": false,
+    "powerMode": false,
+    "x": 640,
+    "y": 1220,
+    "wires": [
+      [
+        "aa9f7.f579d1"
+      ]
+    ]
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "aa9f7.f579d1",
+    "type": "function",
+    "name": "6.3 Build log write",
+    "func": "// Prepares the write of one batch of log rows (the read node runs next).\n// In: msg.payload = array of log rows from the join node.\n// Out: msg.path = file of the month, msg.logRows, msg.logBatchId, no payload.\n// msg.logBatch keeps errors of the log nodes themselves out of the log.\nvar FLOW_NAME = 'provideam-fetch';\nvar cfg = flow.get('cfg') || {};\nvar root = cfg.root || 'logs_without_root';\nvar rows = msg.payload;\nvar month = rows[0].ts_utc.slice(0, 7);\n\nvar batchNo = (flow.get('logBatchNo') || 0) + 1;\nflow.set('logBatchNo', batchNo);\n\nmsg.logRows = rows;\nmsg.path = root + '/logs/' + FLOW_NAME + '/log_' + month + '.csv';\nmsg.logBatch = true;\nmsg.logBatchId = rows[0].ts_utc + '#' + batchNo;\ndelete msg.payload;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 880,
+    "y": 1220,
+    "wires": [
+      [
+        "ac8e6.f712ea",
+        "ae7d5.f8ac03"
+      ]
+    ]
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "b25b3.fbde35",
+    "type": "link out",
+    "name": "to APPEND",
+    "mode": "link",
+    "links": [
+      "b06c4.fa451c"
+    ],
+    "x": 1240,
+    "y": 1220,
+    "wires": []
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "ac8e6.f712ea",
+    "type": "read object",
+    "name": "Read log file",
+    "path": "",
+    "mode": "object",
+    "x": 1080,
+    "y": 1200,
+    "wires": [
+      [
+        "b25b3.fbde35"
+      ]
+    ]
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "b44a2.fd774e",
+    "type": "link out",
+    "name": "to APPEND",
+    "mode": "link",
+    "links": [
+      "b06c4.fa451c"
+    ],
+    "x": 1240,
+    "y": 1300,
+    "wires": []
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "ae7d5.f8ac03",
+    "type": "delay",
+    "name": "Wait for read 10 s",
+    "pauseType": "delay",
+    "timeout": "10",
+    "timeoutUnits": "seconds",
+    "rate": "1",
+    "nbRateUnits": "1",
+    "rateUnits": "second",
+    "randomFirst": "1",
+    "randomLast": "5",
+    "randomUnits": "seconds",
+    "drop": false,
+    "powerMode": false,
+    "x": 1100,
+    "y": 1240,
+    "wires": [
+      [
+        "b44a2.fd774e"
+      ]
+    ]
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "b6391.ff1067",
+    "type": "comment",
+    "name": "[7] LOG WRITE",
+    "info": "STAGE 7 - adds the rows of the batch to the old file and writes the whole file back (the data lake has no append). Columns: ts_utc, seq, flow, site, production_day, mode, level, source, message. Every field is quoted, line breaks become a space. The batch arrives twice (read answer and the wait) and is written once. If the read gives no answer for a file this flow wrote before, a new file with a time stamp is written, so the history is never replaced.",
+    "x": 120,
+    "y": 1360,
+    "wires": []
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "b06c4.fa451c",
+    "type": "link in",
+    "name": "APPEND",
+    "links": [
+      "b25b3.fbde35",
+      "b44a2.fd774e"
+    ],
+    "x": 60,
+    "y": 1440,
+    "wires": [
+      [
+        "b8280.00a980"
+      ]
+    ]
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "b8280.00a980",
+    "type": "function",
+    "name": "7.1 Append log rows",
+    "func": "// Adds the rows of one batch to the log file of the month.\n// In: msg.payload = the old file (read answered) or nothing (no answer).\n// Out: msg.payload = the whole new file, the data lake has no append.\n// The same batch can arrive twice (read answer, then the wait): once only.\nvar SEPARATOR = ',';\nvar KEEP_IDS = 50;\nvar COLUMNS = [\n  'ts_utc',\n  'seq',\n  'flow',\n  'site',\n  'production_day',\n  'mode',\n  'level',\n  'source',\n  'message'\n];\n\n// Quotes inside a field are doubled, line breaks become a space.\nfunction quote(value) {\n  var text = (value === undefined || value === null) ? '' : String(value);\n  text = text.replace(/\"/g, '\"\"').replace(/[\\r\\n]+/g, ' ');\n  return '\"' + text + '\"';\n}\n\nfunction lineOf(row) {\n  return COLUMNS.map(function (name) {\n    return quote(row[name]);\n  }).join(SEPARATOR);\n}\n\n// The read node gives text, or a serialised buffer.\nfunction decode(payload) {\n  if (typeof payload === 'string') {\n    return payload;\n  }\n  if (payload && payload.type === 'Buffer' && payload.data) {\n    var bin = '';\n    payload.data.forEach(function (byte) {\n      bin += String.fromCharCode(byte);\n    });\n    try {\n      return decodeURIComponent(escape(bin));\n    } catch (e) {\n      return bin;\n    }\n  }\n  return null;\n}\n\nvar rows = msg.logRows.slice();\nrows.sort(function (a, b) {\n  if (a.ts_utc !== b.ts_utc) {\n    return a.ts_utc < b.ts_utc ? -1 : 1;\n  }\n  return a.seq - b.seq;\n});\n\nvar done = flow.get('logDone') || [];\nvar known = flow.get('logKnown') || [];\nif (done.indexOf(msg.logBatchId) >= 0) {\n  return null;\n}\n\nvar path = msg.path;\nvar old = '';\nvar problem = '';\nif (msg.payload === undefined || msg.payload === null) {\n  if (known.indexOf(path) >= 0) {\n    problem = 'read gave no answer for a file written before';\n  }\n} else {\n  old = decode(msg.payload);\n  if (old === null) {\n    old = '';\n    problem = 'old file is not text';\n  }\n}\nif (problem) {\n  // Never replace the old file: write a new one with a time stamp.\n  var stamp = new Date().toISOString().replace(/[-:.TZ]/g, '');\n  path = path.replace(/\\.csv$/, '_' + stamp + '.csv');\n  rows.push({\n    ts_utc: new Date().toISOString(),\n    seq: 0,\n    flow: rows[0].flow,\n    site: rows[0].site,\n    production_day: '',\n    mode: '',\n    level: 'error',\n    source: 'log',\n    message: problem + ', wrote ' + path\n  });\n} else if (known.indexOf(path) < 0) {\n  known.push(path);\n  flow.set('logKnown', known);\n}\n\nvar lines = [];\nif (!old) {\n  lines.push(COLUMNS.map(quote).join(SEPARATOR));\n} else if (old.slice(-1) !== '\\n') {\n  old += '\\n';\n}\nrows.forEach(function (row) {\n  lines.push(lineOf(row));\n});\n\ndone.push(msg.logBatchId);\nflow.set('logDone', done.slice(-KEEP_IDS));\n\nmsg.payload = old + lines.join('\\n') + '\\n';\nmsg.path = path;\ndelete msg.logRows;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 200,
+    "y": 1440,
+    "wires": [
+      [
+        "ba16f.024299"
+      ]
+    ]
+  },
+  {
+    "z": "5d49f.b58de9",
+    "id": "ba16f.024299",
+    "type": "write object",
+    "name": "Log to data lake",
+    "path": "",
+    "mode": "object",
+    "x": 420,
+    "y": 1440,
+    "wires": []
+  }
+]

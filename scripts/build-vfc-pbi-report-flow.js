@@ -33,7 +33,7 @@ function buildFlow() {
   const stage1 = b.nextStage();
   comment(
     `[${stage1}] TRIGGER & TASK SETTINGS`,
-    `STAGE ${stage1} - TRIGGER AND TASK SETTINGS. Builds the three Tableau tables Plan_OPT_EU, Time_Utilisation_EU and Daily_Losses_EU from the Provideam CSV files in the data lake, one file per site and month, with Dept, Area and Product Type from the Machine Names file of the site, Data Source = Provideam and In EU Report from the report scope file (false: rows the EU pages leave out). The rows of a line whose source in 1.1 CONFIG is Provideam go to <root>/report (what Tableau reads), the rows of a line on another source to <root>/candidate/provideam. The inject payload is the job: {"tables": [...], "sites": [...], "from": "YYYY-MM", "to": "YYYY-MM"}; a missing list means all, missing months mean last month and this month. Nothing is written while the table is true in DRY_RUN of 1.1.`,
+    `STAGE ${stage1} - TRIGGER AND TASK SETTINGS. Builds the three Tableau tables Plan_OPT_EU, Time_Utilisation_EU and Daily_Losses_EU from the Provideam CSV files in the data lake, one file per site and month, with Dept, Area and Product Type from the Machine Names file of the site, Data Source = Provideam and In EU Report from the report scope file (false: rows the EU pages leave out). The rows of a line whose source in 1.1 CONFIG is Provideam go to <root>/report (what Tableau reads), the rows of a line on another source to <root>/candidate/provideam. The inject payload is the job: {"tables": [...], "sites": [...], "from": "YYYY-MM", "to": "YYYY-MM"}, or {"tables", "sites", "days": ["YYYY-MM-DD", ...]} for the day files of the tab Provideam fetch (it sends its job through the link in BACKFILL); a missing list means all, missing months mean last month and this month. Nothing is written while the table is true in DRY_RUN of 1.1.`,
     r
   );
   add({
@@ -44,21 +44,6 @@ function buildFlow() {
     crontab: '', offset: 'NaN', once: false, properties: '',
     timezone: 'UTC', betweentimesunit: 'm', showNextExecution: false,
     powerMode: false, x: col(0), y: rowY(r), wires: [[id('settings')]]
-  });
-  // The jobs of the lake watcher (tab PBI report listener) enter node 1.1:
-  // a clock takes one queued job from global context every 10 s.
-  add({
-    id: b.newId(), type: 'inject', name: 'Job queue check every 10 s',
-    topic: '', payload: '', payloadType: 'date', repeat: '10',
-    repeatEnd: '0', endTime: '0', crontab: '', offset: 'NaN', once: false,
-    properties: '', timezone: 'UTC', betweentimesunit: 'm',
-    showNextExecution: false, powerMode: false, x: col(0), y: rowY(r) + 80,
-    wires: [[id('jobTake')]]
-  });
-  add({
-    id: id('jobTake'), type: 'function', name: '1.0 Take queued job',
-    func: code('w6-take-job.js').replace('__QUEUE__', 'jobQueue'),
-    outputs: 1, language: 'javascript', noerr: 0, x: col(1), y: rowY(r) + 80, wires: [[id('settings')]]
   });
   const dryRun = TABLES.map((t, i) =>
     `  ${t}: true${i < TABLES.length - 1 ? ',' : ''}`).join('\n');

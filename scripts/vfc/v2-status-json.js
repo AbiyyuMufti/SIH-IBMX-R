@@ -2,6 +2,7 @@
 // In: an authenticated status request.
 // Out: JSON with a derived STUCK state after 30 minutes without a checkpoint.
 var STUCK_AFTER_MS = 30 * 60 * 1000;
+var QUIET_AFTER_MS = 60 * 1000;
 var now = Date.now();
 // The monitored flows: the builder fills in scripts/monitor-flows.js.
 var MONITOR_FLOWS = __MONITOR_FLOWS__;
@@ -32,6 +33,14 @@ function snapshot(key) {
   var copy = JSON.parse(JSON.stringify(stored));
   var running = active(copy);
   copy.state = copy.state || (running ? 'running' : 'idle');
+  // A run of a tab without day checkpoints (PBI report build, Provideam
+  // fetch) is over when its log has been quiet for a minute.
+  var lastLog = glob.get('lastLog_' + key.replace('runStatus_', ''));
+  if (copy.state === 'running' && !copy.days && lastLog &&
+    now - lastLog > QUIET_AFTER_MS) {
+    copy.state = 'quiet';
+    running = false;
+  }
   var beat = Date.parse(copy.lastBeatAt || copy.startedAt || '');
   if (running && isFinite(beat) && now - beat > STUCK_AFTER_MS) {
     copy.state = 'STUCK';

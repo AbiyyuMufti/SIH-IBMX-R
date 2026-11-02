@@ -20,7 +20,7 @@ eu_report/
   logs/<flow>/log_<YYYY-MM>.csv
 ```
 - The file name ends with the source (`_provideam`, `_sih`). Each flow replaces only its own files, so two sources never overwrite each other. When a line of a site comes from SIH and the rest from Provideam, both files of the month sit in the same `report/` folder and each holds only its own machines (Provideam side built in step 2; the SIH side comes with step 4).
-- The subscribe nodes of the `PBI report listener` tab have the folders `/eu_report/pbi_report/source/` and `/eu_report/reference/` as node properties (they cannot read Config). If the root changes, change them too.
+- Since 2026-11-02 the source files come from the tab `Provideam fetch` (day files `<type>_<YYYY-MM-DD>.csv`, [provideam-fetch.md](provideam-fetch.md)); the lake watcher tab `PBI report listener` is removed.
 
 ## Sites and lines in `1.1 CONFIG`
 ```js
@@ -44,7 +44,8 @@ eu_report/
 ```
 | Field | Meaning |
 |---|---|
-| `reportSource` (site) | `provideam` or `sih`: where the report rows of the site come from |
+| `provideam` | `{baseUrl, apiKey}` of the Provideam report API (tab Provideam fetch). Placeholder in the committed flow; the Run monitor hides it |
+| `reportSource` (site) | `provideam` or `sih`: where the report rows of the site come from (`provideam`: the Provideam API through Provideam fetch) |
 | `lines[].id` | the asset id: the flows use only this |
 | `lines[].sih` | the name in Insights Hub, a label. The asset list warns when Insights Hub calls the id differently (renamed) |
 | `lines[].report` | the `MachineName` of the line in the report and in the Machine Names file of the site (B2 Line is `B2 Auto` in Provideam). Required, `?` is refused. The asset list proposes it from the Machine Names file and reports a Config value that is not there |

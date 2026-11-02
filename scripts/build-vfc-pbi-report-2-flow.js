@@ -21,7 +21,6 @@ import {
 } from './lib-pbi-report-lanes.js';
 
 const FLOW_ID = 'pbi-report-2';
-const QUEUE = 'jobQueue_2';
 const TABLES = ['Run_Rates_EU', 'Volume_CoV_EU', 'Format_List_EU',
   'Site_PDT_Targets', 'Site_UPDT_Targets'];
 const FILE = 'vfc-pbi-report-2.json';
@@ -65,7 +64,7 @@ function buildFlow() {
   const stage1 = b.nextStage();
   comment(
     `[${stage1}] TRIGGER & TASK SETTINGS`,
-    `STAGE ${stage1} - TRIGGER AND TASK SETTINGS. Builds Run_Rates_EU (Provideam run rates, one row per machine and hour), Volume_CoV_EU (plan OPT rows per day, shift and machine) and Format_List_EU (the Format List file of each site) for the site dashboards. Every row gets Dept, Area, Product Type from the Machine Names file and In EU Report from the report scope file (not Format_List_EU). The inject payload is the job: {"tables": [...], "sites": [...], "from": "YYYY-MM", "to": "YYYY-MM"}; a missing list means all, missing months mean last month and this month. The lake watcher queues its jobs in global context ${QUEUE}. Nothing is written while the table is true in DRY_RUN of 1.1.`,
+    `STAGE ${stage1} - TRIGGER AND TASK SETTINGS. Builds Run_Rates_EU (Provideam run rates, one row per machine and hour), Volume_CoV_EU (plan OPT rows per day, shift and machine) and Format_List_EU (the Format List file of each site) for the site dashboards. Every row gets Dept, Area, Product Type from the Machine Names file and In EU Report from the report scope file (not Format_List_EU). The inject payload is the job: {"tables": [...], "sites": [...], "from": "YYYY-MM", "to": "YYYY-MM"}, or {"tables", "sites", "days": ["YYYY-MM-DD", ...]} for the day files of the tab Provideam fetch (it sends its job through the link in BACKFILL); a missing list means all, missing months mean last month and this month. Nothing is written while the table is true in DRY_RUN of 1.1.`,
     r
   );
   add({
@@ -76,20 +75,6 @@ function buildFlow() {
     crontab: '', offset: 'NaN', once: false, properties: '',
     timezone: 'UTC', betweentimesunit: 'm', showNextExecution: false,
     powerMode: false, x: col(0), y: rowY(r), wires: [[id('settings')]]
-  });
-  add({
-    id: b.newId(), type: 'inject', name: 'Job queue check every 10 s',
-    topic: '', payload: '', payloadType: 'date', repeat: '10',
-    repeatEnd: '0', endTime: '0', crontab: '', offset: 'NaN', once: false,
-    properties: '', timezone: 'UTC', betweentimesunit: 'm',
-    showNextExecution: false, powerMode: false, x: col(0), y: rowY(r) + 80,
-    wires: [[id('jobTake')]]
-  });
-  add({
-    id: id('jobTake'), type: 'function', name: '1.0 Take queued job',
-    func: code('w6-take-job.js').replace('__QUEUE__', QUEUE),
-    outputs: 1, language: 'javascript', noerr: 0,
-    x: col(1), y: rowY(r) + 80, wires: [[id('settings')]]
   });
   const dryRun = TABLES.map((t, i) =>
     `  ${t}: true${i < TABLES.length - 1 ? ',' : ''}`).join('\n');

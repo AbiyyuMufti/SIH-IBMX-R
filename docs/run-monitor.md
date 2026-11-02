@@ -38,7 +38,7 @@ route every 10 seconds and carries the GET key into its history request.
 | Request | Response |
 |---|---|
 | `GET /reports-monitor` | Self-contained page with four tabs (Live status, Run log history, Backfill, Configuration). Each tab shows cards or tables, with a "Raw JSON" switch and a Copy JSON button. The tab is kept in the URL hash. The browser code is `scripts/browser/monitor-client.js`, embedded as a text string in node 2.1 by the builder (`code()` in `lib-flow-builder.js`) |
-| `GET /reports-monitor?view=status` | JSON snapshot of SIH daily, shift, PBI build, PBI listener and Config status |
+| `GET /reports-monitor?view=status` | JSON snapshot of SIH daily, shift, PBI build, Provideam fetch and Config status |
 | `GET /reports-monitor?view=history&flow=<flow>&month=YYYY-MM` | Parsed rows from one monthly CSV log |
 | `GET /reports-monitor?view=config` | The settings of `1.1 CONFIG` (global `cfg`) without `clientId` and `clientSecret`, and the rules of the report scope file (`<root>/reference/report_scope/site=All/`, newest .csv; [report-scope.md](report-scope.md)). Without a scope file the answer says so (`scope.missing`) |
 | `POST /reports-monitor/command` | Validates and queues one report backfill; returns 202, 400, 409 or 503 |
@@ -95,7 +95,7 @@ The first version had a checkpoint at the start of every lane (15 per tab) and p
 | `runStatus_sih-hull` | Per-production-day state and the last SIH daily checkpoint |
 | `runStatus_rpt-hull` | Per-production-day state and the last shift-report checkpoint |
 | `runStatus_pbi-report` | Current job summary, last log line, and quiet/failure state |
-| `runStatus_pbi-listener` | Pending events, queued jobs and the last released job |
+| `runStatus_provideam-fetch` | Current run (sites, days), last log line, failure state |
 | `runMonitorCommands` | The latest 50 compact accepted/rejected command records |
 | `glob.get('cfg')` | Config readiness, platform and site count (credentials omitted) |
 
@@ -107,9 +107,11 @@ are retained by the report flows with a 100-day cap and age-based pruning.
 The Config row is derived from the shared `cfg` value and exposes only its
 platform and site count; credentials are never copied into the response.
 
-The PBI listener's queue behavior is unchanged. Its monitor fields are
-snapshots only. The PBI build's quiet state means that no new log line arrived
-for the existing quiet window; it does not certify that every table was
+The PBI listener tab was removed on 2026-11-02 (its job queue and JOB DONE
+clock with it). The status JSON now derives `quiet` itself: a running flow
+without day checkpoints (PBI build tabs, Provideam fetch) whose last log line
+(`lastLog_<flow>`) is over a minute old shows `quiet`. Quiet means that no new log line arrived
+for that minute; it does not certify that every table was
 written successfully. A failure state is preserved.
 
 ## Offline checks and VFC verification
@@ -150,7 +152,7 @@ For the PBI report build, use `from` and `to` months instead:
 SIH daily and shift backfills are inclusive and capped at 31 days. PBI
 backfills are inclusive and capped at 12 months. Dates and months must be
 valid; PBI tables and sites, when provided, must match the current Config.
-An active flow or a queued PBI listener job returns 409 unless `force` is
+An active flow returns 409 unless `force` is
 true. Force does not cancel a current run; it permits a concurrent backfill.
 Commands are retained as the latest 50 compact status entries and appended
 to `<root>/logs/run-monitor/log_YYYY-MM.csv`.

@@ -17,6 +17,7 @@ Current jobs (each has a handover in `session_handover/`):
 
 Flows in use (docs and tests):
 - Config and reference tab: `docs/report-config.md`, `docs/reference-tables.md`
+- Provideam fetch: every day the Provideam report API to source day files, then the job of the two build tabs (`docs/provideam-fetch.md`, `node scripts/test-vfc-provideam-fetch.js`). Replaces the SharePoint files and the lake watcher (removed 2026-11-02)
 - PBI report build: writes the report tables, split by line source. PBI report build 2: run rates, Volume CoV, Format List (`docs/pbi-report-build-2.md`, `node scripts/test-vfc-pbi-report-2.js platform=xcelerator`)
 - Hull SIH report daily: `docs/sih-report-daily.md`, `node scripts/test-vfc-sih-report.js platform=legacy|xcelerator`. API tabs run at `runHourLocal` of Config with a local production day, retry an evaluateKPIs 413 hour by hour; heavy days (over 5,000 stops) fail on purpose
 - Run monitor: `docs/run-monitor.md`, monitored flows are ONE list in `scripts/monitor-flows.js`
@@ -29,7 +30,7 @@ Read `docs/README.md` first, then only the doc for the area you are working on. 
 - Never keep rows in flow context: the VFC refuses a value over 2 MB, use the join node
 - A report day must finish in about 50 s; the VFC drops the open messages of a longer day with no error (value calls 4 per second)
 - Calendar rules hold local wall clock times with a Z
-- Max 200 nodes per tab (Hull SIH report daily is at 198, PBI report build at 176)
+- Max 200 nodes per tab (Hull SIH report daily is at 198, PBI report build at 184)
 - `dryRun` is set in the VFC by me, not in dev work: never change the default
 - A file with quotes in a Bash heredoc can fail: use the Write tool. Downloads: a new `--out` folder each time
 

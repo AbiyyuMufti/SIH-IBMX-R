@@ -14,9 +14,15 @@ var cfg = {
   xcTenantId: 'PUT_TENANT_ID_HERE',
   clientId: 'PUT_CLIENT_ID_HERE',
   clientSecret: 'PUT_CLIENT_SECRET_HERE',
+  // Provideam report API (tab Provideam fetch). Fill in the API key after
+  // import. Do not share the flow filled in.
+  provideam: {
+    baseUrl: 'https://rb-api.provideam.com',
+    apiKey: 'PUT_PROVIDEAM_API_KEY_HERE'
+  },
   // One entry per site of the report.
   // reportSource: where the report rows of the site come from,
-  // 'provideam' (SharePoint files) or 'sih' (Insights Hub API). The other
+  // 'provideam' (Provideam API) or 'sih' (Insights Hub API). The other
   // source writes to candidate/ for comparison.
   // dayStartHour: first hour (UTC) of the production day (fact flow only).
   // dayStartLocal: first hour of the production day, local clock (4 to

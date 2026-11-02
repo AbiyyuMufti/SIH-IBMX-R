@@ -142,7 +142,8 @@ applyNote('part-done', {
   // A late checkpoint of another asset does not reopen a finished day.
   const late = '2026-08-09';
   globalData['runStatus_sih-hull'].days[late] = {
-    state: 'dry_run', step: 'JOIN & BUILD TABLES', stepAt: '2026-10-22T00:00:00Z'
+    state: 'dry_run', step: 'JOIN & BUILD TABLES',
+    stepAt: new Date().toISOString()
   };
   const note = (step) => {
     let src = code('u1-note-status.js');
@@ -621,62 +622,6 @@ check(
     'COMMAND_KEY set: the command is sent with it, nothing to type');
 }
 
-const listenerData = {};
-const listenerFlow = {
-  get: (key) => listenerData[key],
-  set: (key, value) => {
-    listenerData[key] = value;
-  }
-};
-globalData.jobQueue = [];
-const collect = vmFunction('w2-collect.js', {});
-collect(
-  listenerFlow,
-  node,
-  {
-    event: {
-      kind: 'source',
-      type: 'plan_opt',
-      site: 'Hull',
-      month: '2026-09'
-    }
-  },
-  Buffer,
-  Promise,
-  glob
-);
-check(
-  globalData['runStatus_pbi-listener'].state === 'listening' &&
-    globalData['runStatus_pbi-listener'].pendingEntries === 1,
-  'listener status records pending file events'
-);
-listenerData.pending = {
-  'source|Hull|2026-09': {
-    kind: 'source',
-    site: 'Hull',
-    month: '2026-09',
-    type: 'plan_opt',
-    types: {
-      plan_opt: true
-    },
-    first: Date.now() - 121000,
-    events: 1
-  }
-};
-const release = vmFunction('w3-release.js', {});
-release(listenerFlow, node, {}, Buffer, Promise, glob);
-check(
-  globalData['runStatus_pbi-listener'].queuedJobs === 2 &&
-    globalData['runStatus_pbi-listener'].lastQueuedJob.from === '2026-09',
-  'listener status records released job count and range'
-);
-const takeJob = vmFunction('w6-take-job.js', { __QUEUE__: 'jobQueue' });
-takeJob(listenerFlow, node, {}, Buffer, Promise, glob);
-check(
-  globalData['runStatus_pbi-listener'].queuedJobs === 0,
-  'listener status updates when a queued job is taken'
-);
-
 globalData['runStatus_pbi-report'] = {
   state: 'running'
 };
@@ -700,16 +645,31 @@ check(
     globalData['runStatus_pbi-report'].lastLog === 'sample failure',
   'PBI log checkpoint records failure without retaining full rows'
 );
-globalData['lastLog_pbi-report'] = Date.now() - 31000;
-globalData['done_pbi-report'] = false;
-const checkQuiet = vmFunction('w5-check-quiet.js', {});
-checkQuiet(flow, node, {}, Buffer, Promise, glob);
+// A run without day checkpoints is over when its log is quiet for a minute
+// (the status JSON derives it; the PBI listener tab did it before).
+globalData['runStatus_provideam-fetch'] = {
+  state: 'running',
+  startedAt: new Date().toISOString(),
+  lastBeatAt: new Date().toISOString()
+};
+globalData['lastLog_provideam-fetch'] = Date.now() - 61000;
+const quietMessage = {};
+statusFn(flow, node, quietMessage, Buffer, Promise, glob);
 check(
-  globalData['runStatus_pbi-report'].state === 'failed' &&
-    globalData['runStatus_pbi-report'].finishedAt,
-  'quiet listener checkpoint preserves a PBI failure outcome'
+  quietMessage.payload.flows['provideam-fetch'].state === 'quiet' &&
+    quietMessage.payload.flows['pbi-report'].state === 'failed',
+  'status JSON shows a run quiet after a minute of no log, a failure stays'
 );
+globalData['lastLog_provideam-fetch'] = Date.now() - 5000;
+statusFn(flow, node, quietMessage, Buffer, Promise, glob);
+check(
+  quietMessage.payload.flows['provideam-fetch'].state === 'running',
+  'status JSON keeps a run with a recent log line running'
+);
+globalData['runStatus_provideam-fetch'] = undefined;
 
+// The command node: the answer, one output per backfill flow, then the log.
+const LOG_OUT = MONITOR_FLOWS.filter((f) => f.backfill).length + 1;
 const commandRaw = vmFunction('v10-command.js', {});
 // Each call is a separate click, so the duplicate guard starts empty.
 const command = (...args) => {
@@ -727,7 +687,6 @@ globalData.cfg = {
 globalData['runStatus_sih-hull'] = undefined;
 globalData['runStatus_rpt-hull'] = undefined;
 globalData['runStatus_pbi-report'] = undefined;
-globalData.jobQueue = [];
 globalData.runMonitorCommands = [];
 const dailyBody = {
   flow: 'sih-hull',
@@ -755,7 +714,7 @@ check(
 );
 check(
   globalData['runStatus_sih-hull'].state === 'queued' &&
-    dailyResult[5].payload.indexOf('[command] ACCEPTED') !== -1 &&
+    dailyResult[LOG_OUT].payload.indexOf('[command] ACCEPTED') !== -1 &&
     globalData.runMonitorCommands[0].result === 'accepted',
   'accepted command reserves status and emits an audit log'
 );
@@ -805,7 +764,7 @@ check(
   check(
     first[0].statusCode === 202 && first[1] !== null &&
       second[0].statusCode === 202 && second[1] === null &&
-      second[5] === null && globalData.runMonitorCommands.length === 1,
+      second[LOG_OUT] === null && globalData.runMonitorCommands.length === 1,
     'a duplicate POST within 5 s is answered again but not run twice'
   );
 }
@@ -975,31 +934,6 @@ for (const body of [
     'invalid PBI month, table or site is rejected before backfill'
   );
 }
-globalData.jobQueue = [
-  {
-    tables: ['Plan_OPT_EU']
-  }
-];
-const busyPbi = command(flow, node, {
-  payload: {
-    ...pbiBody
-  }
-}, Buffer, Promise, glob);
-check(
-  busyPbi[0].statusCode === 409,
-  'queued listener job makes the PBI build busy'
-);
-const forcedPbi = command(flow, node, {
-  payload: {
-    ...pbiBody,
-    force: true
-  }
-}, Buffer, Promise, glob);
-check(
-  forcedPbi[0].statusCode === 202 &&
-    forcedPbi[0].payload.forced === true,
-  'force explicitly overrides a queued PBI listener job'
-);
 globalData.cfg = undefined;
 const noCommandConfig = command(flow, node, {
   payload: {
@@ -1217,7 +1151,7 @@ const builtFlows = [
   'vfc-rpt-hull.json',
   'vfc-pbi-report.json',
   'vfc-pbi-report-2.json',
-  'vfc-pbi-listener.json'
+  'vfc-provideam-fetch.json'
 ].flatMap((file) => read(file));
 check(checkMonitorFlows(builtFlows).length === 0,
   'monitor list: every listed flow writes its status and has its BACKFILL');

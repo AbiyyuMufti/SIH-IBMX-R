@@ -58,7 +58,7 @@ Things Claude can do on the laptop while you are away, and where everything is:
 - **Where the rules came from:** the report's load queries, read with `node scripts/helper-pbit-outline.js "<the .pbit>" --table "<table>"` (the files are outside the repo in `C:\WORK\IBM-RECKITT\ReportReplica\`). Every mismatch with the report found a rule: use the same method for the loss table when a sample exists.
 - **Bugs and the written report:** planned after your tests; send the lines from section 6.
 
-## 8. Test of the lake watcher (step 4)
+## 8. Test of the lake watcher (step 4, history: removed 2026-11-02)
 Two tabs: import `flows/vfc-pbi-report.json` (replaces the report tab: your hand-made `JOB DONE` nodes are gone from it, they now live in the listener tab) and `flows/vfc-pbi-listener.json` (new tab). Then:
 1. **With every table `DRY_RUN` = true in node 1.1:** upload one changed file, for example `node scripts/datalake-upload-tree.js sharepoint/source eu_report/pbi_report/source --only <list with one plan_opt month> --overwrite`. In the listener tab the node `Read source event` shows a green status within seconds and `Collect events` shows `1 waiting`. After 2 to 2.5 minutes `Listener log` shows `[listener] JOB Hull source files changed: {"tables":[...],"sites":["Hull"],"from":"2026-09","to":"2026-09"}`; within 10 s the report tab takes it (status of `1.0 Take queued job`) and the `Run log` shows the dry-run lines of that month. `JOB DONE` follows about 30 s after the last line.
 2. **With the three month tables `false`:** the same upload, and the three month files of that site and month are replaced (the lake time stamp changes).

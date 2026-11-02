@@ -29,22 +29,20 @@ export const MONITOR_FLOWS = [
     label: 'PBI report build',
     backfill: 'months',
     log: true,
-    tables: ['Plan_OPT_EU', 'Time_Utilisation_EU', 'Daily_Losses_EU'],
-    queueKey: 'jobQueue'
+    tables: ['Plan_OPT_EU', 'Time_Utilisation_EU', 'Daily_Losses_EU']
   },
   {
     id: 'pbi-report-2',
     label: 'PBI report build 2',
     backfill: 'months',
     log: true,
-    tables: ['Run_Rates_EU', 'Volume_CoV_EU', 'Format_List_EU'],
-    queueKey: 'jobQueue_2'
+    tables: ['Run_Rates_EU', 'Volume_CoV_EU', 'Format_List_EU']
   },
   {
-    id: 'pbi-listener',
-    label: 'PBI listener',
-    backfill: null,
-    log: false
+    id: 'provideam-fetch',
+    label: 'Provideam fetch',
+    backfill: 'days',
+    log: true
   }
 ];
 
