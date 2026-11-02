@@ -3,7 +3,7 @@
 | At a glance | |
 |---|---|
 | **Purpose** | Record candidate V4 calls for the five Hull reports whose emailed CSV files feed the SharePoint source |
-| **Status** | 30/38 retimed definitions return HTTP 200 unchanged. Reports 15-22 return HTTP 500 because they ask for more than 18 standard functions (found 2026-10-30); split into two calls they return HTTP 200 |
+| **Status** | 30/38 retimed definitions return HTTP 200 unchanged. Reports 15-22 return HTTP 500 because they ask for more than 18 standard functions (found 2026-10-30); split into two calls they return HTTP 200. Mode Log and loss by object bodies built and checked against the October 2026 files (2026-11-02) |
 | **Request model** | Swagger defines `ReportRequestModel`, but not valid values for its selections |
 | **Response model** | Missing from Swagger. Report 23 returned an object with a `processedData` array; 30 rows were observed and raw values were not saved |
 | **Samples** | Request/result notes are in `docs/provideam-samples/`; prior redacted probes are in ignored `samples/provideam/` |
@@ -186,10 +186,22 @@ the source report families and their expected columns remain unverified.
   this source family, but no successful output confirms a saved definition.
 - **Empty-body probes:** `objectbyperiodandloss` and
   `periodbyobjectandloss` each returned HTTP 500 for `{}`.
-- **Working request:** none known.
-- **Response schema:** unknown.
-- **Source quirks to check:** loss Group, SubGroup and Desc labels, duration
-  units, Loss Units, and the 06:00 production-day boundary.
+- **Working request (built 2026-11-02, not a saved definition):**
+  `POST /api/v1/report/periodbyobjectandloss`, `application/json-patch+json`,
+  the caller and `objects` of the site's plan OPT report, `pdDay` or
+  `pdMonth`, fields `fdShiftStartDate`, `fdMachineName`,
+  `fdOEELossLvl3Type`, `fdOEELossLvl3SubGroup`, `fdOEELossLvl3Desc`,
+  functions `fnTime` (index 1) and `fnLossUnits` (index 2) and
+  `losses: [{"lossParam": {"lsOEELossLvl3Desc": []}}]`. Without `losses`,
+  or with three `losses` entries, it returns HTTP 500.
+- **Response schema:** `processedData` holds only the machine rows; the
+  values are in `processedLossData`, one row per shift date, machine and
+  loss (`fnTime_0` in seconds, `fnLossUnits_0`). `fdShiftStartDate` is text
+  `M/D/YYYY 12:00:00 AM`. It also returns non-loss types (`GoodParts`,
+  `Run`, `Cycles`, defects): the SharePoint file keeps only the site's loss
+  groups (Hull `Not Logged`, `Planned Loss`, `Unplanned Loss`; Nottingham
+  `Not Logged`, `Planned Losses`, `Unplanned Losses`).
+- **Checked:** see "October 2026 against the SharePoint files" below.
 
 ### Mode Log
 
@@ -200,10 +212,90 @@ the source report families and their expected columns remain unverified.
   38 saved definitions. The `dsObjectModeLog` template label matches this
   source family, but no successful output confirms a saved definition.
 - **Empty-body probe:** `{}` returned HTTP 500.
-- **Working request:** none known.
-- **Response schema:** unknown.
-- **Source quirks to check:** event grain, local versus UTC time, and whether
-  the comment text is returned.
+- **Working request (built 2026-11-02, not a saved definition):**
+  `POST /api/v1/report/objectmodelog`, `application/json-patch+json`, the
+  caller and `objects` of the site's plan OPT report, `pdDay` or `pdMonth`,
+  no functions, fields `fdStartTime`, `fdMachineName`, `fdPartName`,
+  `fdShiftName`, `fdOEELossLvl3Type`, `fdOEELossLvl3SubGroup`,
+  `fdOEELossLvl3Desc`, `fdTime`, `fdShiftStartDate`, `fdModeComment`.
+- **Response schema:** `processedData`, one row per mode event, local wall
+  clock times (`2026-10-29T06:00:00`), `fdTime` in seconds,
+  `fdOEELossLvl3Type` = the file's `OEELossLvl3Group`, `fdModeComment` =
+  `Comment`. It also returns the `Run` events: the SharePoint file has none.
+- **Checked:** see "October 2026 against the SharePoint files" below.
+
+## October 2026 against the SharePoint files (2026-11-02)
+Hull and Nottingham, October 2026, every source type, compared row by row
+with `sharepoint/source/<type>/site=<Site>/<type>_2026-10.csv` (the files
+of the Friday upload). API rows narrowed to the machines of the file (the
+bodies will hold exactly those machines), `Run` dropped from the Mode Log,
+the correction narrowed to the file's loss groups. Keys: plan = machine,
+shift, shift start, part; run rates = machine, hour, part, shift; losses =
+start time, machine, description; correction = shift date, machine, group,
+subgroup, description. Values: plan Good Parts, Total Time, Planned OpT,
+Capacity; run rates Good Parts, Capacity; losses duration; correction time
+and loss units.
+
+| Site | Type | Call | Matched rows | Value differences |
+|---|---|---|---|---|
+| Hull | plan OPT | report 23, one call per day | 1,064 of 1,064 | 14, all 30 Oct |
+| Hull | run rates | report 30, one call per day | 8,159 of 8,211 | 116, all 30 Oct |
+| Hull | line losses | Mode Log, `pdMonth` | 15,286 of 15,295 | 0 |
+| Hull | correction | loss call, `pdMonth` | 6,379 of 6,383 | 20, 29 and 30 Oct |
+| Nottingham | plan OPT | report 25, `pdMonth` | 2,647 of 2,648 | 23, 29 and 30 Oct |
+| Nottingham | run rates | report 24, `pdMonth` | 18,983 of 19,150 | 100, all 30 Oct |
+| Nottingham | line losses | Mode Log, one call per day | 19,712 of 19,721 | 5, 29 and 30 Oct |
+| Nottingham | correction | loss call, `pdMonth` | 9,698 of 9,705 | 13, 29 and 30 Oct |
+
+- 1 to 28 October are equal in every type. Every other difference is on
+  29 and 30 Oct (the files were exported during 30 Oct; the entries were
+  edited later) or is a row the files do not have yet (31 Oct, and the
+  hours of 1 Nov before 06:00 that belong to production day 31 Oct).
+- Run rates rows the files have and the API does not: the hours 00:00 to
+  05:00 of 1 Oct (production day 30 Sep). The API month runs from 06:00 on
+  the 1st to 05:00 on the 1st of the next month.
+- Machines the API returns and the files do not (left out by the bodies):
+  Hull `GT4 - Auto` (plan, losses), `6 Tonne`, `Vacumix`, `D2`, `D3`
+  (losses, correction); Nottingham `N11 Auto` (losses, 46,173 events in
+  the month), `Basing7`, `O5`.
+- Time and size: one day per call takes 1 to 7 s, the largest day is
+  Nottingham's Mode Log (1.26 MB, about 4,000 rows). Month calls: Mode Log
+  and correction 6 to 25 s (Hull Mode Log 9.1 MB); Hull report 11 for the
+  month did not answer within 5 minutes (twice a network timeout), so
+  the live flow calls one day at a time.
+- Weinheim (report 38, one day): equal to the file on 13 Oct; rows up to
+  22 Oct, none from 23 to 30 Oct.
+
+### October 2026 recreated from the API (2026-11-02)
+The API responses were written as the normalized source CSVs (rules below),
+built with `scripts/local-report-build.js` (the flow code) and compared with
+the Friday files in the lake: same schema, and every row of 1 to 28 Oct
+equal (all columns but `loaded_at`) in `Plan_OPT_EU`, `Time_Utilisation_EU`,
+`Daily_Losses_EU`, `Run_Rates_EU`, `Volume_CoV_EU`, Hull and Nottingham,
+except 4 Nottingham loss comments that the old export cut at a quote. The
+10 month files replaced the Friday ones in `eu_report/report/`, the 8 source
+CSVs the ones in `eu_report/pbi_report/source/` (both verified). The new
+files hold 29 to 31 Oct with the final values. As in the Friday files, a
+loss after midnight of the last production day keeps its own date (1 Nov)
+in the October file.
+
+Source CSV rules (from the API row to the SharePoint export text):
+- Columns and order of `sharepoint/source/<type>/` (`docs/sharepoint-files.md`).
+- Machines: only those of the site's SharePoint file of that type.
+- Line losses: `Run` events left out; `PartName` = `fdPartDesc`, not
+  `fdPartName` (that is the part code).
+- Correction: only the site's loss groups of the file (see above).
+- Run rates: calendar hours (`YYYY-MM-DD HH:00:00`), so the month needs the
+  previous production day too (00:00 to 05:00 on the 1st); Good Parts and
+  Capacity rounded to whole numbers.
+- Plan OPT: Good Parts and Defect Parts whole numbers; Target, Capacity,
+  Downtime Units 2 decimals; OEE `x 100` with 1 decimal and `%`, rounded half
+  up after `toPrecision(12)` (0.5125 = 51.3%).
+- Durations `HH:MM:SS`, seconds rounded half to even (11376.5 s = 03:09:36).
+- Times `YYYY-MM-DD HH:MM:SS`; the correction date comes as
+  `M/D/YYYY 12:00:00 AM`.
+- Text: a value wrapped in quotes loses them (part names); a tab becomes a
+  space (comments).
 
 ### Performance Availability
 

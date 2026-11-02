@@ -4,7 +4,7 @@
 |---|---|
 | **Purpose** | Map the SharePoint source folders to report tables, then identify which saved Provideam JSON definitions have a CSV-compatible shape |
 | **Scope** | SharePoint inputs only. Insights Hub API sources are excluded |
-| **Status** | Plan OPT and Run Rates: the monthly SharePoint files are proven row for row against reports 11/12 (Hull), 25/24 (Nottingham) and 34/33 (Weinheim) on 2026-10-30. Line Losses and Volume Loss Correction: no saved definition produces them. The Power Automate schedule itself is still not seen |
+| **Status** | Plan OPT and Run Rates: the monthly SharePoint files are proven row for row against reports 11/12 (Hull), 25/24 (Nottingham) and 34/33 (Weinheim) on 2026-10-30. Line Losses and Volume Loss Correction: no saved definition produces them; two bodies built on 2026-11-02 (Mode Log, loss by object) match the October files ([provideam-reports.md](provideam-reports.md)). The Power Automate schedule itself is still not seen |
 | **Evidence** | [`sharepoint-files.md`](sharepoint-files.md), [`provideam-source.md`](provideam-source.md), [`pbi-report-build.md`](pbi-report-build.md), [`pbi-report-build-2.md`](pbi-report-build-2.md), and the local numbered report index |
 
 ## SharePoint folders and their destinations
