@@ -9,20 +9,9 @@ const flow = JSON.parse(readFileSync(
   'utf8'
 ));
 const nodes = new Map(flow.map((node) => [node.name, node]));
-const cfg = {
-  platform: 'xcelerator',
-  xcTenantId: '1234567890',
-  tokenUrl: 'https://tenant.example/oauth/token',
-  tokenForm: true,
-  clientId: 'test-client',
-  clientSecret: 'test-secret'
-};
 const statuses = [];
 const errors = [];
-const context = {
-  get: (key) => key === 'cfg' ? cfg : undefined,
-  set: () => {}
-};
+const context = { get: () => undefined, set: () => {} };
 
 function run(name, msg) {
   const node = nodes.get(name);
@@ -36,78 +25,67 @@ function run(name, msg) {
     '(function(flow,node,msg,Buffer,Promise,glob){' + node.func + '\n})',
     {}
   );
-  const result = fn(context, mockNode, msg, Buffer, Promise, context);
-  assert.equal(errors.length, 0, errors.join('; '));
-  return result;
+  return fn(context, mockNode, msg, Buffer, Promise, context);
 }
 
-function response(msg, statusCode, payload) {
-  msg.statusCode = statusCode;
-  msg.payload = payload;
-  return msg;
-}
-
-const nodesByType = flow.filter((node) => node.type === 'http request');
-assert.ok(nodesByType.some((node) => node.ret === 'txt'));
 assert.ok(flow.some((node) => node.type === 'tab' &&
   node.allowCycles === false));
+assert.equal(flow.some((node) => /lake/i.test(node.name || '')), false);
 
-const reportBody = {
-  userId: 1,
-  objects: [{ objectParam: { obMachineID: ['1'] } }],
-  fields: [{ fieldName: 'fdYYYYMMDD' }],
-  functions: [{ funcName: 'fnGoodParts', index: 1 }],
-  periods: [{ periodParam: { pdDay: ['[Select a day]'] } }]
-};
+// Without the key the settings node stops with a clear reason.
+assert.equal(run('1.1 Load proof settings', {}), null);
+assert.deepEqual(errors.splice(0), ['Fill in PROVIDEAM_API_KEY']);
+
 const settings = nodes.get('1.1 Load proof settings');
 settings.func = settings.func
   .replace('PASTE_PROVIDEAM_API_KEY_HERE', 'provideam-test-key')
-  .replace("'PASTE_REPORT_BODY_JSON_HERE'",
-    JSON.stringify(JSON.stringify(reportBody)).replace(/^"|"$/g, "'"))
   .replace("var DAY = '';", "var DAY = '2026-10-29';");
+
+// The built-in body must equal saved report 23 (period included).
+const sample = readFileSync(new URL(
+  '../docs/provideam-samples/23-new-plan-opt-report.md', import.meta.url
+), 'utf8');
+const saved = JSON.parse(sample.split('```json')[1].split('```')[0]);
 
 let msg = run('1.1 Load proof settings', {});
 msg = run('1.2 Build Provideam request', msg);
+assert.equal(errors.length, 0, errors.join('; '));
 assert.equal(msg.method, 'POST');
-assert.equal(msg.url, 'https://rb-api.provideam.com/api/v1/Report/ObjectByPeriod');
+assert.equal(msg.url,
+  'https://rb-api.provideam.com/api/v1/Report/ObjectByPeriod');
 assert.equal(msg.headers.apiKey, 'provideam-test-key');
 assert.equal(msg.headers['Content-Type'], 'application/json-patch+json');
-const sent = JSON.parse(msg.payload);
-assert.deepEqual(sent.periods[0].periodParam.pdDay, ['[2026-10-29T00:00:00]']);
-assert.deepEqual(sent.fields, reportBody.fields);
+assert.deepEqual(JSON.parse(msg.payload), saved);
 
-const raw = '{"processedData":[{"rowDesc":"Row_0","fnGoodParts_0":5}]}';
-msg = response(msg, 200, raw);
+msg.statusCode = 200;
+msg.payload = '{"processedData":[{"rowDesc":"Row_0","fnGoodParts_0":5}]}';
 msg = run('1.3 Check Provideam rows', msg);
-assert.equal(msg.rowCount, 1);
-assert.equal(msg.fileBytes.toString('utf8'), raw);
-
-msg = run('1.4 Build lake token request', msg);
-assert.equal(msg.url, cfg.tokenUrl);
-msg = response(msg, 200, { access_token: 'lake-test-token' });
-msg = run('1.5 Check lake token', msg);
-msg = run('1.6 Prepare lake upload URL', msg);
-assert.equal(
-  JSON.stringify(msg.payload),
-  '{"paths":[{"path":"mufti_test/provideam/new-plan-opt-report_2026-10-29.json"}]}'
-);
-assert.equal(msg.headers.Authorization, 'Bearer lake-test-token');
-
-msg = JSON.parse(JSON.stringify(msg));
-msg = response(msg, 201, {
-  objectUrls: [{ signedUrl: 'https://signed.example/hidden-signature' }]
+assert.equal(errors.length, 0, errors.join('; '));
+assert.deepEqual(JSON.parse(JSON.stringify(msg.payload)), {
+  report: 'New Plan OPT Report',
+  day: '2026-10-29',
+  rowCount: 1,
+  rows: [{ rowDesc: 'Row_0', fnGoodParts_0: 5 }]
 });
-msg = run('1.7 Prepare signed PUT', msg);
-assert.equal(msg.method, 'PUT');
-assert.equal(msg.payload.toString('utf8'), raw);
-assert.equal(Object.keys(msg.headers).length, 0);
+assert.equal(JSON.stringify(msg).includes('provideam-test-key'), false);
 
-msg = response(msg, 200, '');
-msg = run('1.8 Report upload', msg);
-assert.equal(msg.payload, 'UPLOADED new-plan-opt-report_2026-10-29.json ' +
-  '(1 rows, 57 bytes) to mufti_test/provideam/' +
-  'new-plan-opt-report_2026-10-29.json');
-for (const secret of ['provideam-test-key', 'lake-test-token', 'hidden-signature']) {
-  assert.equal(JSON.stringify(msg).includes(secret), false, secret);
-}
-console.log('PASS: Provideam request, raw text kept, lake path, safe log');
+// A failed call goes to the catch lane with a safe message.
+msg = run('1.3 Check Provideam rows', {
+  statusCode: 500,
+  payload: '',
+  proofFile: { name: 'New Plan OPT Report 2026-10-29' },
+  _proofStage: 'Provideam report',
+  headers: { apiKey: 'provideam-test-key' }
+});
+assert.equal(msg, null);
+assert.deepEqual(errors.splice(0), ['Provideam HTTP 500']);
+const failed = run('2.1 Report safe failure', {
+  proofFailureReason: 'Provideam HTTP 500',
+  proofFile: { name: 'New Plan OPT Report 2026-10-29' },
+  _proofStage: 'Provideam report',
+  headers: { apiKey: 'provideam-test-key' }
+});
+assert.equal(failed.payload, 'FAILED Provideam report ' +
+  'New Plan OPT Report 2026-10-29: Provideam HTTP 500');
+assert.equal(JSON.stringify(failed).includes('provideam-test-key'), false);
+console.log('PASS: report 23 body built in, rows shown, safe failure');

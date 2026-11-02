@@ -1,34 +1,40 @@
-// Loads the Provideam proof settings and the shared Insights Hub Config.
-// In: manual trigger. Out: one report request body with the day set,
-// the lake base address and the lake folder.
+// Builds the Provideam proof request settings for one report day.
+// In: manual trigger. Out: msg.proof with the API key, URL and the
+// New Plan OPT report body (docs/provideam-samples/23) for DAY.
 var PROVIDEAM_API_KEY = 'PASTE_PROVIDEAM_API_KEY_HERE';
-// Paste one saved body from docs/provideam-samples/<nn>-*.md (JSON text).
-var REPORT_BODY_JSON = 'PASTE_REPORT_BODY_JSON_HERE';
-var REPORT_NAME = 'new-plan-opt-report';
+var REPORT_NAME = 'New Plan OPT Report';
 // Production day YYYY-MM-DD. Empty = yesterday (UTC date).
 var DAY = '';
-var LAKE_FOLDER = 'mufti_test/provideam';
 var PROVIDEAM_URL = 'https://rb-api.provideam.com';
 PROVIDEAM_URL += '/api/v1/Report/ObjectByPeriod';
-var cfg = glob.get('cfg');
+// Machine IDs of the saved report (Hull lines).
+var MACHINE_IDS = '297,164,165,59,65,57,58,167,166,269,270,209,210,154,';
+MACHINE_IDS += '317,295,63,207,221,60,64,169,61,213,214,211,24,206,30,';
+MACHINE_IDS += '31,203,202,42,69,68,218,216,212,38,39,40,200,222,275,';
+MACHINE_IDS += '249,215,43';
+var FIELDS = [
+  'fdYYYYMMDD',
+  'fdAreaName',
+  'fdMachineName',
+  'fdShiftName',
+  'fdShiftStartTime',
+  'fdPartName'
+];
+// Function name and its column index in the saved report.
+var FUNCTIONS = [
+  ['fnGoodParts', 2],
+  ['fnDefectParts', 4],
+  ['fnTarget', 6],
+  ['fnCapacity', 8],
+  ['fnOEE', 10],
+  ['fnTotalTime', 12],
+  ['fnPlannedOpT', 13],
+  ['fnOEETime', 14],
+  ['fnDowntimeUnits', 15]
+];
 
-if (!cfg || cfg.platform !== 'xcelerator' || !cfg.xcTenantId) {
-  msg.proofFailureReason = 'Run Config with xcelerator selected first';
-  node.error(msg.proofFailureReason, msg);
-  return null;
-}
-if (PROVIDEAM_API_KEY.indexOf('PASTE_') === 0 ||
-  REPORT_BODY_JSON.indexOf('PASTE_') === 0) {
-  msg.proofFailureReason = 'Fill in the Provideam proof settings';
-  node.error(msg.proofFailureReason, msg);
-  return null;
-}
-
-var body;
-try {
-  body = JSON.parse(REPORT_BODY_JSON);
-} catch (e) {
-  msg.proofFailureReason = 'REPORT_BODY_JSON is not valid JSON';
+if (PROVIDEAM_API_KEY.indexOf('PASTE_') === 0) {
+  msg.proofFailureReason = 'Fill in PROVIDEAM_API_KEY';
   node.error(msg.proofFailureReason, msg);
   return null;
 }
@@ -43,27 +49,44 @@ if (!/^\d{4}-\d\d-\d\d$/.test(day)) {
   node.error(msg.proofFailureReason, msg);
   return null;
 }
-// Provideam period text: one day as [<day>T00:00:00].
-body.periods = [
-  {
-    periodParam: {
-      pdDay: ['[' + day + 'T00:00:00]']
+
+var body = {
+  userId: 2908,
+  formattedJson: false,
+  applyStdTimeCorrection: true,
+  includeGrandTotals: true,
+  objects: [
+    {
+      objectParam: {
+        obMachineID: MACHINE_IDS.split(',')
+      }
     }
-  }
-];
+  ],
+  fields: FIELDS.map(function (name) {
+    return { fieldName: name };
+  }),
+  functions: FUNCTIONS.map(function (f) {
+    return { funcName: f[0], index: f[1] };
+  }),
+  periods: [
+    {
+      periodParam: {
+        pdDay: ['[' + day + 'T00:00:00]']
+      }
+    }
+  ]
+};
 
 msg.proof = {
   apiKey: PROVIDEAM_API_KEY,
   url: PROVIDEAM_URL,
   body: body,
-  day: day,
-  lakeFolder: LAKE_FOLDER
+  report: REPORT_NAME,
+  day: day
 };
 msg.proofFile = {
-  name: REPORT_NAME + '_' + day + '.json'
+  name: REPORT_NAME + ' ' + day
 };
-msg.lakeBase = 'https://api.eu1.siemens.app/datalake-';
-msg.lakeBase += cfg.xcTenantId + '/v3';
 msg._proofStage = 'settings';
 node.status({ fill: 'green', shape: 'dot', text: 'settings ready' });
 return msg;

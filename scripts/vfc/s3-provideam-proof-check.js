@@ -1,15 +1,15 @@
-// Checks the Provideam response and keeps its text as it came.
-// In: report response as text. Out: the bytes to store and the row count.
+// Checks the Provideam response and shows the report rows.
+// In: report response as text. Out: msg.payload with the report name,
+// day, row count and the rows (processedData) for the debug sidebar.
 if (msg.statusCode !== 200) {
   msg.proofFailureReason = 'Provideam HTTP ' + msg.statusCode;
   node.error(msg.proofFailureReason, msg);
   return null;
 }
 
-var text = String(msg.payload || '');
 var rows;
 try {
-  rows = JSON.parse(text).processedData;
+  rows = JSON.parse(String(msg.payload || '')).processedData;
 } catch (e) {
   msg.proofFailureReason = 'Provideam response is not JSON';
   node.error(msg.proofFailureReason, msg);
@@ -21,14 +21,19 @@ if (!Array.isArray(rows)) {
   return null;
 }
 
-msg.fileBytes = Buffer.from(text, 'utf8');
-msg.fileSize = msg.fileBytes.length;
-msg.rowCount = rows.length;
-delete msg.proof.apiKey;
+msg.payload = {
+  report: msg.proof.report,
+  day: msg.proof.day,
+  rowCount: rows.length,
+  rows: rows
+};
+delete msg.proof;
 delete msg.headers;
-delete msg.payload;
+delete msg.url;
+delete msg.method;
+delete msg._proofStage;
 node.status({
-  fill: 'blue',
+  fill: 'green',
   shape: 'dot',
   text: rows.length + ' rows from Provideam'
 });

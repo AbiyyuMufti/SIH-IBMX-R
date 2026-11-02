@@ -1,22 +1,22 @@
-// Builds a one-report Provideam-to-lake proof flow.
+// Builds a one-report Provideam API proof flow (no lake write).
 // Usage: node scripts/build-vfc-provideam-proof.js
-// Function code: scripts/vfc/s*-proof-*.js. Do not edit the JSON by hand.
+// Function code: scripts/vfc/s*-provideam-proof-*.js and s9-proof-failure.js.
+// Do not edit the JSON by hand.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { validateFlow } from './validate-flow.js';
 import {
-  code, compactLanes, debugStep, fn, http, makeBuilder, rawStep
+  compactLanes, debugStep, fn, makeBuilder, rawStep
 } from './lib-flow-builder.js';
 
 function buildFlow() {
   const b = makeBuilder(31);
-  const flow = 'Provideam lake proof';
+  const flow = 'Provideam API proof';
 
-  b.lane(1, 'ONE-REPORT PROVIDEAM TO LAKE PROOF',
-    'STAGE 1 - call one Provideam report for one day (the pasted saved ' +
-    'body, period replaced) and store the response text as it came in the ' +
-    'lake under mufti_test/provideam. Run the Config tab first with ' +
-    'xcelerator selected. One-shot proof: no schedule, no split of bodies ' +
-    'with more than 18 functions.',
+  b.lane(1, 'ONE-REPORT PROVIDEAM API PROOF',
+    'STAGE 1 - call the Provideam New Plan OPT report (saved body 23, ' +
+    'built in) for one day and show the rows in the debug sidebar. ' +
+    'Only the API key has to be filled in. One-shot proof: no schedule, ' +
+    'no lake write.',
     [
       rawStep('run', {
         type: 'inject',
@@ -53,35 +53,12 @@ function buildFlow() {
       }),
       fn('reportCheck', 'Check Provideam rows',
         's3-provideam-proof-check.js', ['next']),
-      fn('tokenRequest', 'Build lake token request',
-        's2-proof-token-request.js', ['next']),
-      http('tokenHttp', 'POST lake token'),
-      fn('tokenCheck', 'Check lake token',
-        's3-proof-token-check.js', ['next']),
-      fn('lakeUrl', 'Prepare lake upload URL',
-        's4-provideam-proof-lake-url.js', ['next']),
-      http('lakeUrlHttp', 'POST upload URL'),
-      fn('putRequest', 'Prepare signed PUT',
-        's7-proof-put-request.js', ['next']),
-      rawStep('putHttp', {
-        type: 'http request',
-        name: 'PUT signed URL',
-        method: 'use',
-        ret: 'txt',
-        url: '',
-        timeout: '',
-        mindspherePath: '',
-        useMindsphereAuth: false,
-        isAdmin: false
-      }),
-      fn('uploadResult', 'Report upload',
-        's5-provideam-proof-result.js', ['next']),
-      debugStep('successDebug', 'Proof result', 'payload')
+      debugStep('successDebug', 'Show report rows', 'payload')
     ]);
 
   b.lane(2, 'SAFE FAILURE',
     'STAGE 2 - catch failures and report only a short sanitized reason. ' +
-    'API key, tokens and signed URLs are not included.',
+    'The API key is not included.',
     [
       rawStep('catch', {
         type: 'catch',
@@ -100,7 +77,7 @@ function buildFlow() {
     label: flow,
     disabled: false,
     allowCycles: false,
-    info: 'Manual proof: one Provideam report day stored as-is in the lake.'
+    info: 'Manual proof: one Provideam report day called from the VFC.'
   });
   compactLanes(b.nodes);
   return b.nodes;
