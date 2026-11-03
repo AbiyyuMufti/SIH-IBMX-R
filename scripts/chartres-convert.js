@@ -2,10 +2,11 @@
 // report tables Plan_OPT_EU, Time_Utilisation_EU and Daily_Losses_EU, with the
 // columns and types of scripts/lib-pbi-report-schemas.js and Data Source "Excel".
 // Rules and choices: docs/chartres-convert.md. Read only on the workbooks.
-// Usage: node scripts/chartres-convert.js [downloads/Chartres] [out=<new folder>]
-//          [targets=<Target 2026.xlsx>] [years=2025,2026]
+// Usage: node scripts/chartres-convert.js [downloads/01 SITE Chartres] [out=<new folder>]
+//          [targets=<Target 2026.xlsx>] [masterdata=<MASTERDATA.xlsx>] [years=2025,2026]
 // Writes <out>/stage/<table>/site=Chartres/<table>_<YYYY-MM>_excel.json
-// ({schema, rows}) and <out>/checks.csv (days that fail a rule of the entry form),
+// ({schema, rows}), <out>/checks.csv (days that fail a rule of the entry form) and
+// <out>/loss-map.json (each loss column -> the names used, the MASTERDATA match),
 // then `python -I scripts/helper-chartres-write-parquet.py <out>` writes the parquet
 // files under <out>/report/ (the lake layout of docs/report-config.md).
 import { existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'node:fs';
@@ -16,9 +17,10 @@ import { reportPlanSchema, reportUtilSchema, reportLossSchema } from './lib-pbi-
 const args = Object.fromEntries(
   process.argv.slice(2).filter((a) => a.includes('=')).map((a) => a.split(/=(.*)/s).slice(0, 2)),
 );
-const ROOT = process.argv.slice(2).find((a) => !a.includes('=')) ?? 'downloads/Chartres';
+const ROOT = process.argv.slice(2).find((a) => !a.includes('=')) ?? 'downloads/01 SITE Chartres';
 const OUT = args.out ?? 'downloads/chartres-convert/run1';
-const TARGETS = args.targets ?? 'downloads/Copie de Target 2026.xlsx';
+const TARGETS = args.targets ?? join(ROOT, 'Copie de Target 2026.xlsx');
+const MASTERDATA = args.masterdata ?? join(ROOT, 'MASTERDATA.xlsx');
 const YEARS = (args.years ?? '2025,2026').split(',');
 
 // Settings (docs/chartres-convert.md, open decisions of docs/chartres-source-files.md section 5).
@@ -27,7 +29,8 @@ const DATA_SOURCE = 'Excel';
 const FILE_SUFFIX = 'excel';
 // Folder of the group -> AreaName (the names of the macro export and of the target file).
 const AREA = { 'CREAM Chartres': 'CREAM', 'NON TISSE': 'NON WOVEN', 'SKIN CARE': 'SKIN CARE' };
-// Chartres shift type -> report shift name.
+// Chartres shift type -> report shift name. Times (site, 2026-11): Semaine Matin 05-13,
+// Après Midi 13-21, Nuit 21-05; Weekend Matin 05-17, Weekend Nuit 17-05.
 const SHIFTS = {
   'Semaine Matin': 'Day',
   'Semaine Après Midi': 'Afternoon',
@@ -53,6 +56,33 @@ const SUB = {
 const PLANNED_OPT_FROM = 'TOR';
 // Machine Names for Chartres do not exist yet: Dept, Area, Product Type stay empty.
 const MACHINE_INFO = {};
+// English for the machine parts that have no Category row (CUPIDON, DAISY: dropped in 2026,
+// not in MASTERDATA). Our translation, brands kept: to confirm with the site.
+const PART_EN = {
+  APEX: 'APEX',
+  'BALANCE SARTORIUS': 'Sartorius scale',
+  'BOL ÉPONGES': 'Sponge feeder bowl',
+  'CAMÉRA ISI VISION': 'ISI VISION camera',
+  CERMEX: 'CERMEX case packer',
+  'CIM ROBOT TUBES': 'CIM tube robot',
+  'DOMINO - ÉTIQUETTES CAISSES': 'DOMINO case labels',
+  'DOMINO BLISTER': 'DOMINO blister coder',
+  'DOMINO TUBES': 'DOMINO tube coder',
+  'DOMINO ÉTUIS': 'DOMINO carton coder',
+  'EMPILEUR FOUR BFB': 'BFB oven stacker',
+  ETUYEUSE: 'Cartoner',
+  'ETUYEUSE - VERIN SORTIE': 'Cartoner outfeed cylinder',
+  'ETUYEUSE BARILLET': 'Cartoner barrel',
+  'METTLER TRIEUSE': 'METTLER checkweigher',
+  'MÉCA PLASTIQUE': 'MECA PLASTIQUE',
+  'Palettiseur NEWTEC': 'NEWTEC palletiser',
+  'ROBOT Dépose Éponges': 'Sponge placing robot',
+  'SCOTCHEUSE SOCO': 'SOCO case taper',
+  TGM: 'TGM',
+  VIMCO: 'VIMCO',
+};
+// French words left in the English Category names (SACHA lanes).
+const WORD_EN = [[/^Piste /, 'Lane ']];
 
 const walk = (dir) =>
   readdirSync(dir).flatMap((n) => {
@@ -133,16 +163,119 @@ const PREFIX = [
   [/^Maintenance/, 'Planned maintenance', 'Planned losses'],
 ];
 const notInCategory = new Map();
+const MACHINE_LOSS = /^(Dysf|Pannes?|Réglages?) /;
+const toEnglish = (s) => WORD_EN.reduce((t, [re, en]) => t.replace(re, en), s);
 function levels(line, name) {
   const row = catByLine[key(line)]?.get(name) ?? catAll.get(name);
   if (row) {
-    return { l3: row[1] || name, l2: row[3], l1: row[5], machine: /^(Dysf|Pannes?|Réglages?) /.test(name) };
+    return { l3: toEnglish(row[1] || name), l2: row[3], l1: row[5], machine: MACHINE_LOSS.test(name), from: 'Category' };
   }
   notInCategory.set(name, (notInCategory.get(name) ?? 0) + 1);
   const p = PREFIX.find(([re]) => re.test(name)) ?? [null, 'Undefined', 'Unplanned losses'];
-  const machine = p[0] !== null && p[2] === 'Unplanned losses' && /^(Dysf|Pannes?|Réglages?) /.test(name);
-  return { l3: machine ? name.replace(p[0], '') : name, l2: p[1], l1: p[2], machine };
+  const machine = p[0] !== null && p[2] === 'Unplanned losses' && MACHINE_LOSS.test(name);
+  const part = machine ? name.replace(p[0], '') : name;
+  const en = PART_EN[part];
+  return { l3: en ?? part, l2: p[1], l1: p[2], machine, from: en ? 'our translation' : 'block rule, French kept' };
 }
+
+// ---- MASTERDATA (the reason tree of the SIH entry page): the English name of each loss ----
+// Planned and unplanned blocks: Level 1 / Level 2 (EN, FR). Machine block: line, machine,
+// type (Breakdown, Minor Stop, Adjustment), sub part. The workbook losses are per machine:
+// the history gets the machine name, never the sub part. Group / sub group stay the Category
+// ones (the EU classification); MASTERDATA gives the Level 3 name and the Equipment.
+const mdReasons = [];
+const mdMachines = {};
+if (existsSync(MASTERDATA)) {
+  for (const r of readXlsx(MASTERDATA).Downtime_updated.slice(2).map((x) => x.map(norm))) {
+    for (const c of [0, 5]) {
+      if (r[c]) {
+        mdReasons.push({ l1: r[c], l1fr: r[c + 1], l2: r[c + 2], l2fr: r[c + 3] });
+      }
+    }
+    if (r[10] && r[12]) {
+      const list = (mdMachines[key(r[10])] ??= []);
+      if (!list.some((m) => m.en === r[12])) {
+        list.push({ en: r[12], fr: r[13] });
+      }
+    }
+  }
+} else {
+  console.warn(`no MASTERDATA at ${MASTERDATA}: loss names stay the Category ones`);
+}
+// Workbook English name (Category, without ZAC- / EXT-) -> MASTERDATA names with the same
+// meaning; the first one that exists on the line is used. Our proposal: to confirm.
+const SYNONYM = {
+  'Filling machine': ['Filler'],
+  Paletizer: ['Palletiser'],
+  'Capping/Screwing machine': ['Capper / Screw Capper', 'Screw Capper'],
+  'Screwing machine': ['Capper / Screw Capper', 'Screw Capper'],
+  'Caps dispenser': ['Cap Feeder Bowl'],
+  'Pumps dispenser': ['Pump Feeder Bowl'],
+  'Pump dispenser': ['Pump Feeder Bowl'],
+  Weigher: ['Checkweigher'],
+  Weighter: ['Checkweigher', 'Case Checkweigher'],
+  'Case Weigher': ['Case Checkweigher', 'Checkweigher'],
+  'Bottle Weigher': ['Bottle Checkweigher'],
+  'Tube dispenser': ['Tube Dispenser', 'Tubes dispenser'],
+  'Bottle labeller': ['Labeller'],
+  'Case labeller': ['Case Labeller'],
+  'Bottle dater': ['Inkjet Printer'],
+  'Tube dater': ['Inkjet Printer'],
+  'Skillet dater': ['Inkjet Printer'],
+  Dater: ['Inkjet Printer'],
+  Laser: ['Laser Coder'],
+  'Case packer part1': ['Case Erector'],
+  'Case packer part2': ['Case Packer'],
+  'Case packer part3': ['Case Sealer', 'Case Taper'],
+  'Case Closer': ['Case Taper', 'Case Sealer'],
+  'Skilleting machine': ['Skiletting Machine', 'Cartoner'],
+  'Skiletting machine': ['Skiletting Machine', 'Cartoner'],
+  'Spatula dispenser': ['Spatula Dispenser', 'Spatula Applicator'],
+  'Coating dispenser': ['Coater'],
+  'Mixing tank': ['Tank'],
+  Pusher: ['Case Pusher'],
+  'Refilling Materials': ['Refiling materials'],
+  'Annual maintenance': ['Annual preventive maintenance'],
+  'Monthly maintenance': ['Monthly preventive maintenance'],
+  'Other maintenance': ['Other preventive maintenance'],
+  'Planned actions': ['Planned maintenance action'],
+  'Fire alarm': ['Evacuation'],
+};
+const synonymKeys = new Map(Object.entries(SYNONYM).map(([k, v]) => [key(k), v]));
+const PART_PREFIX_FR = /^(Ext ZAC |ZAC - |ZAC )/i;
+const PART_PREFIX_EN = /^(ZAC|EXT) ?- ?/i;
+// Returns { name, l1, method } or null. Methods: same English name, same French name,
+// name contained (shortest MASTERDATA name of 5+ letters inside ours: to confirm).
+function masterdata(line, name, lv) {
+  if (lv.machine) {
+    const list = mdMachines[key(line)] ?? [];
+    const fr = key(name.replace(MACHINE_LOSS, '').replace(PART_PREFIX_FR, ''));
+    const en = key(lv.l3.replace(PART_PREFIX_EN, ''));
+    const hit = list.find((m) => key(m.en) === en) ?? list.find((m) => key(m.fr) === fr);
+    if (hit) {
+      return { name: hit.en, l1: lv.l2, method: key(hit.en) === en ? 'same English name' : 'same French name' };
+    }
+    const syn = (synonymKeys.get(en) ?? []).map((s) => list.find((m) => m.en === s)).find(Boolean);
+    if (syn) {
+      return { name: syn.en, l1: lv.l2, method: 'synonym, to confirm' };
+    }
+    const inside = list
+      .filter((m) => (key(m.fr).length >= 5 && fr.includes(key(m.fr))) || (key(m.en).length >= 5 && en.includes(key(m.en))))
+      .sort((a, b) => b.en.length - a.en.length)[0];
+    return inside ? { name: inside.en, l1: lv.l2, method: 'name contained, to confirm' } : null;
+  }
+  const label = (m) => m.l2 || m.l1;
+  const hit =
+    mdReasons.find((m) => key(label(m)) === key(lv.l3)) ??
+    mdReasons.find((m) => key(m.l2 ? m.l2fr : m.l1fr) === key(name));
+  if (hit) {
+    return { name: label(hit), l1: hit.l1, method: key(label(hit)) === key(lv.l3) ? 'same English name' : 'same French name' };
+  }
+  const syn = (synonymKeys.get(key(lv.l3)) ?? []).map((s) => mdReasons.find((m) => label(m) === s)).find(Boolean);
+  return syn ? { name: label(syn), l1: syn.l1, method: 'synonym, to confirm' } : null;
+}
+// One entry per line and loss column that holds minutes: what the conversion used.
+const lossMap = new Map();
 
 // ---- One Base row -> rows of the three tables ----
 const out = { Plan_OPT_EU: {}, Time_Utilisation_EU: {}, Daily_Losses_EU: {} };
@@ -151,6 +284,7 @@ const add = (table, iso, row) => {
 };
 const checks = [['file', 'date', 'rule', 'detail']];
 const dupes = [];
+const days = [];
 const sum = { days: 0, plan: 0, util: 0, loss: 0 };
 
 for (const f of files.filter((x) => YEARS.includes(x.year))) {
@@ -298,6 +432,31 @@ for (const f of files.filter((x) => YEARS.includes(x.year))) {
       const lv = levels(machine, h[i]);
       const group = GROUP[lv.l1] ?? lv.l1;
       const sub = SUB[lv.l2] ?? lv.l2;
+      const md = masterdata(machine, h[i], lv);
+      const l3 = md?.name ?? lv.l3;
+      const mapKey = `${machine}|${h[i]}`;
+      const entry = lossMap.get(mapKey) ?? {
+        line: machine,
+        group: AREA[f.group] ?? f.group,
+        column: h[i],
+        categoryL1: lv.l1,
+        categoryL2: lv.l2,
+        categoryL3: lv.l3,
+        from: lv.from,
+        machineLoss: lv.machine,
+        mdName: md?.name ?? null,
+        mdLevel1: md?.l1 ?? null,
+        mdMethod: md?.method ?? (mdMachines[key(machine)] || !lv.machine ? 'no match' : 'line not in MASTERDATA'),
+        OEELossLvl3Group: group,
+        OEELossLvl3SubGroup: sub,
+        OEELossLvl3Desc: l3,
+        Equipment: lv.machine ? l3 : 'Unclassed',
+        rows: 0,
+        minutes: 0,
+      };
+      entry.rows += 1;
+      entry.minutes += minutes;
+      lossMap.set(mapKey, entry);
       add('Daily_Losses_EU', iso, {
         Date: dayNumber(iso),
         Time: null,
@@ -307,7 +466,7 @@ for (const f of files.filter((x) => YEARS.includes(x.year))) {
         ShiftName: null,
         OEELossLvl3Group: group,
         OEELossLvl3SubGroup: sub,
-        OEELossLvl3Desc: lv.l3,
+        OEELossLvl3Desc: l3,
         Duration: minutes * 60000,
         SiteName: SITE,
         'Unique Machine Name': unique,
@@ -315,16 +474,16 @@ for (const f of files.filter((x) => YEARS.includes(x.year))) {
         ShiftStartDate: dayNumber(iso),
         Comment: null,
         'Product Key': null,
-        'Volume Key': `${dmy(iso)} ${machine} ${group} ${sub} ${lv.l3}`,
+        'Volume Key': `${dmy(iso)} ${machine} ${group} ${sub} ${l3}`,
         'Loss Units': main?.speed ? main.speed * minutes : null,
         'Time in Mins': minutes,
-        'Equipment Loss Key': `${machine} ${lv.l3}`,
-        Equipment: lv.machine ? lv.l3 : 'Unclassed',
-        'Lvl 3 Loss Name': lv.l3,
+        'Equipment Loss Key': `${machine} ${l3}`,
+        Equipment: lv.machine ? l3 : 'Unclassed',
+        'Lvl 3 Loss Name': l3,
         'Loss Target Key': `${unique} ${sub} 01/${iso.slice(5, 7)}/${iso.slice(0, 4)}`,
         Value: null,
         'Volume Total': capacityDay,
-        'Loss Final Level': lv.l3,
+        'Loss Final Level': l3,
         ...machineCols,
         'Data Source': DATA_SOURCE,
         'In EU Report': true,
@@ -343,6 +502,27 @@ for (const f of files.filter((x) => YEARS.includes(x.year))) {
     if (tu + lossMinutes !== tor) fail('TU + NR + losses = TOR', `${tu} + ${lossMinutes} vs ${tor} (NR ${nr})`);
     if (slotTime !== tor) fail('sum of product Temps = TOR', `${slotTime} vs ${tor}`);
     if (Math.round(num(v(r, 'OEE')) * tor) !== tu) fail('TU = round(OEE x TOR)', `${tu} vs ${num(v(r, 'OEE'))} x ${tor}`);
+    // One line per day for the review (scripts/chartres-review.js): the Base row and our totals.
+    days.push({
+      file: f.path.slice(ROOT.length + 1),
+      baseRow: base.indexOf(r),
+      line: machine,
+      group: AREA[f.group] ?? f.group,
+      date: iso,
+      TOP: top,
+      TOR: tor,
+      TU: tu,
+      NR: nr,
+      closed,
+      oeeBase: num(v(r, 'OEE')),
+      products: slots.length,
+      slotTime,
+      lossMinutes,
+      lossLoaded: lossCols.reduce((s, i) => s + Math.max(num(r[i]), 0), 0),
+      goodParts: slots.reduce((s, x) => s + Math.round(x.volume - x.waste), 0),
+      capacity: capacityDay,
+      waste: slots.reduce((s, x) => s + x.waste, 0),
+    });
   }
 }
 
@@ -367,6 +547,16 @@ for (const [table, months] of Object.entries(out)) {
 }
 const csv = (rows) => rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
 writeFileSync(join(OUT, 'checks.csv'), `${csv(checks)}\n`);
+const lossList = [...lossMap.values()];
+writeFileSync(join(OUT, 'loss-map.json'), JSON.stringify(lossList, null, 1));
+writeFileSync(join(OUT, 'days.json'), JSON.stringify({ root: ROOT, dupes, days }));
+const byMethod = {};
+for (const e of lossList) {
+  byMethod[e.mdMethod] ??= { names: 0, rows: 0 };
+  byMethod[e.mdMethod].names += 1;
+  byMethod[e.mdMethod].rows += e.rows;
+}
+console.log(`MASTERDATA match (line x loss column, loss rows): ${JSON.stringify(byMethod)}`);
 console.log(`days ${sum.days}, rows: plan ${sum.plan}, time ${sum.util}, losses ${sum.loss}; ${fileCount} files in ${OUT}/stage`);
 console.log(`form rules failed: ${checks.length - 1} (see ${OUT}/checks.csv)`);
 console.log(`dates entered twice (newest saving kept): ${dupes.length} ${dupes.join(', ')}`);

@@ -11,7 +11,7 @@ import { join } from 'node:path';
 import { readXlsx } from './lib-office.js';
 import { profileFile } from './chartres-profile.js';
 
-const ROOT = 'downloads/Chartres';
+const ROOT = 'downloads/01 SITE Chartres';
 const REFERENCE = 'CREAM Chartres/2026/SAISIE OEE/OEE IWKA 2 - 2026.xlsm';
 const OUT = process.argv[2] ?? 'downloads/chartres-base-columns.json';
 // Output of scripts/helper-chartres-vba-extract.py (the VBA source, read not run).
@@ -105,10 +105,10 @@ const FIXED = {
   MOIS: ['Month', 'number', 'Month of the day, 1 to 12', 'Date (all tables)', FILE],
   SEMAINE: ['Week', 'number', 'ISO week number of the day', 'not used', FILE],
   JOUR: ['Day', 'number', 'Day of the month', 'Date (all tables)', FILE],
-  TOP: ['TOP, planned opening time', 'minutes', "Temps d'Ouverture Planifié, typed in the form (Temp0). The form refuses the day unless TOR + the not-counted time (LR to LW) = TOP", 'Time_Utilisation_EU (Total Time Total, candidate)', CODE],
-  TOR: ['TOR, real opening time', 'minutes', "Temps d'Ouverture Réel = TOP minus the four not-counted items (Temp15 to Temp18), computed by the form. Must equal TU + NR + the eight loss totals, and the sum of Temps over the product slots", 'Time_Utilisation_EU (Total Time Total, Planned OPT Total: to decide)', CODE],
+  TOP: ['TOP, planned opening time', 'minutes', "Temps d'Ouverture Planifié, typed in the form (Temp0). The form refuses the day unless TOR + the not-counted time (LR to LW) = TOP", 'Time_Utilisation_EU: not loaded. The site: TOP is only used to validate that the registered times are correct', CODE],
+  TOR: ['TOR, real opening time', 'minutes', "Temps d'Ouverture Réel = TOP minus the four not-counted items (Temp15 to Temp18), computed by the form. Must equal TU + NR + the eight loss totals, and the sum of Temps over the product slots", 'Time_Utilisation_EU (Total Time Total, Planned OPT Total). The site: OEE is always calculated on TOR', CODE],
   TU: ['TU, useful time', 'minutes', 'Temps Utile, typed in the form (Temp2). The form refuses the day unless TU = Round(OEE x TOR), with OEE = sum of (Volume - Déchets) / sum of (Vitesse x Temps) of the day (sheet OEE, C33)', 'Time_Utilisation_EU (OEE Time Total)', CODE],
-  NR: ['NR, not reported', 'minutes', 'Typed in the form (TempsNR1) and counted with the losses (Pertes) that must fill TOR - TU. The macro writes it as loss "Undefined". Can be negative (seen: -1). The name NR is not spelled out in the code (probably Non Renseigné)', LOSS, INFER],
+  NR: ['NR, not reported', 'minutes', 'Typed in the form (TempsNR1) and counted with the losses (Pertes) that must fill TOR - TU. The macro writes it as loss "Undefined". Can be negative (seen: -1). NR = Non Renseigné, confirmed by the site (downtime with no reason given)', LOSS, CODE],
   'Démarrage Ligne': ['Line start-up', 'minutes', 'Time to start the line', LOSS, FILE],
   'Arrêt Ligne': ['Line shut-down', 'minutes', 'Time to stop the line at the end of production', LOSS, FILE],
   Pauses: ['Breaks', 'minutes', 'Meal and break time', LOSS, FILE],

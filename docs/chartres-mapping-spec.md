@@ -21,10 +21,10 @@
 | Name in `Base` | Meaning | Use |
 |---|---|---|
 | `ANNEE`, `MOIS`, `JOUR` | year, month, day | **the date of the row**. Do not use the stored `Date` column: it is one day off on some rows |
-| `TOP` | planned opening time, minutes | check only |
-| `TOR` | real opening time = TOP minus not-counted time; OEE is calculated on it | Total Time of the day |
-| `TU` | useful time (TU = round(OEE x TOR)) | OEE Time of the day |
-| `NR` | downtime with no reason given (Non Renseigné, to confirm with the site). Can be negative | a loss row |
+| `TOP` | planned opening time, minutes (Temps d'Ouverture Planifié: the standard time of the shift planned that day). Site: only used to validate that the registered times are correct | check only |
+| `TOR` | real opening time (Temps d'Ouverture Réel) = TOP minus not-counted time. Site: OEE is always calculated on TOR, never on TOP | Total Time of the day |
+| `TU` | useful time (Temps Utile; TU = round(OEE x TOR), so it also takes out slow speed and waste, not only stops: confirmed by the site) | OEE Time of the day |
+| `NR` | downtime with no reason given (Non Renseigné, confirmed by the site). Can be negative | a loss row |
 | From the column after `NR` up to the column before `Code PF1 Semaine Matin` | loss columns, minutes (Organisation, Changement, Rupture, Qualité, `Dysf <part>`, `Panne <part>`, `Réglages <part>`, Maintenance) | loss rows. Skip the three count columns whose name starts with `Nbre` |
 | `<Field> PF<k> <Shift>` | product slot k (1 to 4) of a shift. Fields: `Code`, `Temps`, `Volume`, `Déchets`, `Nom`, `Nom Formule`, `Caisse`, `Format`, `Vitesse` | plan rows |
 | `Total Temps Fermeture` | not-counted time = TownHall, planned trials, training, validation, spare (`SUM(LR:LW)`) = TOP - TOR | check only, not a loss |
@@ -174,9 +174,7 @@ Test oracle: the CREAM 2026 daily macro exports (`SAISIE OEE/PlanOpt/*_plan_opt.
 `report/<table>/site=Chartres/<table>_<YYYY-MM>_excel.parquet`, one file per table and month. The Chartres path format from the site is still to come: check before uploading.
 
 ## 8. Open points (change the rule, then rerun)
-- Meaning of TOP / TOR / TU / NR (asked to the site).
-- Shift start and end times; Day / Afternoon / Night naming of the 5 shift types.
-- Total Time and Planned OPT: TOR (current) or TOP.
+- Answered by the site (2026-11): TOP / TOR / TU / NR as read, OEE always on TOR (so Total Time and Planned OPT = TOR is right), shift times: Semaine Matin 05:00-13:00, Semaine Après Midi 13:00-21:00, Semaine Nuit 21:00-05:00, Weekend Matin 05:00-17:00, Weekend Nuit 17:00-05:00 (Day / Afternoon / Night naming fits).
 - Which entry of a repeated day is right.
 - Split of NON TISSE machine waste per product (current: by volume).
 - 2025 targets (current: 2026 values).

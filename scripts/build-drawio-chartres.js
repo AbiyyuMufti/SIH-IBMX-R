@@ -502,7 +502,7 @@ let y5 = flow(p5, 140, [
 y5 = mapping(p5, y5, [
   ['Date', '2026-10-23', 'ANNEE / MOIS / JOUR (or column Date)', 'have', 'Excel serial number in the macro sheets; text YYYY-MM-DD in the table'],
   ['MachineName', 'IWKA 2', 'line name from the file name "OEE IWKA 2 - 2026"', 'fixed', 'check it equals the report name in Machine Names'],
-  ['ShiftName', 'Day (Semaine Matin; macro: 1)', 'shift type: Matin = Day, Après Midi = Afternoon, Nuit = Night (weekday and weekend)', 'fixed', 'built 2026-10-26 (constant SHIFTS); shift times asked to the site'],
+  ['ShiftName', 'Day (Semaine Matin; macro: 1)', 'shift type: Matin = Day, Après Midi = Afternoon, Nuit = Night (weekday and weekend)', 'fixed', 'built 2026-10-26 (constant SHIFTS); times from the site: Semaine Matin 05-13, Après Midi 13-21, Nuit 21-05, Weekend Matin 05-17, Weekend Nuit 17-05'],
   ['AreaName', 'CREAM', 'the group: CREAM, NON WOVEN, SKIN CARE', 'fixed', 'names of the macro export and of the site target file'],
   ['PartName', '<Nom PF1 Semaine Matin>', 'Nom PF<n> <shift>', 'test', 'the form fills it from Data (column I in the IWKA 2 layout). The macro writes another Data column instead (D, B or M per file), so macro PartName is not a product name everywhere'],
   ['Good Parts', '3006', 'Volume PF1 Semaine Matin, minus Déchets PF1 Semaine Matin (net, built)', 'have', 'the macro writes Volume without waste (equal on all rows of 10 files); the workbook OEE (sheet OEE) uses Volume - Déchets, so net is the consistent choice'],
@@ -586,7 +586,8 @@ const QUESTIONS = [
   ['have', 'ANSWERED. Targets 2026 received (Copie de Target 2026.xlsx): monthly OEE target per line, used for 2025 too. Chartres moves to OEE entry in SIH: no automation of the workbooks.'],
   ['have', 'CONFIRMED FROM THE FILES. TOR = TOP - Temps fermeture (TownHall, trials, training, validation, Libre). OEE is on TOR. Good parts = Volume - Déchets (sheet OEE). NR is Level 3 Undefined, Unplanned losses.'],
   ['test', 'BUILT. Total Time and Planned OPT = TOR. Shift types -> Day / Afternoon / Night. Losses without shift, part, time. Not-counted time out of the losses. Failing days loaded and listed (checks.csv); a day entered twice: newest saving kept.'],
-  ['warn', 'ASKED TO THE SITE. Meaning of TOP, TOR, TU, NR; shift times; which entry of a repeated day is right; failing days known errors?; split of NON TISSE machine waste per product; 2025 targets; date of the move to SIH; use of Libre 1 on ZEUS.'],
+  ['have', 'ANSWERED BY THE SITE (2026-11). TOP = planned time of the shift (only used to validate the registered times), TOR = TOP minus TownHall, trials, training, validation, TU = OEE x TOR, NR = Non Renseigné. OEE is always on TOR. Shift times: Semaine Matin 05-13, Après Midi 13-21, Nuit 21-05, Weekend Matin 05-17, Weekend Nuit 17-05.'],
+  ['warn', 'STILL ASKED. Which entry of a repeated day is right; failing days known errors?; split of NON TISSE machine waste per product; 2025 targets; date of the move to SIH; use of Libre 1 on ZEUS.'],
   ['warn', 'OPEN. Reference file (Dept, Area, Product Type) and the path format of Chartres. Tell the site about the LineLosses lookup bug, the CLÉOPATRE name, the empty ZEUS module, CUMULUS and HOME 2 without close event.'],
 ];
 let y8 = 100;
@@ -597,6 +598,61 @@ QUESTIONS.forEach(([level, text], i) => {
   y8 += h + 8;
 });
 
-const pages = [p1, p2, p2b, p3, p4, p5, p6, p7, p8];
+// ---- Page 0: overview for the site (meeting 2026-11-03) ----------------------------
+// Every report table of the EU dashboards and what Chartres can feed it from.
+const p0 = new Page('0 Overview', 0);
+title(p0, 'Chartres: which SIH report tables the workbooks can fill',
+  'Run 2026-11-03 (scripts/chartres-convert.js, run5): 36 workbooks, 2025 and 2026, 7,163 days. Draft for review: nothing is in SIH yet. '
+  + 'The values per day are in prompt-response/chartres-review-for-laura.xlsx.');
+const LEGEND0 = [
+  ['have', 'BUILT (DRAFT, IN REVIEW)'],
+  ['test', 'POSSIBLE, NOT BUILT'],
+  ['warn', 'WAITING FOR A FILE FROM THE SITE'],
+  ['none', 'NO SOURCE IN THE CHARTRES FILES'],
+];
+LEGEND0.forEach(([level, label], i) => {
+  p0.box(40 + i * 240, 90, 230, 30, bold(label), level, 'fontSize=9;');
+});
+const SOURCES0 = [
+  ['have', bold('OEE <line> - <year>.xlsm, sheet Base') + '<br>One row = one line and one day: TOP, TOR, TU, NR, OEE; 5 shift types x 4 products (code, time, volume, waste, speed); minutes per loss column (French names).'],
+  ['have', bold('Same workbook, sheet Data') + '<br>One row per product: SKU code, brand, family, format, case, product name, speed.'],
+  ['have', bold('Same workbook, sheet Category') + ' + ' + bold('MASTERDATA.xlsx') + '<br>Loss names French to English; MASTERDATA = the SIH reason tree (English names used where they match).'],
+  ['have', bold('Copie de Target 2026.xlsx') + '<br>Monthly OEE target per line (2025 uses 2026).'],
+  ['warn', bold('Glidepaths and reference file (coming)') + '<br>PDT / UPDT targets; Dept, Area, Product Type of each line; path format.'],
+  ['test', bold('DOR <group>.xlsm 2024, sheet TRS') + '<br>Line, day, TO, TU per day: OEE only (no availability, performance).'],
+];
+const TABLES0 = [
+  ['have', bold('Time_Utilisation_EU') + ' (7,163 rows)<br>One row per line and day. TU, TOR. ' + small('From: Base')],
+  ['have', bold('Plan_OPT_EU') + ' (22,141 rows)<br>One row per product of the day. Good Parts = volume - waste, Capacity = speed x time, OEE Target. ' + small('From: Base, Data, Target 2026')],
+  ['have', bold('Daily_Losses_EU') + ' (77,122 rows)<br>One row per loss column with minutes (per day: no shift, no product). MASTERDATA: 51 % same name, 26 % proposed, 23 % to name. ' + small('From: Base, Category, MASTERDATA')],
+  ['have', bold('Volume_CoV_EU') + ' (13,466 rows)<br>One row per day, shift and line: sum of Good Parts, largest Capacity. ' + small('From: our Plan_OPT_EU rows (same rule as the other sites)')],
+  ['have', bold('Format_List_EU') + ' (826 rows)<br>One row per line and product: brand, unit size (format), units per case. ' + small('From: sheet Data of each workbook (no BRAND column for IWKA, CUMULUS, OLYMPE, DAISY, CUPIDON); mapping to check with the site')],
+  ['warn', bold('Site_PDT_Targets, Site_UPDT_Targets') + '<br>Planned / unplanned downtime target per line and month. ' + small('From: the Glidepaths of Chartres (the target file has OEE only)')],
+  ['test', bold('Historical_OEE_EU') + ' (optional)<br>Daily OEE before 2025. ' + small('From: DOR files 2024, sheet TRS (OEE only; availability and performance empty)')],
+  ['none', bold('Run_Rates_EU') + '<br>One row per machine and HOUR. ' + small('The workbooks hold one value per day: no hourly data. Comes with the SIH entry, or stays empty for the history')],
+  ['warn', bold('pbi_machine_names (reference)') + '<br>Dept, Area, Product Type per line, the SIH asset name. ' + small('From: the reference file of Chartres (coming)')],
+];
+const LAKE0 = bold('SIH data lake') + '<br>report/<table>/site=Chartres/...<br>Data Source = Excel. All values in English, read by the Tableau EU report.<br><br>'
+  + small('Upload after the site review. New days: entered in SIH (French entry page, English storage).');
+let ys = 150;
+p0.text(40, 130, 420, 20, bold('Chartres files'));
+for (const [level, html] of SOURCES0) {
+  const h = fit(420, html) + 10;
+  p0.box(40, ys, 420, h, html, level, 'verticalAlign=top;');
+  ys += h + 20;
+}
+p0.text(540, 130, 560, 20, bold('Report tables of the EU dashboards'));
+const lake0 = p0.box(1180, 150, 320, fit(320, LAKE0) + 20, LAKE0, 'fixed', 'verticalAlign=top;');
+let y0 = 150;
+for (const [level, html] of TABLES0) {
+  const h = fit(560, html) + 10;
+  const t = p0.box(540, y0, 560, h, html, level);
+  if (level === 'have') {
+    p0.edge(t, lake0);
+  }
+  y0 += h + 16;
+}
+
+const pages = [p0, p1, p2, p2b, p3, p4, p5, p6, p7, p8];
 writeFileSync(OUTPUT, `<mxfile host="build-drawio-chartres.js">${pages.map((p) => p.xml()).join('')}</mxfile>`);
 console.log(`Wrote ${OUTPUT} (${pages.length} pages)`);

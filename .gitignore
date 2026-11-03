@@ -22,3 +22,9 @@ graphify-out/
 session_handover/
 # exports of the shift report tables for the notebook (real values)
 *.png
+# Chartres review for the site (real values, scripts/chartres-review.js)
+prompt-response/chartres-review-for-laura.xlsx
+prompt-response/chartres-how-it-works.html
+prompt-response/chartres-how-it-works-for-laura.html
+prompt-response/chartres-how-it-works-for-laura.pdf
+prompt-response/chartres-how-it-works-for-laura.pptx

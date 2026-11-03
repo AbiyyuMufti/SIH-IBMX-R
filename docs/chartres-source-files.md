@@ -170,16 +170,18 @@ Answered by the site on 2026-10-26:
 3. Glidepaths (targets), the path format and the reference file for Chartres exist and will be shared in a few days. This settles the Dept, Area, Product Type, report name and target columns once they arrive.
 
 Built with these choices on 2026-10-26 (the proposals; [chartres-convert.md](chartres-convert.md), each a constant at the top of the script):
-1. Total Time and Planned OPT of Time_Utilisation_EU = TOR (the base of the workbook OEE; the slot times add up to TOR). TOP is not loaded.
+1. Total Time and Planned OPT of Time_Utilisation_EU = TOR (the base of the workbook OEE; the slot times add up to TOR). TOP is not loaded. Confirmed by the site: OEE is always on TOR.
 2. Good Parts net of waste (Volume - Déchets). Confirmed by the files: the sheet `OEE` uses Volume Réel = Volume Annoncé - Déchets, and TU = round(OEE x TOR).
 3. Days that fail the form rules are loaded and listed in `checks.csv`. A day entered twice: the newest saving is kept (19 cases with the date from ANNEE / MOIS / JOUR; the earlier count of 9 used the stored Date, which is one day off on some rows). NR below 0 (910 days) is not loaded as a loss.
 4. Losses: ShiftName, PartName and Time empty.
-5. Shift types: weekday and weekend morning = Day, afternoon = Afternoon, weekday and weekend night = Night (MASTERDATA `Plant` lists the five Chartres names).
+5. Shift types: weekday and weekend morning = Day, afternoon = Afternoon, weekday and weekend night = Night (MASTERDATA `Plant` lists the five Chartres names). Times confirmed by the site: Semaine Matin 05-13, Après Midi 13-21, Nuit 21-05, Weekend Matin 05-17, Weekend Nuit 17-05.
 6. Not-counted time (Temps fermeture = TownHall, trials, training, validation, Libre 1 and 2 = TOP - TOR) is not in the losses.
 
 Confirmed from the files (no need to ask): TOR = TOP - Temps fermeture (`Total Temps Fermeture = SUM(LR:LW)`; the form message says "le temps d'ouverture planifié et la somme des temps de fermeture ne correspondent pas"); the OEE is on TOR; NR is in the Category sheet as Level 3 `Undefined`, Unplanned losses. `Temps non compté Libre 1` holds minutes on 2 days only (ZEUS 2026, 15 and 20), Libre 2 never.
 
-Asked to the site (2026-10-26, the user's chat): the meaning of the abbreviations (our reading: TOP = Temps d'Ouverture Planifié, TOR = Temps d'Ouverture Réel, TU = Temps Utile, NR = Non Renseigné: downtime with no reason given, 0.3 % of TOR, above 0 on 22 % of days), the start and end time of the five shifts, which of two entries of one day is right, whether failing days are known errors, a rule to split the NON TISSE machine waste per product, 2025 targets, the date Chartres moves to OEE entry in SIH, what `Libre 1` was used for on ZEUS.
+Answered by the site (the user's chat, 2026-11): TOP = Temps d'Ouverture Planifié, the standard time of the shift planned that day, only used to validate that the registered times are correct; TOR = Temps d'Ouverture Réel (TOP minus TownHall, trials, training, validation); TU = Temps Utile (TU = OEE x TOR, so it also takes out slow speed and waste, not only stops); NR = Non Renseigné (downtime with no reason given, counted with the losses). OEE is always calculated on TOR, never on TOP. Shift times: Semaine Matin 05:00-13:00, Semaine Après Midi 13:00-21:00, Semaine Nuit 21:00-05:00, Weekend Matin 05:00-17:00, Weekend Nuit 17:00-05:00. This settles proposals 1 and 5 above.
+
+Still asked, no answer yet: which of two entries of one day is right, whether failing days are known errors, a rule to split the NON TISSE machine waste per product, 2025 targets, the date Chartres moves to OEE entry in SIH, what `Libre 1` was used for on ZEUS.
 
 Still open for us: tell the site about the LineLosses lookup bug, the CLÉOPATRE machine name and the empty ZEUS module; CUMULUS and HOME 2 without a close event.
 
