@@ -690,3 +690,10 @@ Tried: Power BI flow with `Keep dim_asset` expecting an array. Error: "the file 
 - Built tab `Provideam fetch` (50 nodes): daily 07:00 UTC, last 3 production days from 2026-11-01, day files `<type>_<YYYY-MM-DD>.csv`, job `{sites, days}` to both build tabs through their BACKFILL link ins. Build tabs accept days; listener tab and job queue removed; Run monitor derives `quiet` from the last log line. Config `provideam: {baseUrl, apiKey}` (hidden by the monitor). Bodies and `report_scope.csv` uploaded to the lake. Run rates of the October month file got 1 Nov 00:00-05:00 (production day 31 Oct). Doc `docs/provideam-fetch.md`.
 - `test-vfc-monitor.js` had a fixed date (2026-10-22) that the 7-day status pruning now removes: failed on master before this change; fixed with the current time.
 - Next: the user imports Config, both build tabs, Provideam fetch, Run monitor; deletes the listener; connects the BACKFILL links; dry run, then backfill 1-2 Nov. Then the SIH daily tab to the Segun schema (`pbiPlanSchema`, `pbiLossSchema`). Chartres and Novy Dwor config postponed (user).
+
+## Provideam fetch run in the VFC (2026-11-03)
+- Done by Claude through Chrome on the user's go: imports were already in place, `Apply` on Config (without it: "fill in provideam.apiKey"), dry run 16 of 16 calls, real write of the 16 source files, both build tabs started through the link outs, `DRY_RUN` set to false by hand in the three tabs (user approved in chat; repo default stays true).
+- Checked read-only: day files 1 and 2 Nov against the October month files for 5 tables, both sites: same columns, blank pattern, `Data Source`, value ranges. Log notes (Format List, Machine Names, Symex suite-Hull target) are counters. Not checked: values line by line against the API.
+- Failed attempts: Monaco autocomplete mangled a typed line (`trfalseue`): select the line with End + Shift+Home and retype it. Tab switches in the VFC often need two clicks.
+- Next: SIH daily tab to the Segun schema (`pbiPlanSchema`, `pbiLossSchema`). Chartres and Novy Dwor config postponed. Look at the 3 Nov 07:00 UTC run (2 Nov refetched as a full day).
+
