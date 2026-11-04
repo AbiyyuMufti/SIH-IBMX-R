@@ -140,20 +140,64 @@ const contentSlide = (title, notes) => {
   });
 }
 
+// ---- 2b. Overview: how the columns flow into the tables ----
+{
+  // Columns that ever held minutes, per line: the range over all lines.
+  const perLine = {};
+  JSON.parse(readFileSync(join(OUT, 'loss-map.json'), 'utf8')).forEach((e) => {
+    const c = (perLine[e.line] ??= { planned: 0, unplanned: 0 });
+    c[e.OEELossLvl3Group === 'Planned Loss' ? 'planned' : 'unplanned'] += 1;
+  });
+  const range = (k) => {
+    const v = Object.values(perLine).map((c) => c[k]);
+    return `${Math.min(...v)} to ${Math.max(...v)}`;
+  };
+  const s = contentSlide(
+    'Overview: where the columns go',
+    'The sheet Base has 383 columns per line (404 for some NON TISSE lines). About 285 are loaded. Losses are one column per stop type, but only the columns with minutes above 0 become a row in Daily_Losses_EU. Products are 5 shift types x 4 product slots x 6 fields; only the filled slots become rows in Plan_OPT_EU.',
+  );
+  const o = { fontSize: 10.5 };
+  const b = { fontSize: 10.5, bold: true };
+  const g = { fontSize: 10.5, color: C.accent4 };
+  const mid = { align: 'center' };
+  const body = [
+    [cell('Date: year, month, day', o), cell('3', { ...o, ...mid }), cell('every table', b), cell('Date (text YYYY-MM-DD)', o)],
+    [cell('Times: TOR, TU, OEE', o), cell('3', { ...o, ...mid }), cell('Time_Utilisation_EU', b), cell('Total Time, Planned OPT, OEE Time, OEE. 1 row per line and day', o)],
+    [cell('Products per shift: code, name, volume, waste, speed, time', o), cell('120 (5×4×6)', { ...o, ...mid }), cell('Plan_OPT_EU', b), cell('Shift, PartName, Good Parts, Capacity, Total Time. 1 row per product and shift (filled slots only)', o)],
+    [cell('Planned losses in minutes: cleaning, changeovers, start-up, planned maintenance', o), cell(`${range('planned')} used per line`, { ...o, ...mid }), cell('Daily_Losses_EU', b), cell('Type "Planned Loss", name, minutes. 1 row per column with minutes above 0', o)],
+    [cell('Unplanned losses in minutes: stops, breakdowns, adjustments, slow speed, shortages, NR', o), cell(`${range('unplanned')} used per line`, { ...o, ...mid }), cell('Daily_Losses_EU', b), cell('Type "Unplanned Loss", name, minutes. Same rule', o)],
+    [cell('No column: calculated from the product rows', o), cell('0', { ...o, ...mid }), cell('Volume_CoV_EU', b), cell('Good Parts Sum and Cap Max per shift', o)],
+    [cell('Sheet Data (not Base): brand, size, units per case', o), cell('-', { ...o, ...mid }), cell('Format_List_EU', b), cell('Brand, Unit Size, Unit Count/Format', o)],
+    [cell('Not loaded: totals, checks, TOP, people, safety, counters', g), cell('about 100', { ...g, ...mid }), cell('none', g), cell('Used by the entry form to check the day, or empty', g)],
+  ];
+  s.addTable(
+    [
+      [
+        ...['Topic in your workbook (sheet Base)', 'Columns used'].map((t) => ({ text: t, options: { fontSize: 11, bold: true, color: C.background1, fill: { color: C.accent2 }, valign: 'middle' } })),
+        ...['Goes to table', 'What lands there'].map((t) => ({ text: t, options: { fontSize: 11, bold: true, color: C.background1, fill: { color: C.accent1 }, valign: 'middle' } })),
+      ],
+      ...body,
+    ],
+    { x: 0.5, y: 1.1, w: 9, colW: [3.0, 1.2, 1.6, 3.2], rowH: 0.36, border: { type: 'solid', pt: 0.75, color: C.background2 }, objectName: 'Overview table' },
+  );
+  s.addText('Of the 383 columns of a CREAM workbook, about 285 are used. A stop column with 0 minutes on a day gives no row.', { x: 0.5, y: 5.12, w: 8.4, h: 0.3, fontSize: 11, bold: true, color: C.text1, isTextBox: true, margin: 0, objectName: 'Overview note' });
+}
+
 // ---- 3. The day ----
 {
-  const s = contentSlide('The day: 1 row in SIH', 'Time_Utilisation_EU. Total Time is TOR and OEE Time is TU. OEE is always TU / TOR, as you confirmed.');
+  const s = contentSlide('The day: 1 row in Time_Utilisation_EU', 'Time_Utilisation_EU. Total Time is TOR and OEE Time is TU. OEE is always TU / TOR, as you confirmed.');
   s.addText('In your workbook', { x: 0.5, y: 1.2, w: 4.2, h: 0.35, fontSize: 16, bold: true, color: C.accent2, isTextBox: true, margin: 0, objectName: 'Left label' });
   s.addText('In SIH', { x: 5.3, y: 1.2, w: 4.2, h: 0.35, fontSize: 16, bold: true, color: C.accent1, isTextBox: true, margin: 0, objectName: 'Right label' });
   s.addTable([head(['Workbook', 'Value'], C.accent2), ...dayBlock.rows.map((r) => [cell(r[0].replace(/\s+/g, ' ')), cell(r[1], { align: 'right', bold: true })])], { x: 0.5, y: 1.6, w: 4.2, colW: [3.0, 1.2], rowH: 0.45, border: { type: 'solid', pt: 0.75, color: C.background2 }, objectName: 'Workbook values' });
   s.addShape(pres.ShapeType.rightArrow, { x: 4.8, y: 2.5, w: 0.4, h: 0.4, fill: { color: C.accent4 }, line: { color: C.accent4 }, objectName: 'Arrow' });
   s.addTable([head(['SIH column', 'Value'], C.accent1), ...dayBlock.rows.map((r) => [cell(r[3].replace(/\s+/g, ' ')), cell(r[4], { align: 'right', bold: true })])], { x: 5.3, y: 1.6, w: 4.2, colW: [3.0, 1.2], rowH: 0.45, border: { type: 'solid', pt: 0.75, color: C.background2 }, objectName: 'SIH values' });
-  noteBox(s, 'TOP (planned time) and the not-counted time are only used to check the day. OEE is always on TOR: you confirmed it.', 3.75, 'Rule');
+  noteBox(s, 'Table Time_Utilisation_EU: 1 row per line and day, made from 3 columns of your workbook (TOR, TU, OEE).', 3.6, 'Table note');
+  noteBox(s, 'TOP (planned time) and the not-counted time are only used to check the day. OEE is always on TOR: you confirmed it.', 4.4, 'Rule');
 }
 
 // ---- 4. The products ----
 {
-  const s = contentSlide(`The products: ${plan.length} rows in SIH`, 'Plan_OPT_EU. One row per product of each shift. Good Parts = Volume - Déchets, Capacity = Vitesse x Temps. Matin is Day, Après Midi is Afternoon, Nuit is Night.');
+  const s = contentSlide(`The products: ${plan.length} rows in Plan_OPT_EU`, 'Plan_OPT_EU. One row per product of each shift. Good Parts = Volume - Déchets, Capacity = Vitesse x Temps. Matin is Day, Après Midi is Afternoon, Nuit is Night.');
   const rows = productBlock.rows;
   const body = rows.map((r, i) => {
     const total = r[0] === 'Total';
@@ -169,9 +213,10 @@ const contentSlide = (title, notes) => {
       ],
       ...body,
     ],
-    { x: 0.5, y: 1.3, w: 9, colW: [1.2, 2.35, 0.75, 0.75, 0.7, 0.6, 0.3, 0.85, 0.75, 0.75], rowH: 0.42, border: { type: 'solid', pt: 0.75, color: C.background2 }, objectName: 'Products table' },
+    { x: 0.5, y: 1.3, w: 9, colW: [1.2, 2.2, 0.75, 0.75, 0.7, 0.7, 0.3, 0.85, 0.75, 0.75], rowH: 0.42, border: { type: 'solid', pt: 0.75, color: C.background2 }, objectName: 'Products table' },
   );
-  noteBox(s, 'SIH Good Parts = Volume − Déchets.   SIH Capacity = Vitesse × Temps.   Shift: Matin = Day, Après Midi = Afternoon, Nuit = Night.', 3.65, 'Rule');
+  noteBox(s, `Table Plan_OPT_EU: 1 row per product and shift. Each shift has 4 product slots; on ${niceDate} ${plan.length} slots are filled, so ${plan.length} rows. Empty slots give no row.`, 3.65, 'Table note');
+  noteBox(s, 'SIH Good Parts = Volume − Déchets.   SIH Capacity = Vitesse × Temps.   Shift: Matin = Day, Après Midi = Afternoon, Nuit = Night.', 4.5, 'Rule');
 }
 
 // ---- 5. The stops (two slides: 14 rows do not fit on one) ----
@@ -181,9 +226,12 @@ const contentSlide = (title, notes) => {
   const total = [...all.at(-1)];
   total[5] = '= TOR − TU';
   const half = Math.ceil(stops.length / 2);
+  const ever = JSON.parse(readFileSync(join(OUT, 'loss-map.json'), 'utf8')).filter((e) => e.line === line);
+  const evPlanned = ever.filter((e) => e.OEELossLvl3Group === 'Planned Loss').length;
+  const evUnplanned = ever.length - evPlanned;
   const notes = 'Daily_Losses_EU. Each workbook column with minutes becomes one row, with an English name. The total of the minutes equals TOR minus TU. "MASTERDATA" means the name comes from the SIH reason list, "to check" means we need your answer (sheets in the Excel).';
   [stops.slice(0, half), [...stops.slice(half), total]].forEach((part, i) => {
-    const s = contentSlide(`The stops: ${stops.length} rows in SIH (${i + 1} of 2)`, notes);
+    const s = contentSlide(`Stops: ${stops.length} rows in Daily_Losses_EU (${i + 1}/2)`, notes);
     const body = part.map((r) => {
       const o = { bold: r[0] === 'Total', fontSize: 11 };
       return [cell(r[0], o), cell(r[1], { ...o, align: 'right' }), arrowCell(), cell(r[3], o), cell(r[4], o), cell(r[5], o), cell(r[6], { ...o, color: r[6] === 'to check' ? C.accent5 : C.text1 })];
@@ -199,6 +247,10 @@ const contentSlide = (title, notes) => {
       ],
       { x: 0.5, y: 1.15, w: 9, colW: [2.2, 0.75, 0.3, 1.3, 1.5, 1.75, 1.2], rowH: 0.34, border: { type: 'solid', pt: 0.75, color: C.background2 }, objectName: `Stops table ${i + 1}` },
     );
+    const noteY = 1.15 + 0.34 * (part.length + 1) + 0.2;
+    const first = `On ${niceDate}, ${stops.length} loss columns of ${line} have minutes: they give ${stops.length} rows in Daily_Losses_EU. The other loss columns are 0 that day and are left out.`;
+    const second = 'Each row has the type (Planned or Unplanned Loss), the group and the name from MASTERDATA, and the minutes. The total of the minutes is TOR − TU, as in your workbook.';
+    noteBox(s, i === 0 ? first : second, noteY, 'Table note');
   });
 }
 
