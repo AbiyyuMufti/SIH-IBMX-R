@@ -48,6 +48,9 @@ The CSV text rules are those of the October check ([provideam-reports.md](provid
 ## Weinheim (2026-11-04)
 Bodies = the Nottingham ones with the machine ids of reports 37 and 38 (`261`, `263` to `267`); the fields are identical. Weinheim's Mode Log has to ask for `fdPartName` (code + description, as the export), `fdPartDesc` gives the code only: node `Make source CSV` takes `fdPartName` when it is there. Checked on 2026-10-22, 10-27, 11-02, 09-15 and 03-10: plan OPT, run rates, line losses and correction, every API line is a line of the normalized SharePoint file. History 2025-01 to 2026-10 uploaded as month files (`pbi_report/source/<type>/site=Weinheim/`); the month 2026-11 is not uploaded, the day files cover it. Weekdays only (German holidays have no rows).
 
+## Time convention (open decision, 2026-11-04)
+Every table holds the plant's local wall clock, no conversion. A report day is the plant's production day (06:00 to 05:59 local); `Date` is a plain date. Hull and Nottingham use Europe/London, Weinheim Europe/Berlin: both zones change on the same dates, so Weinheim is always exactly 1 hour ahead. The VFC parquet node marks timestamp columns `isAdjustedToUTC=true`; the offline month files of Hull were written with false. The values are equal. Proposal and options: `session_handover/weinheim-handover.md` (not in git).
+
 ## Import (VFC)
 First run `node scripts/make-local-config.js`: it writes [flows/vfc-config.local.json](../flows/vfc-config.local.json), the committed Config with platform, tenant, technical user and Provideam key filled from `.env` (git-ignored). The other files hold no secret: import them straight from `flows/`. Do not use the older `flows/*.local.json` copies of the other tabs (2026-10-20, old schema).
 

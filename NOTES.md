@@ -1,6 +1,7 @@
 # NOTES
 
 ## Status
+- Weinheim live (2026-11-04): in the Provideam fetch (`SITES`, bodies in the lake, `fdPartName` in the Mode Log) and history 2025-01 to 2026-10 built for all five month tables from the SharePoint exports (normalized, uploaded, both build tabs run in the VFC). API lines equal the SharePoint files line for line (5 days checked); Daily Losses equal the EU report's own Weinheim table per day. Open: decision on time convention (production day per site, `isAdjustedToUTC` flag), Line 5 glidepath zero for Oct 2026, 2025 has no targets. Handover `session_handover/weinheim-handover.md`, doc section "Weinheim" in `docs/provideam-fetch.md`
 - Segun's site dashboard schema (2026-10-30, Hull presentation): the PBI report
   build tabs write Segun's columns (`docs/pbi-report-build.md` step 9,
   `docs/pbi-report-build-2.md`), new tables `Site_PDT_Targets` /
@@ -210,6 +211,7 @@ Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `sc
 - Researched with the user, details in `docs/lake-direct-access.md`. Cross Account Access gives an AWS account S3 read on up to 5 prefixes. Athena costs money (needs Reckitt consent), Azure Service Principal does not fit (our lake is AWS). Free path to test: AWS CLI, DuckDB, Power BI Python script. Needs an AWS account and an IDL admin on the tenant. Not tested.
 
 ## Next
+- NEXT (Weinheim, 2026-11-04): the user decides the time convention (handover, section "Decision needed"), asks the site for the Line 5 Oct 2026 glidepath (all buckets 0) and for 2025 targets, then checks the first scheduled 07:00 UTC fetch (Weinheim day files). Do not run `npm run publish-new` before the local Hull and Nottingham `source/*_2026-10.csv` are restored from the lake (the normalizer overwrote them with the older SharePoint version, the lake still has the API-rebuilt October).
 - NEXT (OEE ingestion strategy, 2026-10-29): confirm whether Premium Power
   Automate licensing or per-site Entra ID app registrations can be provided.
   Until then, keep the current manual SharePoint-to-lake copy as the fallback;
@@ -709,3 +711,11 @@ Tried: Power BI flow with `Keep dim_asset` expecting an array. Error: "the file 
 - Failed attempts: my first numbers came from Power BI and lake tables, not Tableau (fixed by reading the real workbook); I claimed data stopped in June, it was only the default date filter; `recalc.py` fails on this box (no AF_UNIX), the sheet has no formulas.
 - Decisions open (nobody decided): whole minutes or seconds, Hull master glidepath, micro stoppages in or out, "Null" shown or hidden.
 - Next: Segun applies `In EU Report` to the volume tile; trace the Hull October loss gap; read targets on the Tableau screen; compare the other ten pages.
+
+
+## Weinheim go-live (2026-11-04)
+- Tried: Weinheim bodies as the Nottingham bodies with machine ids 261, 263 to 267 (report 37 and 38). Result: plan OPT, run rates, correction equal the SharePoint files; line losses gave only the part code with `fdPartDesc`. Fix: the Weinheim Mode Log asks for `fdPartName`, node `2.3 Make source CSV` takes `fdPartName || fdPartDesc`. The first API probe (29 Oct, 0 rows) was a lag, not a stopped plant.
+- Checked: 22 days of 5 dates, all four types, every API line is a line of the normalized file. Lake month files Weinheim 2025-01 to 2026-10 (5 tables) plus the day files 2026-11-02 and 2026-11-03. Daily Losses against the EU report's table (23,868 Weinheim rows): same rows per day to 2026-08, the report stops on 15 Sep. Month counts differ only through the after-midnight rule.
+- Normalizer side effect: `python -I scripts/normalize-sharepoint-source.py` rewrote the local Hull and Nottingham `source/*_2026-10.csv` (API-rebuilt on 2026-11-02, in the lake) from the older SharePoint files. The lake was not touched (upload list filtered to Weinheim and without the 2026-11 month files). Run rates 2026-08 and 2026-09 were missing in the lake source for Weinheim and were uploaded by hand.
+- Browser: Claude in Chrome connects to the browser by the blank tab; closing it cuts the connection.
+- Time convention: tables hold plant local wall clock; `Date` is a `date32` (no zone), `ShiftStartTime`, `Time` (1970-01-01 plus time of day), `Hour` and `loaded_at` are timestamps. The VFC parquet node writes `isAdjustedToUTC=true`, the offline month files of Hull Sep/Oct have it false; the values are the same. See the handover.
