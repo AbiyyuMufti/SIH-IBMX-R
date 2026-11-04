@@ -128,7 +128,7 @@ function fakeProvideam(fail = () => false) {
 }
 
 async function run(payload, options = {}) {
-  const sites = payload.sites || ['Hull', 'Nottingham'];
+  const sites = payload.sites || ['Hull', 'Nottingham', 'Weinheim'];
   const lake = options.lake || lakeWithBodies(sites);
   const stats = await runFlow(flowWithJobDebug(), {
     startDay: '2026-11-01', startPayload: payload, write: options.write === true,
@@ -143,7 +143,7 @@ async function run(payload, options = {}) {
 // 1. Dry run (the default): calls and converts, writes nothing, no build.
 {
   const r = await run({ start: '2026-11-01', end: '2026-11-01' });
-  check(r.stats.requests.length === 8, 'dry run: 2 sites x 4 types = 8 calls');
+  check(r.stats.requests.length === 12, 'dry run: 3 sites x 4 types = 12 calls');
   check(r.stats.written.filter((p) => p.startsWith(SOURCE)).length === 0,
     'dry run: no source file written');
   check(r.jobs.length === 0, 'dry run: no job for the build tabs');
@@ -154,8 +154,8 @@ async function run(payload, options = {}) {
 {
   const r = await run({ start: '2026-11-01', end: '2026-11-01' }, { write: true });
   const paths = [...r.lake.keys()].filter((p) => p.startsWith(SOURCE)).sort();
-  check(paths.length === 8 && paths.includes(`${SOURCE}/plan_opt/site=Hull/plan_opt_2026-11-01.csv`),
-    'write: 8 day files <type>/site=<Site>/<type>_<day>.csv');
+  check(paths.length === 12 && paths.includes(`${SOURCE}/plan_opt/site=Hull/plan_opt_2026-11-01.csv`),
+    'write: 12 day files <type>/site=<Site>/<type>_<day>.csv');
   const urls = [...new Set(r.stats.requests.map((q) => new URL(q.url).pathname))].sort();
   check(JSON.stringify(urls) === JSON.stringify([
     '/api/v1/Report/ObjectByPeriod',
@@ -187,7 +187,7 @@ async function run(payload, options = {}) {
     'Hull,2026-11-01,M1,Unplanned Loss,Adjustment,Labeller,00:07:00,1613.33\n',
   'correction: only the keepTypes groups, US date turned to YYYY-MM-DD');
   check(r.jobs.length === 1 && JSON.stringify(r.jobs[0]) ===
-    JSON.stringify({ sites: ['Hull', 'Nottingham'], days: ['2026-11-01'] }),
+    JSON.stringify({ sites: ['Hull', 'Nottingham', 'Weinheim'], days: ['2026-11-01'] }),
   'write: one job {sites, days} for the build tabs');
   check(!JSON.stringify([...r.lake.values(), ...r.stats.logs]).includes(KEY),
     'the API key is in no file and no log line');

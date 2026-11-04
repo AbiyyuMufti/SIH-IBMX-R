@@ -141,7 +141,7 @@ function rowOf(x) {
       site,
       stamp(x.fdStartTime),
       x.fdMachineName,
-      x.fdPartDesc,
+      x.fdPartName || x.fdPartDesc,
       x.fdShiftName,
       x.fdOEELossLvl3Type,
       x.fdOEELossLvl3SubGroup,

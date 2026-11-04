@@ -7,7 +7,8 @@
 // and its report bodies in <root>/reference/provideam_reports/site=<Site>/.
 var SITES = [
   'Hull',
-  'Nottingham'
+  'Nottingham',
+  'Weinheim'
 ];
 // The clock run fetches this many production days before today, again
 // every day, so late corrections in Provideam reach the report.
