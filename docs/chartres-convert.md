@@ -86,3 +86,9 @@ The machine waste of HOME and SACHA (typed per machine and shift, not per produc
 
 ## Schema fix (2026-11-05, run7)
 The first upload (run6) used the old `reportPlanSchema` / `reportLossSchema`. The dashboard extract reads every file of a table folder with ONE schema, taken from the first file (`site=Chartres` sorts first): it then failed on Hull (`invalid data type for attribute 'Duration'`, Chartres had a timestamp, Hull whole minutes). Run7 writes `pbiPlanSchema` / `pbiLossSchema` (same names, order and types as Hull and Nottingham): `Duration` whole minutes, `Value` a number (empty), `Batch ID`, `Shift colour` (empty), Plan `Defect Parts` = waste, `OEE` = good / capacity, `ShiftStartTime` from the shift times, `Target` = Capacity (as Hull), `Targets Key`, Format List columns joined on Product Key. `OEE Target` is now a percent (61.3) like the Glidepaths of the other sites (was 0.613). Run7 replaced the 89 lake files. Rule: any new site file must have exactly the schema of the existing files of the folder.
+
+## ZEUS and APOLLON product type (2026-11-05, run8)
+The site file lists two product types for ZEUS (No touch, Bottle) and APOLLON (Bottle Cap, Bottle Pump). Agreed with the site: both are `Bottle`. One row per machine in the reference CSV (the duplicate rows doubled joins) and in `MACHINE_INFO`. Run8 (same row counts) replaced the 66 files of Plan_OPT_EU, Time_Utilisation_EU and Daily_Losses_EU; the other tables do not carry Product Type values for Chartres.
+
+## Dashboard filters (2026-11-05)
+Chartres was hidden by two blended Machine Name filters (from `Live_Plan_OPT_EU` and `Live_Daily_Losses_EU`) on the hidden worksheet "Site Time Utilisation (%)", shared by about 86 sheets. A blended filter drops primary rows with no match in the secondary source, even set to "all"; Chartres losses have no shift, product or time. Removed in the workbook; no data change needed.

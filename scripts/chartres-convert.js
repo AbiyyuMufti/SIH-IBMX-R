@@ -65,12 +65,13 @@ const SUB = {
 // Time_Utilisation_EU: TOR is the base of the workbook OEE (Total Time = TOR, proposal 1).
 const PLANNED_OPT_FROM = 'TOR';
 // Machine Names of Chartres (site file, 2026-11-05), one entry per machine.
-// A machine with two product types (ZEUS, APOLLON) shows the first: the report tables
-// have one row per machine. name = MachineName of the site file, used in every row.
+// ZEUS and APOLLON have two product types in the site file; both are set to Bottle
+// (agreed with the site, 2026-11-05): the report tables have one row per machine.
+// name = MachineName of the site file, used in every row.
 const MACHINE_INFO = {
   NEPTUNE: { name: 'NEPTUNE', dept: 'Packaging - SKIN CARE', area: 'SKIN CARE', type: 'Bottle Cap' },
-  ZEUS: { name: 'ZEUS', dept: 'Packaging - SKIN CARE', area: 'SKIN CARE', type: 'No touch' },
-  APOLLON: { name: 'APOLLON', dept: 'Packaging - SKIN CARE', area: 'SKIN CARE', type: 'Bottle Cap' },
+  ZEUS: { name: 'ZEUS', dept: 'Packaging - SKIN CARE', area: 'SKIN CARE', type: 'Bottle' },
+  APOLLON: { name: 'APOLLON', dept: 'Packaging - SKIN CARE', area: 'SKIN CARE', type: 'Bottle' },
   OLYMPE: { name: 'OLYMPE', dept: 'Packaging - SKIN CARE', area: 'SKIN CARE', type: 'Tube' },
   CLEOPATRE: { name: 'CLEOPATRE', dept: 'Packaging - SKIN CARE', area: 'SKIN CARE', type: 'Tube' },
   IWKA1: { name: 'IWKA1', dept: 'Packaging - CREAM', area: 'CREAM', type: 'Tube' },
