@@ -44,9 +44,9 @@ const formatCols = [
 
 // The tables of the PBI report build tabs since 2026-10-30: the columns,
 // order and types of Segun's site dashboard tables (Sandbox/site_draft),
-// then our own. The SIH flow and the Chartres conversion keep the schemas
-// above (shortcut: two schemas per table until the SIH flow gets the new
-// columns too).
+// then our own. The Chartres conversion uses them too (2026-11-05). The SIH
+// flow keeps the schemas above (shortcut: two schemas per table until the
+// SIH flow gets the new columns too).
 export const pbiPlanSchema = [
   ...reportPlanSchema.slice(0, 17),
   ...str(['Dept', 'Area', 'Product Type']),

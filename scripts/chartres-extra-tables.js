@@ -156,6 +156,19 @@ for (const { line, name } of [...products.values()].sort((a, b) => (a.line + a.n
   });
 }
 write('Format_List_EU', 'Format_List_EU.json', reportFormatSchema, formatRows);
+// The plan rows carry the 4 Format List columns (step 9 schema), joined on Product Key.
+const formatOf = new Map(formatRows.map((f) => [f['Product Key'], f]));
+for (const month of months) {
+  const path = join(planDir, `Plan_OPT_EU_${month}_excel.json`);
+  const stage = JSON.parse(readFileSync(path, 'utf8'));
+  for (const r of stage.rows) {
+    const f = formatOf.get(r['Product Key']);
+    for (const c of ['Brand', 'Unit Size', 'Unit Count/Format', 'Extra Info']) {
+      r[c] = f?.[c] || null;
+    }
+  }
+  writeFileSync(path, JSON.stringify(stage));
+}
 writeFileSync(join(OUT, 'format-brand-guess.json'), JSON.stringify(guesses, null, 1));
 const covTotal = Object.values(covRows).reduce((t, r) => t + r.length, 0);
 console.log(`Volume_CoV_EU: ${covTotal} rows in ${months.length} months; Format_List_EU: ${formatRows.length} rows, ${missing} products without a Data row; brand guessed for ${guesses.length}, still empty for ${formatRows.filter((r) => !r.Brand).length}`);

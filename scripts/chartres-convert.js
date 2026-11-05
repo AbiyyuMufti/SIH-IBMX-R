@@ -12,7 +12,7 @@
 import { existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { readXlsx } from './lib-office.js';
-import { reportPlanSchema, reportUtilSchema, reportLossSchema } from './lib-pbi-report-schemas.js';
+import { pbiPlanSchema, reportUtilSchema, pbiLossSchema } from './lib-pbi-report-schemas.js';
 
 const args = Object.fromEntries(
   process.argv.slice(2).filter((a) => a.includes('=')).map((a) => a.split(/=(.*)/s).slice(0, 2)),
@@ -38,6 +38,16 @@ const SHIFTS = {
   'Weekend Matin': 'Day',
   'Weekend Nuit': 'Night',
 };
+// Shift start times (Laura, 2026-11), ms of the day on 1970-01-01.
+const SHIFT_START = {
+  'Semaine Matin': 5,
+  'Semaine Après Midi': 13,
+  'Semaine Nuit': 21,
+  'Weekend Matin': 5,
+  'Weekend Nuit': 17,
+};
+// Format List columns: filled in the plan rows by scripts/chartres-extra-tables.js.
+const NO_FORMAT = { Brand: null, 'Unit Size': null, 'Unit Count/Format': null, 'Extra Info': null };
 // Category Level 1 / Level 2 (English) -> the group and sub group names of the EU tables.
 const GROUP = { 'Planned losses': 'Planned Loss', 'Unplanned losses': 'Unplanned Loss' };
 const SUB = {
@@ -410,8 +420,17 @@ for (const f of files.filter((x) => YEARS.includes(x.year))) {
         'Product Key': `${unique} ${s.name || s.code}`,
         'UPDT Target': null,
         'PDT Target': null,
-        'OEE Target': oeeTarget,
+        // Percent like the Glidepaths of the other sites (61.3, not 0.613).
+        'OEE Target': oeeTarget === null ? null : Math.round(oeeTarget * 1000) / 10,
         ...machineCols,
+        'Defect Parts': Math.round(s.waste),
+        OEE: capacity ? Math.round((good / capacity) * 1000) / 1000 : null,
+        'Shift Colour': null,
+        ShiftStartTime: SHIFT_START[s.shift] * 3600000,
+        // Hull: Target equals Capacity (export column, 2026-09 checked).
+        Target: capacity,
+        'Targets Key': `${machine} 01/${iso.slice(5, 7)}/${iso.slice(0, 4)}`,
+        ...NO_FORMAT,
         'Data Source': DATA_SOURCE,
         'In EU Report': true,
         source_hours: null,
@@ -486,7 +505,8 @@ for (const f of files.filter((x) => YEARS.includes(x.year))) {
         OEELossLvl3Group: group,
         OEELossLvl3SubGroup: sub,
         OEELossLvl3Desc: l3,
-        Duration: minutes * 60000,
+        Duration: Math.round(minutes),
+        'Shift colour': null,
         SiteName: SITE,
         'Unique Machine Name': unique,
         'Breakdown Types': sub,
@@ -507,7 +527,8 @@ for (const f of files.filter((x) => YEARS.includes(x.year))) {
         'Data Source': DATA_SOURCE,
         'In EU Report': true,
         target: null,
-        batch_id: null,
+        'Batch ID': null,
+        ...NO_FORMAT,
         comment_count: null,
         loaded_at: LOADED_AT,
       });
@@ -546,7 +567,9 @@ for (const f of files.filter((x) => YEARS.includes(x.year))) {
 }
 
 // ---- Write ----
-const schemas = { Plan_OPT_EU: reportPlanSchema, Time_Utilisation_EU: reportUtilSchema, Daily_Losses_EU: reportLossSchema };
+// The schemas of the Hull / Nottingham files (step 9): one folder per table must have one
+// schema, the dashboard extract fails on a file whose types differ.
+const schemas = { Plan_OPT_EU: pbiPlanSchema, Time_Utilisation_EU: reportUtilSchema, Daily_Losses_EU: pbiLossSchema };
 let fileCount = 0;
 for (const [table, months] of Object.entries(out)) {
   const names = schemas[table].map(([n]) => n);
