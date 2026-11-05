@@ -719,3 +719,6 @@ Tried: Power BI flow with `Keep dim_asset` expecting an array. Error: "the file 
 - Normalizer side effect: `python -I scripts/normalize-sharepoint-source.py` rewrote the local Hull and Nottingham `source/*_2026-10.csv` (API-rebuilt on 2026-11-02, in the lake) from the older SharePoint files. The lake was not touched (upload list filtered to Weinheim and without the 2026-11 month files). Run rates 2026-08 and 2026-09 were missing in the lake source for Weinheim and were uploaded by hand.
 - Browser: Claude in Chrome connects to the browser by the blank tab; closing it cuts the connection.
 - Time convention: tables hold plant local wall clock; `Date` is a `date32` (no zone), `ShiftStartTime`, `Time` (1970-01-01 plus time of day), `Hour` and `loaded_at` are timestamps. The VFC parquet node writes `isAdjustedToUTC=true`, the offline month files of Hull Sep/Oct have it false; the values are the same. See the handover.
+
+## 2026-11-05 Chartres machine names and first upload
+Machine Names list from the site (screenshot, no file): CSV in `sharepoint/reference/machine_names/site=Chartres/`, `MACHINE_INFO` in `scripts/chartres-convert.js`. Reran to `run6` (same row counts), uploaded run6 (89 parquet files, site=Chartres) and the CSV to the lake. Data is a copy, not up to date: example only. A transient `UND_ERR_CONNECT_TIMEOUT` on the token call: retry works.

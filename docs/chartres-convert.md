@@ -6,7 +6,7 @@
 | **Run** | `node scripts/chartres-convert.js out=downloads/chartres-convert/<new folder>` (workbooks from `downloads/01 SITE Chartres`), then `python -I scripts/helper-chartres-write-parquet.py downloads/chartres-convert/<same folder>`. Review for the site: `node scripts/chartres-review.js downloads/chartres-convert/<same folder>` then `python -I scripts/helper-chartres-review-xlsx.py downloads/chartres-convert/<same folder>/review.json prompt-response/chartres-review-for-laura.xlsx` |
 | **Writes** | `<out>/report/<table>/site=Chartres/<table>_<YYYY-MM>_excel.parquet` (one file per table and month, the lake layout of [report-config.md](report-config.md)), `<out>/stage/...json` (the same rows before typing) `<out>/checks.csv` (days that fail a rule of the entry form), `<out>/loss-map.json` (each loss column per line: names used, MASTERDATA match) and `<out>/days.json` (one line per day for the review). Local files only: nothing is uploaded |
 | **Inputs** | the workbooks (read, no macro run), the sheets `Category` of the 2026 files (French loss name to Level 1 / 2 / 3 English), `Copie de Target 2026.xlsx` (OEE target per line and month, from the site) and `MASTERDATA.xlsx` (sheet `Downtime_updated`: the SIH reason tree, English and French), both in the workbook folder |
-| **Status** | Built 2026-10-26; MASTERDATA names and the review added 2026-11-03 (run5): 7,163 days, 22,141 plan rows, 7,163 time rows, 77,122 loss rows, 66 files (Jan 2025 to Oct 2026). Review sent to the site 2026-11-03. Not uploaded; the path format of Chartres and the reference file are still to come |
+| **Status** | Built 2026-10-26; MASTERDATA names and the review added 2026-11-03 (run5): 7,163 days, 22,141 plan rows, 7,163 time rows, 77,122 loss rows, 66 files (Jan 2025 to Oct 2026). Review sent to the site 2026-11-03. Run6 (2026-11-05, same counts, new machine names) uploaded to `eu_report/report/<table>/site=Chartres/` (89 files) and the Machine Names list to `eu_report/reference/machine_names/site=Chartres/Chartres_MachineNames.csv` |
 | **Scope** | 2025 and 2026 (decision of the user). 2024 has another format (`DOR <group>.xlsm`, sheet `TRS`) and is left out, see [chartres-source-files.md](chartres-source-files.md) |
 
 ## Rows
@@ -42,7 +42,7 @@
 | `Volume Total` | sum of `Capacity` of the line and day |
 | `Volume Key`, `Loss Target Key`, `Equipment Loss Key` | the report way (`DD/MM/YYYY machine group sub desc`, `unique sub 01/MM/YYYY`, `machine desc`) |
 | `ShiftName`, `PartName`, `Time`, `Product Key` (losses) | empty: `Base` losses are per day |
-| `Dept`, `Area`, `Product Type` | empty until the Chartres reference file (constant `MACHINE_INFO`) |
+| `Dept`, `Area`, `Product Type`, `MachineName` | from the Chartres Machine Names list (constant `MACHINE_INFO`, 2026-11-05): `IWKA1`, `SACHA1`, `CLEOPATRE` replace the file names `IWKA 1`, `SACHA 1`, `CLÉOPATRE`. CUPIDON and DAISY (dropped) are not in the list: names unchanged, Dept empty. ZEUS and APOLLON have two product types: the first one is used |
 | Not-counted time | TownHall, trials, training, validation are not loss rows (they are outside TOR) |
 
 ## Volume_CoV_EU and Format_List_EU (2026-11-03)

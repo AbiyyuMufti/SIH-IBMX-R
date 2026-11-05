@@ -54,8 +54,27 @@ const SUB = {
 };
 // Time_Utilisation_EU: TOR is the base of the workbook OEE (Total Time = TOR, proposal 1).
 const PLANNED_OPT_FROM = 'TOR';
-// Machine Names for Chartres do not exist yet: Dept, Area, Product Type stay empty.
-const MACHINE_INFO = {};
+// Machine Names of Chartres (site file, 2026-11-05), one entry per machine.
+// A machine with two product types (ZEUS, APOLLON) shows the first: the report tables
+// have one row per machine. name = MachineName of the site file, used in every row.
+const MACHINE_INFO = {
+  NEPTUNE: { name: 'NEPTUNE', dept: 'Packaging - SKIN CARE', area: 'SKIN CARE', type: 'Bottle Cap' },
+  ZEUS: { name: 'ZEUS', dept: 'Packaging - SKIN CARE', area: 'SKIN CARE', type: 'No touch' },
+  APOLLON: { name: 'APOLLON', dept: 'Packaging - SKIN CARE', area: 'SKIN CARE', type: 'Bottle Cap' },
+  OLYMPE: { name: 'OLYMPE', dept: 'Packaging - SKIN CARE', area: 'SKIN CARE', type: 'Tube' },
+  CLEOPATRE: { name: 'CLEOPATRE', dept: 'Packaging - SKIN CARE', area: 'SKIN CARE', type: 'Tube' },
+  IWKA1: { name: 'IWKA1', dept: 'Packaging - CREAM', area: 'CREAM', type: 'Tube' },
+  IWKA2: { name: 'IWKA2', dept: 'Packaging - CREAM', area: 'CREAM', type: 'Tube' },
+  IWKA3: { name: 'IWKA3', dept: 'Packaging - CREAM', area: 'CREAM', type: 'Tube' },
+  CUMULUS: { name: 'CUMULUS', dept: 'Packaging - NON WOVEN', area: 'NON WOVEN', type: 'Bottle' },
+  HOME1: { name: 'HOME1', dept: 'Packaging - NON WOVEN', area: 'NON WOVEN', type: 'Wax strip' },
+  HOME2: { name: 'HOME2', dept: 'Packaging - NON WOVEN', area: 'NON WOVEN', type: 'Wax strip' },
+  HOME3: { name: 'HOME3', dept: 'Packaging - NON WOVEN', area: 'NON WOVEN', type: 'Wax strip' },
+  HOME4: { name: 'HOME4', dept: 'Packaging - NON WOVEN', area: 'NON WOVEN', type: 'Wax strip' },
+  SACHA1: { name: 'SACHA1', dept: 'Packaging - NON WOVEN', area: 'NON WOVEN', type: 'Wipes' },
+  SACHA2: { name: 'SACHA2', dept: 'Packaging - NON WOVEN', area: 'NON WOVEN', type: 'Wipes' },
+  SUGAR: { name: 'SUGAR', dept: 'Packaging - NON WOVEN', area: 'NON WOVEN', type: 'Jar' },
+};
 // English for the machine parts that have no Category row (CUPIDON, DAISY: dropped in 2026,
 // not in MASTERDATA). Our translation, brands kept: to confirm with the site.
 const PART_EN = {
@@ -319,9 +338,9 @@ for (const f of files.filter((x) => YEARS.includes(x.year))) {
     }
     seen.set(iso, { r, saved });
   }
-  const machine = f.line;
+  const info = MACHINE_INFO[key(f.line)] ?? {};
+  const machine = info.name ?? f.line;
   const unique = `${machine}-${SITE}`;
-  const info = MACHINE_INFO[key(machine)] ?? {};
   const machineCols = { Dept: info.dept ?? null, Area: info.area ?? null, 'Product Type': info.type ?? null };
 
   for (const [iso, { r }] of seen) {
