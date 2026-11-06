@@ -1,6 +1,7 @@
 # NOTES
 
 ## Status
+- Chartres run11 (2026-11-06, S5 phase A): losses written on the plan shift with the most Temps that day (no plan: Day 05:00). Only ShiftName / Shift Time / Time changed vs run10; blend shift-days in both 7,165 (was 0), loss only 15, plan only 7,405. Not uploaded. Next: phase B after S4 is committed.
 - Filler rows for the Tableau blend (S4, 2026-11-06): built locally, no flow change, nothing uploaded. `docs/pbi-report-build.md` step 10, code `scripts/vfc/f1-filler-rows.js` (for a later VFC tab), runner `helper-filler-input.py` -> `local-filler-build.js` -> `helper-filler-write.py`, test `scripts/test-filler-rows.js`. First run on the 2026-11-06 lake copy: losses filler Hull 2,423 / Nottingham 5,464 / Weinheim 2, plan filler Hull 33; every difference to the analysis explained (null ShiftName, last losses day before its plan).
 - Chartres run10 (2026-11-06): machine part (MASTERDATA Level 4) added to Level 3 names and keys on 6,846 loss rows (exact 63 columns, contained 127); everything else equal to run9 (`scripts/helper-chartres-compare-runs.py`). Review sheet `4 Machine part` + questions 11-13 (unsure parts, 13 differing duplicate days, 70 Déchets rows). Correction: earlier we told Laura the machine was the deepest level; MASTERDATA has the part. Decision (user): Volume Key follows Level 3; apply contained matches now, redo from `PART_ANSWER` when confirmed.
 - Chartres run9 (2026-11-06): current workbook inputs add 147 normalized day keys

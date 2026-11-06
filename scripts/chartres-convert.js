@@ -432,6 +432,28 @@ function machinePart(line, column, machine) {
   }
   return { part: null, method: 'no part found' };
 }
+// ---- The shift of a day's losses (user decision 2026-11-06) ----
+// Base holds day totals, so the losses go on the plan shift with the most Temps that day,
+// ties to the earliest (Day, Afternoon, Night). Time = start of the shift type with the
+// most Temps inside that shift. No plan slot: Day at 05:00.
+const SHIFT_ORDER = ['Day', 'Afternoon', 'Night'];
+const NO_PLAN_SHIFT = { name: 'Day', start: SHIFT_START['Semaine Matin'] * 3600000 };
+function shiftOfLosses(slots) {
+  if (!slots.length) {
+    return NO_PLAN_SHIFT;
+  }
+  const byShift = {};
+  const byType = {};
+  for (const s of slots) {
+    byShift[SHIFTS[s.shift]] = (byShift[SHIFTS[s.shift]] ?? 0) + s.time;
+    byType[s.shift] = (byType[s.shift] ?? 0) + s.time;
+  }
+  const name = SHIFT_ORDER.filter((n) => n in byShift).reduce((a, b) => (byShift[b] > byShift[a] ? b : a));
+  const type = Object.keys(byType)
+    .filter((t) => SHIFTS[t] === name)
+    .reduce((a, b) => (byType[b] > byType[a] ? b : a));
+  return { name, start: SHIFT_START[type] * 3600000 };
+}
 // One entry per line and loss column that holds minutes: what the conversion used.
 const lossMap = new Map();
 
@@ -594,6 +616,7 @@ for (const f of files.filter((x) => YEARS.includes(x.year))) {
 
     // Losses: one row per loss column with minutes; speed of the product with most time.
     const main = slots.reduce((a, s) => (s.time > (a?.time ?? -1) ? s : a), null);
+    const lossShift = shiftOfLosses(slots);
     let lossMinutes = 0;
     for (const i of lossCols) {
       const minutes = num(r[i]);
@@ -641,11 +664,11 @@ for (const f of files.filter((x) => YEARS.includes(x.year))) {
       lossMap.set(mapKey, entry);
       add('Daily_Losses_EU', iso, {
         Date: dayNumber(iso),
-        Time: null,
+        Time: lossShift.start,
         MachineName: machine,
         PartName: null,
-        'Shift Time': null,
-        ShiftName: null,
+        'Shift Time': lossShift.name,
+        ShiftName: lossShift.name,
         OEELossLvl3Group: group,
         OEELossLvl3SubGroup: sub,
         OEELossLvl3Desc: l3,
