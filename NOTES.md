@@ -23,6 +23,7 @@
   Retimed Provideam report tests returned HTTP 200 for 30/38 definitions.
   Reports 15-22 remained HTTP 500 after actual date-range retries. Row values
   were not saved, and comparison with the source remains open.
+  2026-11-06: Power Automate Premium is now available (HTTP connector).
 - Provideam V4 API exploration (2026-10-28, requested tests complete): captured
   the 54-operation Swagger inventory and live results. The hierarchy confirms
   Hull, Nottingham and Weinheim are visible. Machine/reference reads were
@@ -218,6 +219,7 @@ Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `sc
   Provideam report requests have since been tested with actual period values:
   30/38 returned HTTP 200 and reports 15-22 remained HTTP 500 after retries.
   Exact SharePoint report mappings remain unconfirmed.
+  2026-11-06: Power Automate Premium is now available (HTTP connector).
 - NEXT (Provideam API, 2026-10-30): compare successful retimed reports with the
   matching SharePoint source (row values must be captured on a rerun),
   investigate why reports 15-22 return HTTP 500, and identify which numbered
