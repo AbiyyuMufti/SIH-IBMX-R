@@ -4,13 +4,14 @@
 # gaps_line_day.csv (per site, month, line, direction: line-days, rows,
 # loss minutes, loss units, good parts), gaps_shift_day.csv (plan vs
 # losses on site + machine + shift + day), and a summary on stdout.
-# Run: python -I scripts/helper-blend-gap.py <download dir> <out dir>
+# Run: python -I scripts/helper-blend-gap.py <dir>[,<dir>...] <out dir>
 import os
 import sys
 import glob
 import pandas as pd
 
-SRC = sys.argv[1]
+# several folders: comma separated (a lake copy plus a filler build)
+SRC = sys.argv[1].split(',')
 OUT = sys.argv[2]
 TABLES = {
     'plan': 'Plan_OPT_EU',
@@ -27,8 +28,11 @@ DATE_COL = {
 
 def load(key):
     frames = []
-    pattern = os.path.join(SRC, '**', TABLES[key], 'site=*', '*.parquet')
-    for path in glob.glob(pattern, recursive=True):
+    paths = []
+    for src in SRC:
+        pattern = os.path.join(src, '**', TABLES[key], 'site=*', '*.parquet')
+        paths += glob.glob(pattern, recursive=True)
+    for path in paths:
         df = pd.read_parquet(path)
         df['site'] = path.split('site=')[1].split(os.sep)[0]
         df['file'] = os.path.basename(path)

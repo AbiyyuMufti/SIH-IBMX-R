@@ -162,3 +162,40 @@ Segun's own `Plan_OPT_EU` has `Targets Key`, `Target`, `OEE`, `ShiftStartTime`, 
 Checked against his files (rows `In EU Report` true, 2024-12 to 15 Sep 2026): Nottingham plan 20,677 / 20,677 rows and Good Parts equal; Hull plan 16,610 / 16,640; losses 99.7 % (Hull) and 99.9 % (Nottingham) of his rows, Duration 99.4 % / 99.8 %. His plan and loss tables hold only `In EU Report` true rows.
 
 Local build (no VFC, same code): `node scripts/local-report-build.js <out> sites=Hull,Nottingham`, then `python -I scripts/helper-chartres-write-parquet.py <out>` and `node scripts/datalake-upload-tree.js <out>/report eu_report/report --overwrite`. Run on 2026-10-30 for 2024-12 to 2026-10 (237 files, every existing lake file of these tables replaced, none left over).
+
+## Step 10: filler rows for the Tableau blend (2026-11-06)
+The Tableau site dashboard blends the tables on site + machine + shift. A machine + shift that has plan rows and no loss rows in the selected dates (or the other way round) drops out of the blended sheets. Measured in [prompt-response/blending-gap-analysis.md](../prompt-response/blending-gap-analysis.md). The fix is in the data: zero rows that only make the keys meet.
+
+| | |
+|---|---|
+| **Key** | site + `MachineName` + `ShiftName` + day (Plan `Date`, Losses `ShiftStartDate`) |
+| **Rows** | Plan key with no loss row: one `Daily_Losses_EU` row. Loss key with no plan row: one `Plan_OPT_EU` row. `Time_Utilisation_EU` none (its links have no shift and no date) |
+| **Values** | Additive measures 0. `OEE`, `Target`, `Value`, `target`, the OEE / PDT / UPDT targets, `Time` null. Product, loss group and loss text columns empty. `Targets Key` = machine + ` 01/MM/YYYY` |
+| **Machine columns** | `SiteName`, `Unique Machine Name`, `Dept`, `Area`, `Product Type`, `In EU Report` (and plan `AreaName`) from a row of the same line in the same table and period, the row of the same shift first. A line with no row in that table and period: the other table's row, and `In EU Report` from the table's scope rule (`config/report_scope.csv`, same rule as node `Add machine and scope columns`) |
+| **Shift columns** | `Shift Colour` / `Shift colour`, `ShiftStartTime`, `Shift Time` from the own row of the same line and shift, else the colour of the other table's row and empty |
+| **Not filled** | Keys with a null `ShiftName` (a null never links); days after the earlier of the two last days of the period (the losses of a day arrive before its plan); a period where one table has no rows |
+| **Marker** | `Data Source` = `Filler` (no flow or script decides on `Data Source`; the source split uses `reportSource` in Config) |
+| **Files** | One per table, site and period, next to the period's own files: `<table>_<YYYY-MM>_filler.parquet` or `<table>_<YYYY-MM-DD>_filler.parquet`. Schema = the period's own file (names, order, types, also the time zone flag of the timestamps) |
+| **Staleness** | The filler of a period is rebuilt whole from the period's non-filler files (every source: `_provideam`, `_sih`, `_excel`). A period that now has no filler: its old filler file is listed in `stale.txt` to delete (a write, after the user's go) |
+| **Code** | `scripts/vfc/f1-filler-rows.js` (function node code, for a later VFC tab), run locally by `scripts/local-filler-build.js`. Test `node scripts/test-filler-rows.js` |
+| **Sites** | Hull, Nottingham, Weinheim. Chartres works as soon as its losses carry a `ShiftName` |
+
+Local build (no network; upload is a separate write after the user's go):
+```
+python -I scripts/helper-filler-input.py <lake copy> <out> [sites=Hull,Nottingham,Weinheim]
+node scripts/local-filler-build.js <out>
+python -I scripts/helper-filler-write.py <out>
+```
+`<out>/report/` then holds the filler parquet files at their lake paths, `<out>/counts.csv` the counts per site and period.
+
+First run (2026-11-06, lake copy of the same day, 81 site periods, 56 files):
+
+| Site | Losses filler | Plan filler | Machine columns from the scope rule |
+|---|---|---|---|
+| Hull | 2,423 | 33 | 417 |
+| Nottingham | 5,464 | 0 | 171 |
+| Weinheim | 2 | 0 | 0 |
+
+Against the analysis (2,433 / 60, 5,464 / 102, 2 / 8): Hull losses -10 = plan keys with a null `ShiftName`; plan filler -27 Hull, -102 Nottingham, -8 Weinheim = all on the last losses day (5 Nov, Weinheim 4 Nov), whose plan was not in the lake yet. After adding the filler the gap script (`helper-blend-gap.py <lake copy>,<out>/report`) finds exactly these keys and nothing else. The lake copy was unchanged (303 files, same hashes), every filler schema equals its sibling, every measure sums to 0, no `In EU Report` is empty. Scope rule rows are more than the month estimate of the analysis because a November day file holds only its day: a line without losses that day takes the rule.
+
+Effect to know: Hull `D2` and `D3` have plan rows and never any loss row. Their plan capacity was dropped by the blend in the sheets with Losses as primary; with the filler it counts (losses scope keeps them, `In EU Report` true), so the loss % of those sheets goes down where D2 / D3 ran.

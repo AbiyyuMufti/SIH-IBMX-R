@@ -1,6 +1,7 @@
 # NOTES
 
 ## Status
+- Filler rows for the Tableau blend (S4, 2026-11-06): built locally, no flow change, nothing uploaded. `docs/pbi-report-build.md` step 10, code `scripts/vfc/f1-filler-rows.js` (for a later VFC tab), runner `helper-filler-input.py` -> `local-filler-build.js` -> `helper-filler-write.py`, test `scripts/test-filler-rows.js`. First run on the 2026-11-06 lake copy: losses filler Hull 2,423 / Nottingham 5,464 / Weinheim 2, plan filler Hull 33; every difference to the analysis explained (null ShiftName, last losses day before its plan).
 - Chartres run10 (2026-11-06): machine part (MASTERDATA Level 4) added to Level 3 names and keys on 6,846 loss rows (exact 63 columns, contained 127); everything else equal to run9 (`scripts/helper-chartres-compare-runs.py`). Review sheet `4 Machine part` + questions 11-13 (unsure parts, 13 differing duplicate days, 70 Déchets rows). Correction: earlier we told Laura the machine was the deepest level; MASTERDATA has the part. Decision (user): Volume Key follows Level 3; apply contained matches now, redo from `PART_ANSWER` when confirmed.
 - Chartres run9 (2026-11-06): current workbook inputs add 147 normalized day keys
   and remove 2 versus run8. The user chose to include current inputs and report
@@ -220,6 +221,7 @@ Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `sc
 - Researched with the user, details in `docs/lake-direct-access.md`. Cross Account Access gives an AWS account S3 read on up to 5 prefixes. Athena costs money (needs Reckitt consent), Azure Service Principal does not fit (our lake is AWS). Free path to test: AWS CLI, DuckDB, Power BI Python script. Needs an AWS account and an IDL admin on the tenant. Not tested.
 
 ## Next
+- NEXT (filler, 2026-11-06): the user reviews step 10; S5 runs the three filler steps on the regenerated data and uploads the `_filler` files with the rest after the user's go. Later session: VFC tab `Report filler` with f1 (per day, after the build tabs). Chartres once its losses carry a ShiftName.
 - NEXT (blending gap, 2026-11-06): the user answers the 4 questions at the end of `prompt-response/blending-gap-analysis.md` (filler marker, Chartres shift, `In EU Report` filter, a Tableau screenshot with extract date); then S4 builds the filler with the rule of section 5.
 - NEXT (Weinheim, 2026-11-04): the user decides the time convention (handover, section "Decision needed"), asks the site for the Line 5 Oct 2026 glidepath (all buckets 0) and for 2025 targets, then checks the first scheduled 07:00 UTC fetch (Weinheim day files). Do not run `npm run publish-new` before the local Hull and Nottingham `source/*_2026-10.csv` are restored from the lake (the normalizer overwrote them with the older SharePoint version, the lake still has the API-rebuilt October).
 - NEXT (OEE ingestion strategy, 2026-10-29): confirm whether Premium Power
