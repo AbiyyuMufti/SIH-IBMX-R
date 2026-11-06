@@ -1,6 +1,7 @@
 # NOTES
 
 ## Status
+- Blending gap measured (S3, 2026-11-06, read only): `prompt-response/blending-gap-analysis.md`. Workbook blend key Site + Machine + Shift (no date; the date range filters each source). Over a month the blend drops nothing for Hull / Nottingham, so it does not explain Charles's numbers; the missing `In EU Report` filter in Tableau does (with it our tables give the Power BI EU volume exactly). Real gaps: short date ranges (Hull 8 % of capacity on shift-days with no loss row) and Chartres losses with null `ShiftName` (never link). D1: 7 plan shift-days with no losses, no loss day without plan. Scripts `scripts/helper-twb-blend-links.py`, `helper-blend-gap.py`, `helper-blend-trace.py`.
 - Weinheim live (2026-11-04): in the Provideam fetch (`SITES`, bodies in the lake, `fdPartName` in the Mode Log) and history 2025-01 to 2026-10 built for all five month tables from the SharePoint exports (normalized, uploaded, both build tabs run in the VFC). API lines equal the SharePoint files line for line (5 days checked); Daily Losses equal the EU report's own Weinheim table per day. Open: decision on time convention (production day per site, `isAdjustedToUTC` flag), Line 5 glidepath zero for Oct 2026, 2025 has no targets. Handover `session_handover/weinheim-handover.md`, doc section "Weinheim" in `docs/provideam-fetch.md`
 - Segun's site dashboard schema (2026-10-30, Hull presentation): the PBI report
   build tabs write Segun's columns (`docs/pbi-report-build.md` step 9,
@@ -212,6 +213,7 @@ Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `sc
 - Researched with the user, details in `docs/lake-direct-access.md`. Cross Account Access gives an AWS account S3 read on up to 5 prefixes. Athena costs money (needs Reckitt consent), Azure Service Principal does not fit (our lake is AWS). Free path to test: AWS CLI, DuckDB, Power BI Python script. Needs an AWS account and an IDL admin on the tenant. Not tested.
 
 ## Next
+- NEXT (blending gap, 2026-11-06): the user answers the 4 questions at the end of `prompt-response/blending-gap-analysis.md` (filler marker, Chartres shift, `In EU Report` filter, a Tableau screenshot with extract date); then S4 builds the filler with the rule of section 5.
 - NEXT (Weinheim, 2026-11-04): the user decides the time convention (handover, section "Decision needed"), asks the site for the Line 5 Oct 2026 glidepath (all buckets 0) and for 2025 targets, then checks the first scheduled 07:00 UTC fetch (Weinheim day files). Do not run `npm run publish-new` before the local Hull and Nottingham `source/*_2026-10.csv` are restored from the lake (the normalizer overwrote them with the older SharePoint version, the lake still has the API-rebuilt October).
 - NEXT (OEE ingestion strategy, 2026-10-29): confirm whether Premium Power
   Automate licensing or per-site Entra ID app registrations can be provided.
