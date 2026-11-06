@@ -164,3 +164,19 @@ Run10 vs run9 (`python -I scripts/helper-chartres-compare-runs.py <run9> <run10>
 
 ## Loss shift (2026-11-06, run11)
 Run11 vs run10 (`helper-chartres-compare-runs.py`): same 95 files, schema, rows and sums; in `Daily_Losses_EU` only `ShiftName`, `Shift Time`, `Time` (and `loaded_at`) changed. Blend test (`python -I scripts/helper-blend-gap.py downloads/chartres-convert/run11/report <out>`), plan vs losses on site + machine + shift + day: both 7,165 shift-days (run10: 0), loss only 15 (the line-days with no plan slot, 11,819 min, written on `Day`), plan only 7,405 (the other shifts of each day: expected, one loss shift per day). Plan-only capacity is 52 % of the Chartres capacity, so a blended per-shift loss % of Chartres is high on the loss shift and 0 on the others; S4 filler rows will cover the plan-only keys.
+
+## Target columns: rule and examples (2026-11-06, run11)
+All from [`TARGET 2.xlsx`](<../downloads/01 SITE Chartres/TARGET 2.xlsx>) sheet `OEE 2025-2026` (fractions; line matched with `key()`, month = the month of the day). A bucket or a line-month with no value gives null, never 0.
+
+| Column | Table | Rule | Real example |
+|---|---|---|---|
+| `target` | `Daily_Losses_EU` | value of the bucket named like the row's `OEELossLvl3SubGroup` (exact name, e.g. `Breakdown`, `Minor Stops`, `Adjustments`) for the line and month. `Loss Target Key` = `<Unique Machine Name> <sub group> 01/MM/YYYY` (report key); `Value` stays empty | IWKA2, 2026-09-30, sub group `Breakdown`: row `Breakdown` of line IWKA2, column 2026-09 = 0.015 -> `target` 0.015, key `IWKA2-Chartres Breakdown 01/09/2026` |
+| `PDT Target` | `Plan_OPT_EU` | bucket `Planned Downtime (Total)`, same for every plan row of the line and month | IWKA2, 2026-09: 0.194 |
+| `UPDT Target` | `Plan_OPT_EU` | bucket `Unplanned Downtime (Total)` | IWKA2, 2026-09: 0.244 |
+| `OEE Target` | `Plan_OPT_EU` | bucket `% OEE` as a percent | IWKA2, 2026-09: 0.56 -> 56.0 |
+
+Fill rate of `target` in run11: 65,638 of 78,694 loss rows (83.4 %). The empty 16.6 % are the sub groups the target file has no bucket for: `Cleaning` (386 of 3,340 rows in 2026-09) and `Not Logged` (86). Do not invent a target for them: ask the site if they want one. Filler rows keep `target` null.
+
+## Filler rows (S4) and lake comparison (2026-11-06)
+Filler for Chartres only (`helper-filler-input.py ... sites=Chartres`, `local-filler-build.js`, `helper-filler-write.py`, doc [pbi-report-build.md](pbi-report-build.md) step 10), copied into `run11/report`: 7,407 `Daily_Losses_EU` rows (the plan shifts without losses) and 15 `Plan_OPT_EU` rows (the 15 no-plan days), all measures 0, `In EU Report` true on all, 28 filler files, schema equal to the own files. After it plan and losses meet on every shift-day (14,585 of 14,585). Two of the 7,407 are an artefact: IWKA1 has 13 loss rows dated 2025-03-01 inside the 2025-02 file (the workbook holds a day typed 29/02/2025, which does not exist; `Date` becomes 2025-03-01). The March period does not see them, so it gets 2 filler rows for Day and Night of 2025-03-01. Zeros, harmless; the date is a question for the site.
+Lake comparison (`python -I scripts/helper-chartres-lake-compare.py <lake report> <run report>`, lake copy `downloads/lake-chartres-20261106/`): schema of every table equals the lake files. See NOTES for the numbers.
