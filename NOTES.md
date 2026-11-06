@@ -1,6 +1,12 @@
 # NOTES
 
 ## Status
+- Chartres run9 (2026-11-06): current workbook inputs add 147 normalized day keys
+  and remove 2 versus run8. The user chose to include current inputs and report
+  the changed row counts; run9 remains local, with no lake write. Initial
+  PowerShell/inline-Node probes failed on path quoting, command syntax and
+  Excel-header parsing; corrected probes passed. See
+  [docs/chartres-convert.md](docs/chartres-convert.md) for counts and checks.
 - Blending gap measured (S3, 2026-11-06, read only): `prompt-response/blending-gap-analysis.md`. Workbook blend key Site + Machine + Shift (no date; the date range filters each source). Over a month the blend drops nothing for Hull / Nottingham, so it does not explain Charles's numbers; the missing `In EU Report` filter in Tableau does (with it our tables give the Power BI EU volume exactly). Real gaps: short date ranges (Hull 8 % of capacity on shift-days with no loss row) and Chartres losses with null `ShiftName` (never link). D1: 7 plan shift-days with no losses, no loss day without plan. Scripts `scripts/helper-twb-blend-links.py`, `helper-blend-gap.py`, `helper-blend-trace.py`.
 - Weinheim live (2026-11-04): in the Provideam fetch (`SITES`, bodies in the lake, `fdPartName` in the Mode Log) and history 2025-01 to 2026-10 built for all five month tables from the SharePoint exports (normalized, uploaded, both build tabs run in the VFC). API lines equal the SharePoint files line for line (5 days checked); Daily Losses equal the EU report's own Weinheim table per day. Open: decision on time convention (production day per site, `isAdjustedToUTC` flag), Line 5 glidepath zero for Oct 2026, 2025 has no targets. Handover `session_handover/weinheim-handover.md`, doc section "Weinheim" in `docs/provideam-fetch.md`
 - Segun's site dashboard schema (2026-10-30, Hull presentation): the PBI report

@@ -2,11 +2,11 @@
 
 | At a glance | |
 |---|---|
-| **What** | One script that turns every day row of the Chartres OEE workbooks (`<group>/<year>/SAISIE OEE/OEE*.xlsm`, sheet `Base`, 2025 and 2026) into rows of `Plan_OPT_EU`, `Time_Utilisation_EU` and `Daily_Losses_EU`, with the columns and types of the other sites (`scripts/lib-pbi-report-schemas.js`) and `Data Source` = `Excel` |
-| **Run** | `node scripts/chartres-convert.js out=downloads/chartres-convert/<new folder>` (workbooks from `downloads/01 SITE Chartres`), then `python -I scripts/helper-chartres-write-parquet.py downloads/chartres-convert/<same folder>`. Review for the site: `node scripts/chartres-review.js downloads/chartres-convert/<same folder>` then `python -I scripts/helper-chartres-review-xlsx.py downloads/chartres-convert/<same folder>/review.json prompt-response/chartres-review-for-laura.xlsx` |
-| **Writes** | `<out>/report/<table>/site=Chartres/<table>_<YYYY-MM>_excel.parquet` (one file per table and month, the lake layout of [report-config.md](report-config.md)), `<out>/stage/...json` (the same rows before typing) `<out>/checks.csv` (days that fail a rule of the entry form), `<out>/loss-map.json` (each loss column per line: names used, MASTERDATA match) and `<out>/days.json` (one line per day for the review). Local files only: nothing is uploaded |
-| **Inputs** | the workbooks (read, no macro run), the sheets `Category` of the 2026 files (French loss name to Level 1 / 2 / 3 English), `Copie de Target 2026.xlsx` (OEE target per line and month, from the site) and `MASTERDATA.xlsx` (sheet `Downtime_updated`: the SIH reason tree, English and French), both in the workbook folder |
-| **Status** | Built 2026-10-26; MASTERDATA names and the review added 2026-11-03 (run5): 7,163 days, 22,141 plan rows, 7,163 time rows, 77,122 loss rows, 66 files (Jan 2025 to Oct 2026). Review sent to the site 2026-11-03. Run6 (2026-11-05, same counts, new machine names) uploaded to `eu_report/report/<table>/site=Chartres/` (89 files) and the Machine Names list to `eu_report/reference/machine_names/site=Chartres/Chartres_MachineNames.csv` |
+| **What** | [`scripts/chartres-convert.js`](../scripts/chartres-convert.js) turns the Chartres OEE workbooks (`<group>/<year>/SAISIE OEE/OEE*.xlsm`, sheet `Base`, 2025 and 2026) into the three report tables, two site target tables and their local stage / parquet outputs, with the schemas of [`scripts/lib-pbi-report-schemas.js`](../scripts/lib-pbi-report-schemas.js) |
+| **Run** | [`scripts/chartres-convert.js`](../scripts/chartres-convert.js): `node scripts/chartres-convert.js out=downloads/chartres-convert/<new folder>` (workbooks from `downloads/01 SITE Chartres`), then [`scripts/helper-chartres-write-parquet.py`](../scripts/helper-chartres-write-parquet.py): `python -I scripts/helper-chartres-write-parquet.py downloads/chartres-convert/<same folder>`. Review for the site: `node scripts/chartres-review.js downloads/chartres-convert/<same folder>` then `python -I scripts/helper-chartres-review-xlsx.py downloads/chartres-convert/<same folder>/review.json prompt-response/chartres-review-for-laura.xlsx` |
+| **Writes** | `<out>/report/<table>/site=Chartres/<table>_<YYYY-MM>_excel.parquet` (one file per table and month, the lake layout of [report-config.md](report-config.md)), `<out>/stage/...json`, `<out>/checks.csv`, `<out>/duplicates.csv` (saving times and differing Base columns), `<out>/loss-map.json`, and `<out>/days.json`. [`scripts/helper-chartres-write-parquet.py`](../scripts/helper-chartres-write-parquet.py) also writes one parquet per target table. Local files only: nothing is uploaded |
+| **Inputs** | the workbooks (read, no macro run), `Category` sheets, [`TARGET 2.xlsx`](<../downloads/01 SITE Chartres/TARGET 2.xlsx>) / sheet `OEE 2025-2026` (OEE, downtime and loss targets), and [`MASTERDATA.xlsx`](<../downloads/01 SITE Chartres/MASTERDATA.xlsx>) / sheet `Downtime_updated`, all in the workbook folder |
+| **Status** | Run9 built and checked locally on 2026-11-06; nothing uploaded. 7,308 days, 22,573 plan rows, 7,308 time rows, 78,694 loss rows; 95 parquet files (Jan 2025 to Nov 2026, plus two target files). Counts differ from run8 because the current workbooks changed; see Run9 verification below |
 | **Scope** | 2025 and 2026 (decision of the user). 2024 has another format (`DOR <group>.xlsm`, sheet `TRS`) and is left out, see [chartres-source-files.md](chartres-source-files.md) |
 
 ## Rows
@@ -24,13 +24,14 @@
 | `AreaName` | the group: `CREAM`, `NON WOVEN`, `SKIN CARE` (the names of the macro export and of the target file) |
 | `ShiftName` (plan) | shift times from the site: Semaine Matin 05:00-13:00, Semaine Après Midi 13:00-21:00, Semaine Nuit 21:00-05:00, Weekend Matin 05:00-17:00, Weekend Nuit 17:00-05:00. | `Semaine Matin`, `Weekend Matin` = Day; `Semaine Après Midi` = Afternoon; `Semaine Nuit`, `Weekend Nuit` = Night (constant `SHIFTS`) |
 | `PartName` | `Nom PF<n> <shift>` (filled by the form from the sheet Data), else the Code. `Product Key` = `Unique Machine Name` + space + `PartName` |
-| `Good Parts` | `Volume - Déchets` of the slot, rounded (net of waste, as the workbook OEE). NON TISSE types waste per machine and shift (`Déchets <machine> <shift>`): that waste is spread over the slots of the shift by volume; `Déchets Libre` over all slots of the day |
+| `Good Parts` | `Volume` of the slot; do not subtract waste. `Defect Parts` keeps the slot's typed `Déchets` value; machine-level waste is not spread across product slots |
 | `Capacity` | `Vitesse x Temps` (macro rule) |
 | `Total Time`, `Planned OpT` | `Temps` of the slot (the slot times add up to TOR) |
 | `OEE Time` | `Good Parts / Vitesse`, minutes cut; empty without a speed |
 | `Downtime Units` | `Capacity - Good Parts` |
-| `OEE Target` | `Copie de Target 2026.xlsx`, line and month. 2025 uses the 2026 value of the same month (assumption of the user). CUPIDON and DAISY have none (dropped in 2026) |
-| `UPDT Target`, `PDT Target`, `Value`, `target` | empty: the site's target file has OEE only |
+| `OEE Target` | `TARGET 2.xlsx`, `% OEE` bucket, matching line and month; target fractions are written as percent (0.613 -> 61.3). 2025 uses its own months |
+| `PDT Target`, `UPDT Target` | `Planned Downtime (Total)` and `Unplanned Downtime (Total)` buckets, as fractions |
+| `target` (losses) | Exact `OEELossLvl3SubGroup` bucket and month, as a fraction; unmatched buckets stay empty. `Value` remains empty |
 | `OEE Time Total`, `Total Time Total`, `Planned OPT Total`, `All Time` | TU, TOR, TOR (constant `PLANNED_OPT_FROM`), 1440 |
 | `OEELossLvl3Group` | Category Level 1 EN: `Planned losses` = `Planned Loss`, `Unplanned losses` = `Unplanned Loss` (the EU names) |
 | `OEELossLvl3SubGroup`, `Breakdown Types` | Category Level 2 EN in the EU name where one exists (`Minor stop` = `Minor Stops`, `Adjustment` = `Adjustments`, `Changeover` = `Product Changeover`, `Undefined` (NR) = `Not Logged`, ... constant `SUB`), else as it is (`Breakdown`, `Cleaning`) |
@@ -42,11 +43,23 @@
 | `Volume Total` | sum of `Capacity` of the line and day |
 | `Volume Key`, `Loss Target Key`, `Equipment Loss Key` | the report way (`DD/MM/YYYY machine group sub desc`, `unique sub 01/MM/YYYY`, `machine desc`) |
 | `ShiftName`, `PartName`, `Time`, `Product Key` (losses) | empty: `Base` losses are per day |
-| `Dept`, `Area`, `Product Type`, `MachineName` | from the Chartres Machine Names list (constant `MACHINE_INFO`, 2026-11-05): `IWKA1`, `SACHA1`, `CLEOPATRE` replace the file names `IWKA 1`, `SACHA 1`, `CLÉOPATRE`. CUPIDON and DAISY (dropped) are not in the list: names unchanged, Dept empty. ZEUS and APOLLON have two product types: the first one is used |
+| `Dept`, `Area`, `Product Type`, `MachineName` | from the Chartres Machine Names list (constant `MACHINE_INFO`, 2026-11-05): `IWKA1`, `SACHA1`, `CLEOPATRE` replace the file names `IWKA 1`, `SACHA 1`, `CLÉOPATRE`. CUPIDON and DAISY (dropped) are not in the list: names unchanged, Dept empty. ZEUS and APOLLON have two product types: both use the agreed type |
 | Not-counted time | TownHall, trials, training, validation are not loss rows (they are outside TOR) |
 
+## Glidepaths from TARGET 2.xlsx (2026-11-06)
+By default, the converter reads [`TARGET 2.xlsx`](<../downloads/01 SITE Chartres/TARGET 2.xlsx>), sheet `OEE 2025-2026`; override it with `targets=<file>`. `Feuil1` and `Clés arrêts` are ignored. The 24 date headers are Excel month dates from 2025-01 to 2026-12. Values in this file are fractions (0.4 = 40%):
+
+- `OEE Target` uses `% OEE`, matching the line with the existing `key()` normalisation (accents, spaces and hyphens ignored), and writes a percent (61.3).
+- Plan `PDT Target` / `UPDT Target` use `Planned Downtime (Total)` / `Unplanned Downtime (Total)` as fractions.
+- Loss `target` looks up the exact output `OEELossLvl3SubGroup` and month, as a fraction. The `Loss Target Key` remains the report key. `Value` is not a target column and stays empty.
+- `Site_PDT_Targets` / `Site_UPDT_Targets` follow [`scripts/vfc/b9-target-rows.js`](../scripts/vfc/b9-target-rows.js): columns, order and types from [`scripts/lib-pbi-report-schemas.js`](../scripts/lib-pbi-report-schemas.js), one row per target line/month, target fraction, and `Volume Key` = source line + `01/MM/YYYY`. Blank cells remain null rows.
+
+The 16 workbook lines with OEE targets match through `key()`. Target line `JUPITER` has no workbook (expected next-year line); workbook lines `CUPIDON` and `DAISY` have no target rows. Run9 writes 408 rows to each site target table (17 target lines x 24 months).
+
+**Question for the site:** the target file has loss buckets `In process Quality`, `Operator Asset Care`, `Others` and `Refilling Materials` with no exact output subgroup; the output also has `Cleaning` and `Not Logged` with no exact target bucket. Should any of these names map to another bucket? Until confirmed, only exact subgroup names are populated; no mapping is inferred.
+
 ## Volume_CoV_EU and Format_List_EU (2026-11-03)
-`node scripts/chartres-extra-tables.js downloads/chartres-convert/<run>` then the parquet writer again. `Volume_CoV_EU` (13,466 rows): per day, shift and line from the `Plan_OPT_EU` rows, Good Parts over 1,000, the rule of `scripts/vfc/b9-cov-rows.js`. `Format_List_EU` (826 rows): one row per line and product of the plan rows; Brand, FORMAT (`200ml - Cap` = Unit Size `200ml`, Extra Info `Cap`) and CASE (`X6` = `6`) from the sheet `Data` of the same workbook (our mapping, to confirm). 46 products have no Data row. IWKA, CUMULUS, OLYMPE, DAISY, CUPIDON, SUGAR have no BRAND column: Brand is taken from the same product name on another line (2) or from the brand code at the start of the name when all products with that code have one brand (one brand code, 348 products), listed in `format-brand-guess.json` of the run (to check); 81 stay empty (OLYMPE 50, IWKA 2 15, ...). Not possible: `Run_Rates_EU` (hourly), `Site_PDT_Targets` / `Site_UPDT_Targets` (the target file has OEE only, wait for the Glidepaths). Possible, not built: `Historical_OEE_EU` from the 2024 `DOR` files (OEE only; the user left 2024 out).
+[`scripts/chartres-extra-tables.js`](../scripts/chartres-extra-tables.js) builds the extra tables; run the parquet writer again afterward. `Volume_CoV_EU` follows the rule of `scripts/vfc/b9-cov-rows.js`: per day, shift and line from `Plan_OPT_EU`, Good Parts over 1,000. `Format_List_EU` is one row per line and product; Brand, FORMAT (`200ml - Cap` = Unit Size `200ml`, Extra Info `Cap`) and CASE (`X6` = `6`) come from the workbook `Data` sheet (our mapping, to confirm). The run9 counts are 13,756 Volume_CoV_EU rows and 827 Format_List_EU rows. The earlier product/brand checks below describe run5. `Run_Rates_EU` is still not possible (hourly source). `Historical_OEE_EU` from the 2024 `DOR` files is possible but not built (the user left 2024 out). Site target tables are now built from `TARGET 2.xlsx`; see above.
 
 One day as csv for the site: `node scripts/chartres-one-day.js downloads/chartres-convert/<run> APOLLON 2026-10-22 prompt-response/chartres-one-day-APOLLON-2026-10-22` (a csv per table, git-ignored). Explanation page: `node scripts/chartres-explain-html.js downloads/chartres-convert/<run>` writes `prompt-response/chartres-how-it-works.html` (git-ignored).
 
@@ -66,10 +79,10 @@ Match per line and loss column (`masterdata()` in the script), share of the 77,1
 The site confirms or corrects the names in the review (sheet `Loss names`, column `Your correction`); the answers go into `SYNONYM` / `PART_EN`.
 
 ## Review for the site (2026-11-03)
-`scripts/chartres-review.js` + `scripts/helper-chartres-review-xlsx.py` write [prompt-response/chartres-review-for-laura.xlsx](../prompt-response/chartres-review-for-laura.xlsx) (site values: git-ignored). Kept short on purpose: 4 sheets (the example day is in the HTML page `chartres-how-it-works.html`). `1 MASTERDATA name` (the loss has a MASTERDATA name: "same name" or "our proposal: please check"), `2 No MASTERDATA (Category)` (English from the workbook Category sheet), `3 No MASTERDATA (ours)` (our translation: CUPIDON, DAISY), `Questions` (8, plain words, one real case each; Minutes 2025-26 are shown, the lists are sorted by them). One row per machine part (Dysf / Panne / Réglage together) or per reason; Yes/No drop-down, a drop-down of the MASTERDATA names (hidden sheet `names`), filters; sorted by minutes, which are not shown. `day=LINE@YYYY-MM-DD` picks another example. Overview diagram: page 0 of [diagrams/chartres-source-map.drawio](../diagrams/chartres-source-map.drawio), with every report table and what Chartres can feed it from (built: the three above; from the workbooks: Volume_CoV_EU, Format_List_EU from sheet Data, Historical_OEE_EU from the 2024 DOR files; waiting for the Glidepaths / reference file: Site_PDT_Targets, Site_UPDT_Targets, Machine Names; no source: Run_Rates_EU, hourly).
+`scripts/chartres-review.js` + `scripts/helper-chartres-review-xlsx.py` write [prompt-response/chartres-review-for-laura.xlsx](../prompt-response/chartres-review-for-laura.xlsx) (site values: git-ignored). Kept short on purpose: 4 sheets (the example day is in the HTML page `chartres-how-it-works.html`). `1 MASTERDATA name` (the loss has a MASTERDATA name: "same name" or "our proposal: please check"), `2 No MASTERDATA (Category)` (English from the workbook Category sheet), `3 No MASTERDATA (ours)` (our translation: CUPIDON, DAISY), `Questions` (8, plain words, one real case each; Minutes 2025-26 are shown, the lists are sorted by them). One row per machine part (Dysf / Panne / Réglage together) or per reason; Yes/No drop-down, a drop-down of the MASTERDATA names (hidden sheet `names`), filters; sorted by minutes, which are not shown. `day=LINE@YYYY-MM-DD` picks another example. Overview diagram: page 0 of [diagrams/chartres-source-map.drawio](../diagrams/chartres-source-map.drawio), with every report table and what Chartres can feed it from (built: the three above; from the workbooks: Volume_CoV_EU and Format_List_EU from sheet Data; target tables from TARGET 2.xlsx; Historical_OEE_EU from the 2024 DOR files; no source: Run_Rates_EU, hourly).
 
 ## Data choices (from the run of 2026-10-26)
-- **Day entered twice**: the newest saving is kept (`Date et heure de la saisie`, else the top row: Base is newest on top). 19 cases, listed by the script.
+- **Day entered twice**: the newest saving is kept (`Date et heure de la saisie`, else the top row: Base is newest on top). Run9 has 19 pairs; `duplicates.csv` records the file, date, both saving times and differing Base columns (`same` when none differ).
 - **Days that fail a form rule are loaded** and listed in `checks.csv` (rule, detail): TOR = TOP - not counted 7, TU + NR + losses = TOR 80, sum of product Temps = TOR 268, TU = round(OEE x TOR) 794.
 - **Negative NR**: on 910 days NR is negative (the operator balanced the day with it). A negative loss is not loaded; the row is in `checks.csv`. The day's losses then add up to more than TOR - TU.
 
@@ -78,8 +91,8 @@ The site confirms or corrects the names in the review (sheet `Loss names`, colum
 - Against the CREAM macro exports of 2026 (161 days of `PlanOpt/*_plan_opt.xlsx`): Capacity and Total Time per day equal on 149 days, Good Parts on 152 (waste is mostly 0 in CREAM). The 12 other days are not traced yet. Loss minutes equal on 64 of 161: traced on IWKA 1 2026-08-06 (export 621, ours 417): 417 - NR 3 + not-counted 210 (TOP 1380 - TOR 1170) + 8 - 11 = 621. The export holds the not-counted time, leaves NR out, and its name lookup moved 8 minutes from `Dysf ENCAISSEUSE Cermex` (11) to `Dysf DISTRIBUTEUR Spatules`.
 
 
-## NON TISSE waste (checked 2026-11-03)
-The machine waste of HOME and SACHA (typed per machine and shift, not per product) is about 0.01 % of the good parts. The split by volume is kept and no longer asked to the site. SUGAR has no machine waste columns (its waste is per product).
+## Site answer on waste (2026-11-05)
+The site says `Déchets` is never filled and is always zero. `Good Parts` is now the typed `Volume`; waste is not subtracted from plan rows or day totals. `Defect Parts` keeps each slot's typed `Déchets` value; machine-level waste is no longer distributed among product slots. The date rule remains `ANNEE` / `MOIS` / `JOUR` (night date is still TBC). Negative NR and `Temps non compté Libre 1` remain ignored.
 
 ## Deck for the site (2026-11-03)
 `prompt-response/chartres-how-it-works-for-laura.pptx` (10 slides, one real day, git-ignored): `PPTXGENJS_DIR=<folder with node_modules/pptxgenjs> PPTX_SKILL_DIR=<pptx skill folder> NODE_PATH=<same node_modules> node scripts/chartres-explain-pptx.js downloads/chartres-convert/<run>`. Look at it with `bash scripts/render-pptx.sh <deck.pptx> <new folder>` (LibreOffice and poppler, installed with winget). The HTML / PDF versions of the same explanation (`scripts/chartres-explain-html.js`) were replaced by the deck.
@@ -92,3 +105,41 @@ The site file lists two product types for ZEUS (No touch, Bottle) and APOLLON (B
 
 ## Dashboard filters (2026-11-05)
 Chartres was hidden by two blended Machine Name filters (from `Live_Plan_OPT_EU` and `Live_Daily_Losses_EU`) on the hidden worksheet "Site Time Utilisation (%)", shared by about 86 sheets. A blended filter drops primary rows with no match in the secondary source, even set to "all"; Chartres losses have no shift, product or time. Removed in the workbook; no data change needed.
+
+## Run9 verification (2026-11-06, local only)
+Run9 is in [downloads/chartres-convert/run9](../downloads/chartres-convert/run9); it was not uploaded. The current workbook set differs from run8: 147 day keys were added and 2 removed (net +145 days). Per the user's choice, run9 includes the current files rather than filtering them to match run8. Thus the three day-table counts are equal through 2026-09, but not in October/November:
+
+| Month | Plan_OPT_EU (8 / 9) | Time_Utilisation_EU (8 / 9) | Daily_Losses_EU (8 / 9) | Volume_CoV_EU (8 / 9) |
+|---|---:|---:|---:|---:|
+| 2025-01 | 1,174 / 1,174 | 367 / 367 | 3,991 / 3,991 | 786 / 787 |
+| 2025-02 | 1,193 / 1,193 | 346 / 346 | 4,097 / 4,097 | 721 / 724 |
+| 2025-03 | 1,392 / 1,392 | 395 / 395 | 4,779 / 4,779 | 831 / 834 |
+| 2025-04 | 1,336 / 1,336 | 389 / 389 | 4,074 / 4,074 | 750 / 750 |
+| 2025-05 | 986 / 986 | 306 / 306 | 3,271 / 3,271 | 545 / 545 |
+| 2025-06 | 961 / 961 | 322 / 322 | 3,381 / 3,381 | 572 / 573 |
+| 2025-07 | 1,180 / 1,180 | 394 / 394 | 4,219 / 4,219 | 714 / 714 |
+| 2025-08 | 909 / 909 | 339 / 339 | 3,632 / 3,632 | 561 / 561 |
+| 2025-09 | 874 / 874 | 353 / 353 | 3,245 / 3,245 | 549 / 549 |
+| 2025-10 | 1,105 / 1,105 | 390 / 390 | 4,059 / 4,059 | 689 / 689 |
+| 2025-11 | 899 / 899 | 314 / 314 | 3,252 / 3,252 | 533 / 533 |
+| 2025-12 | 629 / 629 | 212 / 212 | 2,310 / 2,310 | 395 / 395 |
+| 2026-01 | 1,093 / 1,093 | 326 / 326 | 3,752 / 3,752 | 625 / 625 |
+| 2026-02 | 1,098 / 1,098 | 326 / 326 | 3,605 / 3,605 | 647 / 647 |
+| 2026-03 | 975 / 975 | 311 / 311 | 3,084 / 3,084 | 553 / 553 |
+| 2026-04 | 1,036 / 1,036 | 349 / 349 | 3,687 / 3,687 | 620 / 620 |
+| 2026-05 | 715 / 715 | 249 / 249 | 2,560 / 2,560 | 426 / 426 |
+| 2026-06 | 1,017 / 1,017 | 331 / 331 | 3,510 / 3,510 | 636 / 636 |
+| 2026-07 | 992 / 992 | 317 / 317 | 3,484 / 3,484 | 633 / 633 |
+| 2026-08 | 856 / 856 | 294 / 294 | 3,222 / 3,222 | 561 / 561 |
+| 2026-09 | 943 / 943 | 297 / 297 | 3,340 / 3,340 | 610 / 610 |
+| 2026-10 | 778 / 1,032 | 236 / 319 | 2,568 / 3,514 | 509 / 674 |
+| 2026-11 | 0 / 178 | 0 / 62 | 0 / 626 | 0 / 117 |
+| **Total** | **22,141 / 22,573** | **7,163 / 7,308** | **77,122 / 78,694** | **13,466 / 13,756** |
+
+`Format_List_EU` is 826 / 827 rows (one file per run). Run8 had no site target tables; run9 has 408 rows each in `Site_PDT_Targets` and `Site_UPDT_Targets` (17 lines x 24 months). The helper wrote 95 local parquet files in run9.
+
+Checks on run9:
+- All 22,573 `Plan_OPT_EU` rows have `Good Parts` equal to the source slot `Volume`; all `Defect Parts` equal the source slot `Déchets`. Day totals sum `Volume`.
+- OEE targets cover all 21,793 plan rows for the 16 workbook lines with OEE targets, including their own 2025 and 2026 months; 0 missing or incorrect values. Both plan downtime targets matched their Glidepath values on all 21,793 rows. The loss `target` matched its exact bucket on 65,638 rows; unmatched bucket names remain null.
+- [duplicates.csv](../downloads/chartres-convert/run9/duplicates.csv) has 19 duplicate pairs: 17 with differing Base columns and 2 marked `same`.
+- Every run9 parquet schema for the five existing tables matches run8 exactly (column names, order and types), and is stable within its table. Run8 did not contain the two target tables; their schemas match `reportPdtSchema` / `reportUpdtSchema` in [`scripts/lib-pbi-report-schemas.js`](../scripts/lib-pbi-report-schemas.js).

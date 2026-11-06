@@ -1,25 +1,28 @@
 // Converts the Chartres OEE workbooks (sheet Base, 2025 and 2026) into the three
-// report tables Plan_OPT_EU, Time_Utilisation_EU and Daily_Losses_EU, with the
-// columns and types of scripts/lib-pbi-report-schemas.js and Data Source "Excel".
+// report tables and two site target tables, using the report schemas.
 // Rules and choices: docs/chartres-convert.md. Read only on the workbooks.
 // Usage: node scripts/chartres-convert.js [downloads/01 SITE Chartres] [out=<new folder>]
-//          [targets=<Target 2026.xlsx>] [masterdata=<MASTERDATA.xlsx>] [years=2025,2026]
-// Writes <out>/stage/<table>/site=Chartres/<table>_<YYYY-MM>_excel.json
-// ({schema, rows}), <out>/checks.csv (days that fail a rule of the entry form) and
-// <out>/loss-map.json (each loss column -> the names used, the MASTERDATA match),
-// then `python -I scripts/helper-chartres-write-parquet.py <out>` writes the parquet
-// files under <out>/report/ (the lake layout of docs/report-config.md).
+//          [targets=<TARGET 2.xlsx>] [masterdata=<MASTERDATA.xlsx>] [years=2025,2026]
+// Writes stage JSON, checks.csv, duplicates.csv, loss-map.json and days.json.
+// Then `python -I scripts/helper-chartres-write-parquet.py <out>` writes local
+// parquet files under <out>/report/ (the lake layout of docs/report-config.md).
 import { existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { readXlsx } from './lib-office.js';
-import { pbiPlanSchema, reportUtilSchema, pbiLossSchema } from './lib-pbi-report-schemas.js';
+import {
+  pbiPlanSchema,
+  reportUtilSchema,
+  pbiLossSchema,
+  reportPdtSchema,
+  reportUpdtSchema,
+} from './lib-pbi-report-schemas.js';
 
 const args = Object.fromEntries(
   process.argv.slice(2).filter((a) => a.includes('=')).map((a) => a.split(/=(.*)/s).slice(0, 2)),
 );
 const ROOT = process.argv.slice(2).find((a) => !a.includes('=')) ?? 'downloads/01 SITE Chartres';
 const OUT = args.out ?? 'downloads/chartres-convert/run1';
-const TARGETS = args.targets ?? join(ROOT, 'Copie de Target 2026.xlsx');
+const TARGETS = args.targets ?? join(ROOT, 'TARGET 2.xlsx');
 const MASTERDATA = args.masterdata ?? join(ROOT, 'MASTERDATA.xlsx');
 const YEARS = (args.years ?? '2025,2026').split(',');
 
@@ -124,6 +127,18 @@ const key = (s) => norm(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').repl
 const num = (v) => (v === '' || v === undefined || v === null ? 0 : Number(v) || 0);
 const dmy = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
 const dayNumber = (iso) => Date.parse(`${iso}T00:00:00Z`) / 86400000;
+const excelMonth = (value) => {
+  const serial = Number(value);
+  if (!Number.isFinite(serial)) {
+    return null;
+  }
+  const date = new Date((serial - 25569) * 86400000);
+  if (!Number.isFinite(date.getTime())) {
+    return null;
+  }
+  const iso = date.toISOString().slice(0, 10);
+  return iso.endsWith('-01') ? iso.slice(0, 7) : null;
+};
 const LOADED_AT = Date.now();
 
 if (existsSync(join(OUT, 'stage'))) {
@@ -131,28 +146,77 @@ if (existsSync(join(OUT, 'stage'))) {
   process.exit(1);
 }
 
-// ---- Targets: one OEE target per line and month (Target 2026, also used for 2025) ----
+// ---- Targets: one row per line, bucket and month (Glidepaths) ----
 function readTargets(path) {
-  const sheet = readXlsx(path)['OEE TARGET'];
+  const sheet = readXlsx(path)['OEE 2025-2026'];
   const head = sheet[0].map(norm);
+  const required = ['Site Name', 'Line', 'OEE Bucket'];
+  const missing = required.filter((name) => !head.includes(name));
+  if (missing.length) {
+    throw new Error(`targets file is missing columns: ${missing.join(', ')}`);
+  }
+  const monthColumns = head
+    .map((name, index) => ({ month: excelMonth(name), index }))
+    .filter((column) => column.month);
+  if (!monthColumns.length) {
+    throw new Error('targets file has no Excel month columns');
+  }
   const byLine = {};
+  const siteRows = { Site_PDT_Targets: [], Site_UPDT_Targets: [] };
+  const buckets = {
+    'Planned Downtime (Total)': {
+      table: 'Site_PDT_Targets',
+      column: 'PDT Target',
+    },
+    'Unplanned Downtime (Total)': {
+      table: 'Site_UPDT_Targets',
+      column: 'UPDT Target',
+    },
+  };
   for (const r of sheet.slice(1)) {
-    const month = num(r[1]);
-    if (!month) {
+    const line = norm(r[head.indexOf('Line')]);
+    const site = norm(r[head.indexOf('Site Name')]);
+    const bucket = norm(r[head.indexOf('OEE Bucket')]);
+    if (!line || !site || key(site) !== key(SITE) || !bucket) {
       continue;
     }
-    head.forEach((h, i) => {
-      if (i > 2 && r[i] !== '' && r[i] !== undefined) {
-        byLine[key(h)] ??= {};
-        byLine[key(h)][month] ??= Number(r[i]);
+    const lineKey = key(line);
+    for (const { month, index } of monthColumns) {
+      const raw = r[index];
+      const value = raw === '' || raw === undefined || raw === null
+        ? null
+        : Number(raw);
+      if (value !== null && !Number.isFinite(value)) {
+        throw new Error(`invalid target value: ${line} ${bucket} ${month}`);
       }
-    });
+      byLine[lineKey] ??= {};
+      byLine[lineKey][month] ??= {};
+      if (value !== null) {
+        byLine[lineKey][month][bucket] = value;
+      }
+      const spec = buckets[bucket];
+      if (spec) {
+        const monthText = `01/${month.slice(5, 7)}/${month.slice(0, 4)}`;
+        const targetRow = {
+          Site: SITE,
+          Line: line,
+          'OEE Bucket': bucket,
+          Date: dayNumber(`${month}-01`),
+          [spec.column]: value,
+          'Volume Key': `${line} ${monthText}`,
+          loaded_at: LOADED_AT,
+        };
+        siteRows[spec.table].push(targetRow);
+      }
+    }
   }
-  return byLine;
+  return { byLine, siteRows };
 }
-const targets = existsSync(TARGETS) ? readTargets(TARGETS) : {};
+const targetData = existsSync(TARGETS)
+  ? readTargets(TARGETS)
+  : { byLine: {}, siteRows: {} };
 if (!existsSync(TARGETS)) {
-  console.warn(`no target file at ${TARGETS}: OEE Target stays empty`);
+  console.warn(`no target file at ${TARGETS}: report targets stay empty`);
 }
 
 // ---- Files and the Category sheets (French loss name -> Level 1 / 2 / 3 English) ----
@@ -314,6 +378,7 @@ const add = (table, iso, row) => {
 };
 const checks = [['file', 'date', 'rule', 'detail']];
 const dupes = [];
+const duplicateDetails = [];
 const days = [];
 const sum = { days: 0, plan: 0, util: 0, loss: 0 };
 
@@ -329,10 +394,6 @@ for (const f of files.filter((x) => YEARS.includes(x.year))) {
       lossCols.push(i);
     }
   }
-  // NON TISSE: waste per machine and shift ("Déchets <machine> <shift>"), not per product.
-  const machineWaste = h
-    .map((n, i) => [n, i])
-    .filter(([n]) => n.startsWith('Déchets ') && !/^Déchets PF\d/.test(n));
   // The day is ANNEE / MOIS / JOUR (the stored Date is off by a day on some rows).
   // Newest saving wins when a day was entered twice (rows are newest on top).
   const rows = base.slice(2).filter((r) => num(v(r, 'ANNEE')) > 2000 && num(v(r, 'JOUR')));
@@ -340,14 +401,40 @@ for (const f of files.filter((x) => YEARS.includes(x.year))) {
   for (const r of rows) {
     const pad = (n) => String(num(n)).padStart(2, '0');
     const iso = `${num(v(r, 'ANNEE'))}-${pad(v(r, 'MOIS'))}-${pad(v(r, 'JOUR'))}`;
-    const saved = num(v(r, 'Date et heure de la saisie'));
+    const savedValue = v(r, 'Date et heure de la saisie');
+    const saved = num(savedValue);
     if (seen.has(iso)) {
+      const previous = seen.get(iso);
       dupes.push(`${f.line} ${iso}`);
-      if (saved <= seen.get(iso).saved) {
+      const width = Math.max(previous.r.length, r.length, h.length);
+      const differingColumns = [];
+      for (let i = 0; i < width; i += 1) {
+        if (String(previous.r[i] ?? '') !== String(r[i] ?? '')) {
+          differingColumns.push(norm(base[0][i]) || `Column ${i + 1}`);
+        }
+      }
+      const saveText = (value) => {
+        const serial = Number(value);
+        if (value === '' || value === undefined || !Number.isFinite(serial)) {
+          return String(value ?? '');
+        }
+        return new Date(Date.UTC(1899, 11, 30) + serial * 86400000)
+          .toISOString()
+          .replace('T', ' ')
+          .replace(/\.000Z$/, '');
+      };
+      duplicateDetails.push({
+        file: f.path.slice(ROOT.length + 1),
+        date: iso,
+        savingTime1: saveText(previous.savedValue),
+        savingTime2: saveText(savedValue),
+        differingColumns: differingColumns.join('; ') || 'same',
+      });
+      if (saved <= previous.saved) {
         continue;
       }
     }
-    seen.set(iso, { r, saved });
+    seen.set(iso, { r, saved, savedValue });
   }
   const info = MACHINE_INFO[key(f.line)] ?? {};
   const machine = info.name ?? f.line;
@@ -356,8 +443,9 @@ for (const f of files.filter((x) => YEARS.includes(x.year))) {
 
   for (const [iso, { r }] of seen) {
     sum.days += 1;
-    const month = Number(iso.slice(5, 7));
-    const oeeTarget = targets[key(machine)]?.[month] ?? null;
+    const month = iso.slice(0, 7);
+    const monthTargets = targetData.byLine[key(machine)]?.[month] ?? {};
+    const oeeTarget = monthTargets['% OEE'] ?? null;
     const top = num(v(r, 'TOP'));
     const tor = num(v(r, 'TOR'));
     const tu = num(v(r, 'TU'));
@@ -383,25 +471,9 @@ for (const f of files.filter((x) => YEARS.includes(x.year))) {
         }
       }
     }
-    // Machine waste: per shift to the slots of that shift, the rest ("Libre") to all, by volume.
-    const spread = (waste, list) => {
-      const vol = list.reduce((s, x) => s + x.volume, 0);
-      for (const x of list) {
-        x.waste += vol ? (waste * x.volume) / vol : 0;
-      }
-    };
-    for (const [n, i] of machineWaste) {
-      const w = num(r[i]);
-      if (!w) {
-        continue;
-      }
-      const shift = Object.keys(SHIFTS).find((s) => n.endsWith(` ${s}`));
-      spread(w, shift ? slots.filter((x) => x.shift === shift) : slots);
-    }
-
     let capacityDay = 0;
     for (const s of slots) {
-      const good = Math.round(s.volume - s.waste);
+      const good = s.volume;
       const capacity = s.speed * s.time;
       capacityDay += capacity;
       add('Plan_OPT_EU', iso, {
@@ -419,12 +491,12 @@ for (const f of files.filter((x) => YEARS.includes(x.year))) {
         SiteName: SITE,
         'Unique Machine Name': unique,
         'Product Key': `${unique} ${s.name || s.code}`,
-        'UPDT Target': null,
-        'PDT Target': null,
+        'UPDT Target': monthTargets['Unplanned Downtime (Total)'] ?? null,
+        'PDT Target': monthTargets['Planned Downtime (Total)'] ?? null,
         // Percent like the Glidepaths of the other sites (61.3, not 0.613).
         'OEE Target': oeeTarget === null ? null : Math.round(oeeTarget * 1000) / 10,
         ...machineCols,
-        'Defect Parts': Math.round(s.waste),
+        'Defect Parts': s.waste,
         OEE: capacity ? Math.round((good / capacity) * 1000) / 1000 : null,
         'Shift Colour': null,
         ShiftStartTime: SHIFT_START[s.shift] * 3600000,
@@ -471,6 +543,7 @@ for (const f of files.filter((x) => YEARS.includes(x.year))) {
       const lv = levels(machine, h[i]);
       const group = GROUP[lv.l1] ?? lv.l1;
       const sub = SUB[lv.l2] ?? lv.l2;
+      const target = targetData.byLine[key(machine)]?.[iso.slice(0, 7)]?.[sub] ?? null;
       const md = masterdata(machine, h[i], lv);
       const l3 = md?.name ?? lv.l3;
       const mapKey = `${machine}|${h[i]}`;
@@ -527,7 +600,7 @@ for (const f of files.filter((x) => YEARS.includes(x.year))) {
         ...machineCols,
         'Data Source': DATA_SOURCE,
         'In EU Report': true,
-        target: null,
+        target,
         'Batch ID': null,
         ...NO_FORMAT,
         comment_count: null,
@@ -560,7 +633,7 @@ for (const f of files.filter((x) => YEARS.includes(x.year))) {
       slotTime,
       lossMinutes,
       lossLoaded: lossCols.reduce((s, i) => s + Math.max(num(r[i]), 0), 0),
-      goodParts: slots.reduce((s, x) => s + Math.round(x.volume - x.waste), 0),
+      goodParts: slots.reduce((s, x) => s + x.volume, 0),
       capacity: capacityDay,
       waste: slots.reduce((s, x) => s + x.waste, 0),
     });
@@ -570,7 +643,13 @@ for (const f of files.filter((x) => YEARS.includes(x.year))) {
 // ---- Write ----
 // The schemas of the Hull / Nottingham files (step 9): one folder per table must have one
 // schema, the dashboard extract fails on a file whose types differ.
-const schemas = { Plan_OPT_EU: pbiPlanSchema, Time_Utilisation_EU: reportUtilSchema, Daily_Losses_EU: pbiLossSchema };
+const schemas = {
+  Plan_OPT_EU: pbiPlanSchema,
+  Time_Utilisation_EU: reportUtilSchema,
+  Daily_Losses_EU: pbiLossSchema,
+  Site_PDT_Targets: reportPdtSchema,
+  Site_UPDT_Targets: reportUpdtSchema,
+};
 let fileCount = 0;
 for (const [table, months] of Object.entries(out)) {
   const names = schemas[table].map(([n]) => n);
@@ -588,8 +667,25 @@ for (const [table, months] of Object.entries(out)) {
     fileCount += 1;
   }
 }
+for (const [table, rows] of Object.entries(targetData.siteRows)) {
+  const path = join(OUT, 'stage', table, `site=${SITE}`, `${table}.json`);
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, JSON.stringify({ schema: schemas[table], rows }));
+  fileCount += 1;
+}
 const csv = (rows) => rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
 writeFileSync(join(OUT, 'checks.csv'), `${csv(checks)}\n`);
+const duplicateRows = [
+  ['file', 'date', 'saving time 1', 'saving time 2', 'differing Base columns'],
+  ...duplicateDetails.map((entry) => [
+    entry.file,
+    entry.date,
+    entry.savingTime1,
+    entry.savingTime2,
+    entry.differingColumns,
+  ]),
+];
+writeFileSync(join(OUT, 'duplicates.csv'), `${csv(duplicateRows)}\n`);
 const lossList = [...lossMap.values()];
 writeFileSync(join(OUT, 'loss-map.json'), JSON.stringify(lossList, null, 1));
 writeFileSync(join(OUT, 'days.json'), JSON.stringify({ root: ROOT, dupes, days }));
@@ -604,4 +700,16 @@ console.log(`days ${sum.days}, rows: plan ${sum.plan}, time ${sum.util}, losses 
 console.log(`form rules failed: ${checks.length - 1} (see ${OUT}/checks.csv)`);
 console.log(`dates entered twice (newest saving kept): ${dupes.length} ${dupes.join(', ')}`);
 console.log(`loss names not in any Category sheet (block rule used): ${[...notInCategory.keys()].filter((n) => !/Libre/.test(n)).length} named, plus spare "Libre" columns`);
-console.log(`lines without an OEE target: ${[...new Set(files.map((x) => x.line))].filter((l) => !targets[key(l)]).join(', ') || 'none'}`);
+const targetLines = [...new Set(Object.keys(targetData.byLine))];
+const workbookLines = [...new Map(files.map((file) => [key(file.line), file.line])).values()];
+const targetLinesWithoutWorkbook = targetLines.filter((lineKey) =>
+  !workbookLines.some((line) => key(line) === lineKey));
+const workbookLinesWithoutTargets = workbookLines.filter((line) =>
+  !targetLines.includes(key(line)));
+const targetedLines = workbookLines.filter((line) =>
+  Object.values(targetData.byLine[key(line)] ?? {})
+    .some((month) => Number.isFinite(month['% OEE'])));
+console.log(`target lines without workbooks: ${targetLinesWithoutWorkbook.join(', ') || 'none'} (JUPITER is expected)`);
+console.log(`workbook lines without target rows: ${workbookLinesWithoutTargets.join(', ') || 'none'} (CUPIDON and DAISY have no target rows)`);
+console.log(`OEE target lines: ${targetedLines.length} with month values in 2025-2026`);
+console.log(`duplicate days with differing Base columns: ${duplicateDetails.filter((entry) => entry.differingColumns !== 'same').length}`);
