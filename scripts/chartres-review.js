@@ -208,7 +208,65 @@ const QUESTIONS = [
   'The OEE target file has 2026 only. For 2025 we used the 2026 target of the same month. Is there a 2025 target file, or can the 2025 dashboards use the 2026 targets?',
   'Sheet Data: we read FORMAT "200ml - Cap" as size 200ml + extra info Cap, and CASE "X6" as 6 units per case. Is this right?',
   'What was the minutes column "Temps non compté Libre 1" used for on ZEUS?',
+  ...extraQuestions(),
 ];
+
+// Added 2026-11-06: machine part, days entered twice that differ, Déchets above 0.
+function extraQuestions() {
+  const dup = readFileSync(join(OUT, 'duplicates.csv'), 'utf8')
+    .trim()
+    .split('\n')
+    .slice(1)
+    .map((l) => [...l.matchAll(/"((?:[^"]|"")*)"/g)].map((m) => m[1]));
+  const differ = dup.filter((d) => d[4] !== 'same' && d[4] !== 'Date et heure de la saisie');
+  const lineOf = (file) => file.split('/').at(-1).replace(/^OEE | - \d{4}\.xlsm$/g, '');
+  // A day entered three times gives two pairs: list each day once.
+  const dupDays = [...new Set(differ.map((d) => `${lineOf(d[0])} ${d[1]}`))];
+  const dupList = dupDays.join(', ');
+  const waste = [];
+  for (const month of new Set(days.map((d) => d.date.slice(0, 7)))) {
+    for (const r of stage('Plan_OPT_EU', month)) {
+      if (r['Defect Parts'] > 0) {
+        waste.push(r);
+      }
+    }
+  }
+  waste.sort((a, b) => b['Defect Parts'] - a['Defect Parts']);
+  const w = waste[0];
+  let q1 = 'MACHINE PART (sheet 4). Your workbook columns often name the machine AND a part, ';
+  q1 += 'for example "Dysf ETUYEUSE - Introduction Tubes". We now keep both: machine ';
+  q1 += '"Skiletting Machine", name "Skiletting Machine - Tube Insertion" (the MASTERDATA ';
+  q1 += 'part). Sheet 4 lists every column where we found a part. "exact part" should be ';
+  q1 += 'right; "part name contained" is our proposal, please check. Some columns name two ';
+  q1 += 'parts ("Chauffe / Scellage", "Introduction Tubes / Spatules", "Débordement Crème / ';
+  q1 += 'Niveau cuve"): for now we keep only the machine. Which part should they get?';
+  let q2 = `${dupDays.length} days were entered twice and the two copies are not the same: `;
+  q2 += `${dupList}. Example CUMULUS 2025-01-24: two rows with the same date and no `;
+  q2 += 'saving time; one has TOR 1340, TU 580, volume 18,012, the other TOR 1380, TU 414, ';
+  q2 += 'volume 14,083 (72 of 383 columns differ). There is no row for 2025-01-25. ';
+  q2 += 'Which copy is right for each day? Could one belong to another day?';
+  let q3 = `You told us Déchets is always 0. We see Déchets above 0 in ${waste.length} `;
+  q3 += `product rows (biggest: ${w.MachineName} ${isoOf(w.Date)}, Déchets `;
+  q3 += `${Math.round(w['Defect Parts'])} for a Volume of ${Math.round(w['Good Parts'])}). `;
+  q3 += 'What do these values mean? Should we keep them, or read them as 0?';
+  return [q1, q2, q3];
+}
+
+// ---- Sheet 4: machine part, one row per line and column with a part or a part question ----
+const partRows = lossMap
+  .filter((e) => e.partEn || e.partCandidates)
+  .sort((a, b) => b.minutes - a.minutes)
+  .map((e) => [
+    e.line,
+    e.column,
+    e.Equipment,
+    e.partEn ?? `(none yet) ${e.partCandidates}`,
+    e.partFr ?? '',
+    e.partMethod,
+    Math.round(e.minutes),
+    '',
+    '',
+  ]);
 
 const nameHead = ['Line', 'Name in your workbook', 'Kind'];
 const answerCols = { validation: { col: 6, list: 'Yes,No' }, pick: [7], answer: [6, 7], filter: true };
@@ -265,6 +323,27 @@ const review = {
           header: [...nameHead, 'English used (our translation)', 'SIH type', 'Minutes 2025-26', 'English OK?', 'If No: the right name'],
           rows: ours.map((g) => [lineText(g), g.name, g.kind, g.english, g.type, g.minutes, '', '']),
           ...answerCols,
+        },
+      ],
+    },
+    {
+      name: '4 Machine part',
+      widths: [12, 44, 24, 30, 30, 30, 12, 10, 34],
+      freeze: { row: 5, col: 3 },
+      blocks: [
+        {
+          title: 'The machine part (MASTERDATA Level 4) we found in the name of your column. Is it right?',
+          notes: [
+            'SIH name = machine - part, e.g. "Skiletting Machine - Tube Insertion". See Questions, the machine part question.',
+            'Sorted from the biggest loss (minutes 2025-26). "(none yet)": we keep the machine only and ask you which part.',
+          ],
+        },
+        {
+          header: ['Line', 'Column in your workbook', 'Machine (EN)', 'Part (EN)', 'Part (FR)', 'How matched', 'Minutes 2025-26', 'Right?', 'If No: the right part'],
+          rows: partRows,
+          validation: { col: 7, list: 'Yes,No' },
+          answer: [7, 8],
+          filter: true,
         },
       ],
     },

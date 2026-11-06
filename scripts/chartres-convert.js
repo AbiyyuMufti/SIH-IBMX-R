@@ -279,11 +279,19 @@ function levels(line, name) {
 // ones (the EU classification); MASTERDATA gives the Level 3 name and the Equipment.
 const mdReasons = [];
 const mdMachines = {};
+// Machine parts per line: { machine, machineFr, en, fr } (MASTERDATA Level 4).
+const mdParts = {};
 if (existsSync(MASTERDATA)) {
   for (const r of readXlsx(MASTERDATA).Downtime_updated.slice(2).map((x) => x.map(norm))) {
     for (const c of [0, 5]) {
       if (r[c]) {
         mdReasons.push({ l1: r[c], l1fr: r[c + 1], l2: r[c + 2], l2fr: r[c + 3] });
+      }
+    }
+    if (r[10] && r[12] && r[16]) {
+      const parts = (mdParts[key(r[10])] ??= []);
+      if (!parts.some((p) => p.machine === r[12] && p.en === r[16])) {
+        parts.push({ machine: r[12], machineFr: r[13], en: r[16], fr: r[17] });
       }
     }
     if (r[10] && r[12]) {
@@ -367,6 +375,62 @@ function masterdata(line, name, lv) {
   }
   const syn = (synonymKeys.get(key(lv.l3)) ?? []).map((s) => mdReasons.find((m) => label(m) === s)).find(Boolean);
   return syn ? { name: label(syn), l1: syn.l1, method: 'synonym, to confirm' } : null;
+}
+// ---- Machine part (MASTERDATA Level 4) of a machine loss column ----
+// The part words are the French column name after the machine
+// (Dysf ETUYEUSE - Introduction Tubes -> Introduction Tubes).
+// Methods: exact part, part name contained (to confirm). No part (machine only): the column
+// names the machine only, several parts match, the case is unsure, or nothing matches.
+// Site answers win over the rule: PART_ANSWER['LINE|column'] = part EN, or null = machine
+// only. Fill it from the review sheet "4 Machine part" and rerun to a new folder.
+const PART_ANSWER = {};
+// Asked to the site (2026-11-06), kept machine only until answered: two parts in one
+// column, or only one of the two named parts is in MASTERDATA.
+const PART_UNSURE = [
+  /Chauffe \/ Scellage/i,
+  /Introduction Tubes \/ Spatules/i,
+  /Débordement Crème \/ Niveau cuve/i,
+];
+const PART_PREFIX = /^(Dysf|Pannes?|Réglages?) (Ext ZAC |ZAC - |ZAC )?/i;
+const partKey = (s) => key(s).replace(/[^A-Z0-9]/g, '');
+function machinePart(line, column, machine) {
+  const mine = (mdParts[key(line)] ?? []).filter((p) => p.machine === machine);
+  const answer = PART_ANSWER[`${line}|${column}`];
+  if (answer !== undefined) {
+    const hit = mine.find((p) => p.en === answer) ?? null;
+    return { part: hit, method: answer === null ? 'site: machine only' : 'site answer' };
+  }
+  if (!mine.length) {
+    return { part: null, method: 'no machine in MASTERDATA' };
+  }
+  const rest = column.replace(PART_PREFIX, '');
+  const machineFr = mine[0].machineFr ?? '';
+  let words = rest;
+  if (machineFr && partKey(rest).startsWith(partKey(machineFr))) {
+    words = rest.slice(machineFr.length);
+  }
+  // One letter left is a plural of the machine name (BOL POMPES vs Bol pompe): no part.
+  const w = partKey(words).length <= 1 ? '' : partKey(words);
+  if (!w) {
+    return { part: null, method: 'machine only (column names the machine)' };
+  }
+  const exact = mine.filter((p) => partKey(p.fr) === w || partKey(p.en) === w);
+  const inside = mine.filter((p) => {
+    const f = partKey(p.fr);
+    return (f.length >= 4 && w.includes(f)) || (w.length >= 5 && f.includes(w));
+  });
+  const found = exact.length ? exact : inside;
+  if (found.length > 1) {
+    return { part: null, method: 'no part: several parts match', candidates: found };
+  }
+  if (found.length === 1 && PART_UNSURE.some((re) => re.test(column))) {
+    return { part: null, method: 'no part: unsure, asked to the site', candidates: found };
+  }
+  if (found.length === 1) {
+    const method = exact.length ? 'exact part' : 'part name contained, to confirm';
+    return { part: found[0], method };
+  }
+  return { part: null, method: 'no part found' };
 }
 // One entry per line and loss column that holds minutes: what the conversion used.
 const lossMap = new Map();
@@ -545,7 +609,9 @@ for (const f of files.filter((x) => YEARS.includes(x.year))) {
       const sub = SUB[lv.l2] ?? lv.l2;
       const target = targetData.byLine[key(machine)]?.[iso.slice(0, 7)]?.[sub] ?? null;
       const md = masterdata(machine, h[i], lv);
-      const l3 = md?.name ?? lv.l3;
+      const equipment = md?.name ?? lv.l3;
+      const mp = lv.machine ? machinePart(machine, h[i], equipment) : null;
+      const l3 = mp?.part ? `${equipment} - ${mp.part.en}` : equipment;
       const mapKey = `${machine}|${h[i]}`;
       const entry = lossMap.get(mapKey) ?? {
         line: machine,
@@ -562,7 +628,11 @@ for (const f of files.filter((x) => YEARS.includes(x.year))) {
         OEELossLvl3Group: group,
         OEELossLvl3SubGroup: sub,
         OEELossLvl3Desc: l3,
-        Equipment: lv.machine ? l3 : 'Unclassed',
+        Equipment: lv.machine ? equipment : 'Unclassed',
+        partEn: mp?.part?.en ?? null,
+        partFr: mp?.part?.fr ?? null,
+        partMethod: mp?.method ?? null,
+        partCandidates: (mp?.candidates ?? []).map((p) => p.en).join(' | ') || null,
         rows: 0,
         minutes: 0,
       };
@@ -591,7 +661,7 @@ for (const f of files.filter((x) => YEARS.includes(x.year))) {
         'Loss Units': main?.speed ? main.speed * minutes : null,
         'Time in Mins': minutes,
         'Equipment Loss Key': `${machine} ${l3}`,
-        Equipment: lv.machine ? l3 : 'Unclassed',
+        Equipment: lv.machine ? equipment : 'Unclassed',
         'Lvl 3 Loss Name': l3,
         'Loss Target Key': `${unique} ${sub} 01/${iso.slice(5, 7)}/${iso.slice(0, 4)}`,
         Value: null,

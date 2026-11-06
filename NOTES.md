@@ -1,6 +1,7 @@
 # NOTES
 
 ## Status
+- Chartres run10 (2026-11-06): machine part (MASTERDATA Level 4) added to Level 3 names and keys on 6,846 loss rows (exact 63 columns, contained 127); everything else equal to run9 (`scripts/helper-chartres-compare-runs.py`). Review sheet `4 Machine part` + questions 11-13 (unsure parts, 13 differing duplicate days, 70 Déchets rows). Correction: earlier we told Laura the machine was the deepest level; MASTERDATA has the part. Decision (user): Volume Key follows Level 3; apply contained matches now, redo from `PART_ANSWER` when confirmed.
 - Chartres run9 (2026-11-06): current workbook inputs add 147 normalized day keys
   and remove 2 versus run8. The user chose to include current inputs and report
   the changed row counts; run9 remains local, with no lake write. Initial

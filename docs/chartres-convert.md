@@ -6,7 +6,7 @@
 | **Run** | [`scripts/chartres-convert.js`](../scripts/chartres-convert.js): `node scripts/chartres-convert.js out=downloads/chartres-convert/<new folder>` (workbooks from `downloads/01 SITE Chartres`), then [`scripts/helper-chartres-write-parquet.py`](../scripts/helper-chartres-write-parquet.py): `python -I scripts/helper-chartres-write-parquet.py downloads/chartres-convert/<same folder>`. Review for the site: `node scripts/chartres-review.js downloads/chartres-convert/<same folder>` then `python -I scripts/helper-chartres-review-xlsx.py downloads/chartres-convert/<same folder>/review.json prompt-response/chartres-review-for-laura.xlsx` |
 | **Writes** | `<out>/report/<table>/site=Chartres/<table>_<YYYY-MM>_excel.parquet` (one file per table and month, the lake layout of [report-config.md](report-config.md)), `<out>/stage/...json`, `<out>/checks.csv`, `<out>/duplicates.csv` (saving times and differing Base columns), `<out>/loss-map.json`, and `<out>/days.json`. [`scripts/helper-chartres-write-parquet.py`](../scripts/helper-chartres-write-parquet.py) also writes one parquet per target table. Local files only: nothing is uploaded |
 | **Inputs** | the workbooks (read, no macro run), `Category` sheets, [`TARGET 2.xlsx`](<../downloads/01 SITE Chartres/TARGET 2.xlsx>) / sheet `OEE 2025-2026` (OEE, downtime and loss targets), and [`MASTERDATA.xlsx`](<../downloads/01 SITE Chartres/MASTERDATA.xlsx>) / sheet `Downtime_updated`, all in the workbook folder |
-| **Status** | Run9 built and checked locally on 2026-11-06; nothing uploaded. 7,308 days, 22,573 plan rows, 7,308 time rows, 78,694 loss rows; 95 parquet files (Jan 2025 to Nov 2026, plus two target files). Counts differ from run8 because the current workbooks changed; see Run9 verification below |
+| **Status** | Run10 (machine part) built and checked locally on 2026-11-06, same counts as run9; nothing uploaded. 7,308 days, 22,573 plan rows, 7,308 time rows, 78,694 loss rows; 95 parquet files (Jan 2025 to Nov 2026, plus two target files). Counts differ from run8 because the current workbooks changed; see Run9 verification below |
 | **Scope** | 2025 and 2026 (decision of the user). 2024 has another format (`DOR <group>.xlsm`, sheet `TRS`) and is left out, see [chartres-source-files.md](chartres-source-files.md) |
 
 ## Rows
@@ -35,9 +35,9 @@
 | `OEE Time Total`, `Total Time Total`, `Planned OPT Total`, `All Time` | TU, TOR, TOR (constant `PLANNED_OPT_FROM`), 1440 |
 | `OEELossLvl3Group` | Category Level 1 EN: `Planned losses` = `Planned Loss`, `Unplanned losses` = `Unplanned Loss` (the EU names) |
 | `OEELossLvl3SubGroup`, `Breakdown Types` | Category Level 2 EN in the EU name where one exists (`Minor stop` = `Minor Stops`, `Adjustment` = `Adjustments`, `Changeover` = `Product Changeover`, `Undefined` (NR) = `Not Logged`, ... constant `SUB`), else as it is (`Breakdown`, `Cleaning`) |
-| `OEELossLvl3Desc`, `Lvl 3 Loss Name`, `Loss Final Level` | the MASTERDATA English name where it matches (see MASTERDATA below), else Category Level 3 EN (`Piste` written `Lane`) |
+| `OEELossLvl3Desc`, `Lvl 3 Loss Name`, `Loss Final Level` | the MASTERDATA English name where it matches (see MASTERDATA below), else Category Level 3 EN (`Piste` written `Lane`). Machine losses with a found part: `<machine> - <part>` (see Machine part below). `Volume Key` and `Equipment Loss Key` follow this name |
 | Category lookup | the Category sheet of the same line (a 2025 file uses its 2026 file), else any Category sheet with the name. Names in no Category sheet (CUPIDON, DAISY, spare `Libre` columns) by the block: `Dysf` = Minor stop, `Panne` = Breakdown, `Réglages` = Adjustment, `Orga` = Cleaning, `Changement` = Changeover, `Rupture` = Lack of Resources, `Qualité` = Quality issue, `Maintenance` = Planned maintenance; the description is then the French machine part |
-| `Equipment` | the machine (the same name as Level 3) of `Dysf` / `Panne` / `Réglages` columns, else `Unclassed` |
+| `Equipment` | the machine of `Dysf` / `Panne` / `Réglages` columns (without the part), else `Unclassed` |
 | `Duration`, `Time in Mins` | the minutes (Duration as ms on 1970-01-01, as the other sites) |
 | `Loss Units` | `Vitesse x minutes`, speed of the product with most time that day |
 | `Volume Total` | sum of `Capacity` of the line and day |
@@ -64,7 +64,7 @@ The 16 workbook lines with OEE targets match through `key()`. Target line `JUPIT
 One day as csv for the site: `node scripts/chartres-one-day.js downloads/chartres-convert/<run> APOLLON 2026-10-22 prompt-response/chartres-one-day-APOLLON-2026-10-22` (a csv per table, git-ignored). Explanation page: `node scripts/chartres-explain-html.js downloads/chartres-convert/<run>` writes `prompt-response/chartres-how-it-works.html` (git-ignored).
 
 ## MASTERDATA (2026-11-03)
-`MASTERDATA.xlsx` sheet `Downtime_updated` is the reason tree of the new SIH entry page (French on screen, English stored). It is a new tree, not a translation of the workbook Category sheets: the planned / unplanned reasons are finer (e.g. `Changeover` = complete / partial, `Packing/Batch/WO change` = four reasons) and the machines are line, machine, type (Breakdown, Minor Stop, Adjustment), sub part. The workbook losses are per machine, so the history gets the machine and never the sub part. Group and sub group stay the Category ones (the EU classification); MASTERDATA only gives the Level 3 name and `Equipment`.
+`MASTERDATA.xlsx` sheet `Downtime_updated` is the reason tree of the new SIH entry page (French on screen, English stored). It is a new tree, not a translation of the workbook Category sheets: the planned / unplanned reasons are finer (e.g. `Changeover` = complete / partial, `Packing/Batch/WO change` = four reasons) and the machines are line, machine, type (Breakdown, Minor Stop, Adjustment), sub part. The workbook losses are per machine, so the machine comes first; since run10 the part (Level 4) is added where the column names it (section Machine part). Group and sub group stay the Category ones (the EU classification); MASTERDATA only gives the Level 3 name and `Equipment`.
 
 Match per line and loss column (`masterdata()` in the script), share of the 77,122 loss rows of run5:
 | Match | Rule | Rows |
@@ -143,3 +143,20 @@ Checks on run9:
 - OEE targets cover all 21,793 plan rows for the 16 workbook lines with OEE targets, including their own 2025 and 2026 months; 0 missing or incorrect values. Both plan downtime targets matched their Glidepath values on all 21,793 rows. The loss `target` matched its exact bucket on 65,638 rows; unmatched bucket names remain null.
 - [duplicates.csv](../downloads/chartres-convert/run9/duplicates.csv) has 19 duplicate pairs: 17 with differing Base columns and 2 marked `same`.
 - Every run9 parquet schema for the five existing tables matches run8 exactly (column names, order and types), and is stable within its table. Run8 did not contain the two target tables; their schemas match `reportPdtSchema` / `reportUpdtSchema` in [`scripts/lib-pbi-report-schemas.js`](../scripts/lib-pbi-report-schemas.js).
+
+## Machine part (2026-11-06, run10)
+MASTERDATA machine rows are line, machine EN/FR, type EN/FR, part EN/FR (Level 4). Many workbook columns name the machine and a part (`Dysf ETUYEUSE - Introduction Tubes`). Hull stores the same two levels: `Equipment` = machine, Level 3 = `machine - part`. `machinePart()` in the converter takes the French words after the machine name (prefix `Dysf` / `Panne` / `Réglage`, `ZAC` and the MASTERDATA French machine name removed; accents, case, spaces, brackets and dashes ignored) and compares them with the parts of the same line and machine.
+
+| Method (`partMethod` in `loss-map.json`) | Columns | Rows | Minutes 2025-26 | Result |
+|---|---|---|---|---|
+| exact part | 63 | 2,686 | 85,405 | `machine - part` |
+| part name contained, to confirm | 127 | 4,160 | 87,031 | `machine - part` |
+| no part: unsure, asked to the site (`PART_UNSURE`) | 12 | 1,042 | 35,332 | machine only |
+| no part: several parts match | 6 | 211 | 14,535 | machine only |
+| machine only (column names the machine) | 123 | 6,860 | 150,463 | machine only |
+| no part found | 254 | 12,197 | 364,534 | machine only |
+| no machine in MASTERDATA | 222 | 6,330 | 200,375 | as before |
+
+Site answers go into `PART_ANSWER` (`'LINE|column': 'part EN'` or `null` = machine only), from the review sheet `4 Machine part`; they win over the rule. Then rerun to a new folder. Unsure cases asked to the site: `Chauffe / Scellage` (two parts), `Introduction Tubes / Spatules` and `Débordement Crème / Niveau cuve` (only one half is in MASTERDATA).
+
+Run10 vs run9 (`python -I scripts/helper-chartres-compare-runs.py <run9> <run10>`): same 95 parquet files, same schema, rows and sums of Duration, Loss Units and Good Parts in every file. In `Daily_Losses_EU` only `OEELossLvl3Desc`, `Lvl 3 Loss Name`, `Loss Final Level`, `Equipment Loss Key` and `Volume Key` changed, on 6,846 rows (exactly the rows with a part), plus `loaded_at`. At most 4 parts per machine; distinct Level 3 names per line 5 to 23.
