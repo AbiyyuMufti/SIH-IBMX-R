@@ -9,6 +9,7 @@
 import { existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { readXlsx } from './lib-office.js';
+import { inEuReport } from './lib-report-scope.js';
 import {
   pbiPlanSchema,
   reportUtilSchema,
@@ -591,7 +592,7 @@ for (const f of files.filter((x) => YEARS.includes(x.year))) {
         'Targets Key': `${machine} 01/${iso.slice(5, 7)}/${iso.slice(0, 4)}`,
         ...NO_FORMAT,
         'Data Source': DATA_SOURCE,
-        'In EU Report': true,
+        'In EU Report': inEuReport(SITE, 'Plan_OPT_EU', { MachineName: machine }),
         source_hours: null,
         loaded_at: LOADED_AT,
       });
@@ -609,7 +610,7 @@ for (const f of files.filter((x) => YEARS.includes(x.year))) {
       'All Time': 1440,
       ...machineCols,
       'Data Source': DATA_SOURCE,
-      'In EU Report': true,
+      'In EU Report': inEuReport(SITE, 'Time_Utilisation_EU', { MachineName: machine }),
       loaded_at: LOADED_AT,
     });
     sum.util += 1;
@@ -692,7 +693,7 @@ for (const f of files.filter((x) => YEARS.includes(x.year))) {
         'Loss Final Level': l3,
         ...machineCols,
         'Data Source': DATA_SOURCE,
-        'In EU Report': true,
+        'In EU Report': inEuReport(SITE, 'Daily_Losses_EU', { MachineName: machine }),
         target,
         'Batch ID': null,
         ...NO_FORMAT,

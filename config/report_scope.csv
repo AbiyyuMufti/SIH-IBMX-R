@@ -65,3 +65,5 @@ Nottingham,Volume_CoV_EU,drop,MachineName,Sugar Coating 3,manufacturing machine
 Nottingham,Volume_CoV_EU,drop,MachineName,Sugar Coating 7,manufacturing machine
 Nottingham,Volume_CoV_EU,drop,MachineName,Vision,manufacturing machine
 Nottingham,Volume_CoV_EU,drop,MachineName,Vision 2,manufacturing machine
+Chartres,Plan_OPT_EU;Time_Utilisation_EU;Daily_Losses_EU;Volume_CoV_EU,drop,MachineName,SACHA1,not in the EU report (site answer 2026-11-09)
+Chartres,Plan_OPT_EU;Time_Utilisation_EU;Daily_Losses_EU;Volume_CoV_EU,drop,MachineName,SACHA2,not in the EU report (site answer 2026-11-09)

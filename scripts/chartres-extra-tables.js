@@ -12,6 +12,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { readXlsx } from './lib-office.js';
+import { inEuReport } from './lib-report-scope.js';
 import { reportCovSchema, reportFormatSchema } from './lib-pbi-report-schemas.js';
 
 const OUT = process.argv[2];
@@ -72,7 +73,7 @@ for (const month of months) {
       'Unique Machine Name': r['Unique Machine Name'],
       SiteName: SITE,
       'Data Source': 'Excel',
-      'In EU Report': true,
+      'In EU Report': inEuReport(SITE, 'Volume_CoV_EU', r),
       loaded_at: loadedAt,
     }));
   write('Volume_CoV_EU', `Volume_CoV_EU_${month}_excel.json`, reportCovSchema, covRows[month]);

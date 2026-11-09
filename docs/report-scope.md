@@ -34,6 +34,7 @@ A row is `In EU Report = true` when, for every column that has `keep` rules, its
 | Nottingham | Volume CoV | drop 13 manufacturing machines and `S14` |
 | Nottingham | Run Rates | drop `S14` |
 | Weinheim | all | no rule: all true |
+| Chartres | Plan OPT, Time Utilisation, Daily Losses, Volume CoV | drop `SACHA1`, `SACHA2` (site answer 2026-11-09: not in the EU report). The Chartres scripts read the file through `scripts/lib-report-scope.js`; run12 holds the values |
 
 Still dropped in the flow itself, because the site reports drop them too: `GT4 - Auto` (Hull plan, time utilisation, Volume CoV), `N11 Auto` (Nottingham and Weinheim plan, Nottingham time utilisation and Volume CoV), `B1 - Auto`, `B4 Auto`, `B5 Auto` (losses), rows without a machine.
 
