@@ -36,10 +36,10 @@ const AREA = { 'CREAM Chartres': 'CREAM', 'NON TISSE': 'NON WOVEN', 'SKIN CARE':
 // Chartres shift type -> report shift name. Times (site, 2026-11): Semaine Matin 05-13,
 // Après Midi 13-21, Nuit 21-05; Weekend Matin 05-17, Weekend Nuit 17-05.
 const SHIFTS = {
-  'Semaine Matin': 'Day',
+  'Semaine Matin': 'Morning',
   'Semaine Après Midi': 'Afternoon',
   'Semaine Nuit': 'Night',
-  'Weekend Matin': 'Day',
+  'Weekend Matin': 'Morning',
   'Weekend Nuit': 'Night',
 };
 // Shift start times (Laura, 2026-11), ms of the day on 1970-01-01.
@@ -435,10 +435,10 @@ function machinePart(line, column, machine) {
 }
 // ---- The shift of a day's losses (user decision 2026-11-06) ----
 // Base holds day totals, so the losses go on the plan shift with the most Temps that day,
-// ties to the earliest (Day, Afternoon, Night). Time = start of the shift type with the
-// most Temps inside that shift. No plan slot: Day at 05:00.
-const SHIFT_ORDER = ['Day', 'Afternoon', 'Night'];
-const NO_PLAN_SHIFT = { name: 'Day', start: SHIFT_START['Semaine Matin'] * 3600000 };
+// ties to the earliest (Morning, Afternoon, Night). Time = start of the shift type with the
+// most Temps inside that shift. No plan slot: Morning at 05:00.
+const SHIFT_ORDER = ['Morning', 'Afternoon', 'Night'];
+const NO_PLAN_SHIFT = { name: 'Morning', start: SHIFT_START['Semaine Matin'] * 3600000 };
 function shiftOfLosses(slots) {
   if (!slots.length) {
     return NO_PLAN_SHIFT;
@@ -496,8 +496,10 @@ for (const f of files.filter((x) => YEARS.includes(x.year))) {
       const width = Math.max(previous.r.length, r.length, h.length);
       const differingColumns = [];
       for (let i = 0; i < width; i += 1) {
-        if (String(previous.r[i] ?? '') !== String(r[i] ?? '')) {
-          differingColumns.push(norm(base[0][i]) || `Column ${i + 1}`);
+        const name = norm(base[0][i]) || `Column ${i + 1}`;
+        // The saving time differs on every second saving: not a content difference.
+        if (name !== 'Date et heure de la saisie' && String(previous.r[i] ?? '') !== String(r[i] ?? '')) {
+          differingColumns.push(`${name}: ${previous.r[i] ?? ''} -> ${r[i] ?? ''}`);
         }
       }
       const saveText = (value) => {
@@ -516,6 +518,7 @@ for (const f of files.filter((x) => YEARS.includes(x.year))) {
         savingTime1: saveText(previous.savedValue),
         savingTime2: saveText(savedValue),
         differingColumns: differingColumns.join('; ') || 'same',
+        status: differingColumns.length ? 'choose' : 'identical, kept once',
       });
       if (saved <= previous.saved) {
         continue;
@@ -560,7 +563,8 @@ for (const f of files.filter((x) => YEARS.includes(x.year))) {
     }
     let capacityDay = 0;
     for (const s of slots) {
-      const good = s.volume;
+      // Good Parts = Volume - Déchets (user, 2026-11-10).
+      const good = s.volume - s.waste;
       const capacity = s.speed * s.time;
       capacityDay += capacity;
       add('Plan_OPT_EU', iso, {
@@ -770,10 +774,11 @@ for (const [table, rows] of Object.entries(targetData.siteRows)) {
 const csv = (rows) => rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
 writeFileSync(join(OUT, 'checks.csv'), `${csv(checks)}\n`);
 const duplicateRows = [
-  ['file', 'date', 'saving time 1', 'saving time 2', 'differing Base columns'],
+  ['file', 'date', 'status', 'saving time 1', 'saving time 2', 'differing Base columns (1 -> 2)'],
   ...duplicateDetails.map((entry) => [
     entry.file,
     entry.date,
+    entry.status,
     entry.savingTime1,
     entry.savingTime2,
     entry.differingColumns,

@@ -22,9 +22,9 @@
 | `Date` | `ANNEE` / `MOIS` / `JOUR`. The stored `Date` column is one day off on some 2025 rows (OLYMPE 2025-03-02 holds 2025-03-03), so it is not used |
 | `MachineName` | the line in the file name (`OEE IWKA 2 - 2026.xlsm` = `IWKA 2`, `CLÉOPATRE` with accent). `Unique Machine Name` = `<line>-Chartres` |
 | `AreaName` | the group: `CREAM`, `NON WOVEN`, `SKIN CARE` (the names of the macro export and of the target file) |
-| `ShiftName` (plan) | shift times from the site: Semaine Matin 05:00-13:00, Semaine Après Midi 13:00-21:00, Semaine Nuit 21:00-05:00, Weekend Matin 05:00-17:00, Weekend Nuit 17:00-05:00. | `Semaine Matin`, `Weekend Matin` = Day; `Semaine Après Midi` = Afternoon; `Semaine Nuit`, `Weekend Nuit` = Night (constant `SHIFTS`) |
+| `ShiftName` (plan) | shift times from the site: Semaine Matin 05:00-13:00, Semaine Après Midi 13:00-21:00, Semaine Nuit 21:00-05:00, Weekend Matin 05:00-17:00, Weekend Nuit 17:00-05:00. | `Semaine Matin`, `Weekend Matin` = Morning (was `Day` until run12); `Semaine Après Midi` = Afternoon; `Semaine Nuit`, `Weekend Nuit` = Night (constant `SHIFTS`) |
 | `PartName` | `Nom PF<n> <shift>` (filled by the form from the sheet Data), else the Code. `Product Key` = `Unique Machine Name` + space + `PartName` |
-| `Good Parts` | `Volume` of the slot; do not subtract waste. `Defect Parts` keeps the slot's typed `Déchets` value; machine-level waste is not spread across product slots |
+| `Good Parts` | `Volume - Déchets` of the slot (user, 2026-11-10, run13; `Déchets` is 0 in the site's account, 70 plan rows hold a value). `Defect Parts` keeps the slot's typed `Déchets` value; machine-level waste is not spread across product slots |
 | `Capacity` | `Vitesse x Temps` (macro rule) |
 | `Total Time`, `Planned OpT` | `Temps` of the slot (the slot times add up to TOR) |
 | `OEE Time` | `Good Parts / Vitesse`, minutes cut; empty without a speed |
@@ -42,7 +42,7 @@
 | `Loss Units` | `Vitesse x minutes`, speed of the product with most time that day |
 | `Volume Total` | sum of `Capacity` of the line and day |
 | `Volume Key`, `Loss Target Key`, `Equipment Loss Key` | the report way (`DD/MM/YYYY machine group sub desc`, `unique sub 01/MM/YYYY`, `machine desc`) |
-| `ShiftName`, `Shift Time`, `Time` (losses) | since run11 (user decision 2026-11-06): the plan shift with the most `Temps` that day (ties: Day, Afternoon, Night); `Shift Time` = `ShiftName`; `Time` = start of that shift type on 1970-01-01 (`SHIFT_START`). No plan slot that day: `Day` 05:00. **Approximate**: `Base` holds day totals, a Chartres loss is not really in that shift, so shift-level loss views of Chartres are approximate. The reason: the Tableau blend links on Site + Machine + ShiftName and a null never links |
+| `ShiftName`, `Shift Time`, `Time` (losses) | since run11 (user decision 2026-11-06): the plan shift with the most `Temps` that day (ties: Morning, Afternoon, Night); `Shift Time` = `ShiftName`; `Time` = start of that shift type on 1970-01-01 (`SHIFT_START`). No plan slot that day: `Morning` 05:00. **Approximate**: `Base` holds day totals, a Chartres loss is not really in that shift, so shift-level loss views of Chartres are approximate. The reason: the Tableau blend links on Site + Machine + ShiftName and a null never links |
 | `PartName`, `Product Key` (losses) | empty: `Base` losses are per day |
 | `Dept`, `Area`, `Product Type`, `MachineName` | from the Chartres Machine Names list (constant `MACHINE_INFO`, 2026-11-05): `IWKA1`, `SACHA1`, `CLEOPATRE` replace the file names `IWKA 1`, `SACHA 1`, `CLÉOPATRE`. CUPIDON and DAISY (dropped) are not in the list: names unchanged, Dept empty. ZEUS and APOLLON have two product types: both use the agreed type |
 | Not-counted time | TownHall, trials, training, validation are not loss rows (they are outside TOR) |
@@ -183,3 +183,10 @@ Lake comparison (`python -I scripts/helper-chartres-lake-compare.py <lake report
 
 ## Waste for future integration (user, 2026-11-09)
 Laura confirmed the site does not count defects at the moment, so Good Parts = Volume and Good Parts = Volume - Déchets give the same numbers (Déchets is 0 in the site's account; 70 plan rows hold a value, question 13 to her). Run11 stays as uploaded. For the future SIH integration the rule is Good Parts = Volume - Défauts (Déchets).
+
+## Run13 (2026-11-10, decisions of the user)
+Local only, not uploaded. Changes vs run12: `Good Parts` = `Volume - Déchets`; shift name `Day` is now `Morning` (plan and losses); duplicates (below); workbooks changed again (7,338 days, 22,648 plan, 7,338 time, 78,969 loss rows; 123 parquet files with the filler of 7,435 rows).
+- **Production day** 05:00 to 05:00 local wall clock, all year (Hull and Nottingham 06:00 to 06:00 local). The shift times (Matin 05, Nuit 21 or 17) are wall clock, so there is no summer / winter shift. A night shift (and its 00:00 to 05:00 part) belongs to the day it started: the day stays `ANNEE` / `MOIS` / `JOUR` as typed.
+- **NR** = Non renseigné (not provided: time the operators did not log). A negative NR is not loaded (no change).
+- **Duplicate days**: `Date et heure de la saisie` is not a content difference any more. Identical copies: kept once. Copies that differ: [duplicates.csv](../downloads/chartres-convert/run13/duplicates.csv), column `status` = `choose`, with both values per differing column (`1 -> 2`, copy 1 = the row higher in the sheet); until the user picks, the newest saving is kept. The user picks; no rule is inferred.
+- Targets of 2025 and 2026 come from `TARGET 2.xlsx` (no change). SACHA1 and SACHA2 stay `In EU Report` = false (run12).
