@@ -596,7 +596,9 @@ for (const f of files.filter((x) => YEARS.includes(x.year))) {
       capacityDay += capacity;
       add('Plan_OPT_EU', iso, {
         Date: dayNumber(iso),
-        AreaName: AREA[f.group] ?? f.group,
+        // The area of the Machine Names list (CUMULUS sits in the CREAM folder, its
+        // area is NON WOVEN); the folder only when the line is not in the list.
+        AreaName: info.area ?? AREA[f.group] ?? f.group,
         MachineName: machine,
         ShiftName: SHIFTS[s.shift],
         PartName: s.name || s.code,

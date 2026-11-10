@@ -1,6 +1,7 @@
 // Builds the Daily_Losses_EU rows: one per loss column (NR to the first
 // product column, no "Nbre") with minutes above 0. In: msg.row, slots, day,
-// look, rows (y2). Out: msg.rows.Daily_Losses_EU, lossShift, notes.
+// line, targets, rows (y2) and the loss names in flow context.
+// Out: msg.rows.Daily_Losses_EU, lossShift, notes.
 var SITE = 'Chartres';
 var DATA_SOURCE = 'Excel';
 var HOUR_MS = 3600000;
@@ -18,19 +19,23 @@ var FORMAT_COLUMNS = [
   'Extra Info'
 ];
 var MACHINE_LOSS = /^(Dysf|Pannes?|Réglages?) /;
+// Block rule for a loss column that is not in the loss names file: the start
+// of the column name gives group and sub group (same as the history load).
+var PREFIX = [
+  ['^Dysf ', 'Unplanned Loss', 'Minor Stops'],
+  ['^Pannes? ', 'Unplanned Loss', 'Breakdown'],
+  ['^Réglages? ', 'Unplanned Loss', 'Adjustments'],
+  ['^Orga', 'Planned Loss', 'Cleaning'],
+  ['^Changement', 'Planned Loss', 'Product Changeover'],
+  ['^Rupture', 'Unplanned Loss', 'Lack Of Resources'],
+  ['^Qualité', 'Unplanned Loss', 'Quality Issues'],
+  ['^Maintenance', 'Planned Loss', 'Planned Maintenance']
+];
 var FIRST_PRODUCT_COLUMN = 'Code PF1 Semaine Matin';
 
 function norm(value) {
   var text = value === undefined || value === null ? '' : String(value);
   return text.replace(/\s+/g, ' ').trim();
-}
-
-function key(value) {
-  return norm(value)
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[\s-]/g, '')
-    .toUpperCase();
 }
 
 function num(value) {
@@ -42,13 +47,12 @@ function num(value) {
 
 var base = msg.row.base;
 var iso = msg.day.iso;
-var month = iso.slice(0, 7);
 var machine = msg.day.machine;
-var line = msg.look.lines[key(msg.row.fileLine)];
+var line = msg.line;
 var unique = line.unique;
-var look = msg.look;
+var losses = flow.get('losses_' + SITE) || {};
 var notes = [];
-var targets = (look.targets[key(machine)] || {})[month] || {};
+var targets = msg.targets.b || {};
 
 // Shift of the losses.
 function shiftOfLosses(slots) {
@@ -89,7 +93,7 @@ function shiftOfLosses(slots) {
 // Names of one loss column: the map of the history load, else the block
 // rule of the column name.
 function names(column) {
-  var known = look.loss[machine + '|' + column];
+  var known = losses[machine + '|' + column];
   if (known) {
     return {
       group: known[0],
@@ -100,7 +104,7 @@ function names(column) {
   }
   notes.push('loss column not in the map: ' + column);
   var rule = null;
-  look.prefix.forEach(function (p) {
+  PREFIX.forEach(function (p) {
     if (!rule && new RegExp(p[0]).test(column)) {
       rule = p;
     }
@@ -160,7 +164,7 @@ columns.forEach(function (column) {
     return;
   }
   var n = names(column);
-  var target = targets[n.sub];
+  var percent = targets[n.sub];
   var out = {
     Date: msg.day.dayNumber,
     Time: lossShift.start,
@@ -195,7 +199,8 @@ columns.forEach(function (column) {
     'Product Type': line.type,
     'Data Source': DATA_SOURCE,
     'In EU Report': line.inEu.Daily_Losses_EU,
-    target: target === undefined ? null : target,
+    target: percent === undefined ? null :
+      Number((percent / 100).toPrecision(12)),
     'Batch ID': null,
     comment_count: null,
     loaded_at: msg.day.loadedAt

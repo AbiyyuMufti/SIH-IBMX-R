@@ -1,0 +1,2223 @@
+[
+  {
+    "id": "e2c8f.21ee79",
+    "type": "tab",
+    "label": "Chartres live",
+    "disabled": false,
+    "allowCycles": false,
+    "info": "Power Automate sends one Base row of a Chartres OEE workbook per request; the tab writes the report tables of that line and day. Needs the Config tab. Generate the key on the http in node after the import and set DRY_RUN in 1.1 SETTINGS."
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "e4b7e.238792",
+    "type": "comment",
+    "name": "[1] TRIGGERS",
+    "info": "STAGE 1 - TRIGGERS. The reference files (Machine Names, Glidepaths, Format List, report scope, loss names) are loaded when the tab starts (5 s after a deploy) and again every hour at minute 7. A request that arrives before they are loaded gets 503 and Power Automate sends it again.",
+    "x": 120,
+    "y": 40,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "e6a6d.2520ab",
+    "type": "inject",
+    "name": "At start",
+    "topic": "",
+    "repeat": "",
+    "repeatEnd": "0",
+    "endTime": "0",
+    "offset": "NaN",
+    "once": true,
+    "properties": "",
+    "timezone": "UTC",
+    "betweentimesunit": "m",
+    "showNextExecution": false,
+    "powerMode": false,
+    "x": 100,
+    "y": 300,
+    "wires": [
+      [
+        "e895c.26b9c4"
+      ]
+    ],
+    "payload": "",
+    "payloadType": "date",
+    "onceDelay": "5"
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "ea84b.2852dd",
+    "type": "inject",
+    "name": "Every hour",
+    "topic": "",
+    "repeat": "",
+    "repeatEnd": "0",
+    "endTime": "0",
+    "offset": "NaN",
+    "once": false,
+    "properties": "",
+    "timezone": "UTC",
+    "betweentimesunit": "m",
+    "showNextExecution": false,
+    "powerMode": false,
+    "x": 120,
+    "y": 340,
+    "wires": [
+      [
+        "e895c.26b9c4"
+      ]
+    ],
+    "payload": "",
+    "payloadType": "date",
+    "crontab": "7 * * * *"
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "ec73a.29ebf6",
+    "type": "comment",
+    "name": "[2] REQUEST",
+    "info": "STAGE 2 - /chartres-data (POST) receives one Base row per request. The key of the http in node is generated there after the import, it is not part of this file; delete or disable any other http in node with the same endpoint first. 1.1 SETTINGS (edit here) holds the dry-run switch (true: rows are built and logged, nothing is written). 1.2 reads the row (the line comes from FileName, the day from ANNEE / MOIS / JOUR; a row before the first live day is answered 200 and not written, a bad row 400). 1.3 answers 503 while the reference is not loaded.",
+    "x": 120,
+    "y": 260,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "ee629.2b850f",
+    "type": "http in",
+    "name": "/chartres-data",
+    "endpoint": "/chartres-data",
+    "method": "post",
+    "upload": false,
+    "access": "key",
+    "key": "",
+    "users": "",
+    "powerMode": false,
+    "x": 120,
+    "y": 380,
+    "wires": [
+      [
+        "e895c.26b9c4"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "f42f6.30505a",
+    "type": "link out",
+    "name": "to REFRESH",
+    "mode": "link",
+    "links": [
+      "f2407.2eb741"
+    ],
+    "x": 540,
+    "y": 360,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "e895c.26b9c4",
+    "type": "function",
+    "name": "2.1 1.1 SETTINGS (edit here)",
+    "func": "// Settings of the tab Chartres live. In: a request of Power Automate (msg.req)\n// or the refresh trigger. Out 1: the request. Out 2: the reference refresh.\n// Edit the constants below. DRY_RUN true builds and logs the rows, writes none.\nvar DRY_RUN = true;\nvar SITE_NAME = 'Chartres';\nvar SOURCE = 'excel';\n\nvar shared = glob.get('cfg');\nif (!shared || !shared.root) {\n  node.status({\n    fill: 'red',\n    shape: 'ring',\n    text: 'CONFIG not run'\n  });\n  node.error('CONFIG not run: open the Config tab and deploy it');\n  return null;\n}\n\nvar cfg = Object.assign({}, shared);\ncfg.site = SITE_NAME;\ncfg.source = SOURCE;\ncfg.dryRun = DRY_RUN;\ncfg.referenceFolder = shared.root + '/reference';\ncfg.liveFolder = shared.root + '/report';\nflow.set('cfg', cfg);\n\nnode.status({\n  fill: DRY_RUN ? 'yellow' : 'green',\n  shape: 'dot',\n  text: SITE_NAME + (DRY_RUN ? ' DRY RUN' : ' WRITE MODE')\n});\nif (msg.req) {\n  return [msg, null];\n}\nreturn [null, msg];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 360,
+    "y": 340,
+    "wires": [
+      [
+        "f0518.2d1e28"
+      ],
+      [
+        "f42f6.30505a"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "f9fc3.351ba5",
+    "type": "link out",
+    "name": "to ANSWER",
+    "mode": "link",
+    "links": [
+      "f80d4.33828c"
+    ],
+    "x": 740,
+    "y": 340,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "f0518.2d1e28",
+    "type": "function",
+    "name": "2.2 Read the row",
+    "func": "// Checks and reads one Base row from Power Automate. In: msg.payload (JSON).\n// Out 1: msg.row {fileLine, iso, saved, base}. Out 2: the answer for a bad\n// row (400) or a day before FIRST_DAY (200, not written).\n\n// First production day written by this tab (the days before stay in the\n// month files of the history load).\nvar FIRST_DAY = '2026-11-11';\nvar SAVED_COLUMN = 'Date et heure de la saisie';\n\nfunction norm(value) {\n  var text = value === undefined || value === null ? '' : String(value);\n  return text.replace(/\\s+/g, ' ').trim();\n}\n\nfunction reply(code, tag, detail) {\n  msg.statusCode = code;\n  msg.payload = {\n    status: tag,\n    detail: detail\n  };\n  msg.logLevel = code === 200 ? 'info' : 'warn';\n  msg.logText = tag + ': ' + detail;\n  return [null, msg];\n}\n\nvar body = msg.payload;\nif (!body || typeof body !== 'object' || Array.isArray(body)) {\n  return reply(400, 'rejected', 'the body is not a JSON object');\n}\n\n// Same header spelling as the workbook sheet Base.\nvar base = {};\nObject.keys(body).forEach(function (name) {\n  base[norm(name).replace('Week-end', 'Weekend')] = body[name];\n});\n\n// The line is the workbook name: OEE <line> - <year>.xlsm\nvar fileName = norm(base.FileName);\nvar fileLine = fileName\n  .replace(/^OEE /, '')\n  .replace(/ - \\d{4}\\.xlsm?$/i, '');\nif (!fileName || !fileLine) {\n  return reply(400, 'rejected', 'FileName is missing');\n}\n\n// The day is ANNEE / MOIS / JOUR (the stored Date is off by a day on\n// some rows).\nvar year = Number(base.ANNEE) || 0;\nvar month = Number(base.MOIS) || 0;\nvar dayOfMonth = Number(base.JOUR) || 0;\nvar iso = String(year) + '-' + ('0' + month).slice(-2) + '-' +\n  ('0' + dayOfMonth).slice(-2);\nvar valid = year > 2000 && month >= 1 && month <= 12 && dayOfMonth >= 1;\nif (valid) {\n  var check = new Date(iso + 'T00:00:00Z');\n  valid = !isNaN(check.getTime()) &&\n    check.toISOString().slice(0, 10) === iso;\n}\nif (!valid) {\n  return reply(400, 'rejected', fileLine + ': no valid ANNEE/MOIS/JOUR');\n}\nif (iso < FIRST_DAY) {\n  return reply(200, 'ignored', fileLine + ' ' + iso + ' is before ' +\n    FIRST_DAY);\n}\n\nmsg.row = {\n  fileLine: fileLine,\n  iso: iso,\n  saved: Number(base[SAVED_COLUMN]) || 0,\n  base: base\n};\nnode.status({\n  fill: 'green',\n  shape: 'dot',\n  text: fileLine + ' ' + iso\n});\nreturn [msg, null];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 600,
+    "y": 320,
+    "wires": [
+      [
+        "f61e5.31e973"
+      ],
+      [
+        "f9fc3.351ba5"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "fdda1.384dd7",
+    "type": "link out",
+    "name": "to ROW",
+    "mode": "link",
+    "links": [
+      "fbeb2.36b4be"
+    ],
+    "x": 960,
+    "y": 280,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "ffc90.39e6f0",
+    "type": "link out",
+    "name": "to ANSWER",
+    "mode": "link",
+    "links": [
+      "f80d4.33828c"
+    ],
+    "x": 960,
+    "y": 320,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "f61e5.31e973",
+    "type": "function",
+    "name": "2.3 Check reference",
+    "func": "// Stops a request while the reference files are not loaded (after a deploy\n// the refresh needs a few seconds). In: msg.row. Out 1: the request goes on.\n// Out 2: answer 503, so Power Automate sends the row again.\nvar ready = flow.get('chartres_ready');\nif (ready && ready.at) {\n  return [msg, null];\n}\n\nmsg.statusCode = 503;\nmsg.payload = {\n  status: 'not ready',\n  detail: 'reference files are loading, send again'\n};\nmsg.logLevel = 'warn';\nmsg.logText = 'not ready: reference files not loaded yet';\nreturn [null, msg];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 820,
+    "y": 300,
+    "wires": [
+      [
+        "fdda1.384dd7"
+      ],
+      [
+        "ffc90.39e6f0"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "01b7f.3b8009",
+    "type": "comment",
+    "name": "[3] REFERENCE",
+    "info": "STAGE 3 - one message per reference file type: the folder of the type in <root>/reference is listed, the newest .csv is read and parsed, then the lookup node of the type stores it in flow context. Machine Names, Glidepaths, Format List and report scope use the same lookup nodes as the PBI report build; the loss names (localisation/chartres-losses.csv) have their own. The tab is ready when all five types came in without a failure.",
+    "x": 120,
+    "y": 480,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "f2407.2eb741",
+    "type": "link in",
+    "name": "REFRESH",
+    "links": [
+      "f42f6.30505a"
+    ],
+    "x": 60,
+    "y": 560,
+    "wires": [
+      [
+        "03a6e.3d1922"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "03a6e.3d1922",
+    "type": "function",
+    "name": "3.1 Start refresh",
+    "func": "// Starts one reference refresh: one message per reference file type.\n// In: the refresh trigger. Out: msg.payload = the list of types, msg.runId.\nvar TYPES = [\n  'machines',\n  'glidepaths',\n  'formats',\n  'scope',\n  'losses'\n];\n\nvar runId = Date.now();\nflow.set('chartres_run', {\n  id: runId,\n  total: TYPES.length,\n  done: {},\n  failed: []\n});\nmsg.runId = runId;\nmsg.payload = TYPES;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 200,
+    "y": 560,
+    "wires": [
+      [
+        "0595d.3eb23b"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "0595d.3eb23b",
+    "type": "split",
+    "name": "Split per item",
+    "splt": "\\n",
+    "spltType": "str",
+    "arraySplt": 1,
+    "arraySpltType": "len",
+    "stream": false,
+    "addname": "index",
+    "x": 400,
+    "y": 560,
+    "wires": [
+      [
+        "0784c.404b54"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "0784c.404b54",
+    "type": "function",
+    "name": "3.2 Set reference folder",
+    "func": "// Sets the folder of one reference file type for the list objects node.\n// In: msg.payload = one type (after the split). Out: msg.type, msg.site,\n// msg.what and msg.path = the folder, ending with a slash.\nvar SITE = 'Chartres';\nvar FOLDERS = {\n  machines: 'machine_names/site=Chartres/',\n  glidepaths: 'glidepaths/site=Chartres/',\n  formats: 'format_list/site=Chartres/',\n  scope: 'report_scope/site=All/',\n  losses: 'localisation/site=Chartres/'\n};\nvar cfg = flow.get('cfg');\n\nmsg.type = msg.payload;\nmsg.site = SITE;\nmsg.what = msg.type;\nmsg.path = cfg.referenceFolder + '/' + FOLDERS[msg.type];\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 620,
+    "y": 560,
+    "wires": [
+      [
+        "0973b.41e46d"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "0973b.41e46d",
+    "type": "list objects",
+    "name": "List objects",
+    "subtenant": "",
+    "path": "",
+    "x": 840,
+    "y": 560,
+    "wires": [
+      [
+        "0b62a.437d86"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "112f7.4848d1",
+    "type": "link out",
+    "name": "to REF DONE",
+    "mode": "link",
+    "links": [
+      "0f408.46afb8"
+    ],
+    "x": 1180,
+    "y": 580,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "0b62a.437d86",
+    "type": "function",
+    "name": "3.3 Pick the file",
+    "func": "// Picks the newest .csv of the folder list (list objects).\n// Out 1: msg.path for the read node, without data/ten=<tenant>/ or a leading\n// slash. Out 2: a failed item when the folder has no .csv.\nvar TENANT_PREFIX = /^\\/?(data\\/ten=[^\\/]+\\/)?/;\nvar items = Array.isArray(msg.payload) ? msg.payload : [];\nvar files = items.filter(function (item) {\n  return /\\.csv$/i.test(item.key);\n});\n\nif (!files.length) {\n  node.status({\n    fill: 'red',\n    shape: 'ring',\n    text: 'no csv file for ' + msg.site\n  });\n  msg.payload = {\n    name: msg.site,\n    failed: msg.what + ' ' + msg.site + ': no csv file in ' + msg.path,\n    skipped: null,\n    rows: []\n  };\n  return [null, msg];\n}\n\nfiles.sort(function (a, b) {\n  return String(b.lastModified).localeCompare(String(a.lastModified));\n});\nmsg.path = String(files[0].key).replace(TENANT_PREFIX, '');\nnode.status({\n  fill: 'green',\n  shape: 'dot',\n  text: msg.path.slice(-40)\n});\nreturn [msg, null];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 1040,
+    "y": 560,
+    "wires": [
+      [
+        "0d519.45169f"
+      ],
+      [
+        "112f7.4848d1"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "0d519.45169f",
+    "type": "read object",
+    "name": "Read reference file",
+    "path": "",
+    "mode": "object",
+    "x": 1260,
+    "y": 540,
+    "wires": [
+      [
+        "131e6.49e1ea"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "131e6.49e1ea",
+    "type": "csv",
+    "name": "Parse CSV",
+    "sep": ",",
+    "hdrin": true,
+    "hdrout": "",
+    "multi": "mult",
+    "ret": "\\n",
+    "temp": "parser csv",
+    "x": 1440,
+    "y": 560,
+    "wires": [
+      [
+        "150d5.4b7b03"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "18eb3.4ead35",
+    "type": "link out",
+    "name": "to LK MACHINES",
+    "mode": "link",
+    "links": [
+      "16fc4.4d141c"
+    ],
+    "x": 1760,
+    "y": 480,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "1cc91.51df67",
+    "type": "link out",
+    "name": "to LK TARGETS",
+    "mode": "link",
+    "links": [
+      "1ada2.50464e"
+    ],
+    "x": 1760,
+    "y": 520,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "20a6f.551199",
+    "type": "link out",
+    "name": "to LK FORMATS",
+    "mode": "link",
+    "links": [
+      "1eb80.537880"
+    ],
+    "x": 1760,
+    "y": 560,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "2484d.5843cb",
+    "type": "link out",
+    "name": "to LK SCOPE",
+    "mode": "link",
+    "links": [
+      "2295e.56aab2"
+    ],
+    "x": 1760,
+    "y": 600,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "2862b.5b75fd",
+    "type": "link out",
+    "name": "to LK LOSSES",
+    "mode": "link",
+    "links": [
+      "2673c.59dce4"
+    ],
+    "x": 1760,
+    "y": 640,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "150d5.4b7b03",
+    "type": "function",
+    "name": "3.4 Route by type",
+    "func": "// Sends the parsed file to the lookup node of its type.\n// In: msg.type, msg.payload = the parsed rows. Out 1: machines, 2: glidepaths,\n// 3: format list, 4: report scope, 5: loss names.\nvar ORDER = [\n  'machines',\n  'glidepaths',\n  'formats',\n  'scope',\n  'losses'\n];\n\nvar out = [\n  null,\n  null,\n  null,\n  null,\n  null\n];\nvar index = ORDER.indexOf(msg.type);\nif (index !== -1) {\n  out[index] = msg;\n}\nreturn out;\n",
+    "outputs": 5,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 1620,
+    "y": 560,
+    "wires": [
+      [
+        "18eb3.4ead35"
+      ],
+      [
+        "1cc91.51df67"
+      ],
+      [
+        "20a6f.551199"
+      ],
+      [
+        "2484d.5843cb"
+      ],
+      [
+        "2862b.5b75fd"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "2a51a.5d0f16",
+    "type": "comment",
+    "name": "[4] LOOKUP: Machine Names",
+    "info": "STAGE 4 - stores Dept, Area and Product Type of each machine. A failed file goes to REF DONE with the failure.",
+    "x": 160,
+    "y": 700,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "16fc4.4d141c",
+    "type": "link in",
+    "name": "LK MACHINES",
+    "links": [
+      "18eb3.4ead35"
+    ],
+    "x": 60,
+    "y": 780,
+    "wires": [
+      [
+        "2c409.5ea82f"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "2e2f8.604148",
+    "type": "link out",
+    "name": "to REF DONE",
+    "mode": "link",
+    "links": [
+      "0f408.46afb8"
+    ],
+    "x": 420,
+    "y": 760,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "301e7.61da61",
+    "type": "link out",
+    "name": "to REF DONE",
+    "mode": "link",
+    "links": [
+      "0f408.46afb8"
+    ],
+    "x": 420,
+    "y": 800,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "2c409.5ea82f",
+    "type": "function",
+    "name": "4.1 Build Machine Names lookup",
+    "func": "// Machine lookup of one site from its Machine Names file. In: msg.payload =\n// parsed rows; stores flow context machines_<Site>: MachineName -> Dept,\n// Area, Product Type, for every machine of the file (the EU scope is the\n// column In EU Report, from the report scope file). Out 2: a failed item.\nvar site = msg.site;\nvar rows = Array.isArray(msg.payload) ? msg.payload : [];\nif (!rows.length || rows[0].MachineName === undefined) {\n  msg.payload = {\n    failed: 'machine names ' + site + ': no MachineName column or rows'\n  };\n  return [null, msg];\n}\n\nfunction text(value) {\n  return value === undefined || value === null ? '' : String(value).trim();\n}\n\nvar lookup = {};\nvar kept = 0;\nrows.forEach(function (row) {\n  var name = text(row.MachineName);\n  if (!name) {\n    return;\n  }\n  lookup[name] = {\n    'Dept': text(row.Dept),\n    'Area': text(row.Area),\n    'Product Type': text(row['Product Type'])\n  };\n  kept++;\n});\nflow.set('machines_' + site, lookup);\nnode.status({\n  fill: 'green',\n  shape: 'dot',\n  text: site + ': ' + kept + ' machines'\n});\nmsg.payload = site;\nreturn [msg, null];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 240,
+    "y": 780,
+    "wires": [
+      [
+        "2e2f8.604148"
+      ],
+      [
+        "301e7.61da61"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "320d6.63737a",
+    "type": "comment",
+    "name": "[5] LOOKUP: Glidepaths",
+    "info": "STAGE 5 - stores OEE, downtime and loss targets per line and month (percent). A failed file goes to REF DONE with the failure.",
+    "x": 160,
+    "y": 920,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "1ada2.50464e",
+    "type": "link in",
+    "name": "LK TARGETS",
+    "links": [
+      "1cc91.51df67"
+    ],
+    "x": 60,
+    "y": 1000,
+    "wires": [
+      [
+        "33fc5.650c93"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "35eb4.66a5ac",
+    "type": "link out",
+    "name": "to REF DONE",
+    "mode": "link",
+    "links": [
+      "0f408.46afb8"
+    ],
+    "x": 420,
+    "y": 980,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "37da3.683ec5",
+    "type": "link out",
+    "name": "to REF DONE",
+    "mode": "link",
+    "links": [
+      "0f408.46afb8"
+    ],
+    "x": 420,
+    "y": 1020,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "33fc5.650c93",
+    "type": "function",
+    "name": "5.1 Build Glidepaths lookup",
+    "func": "// Builds the target lookup of one site from its Glidepaths file.\n// In: msg.payload = parsed rows (Site Name, Line, OEE Bucket, month columns).\n// Stores flow context targets_<site>: machine-site -> month 01/MM/YYYY ->\n// {oee, pdt, updt, b: {bucket: value}}. Out 2: a failed item for an empty file.\nvar BUCKETS = {\n  '% OEE': 'oee',\n  'Planned Downtime (Total)': 'pdt',\n  'Unplanned Downtime (Total)': 'updt'\n};\n// The file starts with a byte order mark: it sits in the first column name.\nfunction clean(row) {\n  var out = {};\n  Object.keys(row).forEach(function (column) {\n    out[column.replace(/\\uFEFF/g, '')] = row[column];\n  });\n  return out;\n}\n\nvar rows = Array.isArray(msg.payload) ? msg.payload.map(clean) : [];\nif (!rows.length || rows[0].Line === undefined) {\n  msg.payload = {\n    failed: 'glidepaths ' + msg.site + ': no Line column or rows'\n  };\n  return [null, msg];\n}\n\nvar lookup = {};\nvar cells = 0;\nrows.forEach(function (row) {\n  if (!row.Line || !row['Site Name'] || !row['OEE Bucket']) {\n    return;\n  }\n  var field = BUCKETS[row['OEE Bucket']];\n  var key = row.Line + '-' + row['Site Name'];\n  Object.keys(row).forEach(function (column) {\n    var value = String(row[column]).trim();\n    if (!/^\\d{2}\\/\\d{2}\\/\\d{4}$/.test(column) || value === '') {\n      return;\n    }\n    var number = Number(value);\n    if (isNaN(number)) {\n      return;\n    }\n    lookup[key] = lookup[key] || {};\n    lookup[key][column] = lookup[key][column] || {};\n    lookup[key][column].b = lookup[key][column].b || {};\n    lookup[key][column].b[row['OEE Bucket']] = number;\n    if (field) {\n      lookup[key][column][field] = number;\n    }\n    cells++;\n  });\n});\nflow.set('targets_' + msg.site, lookup);\nnode.status({\n  fill: 'green',\n  shape: 'dot',\n  text: msg.site + ': ' + cells + ' target values'\n});\nmsg.payload = msg.site;\nreturn [msg, null];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 240,
+    "y": 1000,
+    "wires": [
+      [
+        "35eb4.66a5ac"
+      ],
+      [
+        "37da3.683ec5"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "39c92.69d7de",
+    "type": "comment",
+    "name": "[6] LOOKUP: Format List",
+    "info": "STAGE 6 - stores Brand, unit size, case and extra info per product. A failed file goes to REF DONE with the failure.",
+    "x": 160,
+    "y": 1140,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "1eb80.537880",
+    "type": "link in",
+    "name": "LK FORMATS",
+    "links": [
+      "20a6f.551199"
+    ],
+    "x": 60,
+    "y": 1220,
+    "wires": [
+      [
+        "3bb81.6b70f7"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "3da70.6d0a10",
+    "type": "link out",
+    "name": "to REF DONE",
+    "mode": "link",
+    "links": [
+      "0f408.46afb8"
+    ],
+    "x": 420,
+    "y": 1220,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "3bb81.6b70f7",
+    "type": "function",
+    "name": "6.1 Build Format List lookup",
+    "func": "// Format lookup of one site from its Format List file. In: msg.payload =\n// parsed rows; stores flow context formats_<Site>: Product Key (MachineName-\n// Site + space + Product Name) -> Brand, Unit Size, Unit Count/Format,\n// Extra Info. Out: msg.payload = the site, for the next setup lane.\nvar COLUMNS = [\n  'Brand',\n  'Unit Size',\n  'Unit Count/Format',\n  'Extra Info'\n];\nvar site = msg.site;\nvar rows = Array.isArray(msg.payload) ? msg.payload : [];\n\n// As in the report: trailing spaces go, an empty cell is empty (null).\nfunction cell(value) {\n  if (value === undefined || value === null) {\n    return null;\n  }\n  var text = String(value).replace(/\\s+$/, '');\n  return text === '' ? null : text;\n}\n\nvar lookup = {};\nvar kept = 0;\nrows.forEach(function (row) {\n  var machine = cell(row.MachineName);\n  var product = cell(row['Product Name']);\n  if (!machine || !product) {\n    return;\n  }\n  var item = {};\n  COLUMNS.forEach(function (column) {\n    item[column] = cell(row[column]);\n  });\n  lookup[machine + '-' + site + ' ' + product] = item;\n  kept++;\n});\nflow.set('formats_' + site, lookup);\nnode.status({\n  fill: 'green',\n  shape: 'dot',\n  text: site + ': ' + kept + ' formats'\n});\nmsg.payload = site;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 240,
+    "y": 1220,
+    "wires": [
+      [
+        "3da70.6d0a10"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "3f95f.6ea329",
+    "type": "comment",
+    "name": "[7] LOOKUP: report scope",
+    "info": "STAGE 7 - stores the In EU Report rules of the site. A failed file goes to REF DONE with the failure.",
+    "x": 160,
+    "y": 1360,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "2295e.56aab2",
+    "type": "link in",
+    "name": "LK SCOPE",
+    "links": [
+      "2484d.5843cb"
+    ],
+    "x": 60,
+    "y": 1440,
+    "wires": [
+      [
+        "4184e.703c42"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "4373d.71d55b",
+    "type": "link out",
+    "name": "to REF DONE",
+    "mode": "link",
+    "links": [
+      "0f408.46afb8"
+    ],
+    "x": 420,
+    "y": 1420,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "4562c.736e74",
+    "type": "link out",
+    "name": "to REF DONE",
+    "mode": "link",
+    "links": [
+      "0f408.46afb8"
+    ],
+    "x": 420,
+    "y": 1460,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "4184e.703c42",
+    "type": "function",
+    "name": "7.1 Build report scope lookup",
+    "func": "// Builds the EU report scope of one site from the report scope file.\n// In: msg.payload = parsed rows (Site, Tables, Rule, Column, Value). Stores\n// flow context scope_<Site>: table -> {keep: {column: [values]}, drop: ...}.\n// Out 2: a failed item when the file has no rows or columns.\nvar RULES = [\n  'keep',\n  'drop'\n];\n\nvar rows = Array.isArray(msg.payload) ? msg.payload : [];\nvar site = msg.site;\n\nfunction text(value) {\n  return value === undefined || value === null ? '' : String(value).trim();\n}\n\n// A byte order mark can sit in the first column name.\nfunction siteOf(row) {\n  return text(row.Site !== undefined ? row.Site : row['\\uFEFFSite']);\n}\n\nvar ok = rows.some(function (row) {\n  return row.Tables !== undefined && row.Rule !== undefined;\n});\nif (!ok) {\n  msg.payload = {\n    failed: 'report scope: no Tables / Rule columns or rows'\n  };\n  return [null, msg];\n}\n\nvar scope = {};\nvar ruleCount = 0;\nrows.forEach(function (row) {\n  var rule = text(row.Rule).toLowerCase();\n  var column = text(row.Column);\n  var value = text(row.Value);\n  if (siteOf(row) !== site || RULES.indexOf(rule) === -1 || !column) {\n    return;\n  }\n  text(row.Tables).split(';').forEach(function (name) {\n    var table = text(name);\n    if (!table) {\n      return;\n    }\n    scope[table] = scope[table] || {\n      keep: {},\n      drop: {}\n    };\n    var list = scope[table][rule];\n    list[column] = list[column] || [];\n    list[column].push(value);\n    ruleCount++;\n  });\n});\nflow.set('scope_' + site, scope);\nnode.status({\n  fill: 'green',\n  shape: 'dot',\n  text: site + ': ' + ruleCount + ' scope rules'\n});\nmsg.payload = site;\nreturn [msg, null];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 240,
+    "y": 1440,
+    "wires": [
+      [
+        "4373d.71d55b"
+      ],
+      [
+        "4562c.736e74"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "4751b.75078d",
+    "type": "comment",
+    "name": "[8] LOOKUP: loss names",
+    "info": "STAGE 8 - stores English group, sub group, description and equipment of each loss column. A failed file goes to REF DONE with the failure.",
+    "x": 160,
+    "y": 1580,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "2673c.59dce4",
+    "type": "link in",
+    "name": "LK LOSSES",
+    "links": [
+      "2862b.5b75fd"
+    ],
+    "x": 60,
+    "y": 1660,
+    "wires": [
+      [
+        "4940a.76a0a6"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "4b2f9.7839bf",
+    "type": "link out",
+    "name": "to REF DONE",
+    "mode": "link",
+    "links": [
+      "0f408.46afb8"
+    ],
+    "x": 420,
+    "y": 1640,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "4d1e8.79d2d8",
+    "type": "link out",
+    "name": "to REF DONE",
+    "mode": "link",
+    "links": [
+      "0f408.46afb8"
+    ],
+    "x": 420,
+    "y": 1680,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "4940a.76a0a6",
+    "type": "function",
+    "name": "8.1 Build loss names lookup",
+    "func": "// Builds the loss names lookup from the file chartres-losses.csv.\n// In: msg.payload = parsed rows (Line, Column, Group, Sub Group, Description,\n// Equipment). Stores flow context losses_Chartres: Line|Column -> [group,\n// sub group, description, equipment]. Out 2: a failed item.\nvar rows = Array.isArray(msg.payload) ? msg.payload : [];\n\n// A byte order mark can sit in the first column name.\nfunction clean(row) {\n  var out = {};\n  Object.keys(row).forEach(function (column) {\n    out[column.replace(/﻿/g, '')] = row[column];\n  });\n  return out;\n}\n\nvar lookup = {};\nvar kept = 0;\nrows.map(clean).forEach(function (row) {\n  if (!row.Line || !row.Column) {\n    return;\n  }\n  lookup[row.Line + '|' + row.Column] = [\n    row.Group,\n    row['Sub Group'],\n    row.Description,\n    row.Equipment\n  ];\n  kept++;\n});\nif (!kept) {\n  msg.payload = {\n    failed: 'loss names: no Line / Column rows'\n  };\n  return [null, msg];\n}\nflow.set('losses_Chartres', lookup);\nnode.status({\n  fill: 'green',\n  shape: 'dot',\n  text: kept + ' loss names'\n});\nmsg.payload = 'Chartres';\nreturn [msg, null];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 240,
+    "y": 1660,
+    "wires": [
+      [
+        "4b2f9.7839bf"
+      ],
+      [
+        "4d1e8.79d2d8"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "4f0d7.7b6bf1",
+    "type": "comment",
+    "name": "[9] REFERENCE DONE",
+    "info": "STAGE 9 - counts the five types of the refresh. When all came in without failure the tab is ready for requests; a failure is logged and the previous lookups stay in use.",
+    "x": 140,
+    "y": 1800,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "0f408.46afb8",
+    "type": "link in",
+    "name": "REF DONE",
+    "links": [
+      "112f7.4848d1",
+      "2e2f8.604148",
+      "301e7.61da61",
+      "35eb4.66a5ac",
+      "37da3.683ec5",
+      "3da70.6d0a10",
+      "4373d.71d55b",
+      "4562c.736e74",
+      "4b2f9.7839bf",
+      "4d1e8.79d2d8"
+    ],
+    "x": 60,
+    "y": 1880,
+    "wires": [
+      [
+        "50fc6.7d050a"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "54da4.80373c",
+    "type": "link out",
+    "name": "to LOG",
+    "mode": "link",
+    "links": [
+      "52eb5.7e9e23"
+    ],
+    "x": 340,
+    "y": 1880,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "50fc6.7d050a",
+    "type": "function",
+    "name": "9.1 Count lookups",
+    "func": "// Counts the lookups of one refresh. In: msg.type, msg.runId and msg.payload\n// (the site name, or {failed}). When all types are in and none failed, the\n// reference is ready for the requests. Out: a log line when the run ends.\nvar run = flow.get('chartres_run');\nif (!run || run.id !== msg.runId) {\n  return null;\n}\n\nvar failed = msg.payload && msg.payload.failed;\nif (failed) {\n  run.failed.push(String(failed));\n}\nrun.done[msg.type] = true;\nflow.set('chartres_run', run);\nif (Object.keys(run.done).length < run.total) {\n  return null;\n}\n\nvar text = 'reference loaded';\nvar level = 'info';\nif (run.failed.length) {\n  text = 'reference FAILED: ' + run.failed.join('; ');\n  level = 'failed';\n} else {\n  flow.set('chartres_ready', {\n    at: Date.now()\n  });\n}\nnode.status({\n  fill: level === 'info' ? 'green' : 'red',\n  shape: 'dot',\n  text: text.slice(0, 40)\n});\nvar day = new Date().toISOString().slice(0, 10);\nreturn {\n  payload: day + ' [reference] ' + text,\n  level: level,\n  source: 'chartres-live'\n};\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 200,
+    "y": 1880,
+    "wires": [
+      [
+        "54da4.80373c"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "56c93.81d055",
+    "type": "comment",
+    "name": "[10] ROW",
+    "info": "STAGE 10 - the row of one line and day. 3.1 builds the plan rows (one per product slot) and the time row, 3.2 the loss rows (names from the loss names file, shift = the plan shift with the most time), 3.3 the Volume CoV rows and the filler rows that keep the Tableau blend whole, 3.4 sends the rows to the four table lanes and the answer to the sender (nothing is sent to the tables in dry-run mode).",
+    "x": 100,
+    "y": 2020,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "fbeb2.36b4be",
+    "type": "link in",
+    "name": "ROW",
+    "links": [
+      "fdda1.384dd7"
+    ],
+    "x": 60,
+    "y": 2100,
+    "wires": [
+      [
+        "58b82.83696e"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "5c960.869ba0",
+    "type": "link out",
+    "name": "to ANSWER",
+    "mode": "link",
+    "links": [
+      "f80d4.33828c"
+    ],
+    "x": 420,
+    "y": 2120,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "58b82.83696e",
+    "type": "function",
+    "name": "10.1 Build plan and time rows",
+    "func": "// Builds the Plan_OPT_EU rows (one per product slot) and the\n// Time_Utilisation_EU row of the day. In: msg.row (y1) and the lookups in\n// flow context (machines, scope, targets, formats of Chartres). Out 1:\n// msg.rows, slots, line, targets. Out 2: 400 for an unknown line.\nvar SITE = 'Chartres';\nvar DATA_SOURCE = 'Excel';\nvar ALL_TIME = 1440;\n// Shift types of the workbook: report shift name and start hour (site\n// answer 2026-11). Time_Utilisation uses TOR as the planned time.\nvar SHIFTS = [\n  ['Semaine Matin', 'Morning', 5],\n  ['Semaine Après Midi', 'Afternoon', 13],\n  ['Semaine Nuit', 'Night', 21],\n  ['Weekend Matin', 'Morning', 5],\n  ['Weekend Nuit', 'Night', 17]\n];\nvar HOUR_MS = 3600000;\nvar FORMAT_COLUMNS = [\n  'Brand',\n  'Unit Size',\n  'Unit Count/Format',\n  'Extra Info'\n];\n\nfunction norm(value) {\n  var text = value === undefined || value === null ? '' : String(value);\n  return text.replace(/\\s+/g, ' ').trim();\n}\n\nfunction key(value) {\n  return norm(value)\n    .normalize('NFD')\n    .replace(/[̀-ͯ]/g, '')\n    .replace(/[\\s-]/g, '')\n    .toUpperCase();\n}\n\nfunction num(value) {\n  if (value === '' || value === undefined || value === null) {\n    return 0;\n  }\n  return Number(value) || 0;\n}\n\nvar row = msg.row;\nvar machines = flow.get('machines_' + SITE) || {};\nvar scope = flow.get('scope_' + SITE) || {};\nvar machine = null;\nObject.keys(machines).forEach(function (name) {\n  if (key(name) === key(row.fileLine)) {\n    machine = name;\n  }\n});\nif (machine === null) {\n  msg.statusCode = 400;\n  msg.payload = {\n    status: 'rejected',\n    detail: 'line not in Machine Names: ' + row.fileLine\n  };\n  msg.logLevel = 'warn';\n  msg.logText = 'rejected: line not in Machine Names: ' + row.fileLine;\n  return [null, msg];\n}\n\n// The EU report scope rules (keep / drop) of one table, as in the filler.\nfunction inEuReport(table) {\n  var rules = scope[table] || {\n    keep: {},\n    drop: {}\n  };\n  var candidate = {\n    MachineName: machine\n  };\n  var kept = Object.keys(rules.keep).every(function (column) {\n    return rules.keep[column].indexOf(norm(candidate[column])) !== -1;\n  });\n  var dropped = Object.keys(rules.drop).some(function (column) {\n    return rules.drop[column].indexOf(norm(candidate[column])) !== -1;\n  });\n  return kept && !dropped;\n}\n\nvar info = machines[machine];\nvar line = {\n  machine: machine,\n  unique: machine + '-' + SITE,\n  areaName: info.Area,\n  dept: info.Dept,\n  area: info.Area,\n  type: info['Product Type'],\n  inEu: {\n    Plan_OPT_EU: inEuReport('Plan_OPT_EU'),\n    Time_Utilisation_EU: inEuReport('Time_Utilisation_EU'),\n    Daily_Losses_EU: inEuReport('Daily_Losses_EU'),\n    Volume_CoV_EU: inEuReport('Volume_CoV_EU')\n  }\n};\n\nvar base = row.base;\nvar iso = row.iso;\nvar month = iso.slice(0, 7);\nvar unique = line.unique;\nvar dayNumber = Date.parse(iso + 'T00:00:00Z') / 86400000;\nvar loadedAt = Date.now();\n// Glidepaths are in percent: OEE as in the history (one decimal), the\n// downtime and loss targets as fractions.\nvar allTargets = flow.get('targets_' + SITE) || {};\nvar targets = (allTargets[unique] || {})[\n  '01/' + iso.slice(5, 7) + '/' + iso.slice(0, 4)\n] || {};\n\nfunction fraction(percent) {\n  if (percent === undefined) {\n    return null;\n  }\n  return Number((percent / 100).toPrecision(12));\n}\n\nvar oeeTarget = targets.oee === undefined ? null :\n  Math.round(targets.oee * 10) / 10;\nvar pdt = fraction(targets.pdt);\nvar updt = fraction(targets.updt);\nvar machineColumns = {\n  Dept: line.dept,\n  Area: line.area,\n  'Product Type': line.type\n};\n\n// Product slots: 5 shift types x PF1 to PF4.\nvar slots = [];\nSHIFTS.forEach(function (shift) {\n  for (var k = 1; k <= 4; k++) {\n    var suffix = ' PF' + k + ' ' + shift[0];\n    var slot = {\n      type: shift[0],\n      shift: shift[1],\n      start: shift[2],\n      code: norm(base['Code' + suffix]),\n      name: norm(base['Nom' + suffix]),\n      time: num(base['Temps' + suffix]),\n      volume: num(base['Volume' + suffix]),\n      waste: num(base['Déchets' + suffix]),\n      speed: num(base['Vitesse' + suffix])\n    };\n    if (slot.code || slot.time || slot.volume) {\n      slots.push(slot);\n    }\n  }\n});\n\nvar formats = flow.get('formats_' + SITE) || {};\nvar plan = [];\nvar capacityDay = 0;\nslots.forEach(function (slot) {\n  // Good Parts = Volume - Déchets (user, 2026-11-10).\n  var good = slot.volume - slot.waste;\n  var capacity = slot.speed * slot.time;\n  var part = slot.name || slot.code;\n  capacityDay += capacity;\n  var planRow = {\n    Date: dayNumber,\n    AreaName: line.areaName,\n    MachineName: machine,\n    ShiftName: slot.shift,\n    PartName: part,\n    'Good Parts': good,\n    Capacity: capacity,\n    'Total Time': Math.trunc(slot.time),\n    'Planned OpT': Math.trunc(slot.time),\n    'OEE Time': slot.speed ? Math.trunc(good / slot.speed) : null,\n    'Downtime Units': capacity - good,\n    SiteName: SITE,\n    'Unique Machine Name': unique,\n    'Product Key': unique + ' ' + part,\n    'UPDT Target': updt,\n    'PDT Target': pdt,\n    'OEE Target': oeeTarget,\n    'Defect Parts': slot.waste,\n    OEE: capacity ? Math.round((good / capacity) * 1000) / 1000 : null,\n    'Shift Colour': null,\n    ShiftStartTime: slot.start * HOUR_MS,\n    Target: capacity,\n    'Targets Key': machine + ' 01/' + iso.slice(5, 7) + '/' +\n      iso.slice(0, 4),\n    'Data Source': DATA_SOURCE,\n    'In EU Report': line.inEu.Plan_OPT_EU,\n    source_hours: null,\n    loaded_at: loadedAt\n  };\n  Object.keys(machineColumns).forEach(function (name) {\n    planRow[name] = machineColumns[name];\n  });\n  // The Format List columns, joined on Product Key.\n  var format = formats[planRow['Product Key']] || {};\n  FORMAT_COLUMNS.forEach(function (name) {\n    planRow[name] = format[name] === undefined ? null : format[name];\n  });\n  plan.push(planRow);\n});\n\nvar tor = num(base.TOR);\nvar time = {\n  Date: dayNumber,\n  MachineName: machine,\n  'OEE Time Total': num(base.TU),\n  'Total Time Total': tor,\n  'Planned OPT Total': tor,\n  SiteName: SITE,\n  'Unique Machine Name': unique,\n  'All Time': ALL_TIME,\n  'Data Source': DATA_SOURCE,\n  'In EU Report': line.inEu.Time_Utilisation_EU,\n  loaded_at: loadedAt\n};\nObject.keys(machineColumns).forEach(function (name) {\n  time[name] = machineColumns[name];\n});\n\nmsg.line = line;\nmsg.targets = targets;\nmsg.slots = slots;\nmsg.day = {\n  iso: iso,\n  dayNumber: dayNumber,\n  machine: machine,\n  capacity: capacityDay,\n  loadedAt: loadedAt\n};\nmsg.rows = {\n  Plan_OPT_EU: plan,\n  Time_Utilisation_EU: [time]\n};\nreturn [msg, null];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 240,
+    "y": 2100,
+    "wires": [
+      [
+        "5aa71.850287"
+      ],
+      [
+        "5c960.869ba0"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "6073e.89cdd2",
+    "type": "link out",
+    "name": "to ANSWER",
+    "mode": "link",
+    "links": [
+      "f80d4.33828c"
+    ],
+    "x": 640,
+    "y": 2100,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "5aa71.850287",
+    "type": "function",
+    "name": "10.2 Build loss rows",
+    "func": "// Builds the Daily_Losses_EU rows: one per loss column (NR to the first\n// product column, no \"Nbre\") with minutes above 0. In: msg.row, slots, day,\n// line, targets, rows (y2) and the loss names in flow context.\n// Out: msg.rows.Daily_Losses_EU, lossShift, notes.\nvar SITE = 'Chartres';\nvar DATA_SOURCE = 'Excel';\nvar HOUR_MS = 3600000;\n// The losses of a day go to the plan shift with the most Temps (ties: the\n// first of this list). No plan slot that day: Morning at 05:00.\nvar SHIFT_ORDER = ['Morning', 'Afternoon', 'Night'];\nvar NO_PLAN_SHIFT = {\n  name: 'Morning',\n  start: 5 * HOUR_MS\n};\nvar FORMAT_COLUMNS = [\n  'Brand',\n  'Unit Size',\n  'Unit Count/Format',\n  'Extra Info'\n];\nvar MACHINE_LOSS = /^(Dysf|Pannes?|Réglages?) /;\n// Block rule for a loss column that is not in the loss names file: the start\n// of the column name gives group and sub group (same as the history load).\nvar PREFIX = [\n  ['^Dysf ', 'Unplanned Loss', 'Minor Stops'],\n  ['^Pannes? ', 'Unplanned Loss', 'Breakdown'],\n  ['^Réglages? ', 'Unplanned Loss', 'Adjustments'],\n  ['^Orga', 'Planned Loss', 'Cleaning'],\n  ['^Changement', 'Planned Loss', 'Product Changeover'],\n  ['^Rupture', 'Unplanned Loss', 'Lack Of Resources'],\n  ['^Qualité', 'Unplanned Loss', 'Quality Issues'],\n  ['^Maintenance', 'Planned Loss', 'Planned Maintenance']\n];\nvar FIRST_PRODUCT_COLUMN = 'Code PF1 Semaine Matin';\n\nfunction norm(value) {\n  var text = value === undefined || value === null ? '' : String(value);\n  return text.replace(/\\s+/g, ' ').trim();\n}\n\nfunction num(value) {\n  if (value === '' || value === undefined || value === null) {\n    return 0;\n  }\n  return Number(value) || 0;\n}\n\nvar base = msg.row.base;\nvar iso = msg.day.iso;\nvar machine = msg.day.machine;\nvar line = msg.line;\nvar unique = line.unique;\nvar losses = flow.get('losses_' + SITE) || {};\nvar notes = [];\nvar targets = msg.targets.b || {};\n\n// Shift of the losses.\nfunction shiftOfLosses(slots) {\n  if (!slots.length) {\n    return NO_PLAN_SHIFT;\n  }\n  var byShift = {};\n  var byType = {};\n  slots.forEach(function (slot) {\n    byShift[slot.shift] = (byShift[slot.shift] || 0) + slot.time;\n    byType[slot.type] = (byType[slot.type] || 0) + slot.time;\n  });\n  var name = SHIFT_ORDER\n    .filter(function (shift) {\n      return byShift[shift] !== undefined;\n    })\n    .reduce(function (a, b) {\n      return byShift[b] > byShift[a] ? b : a;\n    });\n  var type = Object.keys(byType)\n    .filter(function (t) {\n      return slots.some(function (s) {\n        return s.type === t && s.shift === name;\n      });\n    })\n    .reduce(function (a, b) {\n      return byType[b] > byType[a] ? b : a;\n    });\n  var start = slots.filter(function (s) {\n    return s.type === type;\n  })[0].start;\n  return {\n    name: name,\n    start: start * HOUR_MS\n  };\n}\n\n// Names of one loss column: the map of the history load, else the block\n// rule of the column name.\nfunction names(column) {\n  var known = losses[machine + '|' + column];\n  if (known) {\n    return {\n      group: known[0],\n      sub: known[1],\n      desc: known[2],\n      equipment: known[3]\n    };\n  }\n  notes.push('loss column not in the map: ' + column);\n  var rule = null;\n  PREFIX.forEach(function (p) {\n    if (!rule && new RegExp(p[0]).test(column)) {\n      rule = p;\n    }\n  });\n  var group = rule ? rule[1] : 'Unplanned Loss';\n  var sub = rule ? rule[2] : 'Not Logged';\n  var machineLoss = rule !== null && group === 'Unplanned Loss' &&\n    MACHINE_LOSS.test(column);\n  var desc = machineLoss ? column.replace(new RegExp(rule[0]), '') : column;\n  return {\n    group: group,\n    sub: sub,\n    desc: desc,\n    equipment: machineLoss ? desc : 'Unclassed'\n  };\n}\n\nvar keys = Object.keys(base);\nvar first = keys.indexOf('NR');\nvar last = keys.indexOf(FIRST_PRODUCT_COLUMN);\nif (first === -1 || last === -1 || last < first) {\n  msg.statusCode = 400;\n  msg.payload = {\n    status: 'rejected',\n    detail: 'NR or ' + FIRST_PRODUCT_COLUMN + ' is missing'\n  };\n  msg.logLevel = 'warn';\n  msg.logText = 'rejected: NR or ' + FIRST_PRODUCT_COLUMN + ' is missing';\n  return [null, msg];\n}\nvar columns = ['NR'];\nkeys.slice(first + 1, last).forEach(function (name) {\n  if (!/^Nbre/i.test(name)) {\n    columns.push(name);\n  }\n});\n\nvar slots = msg.slots;\nvar main = null;\nslots.forEach(function (slot) {\n  if (main === null || slot.time > main.time) {\n    main = slot;\n  }\n});\nvar lossShift = shiftOfLosses(slots);\nvar dmy = iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4);\nvar targetKeyDate = '01/' + iso.slice(5, 7) + '/' + iso.slice(0, 4);\nvar rows = [];\nvar lossMinutes = 0;\ncolumns.forEach(function (column) {\n  var minutes = num(base[column]);\n  lossMinutes += minutes;\n  if (minutes < 0) {\n    notes.push('negative loss not loaded: ' + column + ' ' + minutes);\n  }\n  if (minutes <= 0) {\n    return;\n  }\n  var n = names(column);\n  var percent = targets[n.sub];\n  var out = {\n    Date: msg.day.dayNumber,\n    Time: lossShift.start,\n    MachineName: machine,\n    PartName: null,\n    'Shift Time': lossShift.name,\n    ShiftName: lossShift.name,\n    OEELossLvl3Group: n.group,\n    OEELossLvl3SubGroup: n.sub,\n    OEELossLvl3Desc: n.desc,\n    Duration: Math.round(minutes),\n    'Shift colour': null,\n    SiteName: SITE,\n    'Unique Machine Name': unique,\n    'Breakdown Types': n.sub,\n    ShiftStartDate: msg.day.dayNumber,\n    Comment: null,\n    'Product Key': null,\n    'Volume Key': dmy + ' ' + machine + ' ' + n.group + ' ' + n.sub + ' ' +\n      n.desc,\n    'Loss Units': main && main.speed ? main.speed * minutes : null,\n    'Time in Mins': minutes,\n    'Equipment Loss Key': machine + ' ' + n.desc,\n    Equipment: n.equipment,\n    'Lvl 3 Loss Name': n.desc,\n    'Loss Target Key': unique + ' ' + n.sub + ' ' + targetKeyDate,\n    Value: null,\n    'Volume Total': msg.day.capacity,\n    'Loss Final Level': n.desc,\n    Dept: line.dept,\n    Area: line.area,\n    'Product Type': line.type,\n    'Data Source': DATA_SOURCE,\n    'In EU Report': line.inEu.Daily_Losses_EU,\n    target: percent === undefined ? null :\n      Number((percent / 100).toPrecision(12)),\n    'Batch ID': null,\n    comment_count: null,\n    loaded_at: msg.day.loadedAt\n  };\n  FORMAT_COLUMNS.forEach(function (name) {\n    out[name] = null;\n  });\n  rows.push(out);\n});\n\n// The rules of the entry form: the rows are loaded, a failure is noted.\nvar top = num(base.TOP);\nvar tor = num(base.TOR);\nvar tu = num(base.TU);\nvar closed = num(base['Total Temps Fermeture']);\nvar slotTime = slots.reduce(function (sum, slot) {\n  return sum + slot.time;\n}, 0);\nif (tor !== top - closed) {\n  notes.push('TOR = TOP - not counted fails: ' + tor + ' vs ' + top +\n    ' - ' + closed);\n}\nif (tu + lossMinutes !== tor) {\n  notes.push('TU + NR + losses = TOR fails: ' + tu + ' + ' + lossMinutes +\n    ' vs ' + tor);\n}\nif (slotTime !== tor) {\n  notes.push('sum of product Temps = TOR fails: ' + slotTime + ' vs ' +\n    tor);\n}\n\nmsg.rows.Daily_Losses_EU = rows;\nmsg.lossShift = lossShift;\nmsg.notes = notes;\nreturn [msg, null];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 500,
+    "y": 2080,
+    "wires": [
+      [
+        "5e84f.8834b9"
+      ],
+      [
+        "6073e.89cdd2"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "5e84f.8834b9",
+    "type": "function",
+    "name": "10.3 Build CoV and filler rows",
+    "func": "// Builds Volume_CoV_EU and the filler rows that keep the Tableau blend whole\n// (the rule of f1-filler-rows.js, for one line and day). In: msg.rows,\n// lossShift, day, line (y2, y3). Out: msg.rows.Volume_CoV_EU, filler rows\n// (Data Source = Filler) in the plan and loss rows, msg.tables.\nvar SITE = 'Chartres';\nvar FILLER = 'Filler';\n// Same threshold as scripts/vfc/b9-cov-rows.js.\nvar MIN_GOOD_PARTS = 1000;\nvar MINUTE_MS = 60000;\nvar PLAN_ZERO = [\n  'Good Parts',\n  'Capacity',\n  'Total Time',\n  'Planned OpT',\n  'OEE Time',\n  'Downtime Units',\n  'Defect Parts',\n  'source_hours'\n];\nvar LOSS_ZERO = [\n  'Duration',\n  'Loss Units',\n  'Volume Total',\n  'Time in Mins',\n  'comment_count'\n];\n\nvar day = msg.day;\nvar machine = day.machine;\nvar line = msg.line;\nvar plan = msg.rows.Plan_OPT_EU;\nvar loss = msg.rows.Daily_Losses_EU;\n\n// Volume_CoV_EU: per shift, Good Parts over MIN_GOOD_PARTS.\nvar groups = {};\nvar order = [];\nplan.forEach(function (row) {\n  var shift = row.ShiftName;\n  if (!groups[shift]) {\n    groups[shift] = {\n      row: row,\n      good: 0,\n      time: 0,\n      cap: null\n    };\n    order.push(shift);\n  }\n  var group = groups[shift];\n  group.good += row['Good Parts'] || 0;\n  group.time += row['Total Time'] || 0;\n  if (group.cap === null || (row.Capacity || 0) > group.cap) {\n    group.cap = row.Capacity;\n  }\n});\nvar cov = [];\norder.forEach(function (shift) {\n  var group = groups[shift];\n  if (group.good <= MIN_GOOD_PARTS) {\n    return;\n  }\n  cov.push({\n    Date: day.dayNumber,\n    MachineName: machine,\n    'Shift Colour': shift,\n    'Good Parts Sum': group.good,\n    'Shift Machine Key': shift + ' ' + machine,\n    'Cap Max': group.cap,\n    'Time on Shift': group.time * MINUTE_MS,\n    Dept: null,\n    Area: null,\n    'Product Type': null,\n    'Unique Machine Name': line.unique,\n    SiteName: SITE,\n    'Data Source': 'Excel',\n    'In EU Report': line.inEu.Volume_CoV_EU,\n    loaded_at: day.loadedAt\n  });\n});\nmsg.rows.Volume_CoV_EU = cov;\n\n// Filler: the machine columns shared by both tables.\nfunction fillerBase(shift) {\n  return {\n    SiteName: SITE,\n    'Unique Machine Name': line.unique,\n    Dept: line.dept,\n    Area: line.area,\n    'Product Type': line.type,\n    MachineName: machine,\n    ShiftName: shift,\n    'Data Source': FILLER,\n    loaded_at: day.loadedAt,\n    Date: day.dayNumber\n  };\n}\n\n// Every plan shift with no loss row gets one filler loss row.\nvar lossShifts = {};\nloss.forEach(function (row) {\n  lossShifts[row.ShiftName] = true;\n});\norder.forEach(function (shift) {\n  if (lossShifts[shift]) {\n    return;\n  }\n  var row = fillerBase(shift);\n  row['In EU Report'] = line.inEu.Daily_Losses_EU;\n  row.ShiftStartDate = day.dayNumber;\n  row['Shift colour'] = null;\n  row['Shift Time'] = shift;\n  LOSS_ZERO.forEach(function (column) {\n    row[column] = 0;\n  });\n  loss.push(row);\n});\n\n// A day with losses and no plan gets one filler plan row.\nif (!plan.length && msg.rows.Daily_Losses_EU.length) {\n  var noPlan = fillerBase(msg.lossShift.name);\n  noPlan['In EU Report'] = line.inEu.Plan_OPT_EU;\n  noPlan.AreaName = line.areaName;\n  noPlan['Shift Colour'] = null;\n  noPlan.ShiftStartTime = msg.lossShift.start;\n  noPlan['Targets Key'] = machine + ' 01/' + day.iso.slice(5, 7) + '/' +\n    day.iso.slice(0, 4);\n  PLAN_ZERO.forEach(function (column) {\n    noPlan[column] = 0;\n  });\n  plan.push(noPlan);\n}\n\nmsg.tables = [\n  'Plan_OPT_EU',\n  'Time_Utilisation_EU',\n  'Daily_Losses_EU',\n  'Volume_CoV_EU'\n];\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 760,
+    "y": 2060,
+    "wires": [
+      [
+        "6262d.8b66eb"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "6640b.8e991d",
+    "type": "link out",
+    "name": "to PLAN TABLE",
+    "mode": "link",
+    "links": [
+      "6451c.8d0004"
+    ],
+    "x": 1200,
+    "y": 2020,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "6a1e9.91cb4f",
+    "type": "link out",
+    "name": "to UTIL TABLE",
+    "mode": "link",
+    "links": [
+      "682fa.903236"
+    ],
+    "x": 1200,
+    "y": 2060,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "6dfc7.94fd81",
+    "type": "link out",
+    "name": "to LOSS TABLE",
+    "mode": "link",
+    "links": [
+      "6c0d8.936468"
+    ],
+    "x": 1200,
+    "y": 2100,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "71da5.982fb3",
+    "type": "link out",
+    "name": "to COV TABLE",
+    "mode": "link",
+    "links": [
+      "6feb6.96969a"
+    ],
+    "x": 1200,
+    "y": 2140,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "73c94.99c8cc",
+    "type": "link out",
+    "name": "to ANSWER",
+    "mode": "link",
+    "links": [
+      "f80d4.33828c"
+    ],
+    "x": 1200,
+    "y": 2180,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "6262d.8b66eb",
+    "type": "function",
+    "name": "10.4 Route the tables",
+    "func": "// Sends the rows of the day to the four table lanes and the answer to the\n// sender. In: msg.rows (y2 to y4), msg.day, msg.line, msg.notes. Out 1 to 4:\n// plan, time, losses, Volume CoV (payload = the rows, nothing in dry run).\n// Out 5: the answer (200) with the counts and the notes.\nvar TABLES = [\n  'Plan_OPT_EU',\n  'Time_Utilisation_EU',\n  'Daily_Losses_EU',\n  'Volume_CoV_EU'\n];\n// Columns of each table (the schema of the parquet node): a column a row\n// does not carry (filler rows) is written empty.\nvar COLUMNS = {\n  Plan_OPT_EU: [\n    'Date',\n    'AreaName',\n    'MachineName',\n    'ShiftName',\n    'PartName',\n    'Good Parts',\n    'Capacity',\n    'Total Time',\n    'Planned OpT',\n    'OEE Time',\n    'Downtime Units',\n    'SiteName',\n    'Unique Machine Name',\n    'Product Key',\n    'UPDT Target',\n    'PDT Target',\n    'OEE Target',\n    'Dept',\n    'Area',\n    'Product Type',\n    'Defect Parts',\n    'OEE',\n    'Shift Colour',\n    'ShiftStartTime',\n    'Target',\n    'Targets Key',\n    'Brand',\n    'Unit Size',\n    'Unit Count/Format',\n    'Extra Info',\n    'Data Source',\n    'In EU Report',\n    'source_hours',\n    'loaded_at'\n  ],\n  Time_Utilisation_EU: [\n    'Date',\n    'MachineName',\n    'OEE Time Total',\n    'Total Time Total',\n    'Planned OPT Total',\n    'SiteName',\n    'Unique Machine Name',\n    'All Time',\n    'Dept',\n    'Area',\n    'Product Type',\n    'Data Source',\n    'In EU Report',\n    'loaded_at'\n  ],\n  Daily_Losses_EU: [\n    'Date',\n    'Time',\n    'MachineName',\n    'PartName',\n    'ShiftName',\n    'OEELossLvl3Group',\n    'OEELossLvl3SubGroup',\n    'OEELossLvl3Desc',\n    'Duration',\n    'SiteName',\n    'Unique Machine Name',\n    'Breakdown Types',\n    'ShiftStartDate',\n    'Comment',\n    'Product Key',\n    'Volume Key',\n    'Loss Units',\n    'Equipment',\n    'Loss Target Key',\n    'Value',\n    'Volume Total',\n    'Loss Final Level',\n    'Batch ID',\n    'Dept',\n    'Area',\n    'Product Type',\n    'Equipment Loss Key',\n    'Lvl 3 Loss Name',\n    'Shift colour',\n    'Time in Mins',\n    'Brand',\n    'Unit Size',\n    'Unit Count/Format',\n    'Extra Info',\n    'Shift Time',\n    'Data Source',\n    'In EU Report',\n    'target',\n    'comment_count',\n    'loaded_at'\n  ],\n  Volume_CoV_EU: [\n    'Date',\n    'MachineName',\n    'Shift Colour',\n    'Good Parts Sum',\n    'Shift Machine Key',\n    'Cap Max',\n    'Time on Shift',\n    'Dept',\n    'Area',\n    'Product Type',\n    'Unique Machine Name',\n    'SiteName',\n    'Data Source',\n    'In EU Report',\n    'loaded_at'\n  ]\n};\n\nvar cfg = flow.get('cfg');\nvar out = [\n  null,\n  null,\n  null,\n  null,\n  null\n];\nvar counts = [];\n\nTABLES.forEach(function (table, i) {\n  var rows = msg.rows[table].map(function (row) {\n    var full = {};\n    COLUMNS[table].forEach(function (column) {\n      full[column] = row[column] === undefined ? null : row[column];\n    });\n    return full;\n  });\n  counts.push(table + ' ' + rows.length);\n  if (cfg.dryRun) {\n    return;\n  }\n  out[i] = {\n    payload: rows,\n    table: table,\n    iso: msg.day.iso,\n    machine: msg.day.machine\n  };\n});\n\nvar mode = cfg.dryRun ? 'dry run, nothing written' : 'written';\nmsg.statusCode = 200;\nmsg.payload = {\n  status: 'ok',\n  detail: msg.day.machine + ' ' + msg.day.iso + ': ' + mode\n};\nmsg.logLevel = (msg.notes || []).length ? 'warn' : 'info';\nmsg.logText = msg.day.machine + ' ' + msg.day.iso + ' (' + mode + '): ' +\n  counts.join(', ');\nif ((msg.notes || []).length) {\n  msg.logText += '; notes: ' + msg.notes.join(' | ');\n}\nout[4] = msg;\nreturn out;\n",
+    "outputs": 5,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 1040,
+    "y": 2100,
+    "wires": [
+      [
+        "6640b.8e991d"
+      ],
+      [
+        "6a1e9.91cb4f"
+      ],
+      [
+        "6dfc7.94fd81"
+      ],
+      [
+        "71da5.982fb3"
+      ],
+      [
+        "73c94.99c8cc"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "75b83.9b61e5",
+    "type": "comment",
+    "name": "[11] Plan_OPT_EU",
+    "info": "STAGE 11 - parquet node, path and write object for Plan_OPT_EU: <root>/report/Plan_OPT_EU/site=Chartres/Plan_OPT_EU_<YYYY-MM-DD>_<line>_excel.parquet. The path is the same on every resend of a line and day, so the resend replaces the file.",
+    "x": 140,
+    "y": 2240,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "6451c.8d0004",
+    "type": "link in",
+    "name": "PLAN TABLE",
+    "links": [
+      "6640b.8e991d"
+    ],
+    "x": 60,
+    "y": 2320,
+    "wires": [
+      [
+        "77a72.9cfafe"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "77a72.9cfafe",
+    "type": "parquet",
+    "name": "Write Plan_OPT_EU parquet",
+    "option": "write",
+    "columns": [
+      {
+        "column": "Date",
+        "type": "DATE"
+      },
+      {
+        "column": "AreaName",
+        "type": "UTF8"
+      },
+      {
+        "column": "MachineName",
+        "type": "UTF8"
+      },
+      {
+        "column": "ShiftName",
+        "type": "UTF8"
+      },
+      {
+        "column": "PartName",
+        "type": "UTF8"
+      },
+      {
+        "column": "Good Parts",
+        "type": "INT64"
+      },
+      {
+        "column": "Capacity",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "Total Time",
+        "type": "INT64"
+      },
+      {
+        "column": "Planned OpT",
+        "type": "INT64"
+      },
+      {
+        "column": "OEE Time",
+        "type": "INT64"
+      },
+      {
+        "column": "Downtime Units",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "SiteName",
+        "type": "UTF8"
+      },
+      {
+        "column": "Unique Machine Name",
+        "type": "UTF8"
+      },
+      {
+        "column": "Product Key",
+        "type": "UTF8"
+      },
+      {
+        "column": "UPDT Target",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "PDT Target",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "OEE Target",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "Dept",
+        "type": "UTF8"
+      },
+      {
+        "column": "Area",
+        "type": "UTF8"
+      },
+      {
+        "column": "Product Type",
+        "type": "UTF8"
+      },
+      {
+        "column": "Defect Parts",
+        "type": "INT64"
+      },
+      {
+        "column": "OEE",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "Shift Colour",
+        "type": "UTF8"
+      },
+      {
+        "column": "ShiftStartTime",
+        "type": "TIMESTAMP_MILLIS"
+      },
+      {
+        "column": "Target",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "Targets Key",
+        "type": "UTF8"
+      },
+      {
+        "column": "Brand",
+        "type": "UTF8"
+      },
+      {
+        "column": "Unit Size",
+        "type": "UTF8"
+      },
+      {
+        "column": "Unit Count/Format",
+        "type": "UTF8"
+      },
+      {
+        "column": "Extra Info",
+        "type": "UTF8"
+      },
+      {
+        "column": "Data Source",
+        "type": "UTF8"
+      },
+      {
+        "column": "In EU Report",
+        "type": "BOOLEAN"
+      },
+      {
+        "column": "source_hours",
+        "type": "INT64"
+      },
+      {
+        "column": "loaded_at",
+        "type": "TIMESTAMP_MILLIS"
+      }
+    ],
+    "rcolumns": "",
+    "multi": "multiple",
+    "outputPty": "payload",
+    "outputPtyType": "msg",
+    "engine": "parquetjs",
+    "x": 220,
+    "y": 2320,
+    "wires": [
+      [
+        "79961.9e9417"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "79961.9e9417",
+    "type": "function",
+    "name": "11.1 Set Plan_OPT_EU path",
+    "func": "// Sets the file path of one table, line and day: <report>/<table>/site=\n// Chartres/<table>_<YYYY-MM-DD>_<line>_excel.parquet. In: the parquet node\n// output (msg.iso, msg.machine). Out: msg.path and msg.filename.\n// The name is fixed: a resend of the same line and day replaces the file.\nvar TABLE = 'Plan_OPT_EU';\nvar cfg = flow.get('cfg');\n\nmsg.path = cfg.liveFolder + '/' + TABLE + '/site=' + cfg.site;\nmsg.path += '/' + TABLE + '_' + msg.iso + '_' + msg.machine;\nmsg.path += '_' + cfg.source + '.parquet';\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 480,
+    "y": 2320,
+    "wires": [
+      [
+        "7b850.a02d30"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "7b850.a02d30",
+    "type": "write object",
+    "name": "Plan_OPT_EU to data lake",
+    "path": "",
+    "mode": "object",
+    "x": 740,
+    "y": 2320,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "7d73f.a1c649",
+    "type": "comment",
+    "name": "[12] Time_Utilisation_EU",
+    "info": "STAGE 12 - parquet node, path and write object for Time_Utilisation_EU: <root>/report/Time_Utilisation_EU/site=Chartres/Time_Utilisation_EU_<YYYY-MM-DD>_<line>_excel.parquet. The path is the same on every resend of a line and day, so the resend replaces the file.",
+    "x": 160,
+    "y": 2460,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "682fa.903236",
+    "type": "link in",
+    "name": "UTIL TABLE",
+    "links": [
+      "6a1e9.91cb4f"
+    ],
+    "x": 60,
+    "y": 2540,
+    "wires": [
+      [
+        "7f62e.a35f62"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "7f62e.a35f62",
+    "type": "parquet",
+    "name": "Write Time_Utilisation_EU parquet",
+    "option": "write",
+    "columns": [
+      {
+        "column": "Date",
+        "type": "DATE"
+      },
+      {
+        "column": "MachineName",
+        "type": "UTF8"
+      },
+      {
+        "column": "OEE Time Total",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "Total Time Total",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "Planned OPT Total",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "SiteName",
+        "type": "UTF8"
+      },
+      {
+        "column": "Unique Machine Name",
+        "type": "UTF8"
+      },
+      {
+        "column": "All Time",
+        "type": "INT64"
+      },
+      {
+        "column": "Dept",
+        "type": "UTF8"
+      },
+      {
+        "column": "Area",
+        "type": "UTF8"
+      },
+      {
+        "column": "Product Type",
+        "type": "UTF8"
+      },
+      {
+        "column": "Data Source",
+        "type": "UTF8"
+      },
+      {
+        "column": "In EU Report",
+        "type": "BOOLEAN"
+      },
+      {
+        "column": "loaded_at",
+        "type": "TIMESTAMP_MILLIS"
+      }
+    ],
+    "rcolumns": "",
+    "multi": "multiple",
+    "outputPty": "payload",
+    "outputPtyType": "msg",
+    "engine": "parquetjs",
+    "x": 260,
+    "y": 2540,
+    "wires": [
+      [
+        "8151d.a4f87b"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "8151d.a4f87b",
+    "type": "function",
+    "name": "12.1 Set Time_Utilisation_EU path",
+    "func": "// Sets the file path of one table, line and day: <report>/<table>/site=\n// Chartres/<table>_<YYYY-MM-DD>_<line>_excel.parquet. In: the parquet node\n// output (msg.iso, msg.machine). Out: msg.path and msg.filename.\n// The name is fixed: a resend of the same line and day replaces the file.\nvar TABLE = 'Time_Utilisation_EU';\nvar cfg = flow.get('cfg');\n\nmsg.path = cfg.liveFolder + '/' + TABLE + '/site=' + cfg.site;\nmsg.path += '/' + TABLE + '_' + msg.iso + '_' + msg.machine;\nmsg.path += '_' + cfg.source + '.parquet';\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 580,
+    "y": 2540,
+    "wires": [
+      [
+        "8340c.a69194"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "8340c.a69194",
+    "type": "write object",
+    "name": "Time_Utilisation_EU to data lake",
+    "path": "",
+    "mode": "object",
+    "x": 900,
+    "y": 2540,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "852fb.a82aad",
+    "type": "comment",
+    "name": "[13] Daily_Losses_EU",
+    "info": "STAGE 13 - parquet node, path and write object for Daily_Losses_EU: <root>/report/Daily_Losses_EU/site=Chartres/Daily_Losses_EU_<YYYY-MM-DD>_<line>_excel.parquet. The path is the same on every resend of a line and day, so the resend replaces the file.",
+    "x": 140,
+    "y": 2680,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "6c0d8.936468",
+    "type": "link in",
+    "name": "LOSS TABLE",
+    "links": [
+      "6dfc7.94fd81"
+    ],
+    "x": 60,
+    "y": 2760,
+    "wires": [
+      [
+        "871ea.a9c3c6"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "871ea.a9c3c6",
+    "type": "parquet",
+    "name": "Write Daily_Losses_EU parquet",
+    "option": "write",
+    "columns": [
+      {
+        "column": "Date",
+        "type": "DATE"
+      },
+      {
+        "column": "Time",
+        "type": "TIMESTAMP_MILLIS"
+      },
+      {
+        "column": "MachineName",
+        "type": "UTF8"
+      },
+      {
+        "column": "PartName",
+        "type": "UTF8"
+      },
+      {
+        "column": "ShiftName",
+        "type": "UTF8"
+      },
+      {
+        "column": "OEELossLvl3Group",
+        "type": "UTF8"
+      },
+      {
+        "column": "OEELossLvl3SubGroup",
+        "type": "UTF8"
+      },
+      {
+        "column": "OEELossLvl3Desc",
+        "type": "UTF8"
+      },
+      {
+        "column": "Duration",
+        "type": "INT64"
+      },
+      {
+        "column": "SiteName",
+        "type": "UTF8"
+      },
+      {
+        "column": "Unique Machine Name",
+        "type": "UTF8"
+      },
+      {
+        "column": "Breakdown Types",
+        "type": "UTF8"
+      },
+      {
+        "column": "ShiftStartDate",
+        "type": "DATE"
+      },
+      {
+        "column": "Comment",
+        "type": "UTF8"
+      },
+      {
+        "column": "Product Key",
+        "type": "UTF8"
+      },
+      {
+        "column": "Volume Key",
+        "type": "UTF8"
+      },
+      {
+        "column": "Loss Units",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "Equipment",
+        "type": "UTF8"
+      },
+      {
+        "column": "Loss Target Key",
+        "type": "UTF8"
+      },
+      {
+        "column": "Value",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "Volume Total",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "Loss Final Level",
+        "type": "UTF8"
+      },
+      {
+        "column": "Batch ID",
+        "type": "UTF8"
+      },
+      {
+        "column": "Dept",
+        "type": "UTF8"
+      },
+      {
+        "column": "Area",
+        "type": "UTF8"
+      },
+      {
+        "column": "Product Type",
+        "type": "UTF8"
+      },
+      {
+        "column": "Equipment Loss Key",
+        "type": "UTF8"
+      },
+      {
+        "column": "Lvl 3 Loss Name",
+        "type": "UTF8"
+      },
+      {
+        "column": "Shift colour",
+        "type": "UTF8"
+      },
+      {
+        "column": "Time in Mins",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "Brand",
+        "type": "UTF8"
+      },
+      {
+        "column": "Unit Size",
+        "type": "UTF8"
+      },
+      {
+        "column": "Unit Count/Format",
+        "type": "UTF8"
+      },
+      {
+        "column": "Extra Info",
+        "type": "UTF8"
+      },
+      {
+        "column": "Shift Time",
+        "type": "UTF8"
+      },
+      {
+        "column": "Data Source",
+        "type": "UTF8"
+      },
+      {
+        "column": "In EU Report",
+        "type": "BOOLEAN"
+      },
+      {
+        "column": "target",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "comment_count",
+        "type": "INT64"
+      },
+      {
+        "column": "loaded_at",
+        "type": "TIMESTAMP_MILLIS"
+      }
+    ],
+    "rcolumns": "",
+    "multi": "multiple",
+    "outputPty": "payload",
+    "outputPtyType": "msg",
+    "engine": "parquetjs",
+    "x": 240,
+    "y": 2760,
+    "wires": [
+      [
+        "890d9.ab5cdf"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "890d9.ab5cdf",
+    "type": "function",
+    "name": "13.1 Set Daily_Losses_EU path",
+    "func": "// Sets the file path of one table, line and day: <report>/<table>/site=\n// Chartres/<table>_<YYYY-MM-DD>_<line>_excel.parquet. In: the parquet node\n// output (msg.iso, msg.machine). Out: msg.path and msg.filename.\n// The name is fixed: a resend of the same line and day replaces the file.\nvar TABLE = 'Daily_Losses_EU';\nvar cfg = flow.get('cfg');\n\nmsg.path = cfg.liveFolder + '/' + TABLE + '/site=' + cfg.site;\nmsg.path += '/' + TABLE + '_' + msg.iso + '_' + msg.machine;\nmsg.path += '_' + cfg.source + '.parquet';\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 520,
+    "y": 2760,
+    "wires": [
+      [
+        "8afc8.acf5f8"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "8afc8.acf5f8",
+    "type": "write object",
+    "name": "Daily_Losses_EU to data lake",
+    "path": "",
+    "mode": "object",
+    "x": 800,
+    "y": 2760,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "8ceb7.ae8f11",
+    "type": "comment",
+    "name": "[14] Volume_CoV_EU",
+    "info": "STAGE 14 - parquet node, path and write object for Volume_CoV_EU: <root>/report/Volume_CoV_EU/site=Chartres/Volume_CoV_EU_<YYYY-MM-DD>_<line>_excel.parquet. The path is the same on every resend of a line and day, so the resend replaces the file.",
+    "x": 140,
+    "y": 2900,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "6feb6.96969a",
+    "type": "link in",
+    "name": "COV TABLE",
+    "links": [
+      "71da5.982fb3"
+    ],
+    "x": 60,
+    "y": 2980,
+    "wires": [
+      [
+        "8eda6.b0282a"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "8eda6.b0282a",
+    "type": "parquet",
+    "name": "Write Volume_CoV_EU parquet",
+    "option": "write",
+    "columns": [
+      {
+        "column": "Date",
+        "type": "DATE"
+      },
+      {
+        "column": "MachineName",
+        "type": "UTF8"
+      },
+      {
+        "column": "Shift Colour",
+        "type": "UTF8"
+      },
+      {
+        "column": "Good Parts Sum",
+        "type": "INT64"
+      },
+      {
+        "column": "Shift Machine Key",
+        "type": "UTF8"
+      },
+      {
+        "column": "Cap Max",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "Time on Shift",
+        "type": "TIMESTAMP_MILLIS"
+      },
+      {
+        "column": "Dept",
+        "type": "UTF8"
+      },
+      {
+        "column": "Area",
+        "type": "UTF8"
+      },
+      {
+        "column": "Product Type",
+        "type": "UTF8"
+      },
+      {
+        "column": "Unique Machine Name",
+        "type": "UTF8"
+      },
+      {
+        "column": "SiteName",
+        "type": "UTF8"
+      },
+      {
+        "column": "Data Source",
+        "type": "UTF8"
+      },
+      {
+        "column": "In EU Report",
+        "type": "BOOLEAN"
+      },
+      {
+        "column": "loaded_at",
+        "type": "TIMESTAMP_MILLIS"
+      }
+    ],
+    "rcolumns": "",
+    "multi": "multiple",
+    "outputPty": "payload",
+    "outputPtyType": "msg",
+    "engine": "parquetjs",
+    "x": 240,
+    "y": 2980,
+    "wires": [
+      [
+        "90c95.b1c143"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "90c95.b1c143",
+    "type": "function",
+    "name": "14.1 Set Volume_CoV_EU path",
+    "func": "// Sets the file path of one table, line and day: <report>/<table>/site=\n// Chartres/<table>_<YYYY-MM-DD>_<line>_excel.parquet. In: the parquet node\n// output (msg.iso, msg.machine). Out: msg.path and msg.filename.\n// The name is fixed: a resend of the same line and day replaces the file.\nvar TABLE = 'Volume_CoV_EU';\nvar cfg = flow.get('cfg');\n\nmsg.path = cfg.liveFolder + '/' + TABLE + '/site=' + cfg.site;\nmsg.path += '/' + TABLE + '_' + msg.iso + '_' + msg.machine;\nmsg.path += '_' + cfg.source + '.parquet';\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 520,
+    "y": 2980,
+    "wires": [
+      [
+        "92b84.b35a5c"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "92b84.b35a5c",
+    "type": "write object",
+    "name": "Volume_CoV_EU to data lake",
+    "path": "",
+    "mode": "object",
+    "x": 800,
+    "y": 2980,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "94a73.b4f375",
+    "type": "comment",
+    "name": "[15] ANSWER",
+    "info": "STAGE 15 - every answer arrives here: 1 sets the status and the body and logs one line per request. A request that was caught in an error gets 500.",
+    "x": 120,
+    "y": 3120,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "f80d4.33828c",
+    "type": "link in",
+    "name": "ANSWER",
+    "links": [
+      "f9fc3.351ba5",
+      "ffc90.39e6f0",
+      "5c960.869ba0",
+      "6073e.89cdd2",
+      "73c94.99c8cc",
+      "9e51e.bcf0f2"
+    ],
+    "x": 60,
+    "y": 3200,
+    "wires": [
+      [
+        "96962.b68c8e"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "9a740.b9bec0",
+    "type": "link out",
+    "name": "to LOG",
+    "mode": "link",
+    "links": [
+      "52eb5.7e9e23"
+    ],
+    "x": 340,
+    "y": 3220,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "96962.b68c8e",
+    "type": "function",
+    "name": "15.1 Send answer",
+    "func": "// Answers the sender and logs the request. In: msg.statusCode, msg.payload\n// (the answer), msg.logText, msg.logLevel, msg.row. Out 1: the http response\n// (only for a request with msg.res). Out 2: one log line.\nvar cfg = flow.get('cfg') || {};\nvar status = msg.statusCode || 200;\n\n// An error caught in the request lane: answer 500, Power Automate retries.\nif (msg.error && !msg.statusCode) {\n  status = 500;\n  msg.payload = {\n    status: 'error',\n    detail: String(msg.error.message || msg.error).slice(0, 200)\n  };\n  msg.logText = 'error in ' + (msg.error.source && msg.error.source.name) +\n    ': ' + String(msg.error.message || msg.error).slice(0, 200);\n}\n\nvar day = msg.row && msg.row.iso;\nif (!day) {\n  day = new Date().toISOString().slice(0, 10);\n}\nvar mode = cfg.dryRun ? 'dry-run' : 'live';\nvar text = msg.logText || ('answer ' + status);\nvar level = msg.logLevel || 'info';\nif (status >= 500) {\n  level = 'failed';\n}\nvar line = {\n  payload: day + ' [' + mode + '] ' + text,\n  level: level,\n  source: 'chartres-live'\n};\n\nif (!msg.res) {\n  return [null, line];\n}\nvar answer = {\n  _msgid: msg._msgid,\n  req: msg.req,\n  res: msg.res,\n  statusCode: status,\n  headers: {\n    'content-type': 'application/json'\n  },\n  payload: msg.payload\n};\nreturn [answer, line];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 200,
+    "y": 3200,
+    "wires": [
+      [
+        "98851.b825a7"
+      ],
+      [
+        "9a740.b9bec0"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "98851.b825a7",
+    "type": "http response",
+    "name": "Answer Power Automate",
+    "statusCode": "",
+    "headers": {},
+    "x": 420,
+    "y": 3180,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "9c62f.bb57d9",
+    "type": "comment",
+    "name": "[16] REQUEST ERRORS",
+    "info": "STAGE 16 - an error in a node of the request lane or the row lane is answered with 500 (the sender sends the row again). The shared ERRORS lane below also logs it.",
+    "x": 140,
+    "y": 3340,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "9e51e.bcf0f2",
+    "type": "link out",
+    "name": "to ANSWER",
+    "mode": "link",
+    "links": [
+      "f80d4.33828c"
+    ],
+    "x": 280,
+    "y": 3420,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "a040d.be8a0b",
+    "type": "catch",
+    "name": "Catch request errors",
+    "scope": [
+      "e895c.26b9c4",
+      "f0518.2d1e28",
+      "f61e5.31e973",
+      "58b82.83696e",
+      "5aa71.850287",
+      "5e84f.8834b9",
+      "6262d.8b66eb"
+    ],
+    "uncaught": false,
+    "x": 140,
+    "y": 3420,
+    "wires": [
+      [
+        "9e51e.bcf0f2"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "a22fc.c02324",
+    "type": "comment",
+    "name": "[17] ERRORS",
+    "info": "STAGE 17 - a catch node takes every error raised by a node of this tab and turns it into a log line with the name of the node and the message of the API (for example the limit message of evaluateKPIs). Errors of the log nodes themselves are not logged again.",
+    "x": 120,
+    "y": 3560,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "a60da.c35556",
+    "type": "catch",
+    "name": "Catch errors",
+    "scope": null,
+    "uncaught": false,
+    "x": 120,
+    "y": 3640,
+    "wires": [
+      [
+        "a41eb.c1bc3d"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "a7fc9.c4ee6f",
+    "type": "link out",
+    "name": "to LOG",
+    "mode": "link",
+    "links": [
+      "52eb5.7e9e23"
+    ],
+    "x": 460,
+    "y": 3640,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "a41eb.c1bc3d",
+    "type": "function",
+    "name": "17.1 Describe error",
+    "func": "// Turns an error caught by the catch node into a log line.\n// In: the message of a catch node (msg.error).\n// Out: a log line for the shared log. Errors of the log nodes themselves\n// are dropped (no log loop).\nvar err = msg.error || {};\nvar source = (err.source && err.source.name) || 'unknown node';\n\nfunction textOf(value) {\n  if (value === undefined || value === null) {\n    return '';\n  }\n  if (typeof value === 'string') {\n    return value;\n  }\n  return JSON.stringify(value);\n}\n\n// Takes the API message out of an error body when there is one.\nfunction apiMessage(value) {\n  var body = value;\n  if (typeof value === 'string') {\n    try {\n      body = JSON.parse(value);\n    } catch (e) {\n      return value;\n    }\n  }\n  var data = body && body.data;\n  var list = (data && data.errors) || (body && body.errors);\n  if (list && list.length && list[0].message) {\n    return list[0].message;\n  }\n  return textOf(value);\n}\n\nif (msg.logBatch) {\n  node.status({\n    fill: 'red',\n    shape: 'ring',\n    text: 'log write failed'\n  });\n  return null;\n}\n\nvar text = '';\nif (msg.day) {\n  text += msg.day + ' [' + msg.mode + '] ';\n}\ntext += 'ERROR in ' + source + ': ' + apiMessage(err.message);\nreturn {\n  topic: 'log',\n  payload: text,\n  level: 'error',\n  source: source\n};\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 320,
+    "y": 3640,
+    "wires": [
+      [
+        "a7fc9.c4ee6f"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "a9eb8.c68788",
+    "type": "comment",
+    "name": "[18] LOG",
+    "info": "STAGE 18 - every log line arrives here through the link \"to LOG\". 1 turns a line into a row (time, flow, site, production day, level) and shows it in the debug sidebar. The join collects the rows for 30 s, the delay lets one batch pass every 10 s so two writes do not overlap, 3 sets the file of the month and the read node loads the old file. A read of a file that does not exist answers nothing (only a warning), so the same batch also goes through a 10 s wait to the append step. The log is written whatever the dry-run switch says.",
+    "x": 100,
+    "y": 3780,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "52eb5.7e9e23",
+    "type": "link in",
+    "name": "LOG",
+    "links": [
+      "54da4.80373c",
+      "9a740.b9bec0",
+      "a7fc9.c4ee6f"
+    ],
+    "x": 60,
+    "y": 3860,
+    "wires": [
+      [
+        "abda7.c820a1"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "abda7.c820a1",
+    "type": "function",
+    "name": "18.1 Format log line",
+    "func": "// Turns one log message into a row for the log file.\n// In: msg.payload = log text (optional msg.level and msg.source).\n// Out: msg.payload = the row, msg.line = the text for the debug node.\nvar FLOW_NAME = 'chartres-live';\nvar cfg = flow.get('cfg') || {};\nvar text = String(msg.payload);\n\nvar seq = (flow.get('logSeq') || 0) + 1;\nflow.set('logSeq', seq);\n\n// Most lines start with the production day and the mode: \"2026-09-01 [x] \".\nvar day = '';\nvar mode = '';\nvar message = text;\nvar parts = /^(\\d{4}-\\d{2}-\\d{2}) \\[([^\\]]*)\\] ([\\s\\S]*)$/.exec(text);\nif (parts) {\n  day = parts[1];\n  mode = parts[2];\n  message = parts[3];\n}\n\nvar level = msg.level;\nif (!level) {\n  if (/FAILED/.test(message)) {\n    level = 'failed';\n  } else if (/NOTHING TO WRITE/.test(message)) {\n    level = 'warn';\n  } else {\n    level = 'info';\n  }\n}\n\nmsg.line = text;\nmsg.payload = {\n  ts_utc: new Date().toISOString(),\n  seq: seq,\n  flow: FLOW_NAME,\n  site: cfg.site || 'all',\n  production_day: day,\n  mode: mode,\n  level: level,\n  source: msg.source || 'flow',\n  message: message\n};\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 200,
+    "y": 3860,
+    "wires": [
+      [
+        "adc96.c9b9ba",
+        "afb85.cb52d3"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "adc96.c9b9ba",
+    "type": "join",
+    "name": "Collect log lines",
+    "mode": "custom",
+    "build": "array",
+    "property": "payload",
+    "propertyType": "msg",
+    "key": "topic",
+    "joiner": "\\n",
+    "joinerType": "str",
+    "accumulate": false,
+    "useparts": false,
+    "timeout": "30",
+    "count": "",
+    "reduceRight": false,
+    "reduceExp": "",
+    "reduceInit": "",
+    "reduceInitType": "",
+    "reduceFixup": "",
+    "x": 420,
+    "y": 3840,
+    "wires": [
+      [
+        "b1a74.ccebec"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "afb85.cb52d3",
+    "type": "debug",
+    "name": "Run log",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "line",
+    "targetType": "msg",
+    "x": 380,
+    "y": 3880,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "b1a74.ccebec",
+    "type": "delay",
+    "name": "One log batch per 10 s",
+    "pauseType": "rate",
+    "timeout": "1",
+    "timeoutUnits": "seconds",
+    "rate": "1",
+    "nbRateUnits": "10",
+    "rateUnits": "second",
+    "randomFirst": "1",
+    "randomLast": "1",
+    "randomUnits": "seconds",
+    "drop": false,
+    "powerMode": false,
+    "x": 640,
+    "y": 3860,
+    "wires": [
+      [
+        "b3963.ce8505"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "b3963.ce8505",
+    "type": "function",
+    "name": "18.2 Build log write",
+    "func": "// Prepares the write of one batch of log rows (the read node runs next).\n// In: msg.payload = array of log rows from the join node.\n// Out: msg.path = file of the month, msg.logRows, msg.logBatchId, no payload.\n// msg.logBatch keeps errors of the log nodes themselves out of the log.\nvar FLOW_NAME = 'chartres-live';\nvar cfg = flow.get('cfg') || {};\nvar root = cfg.root || 'logs_without_root';\nvar rows = msg.payload;\nvar month = rows[0].ts_utc.slice(0, 7);\n\nvar batchNo = (flow.get('logBatchNo') || 0) + 1;\nflow.set('logBatchNo', batchNo);\n\nmsg.logRows = rows;\nmsg.path = root + '/logs/' + FLOW_NAME + '/log_' + month + '.csv';\nmsg.logBatch = true;\nmsg.logBatchId = rows[0].ts_utc + '#' + batchNo;\ndelete msg.payload;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 880,
+    "y": 3860,
+    "wires": [
+      [
+        "b5852.d01e1e",
+        "b7741.d1b737"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "bb51f.d4e969",
+    "type": "link out",
+    "name": "to APPEND",
+    "mode": "link",
+    "links": [
+      "b9630.d35050"
+    ],
+    "x": 1240,
+    "y": 3860,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "b5852.d01e1e",
+    "type": "read object",
+    "name": "Read log file",
+    "path": "",
+    "mode": "object",
+    "x": 1080,
+    "y": 3840,
+    "wires": [
+      [
+        "bb51f.d4e969"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "bd40e.d68282",
+    "type": "link out",
+    "name": "to APPEND",
+    "mode": "link",
+    "links": [
+      "b9630.d35050"
+    ],
+    "x": 1240,
+    "y": 3940,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "b7741.d1b737",
+    "type": "delay",
+    "name": "Wait for read 10 s",
+    "pauseType": "delay",
+    "timeout": "10",
+    "timeoutUnits": "seconds",
+    "rate": "1",
+    "nbRateUnits": "1",
+    "rateUnits": "second",
+    "randomFirst": "1",
+    "randomLast": "5",
+    "randomUnits": "seconds",
+    "drop": false,
+    "powerMode": false,
+    "x": 1100,
+    "y": 3880,
+    "wires": [
+      [
+        "bd40e.d68282"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "bf2fd.d81b9b",
+    "type": "comment",
+    "name": "[19] LOG WRITE",
+    "info": "STAGE 19 - adds the rows of the batch to the old file and writes the whole file back (the data lake has no append). Columns: ts_utc, seq, flow, site, production_day, mode, level, source, message. Every field is quoted, line breaks become a space. The batch arrives twice (read answer and the wait) and is written once. If the read gives no answer for a file this flow wrote before, a new file with a time stamp is written, so the history is never replaced.",
+    "x": 120,
+    "y": 4000,
+    "wires": []
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "b9630.d35050",
+    "type": "link in",
+    "name": "APPEND",
+    "links": [
+      "bb51f.d4e969",
+      "bd40e.d68282"
+    ],
+    "x": 60,
+    "y": 4080,
+    "wires": [
+      [
+        "c11ec.d9b4b4"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "c11ec.d9b4b4",
+    "type": "function",
+    "name": "19.1 Append log rows",
+    "func": "// Adds the rows of one batch to the log file of the month.\n// In: msg.payload = the old file (read answered) or nothing (no answer).\n// Out: msg.payload = the whole new file, the data lake has no append.\n// The same batch can arrive twice (read answer, then the wait): once only.\nvar SEPARATOR = ',';\nvar KEEP_IDS = 50;\nvar COLUMNS = [\n  'ts_utc',\n  'seq',\n  'flow',\n  'site',\n  'production_day',\n  'mode',\n  'level',\n  'source',\n  'message'\n];\n\n// Quotes inside a field are doubled, line breaks become a space.\nfunction quote(value) {\n  var text = (value === undefined || value === null) ? '' : String(value);\n  text = text.replace(/\"/g, '\"\"').replace(/[\\r\\n]+/g, ' ');\n  return '\"' + text + '\"';\n}\n\nfunction lineOf(row) {\n  return COLUMNS.map(function (name) {\n    return quote(row[name]);\n  }).join(SEPARATOR);\n}\n\n// The read node gives text, or a serialised buffer.\nfunction decode(payload) {\n  if (typeof payload === 'string') {\n    return payload;\n  }\n  if (payload && payload.type === 'Buffer' && payload.data) {\n    var bin = '';\n    payload.data.forEach(function (byte) {\n      bin += String.fromCharCode(byte);\n    });\n    try {\n      return decodeURIComponent(escape(bin));\n    } catch (e) {\n      return bin;\n    }\n  }\n  return null;\n}\n\nvar rows = msg.logRows.slice();\nrows.sort(function (a, b) {\n  if (a.ts_utc !== b.ts_utc) {\n    return a.ts_utc < b.ts_utc ? -1 : 1;\n  }\n  return a.seq - b.seq;\n});\n\nvar done = flow.get('logDone') || [];\nvar known = flow.get('logKnown') || [];\nif (done.indexOf(msg.logBatchId) >= 0) {\n  return null;\n}\n\nvar path = msg.path;\nvar old = '';\nvar problem = '';\nif (msg.payload === undefined || msg.payload === null) {\n  if (known.indexOf(path) >= 0) {\n    problem = 'read gave no answer for a file written before';\n  }\n} else {\n  old = decode(msg.payload);\n  if (old === null) {\n    old = '';\n    problem = 'old file is not text';\n  }\n}\nif (problem) {\n  // Never replace the old file: write a new one with a time stamp.\n  var stamp = new Date().toISOString().replace(/[-:.TZ]/g, '');\n  path = path.replace(/\\.csv$/, '_' + stamp + '.csv');\n  rows.push({\n    ts_utc: new Date().toISOString(),\n    seq: 0,\n    flow: rows[0].flow,\n    site: rows[0].site,\n    production_day: '',\n    mode: '',\n    level: 'error',\n    source: 'log',\n    message: problem + ', wrote ' + path\n  });\n} else if (known.indexOf(path) < 0) {\n  known.push(path);\n  flow.set('logKnown', known);\n}\n\nvar lines = [];\nif (!old) {\n  lines.push(COLUMNS.map(quote).join(SEPARATOR));\n} else if (old.slice(-1) !== '\\n') {\n  old += '\\n';\n}\nrows.forEach(function (row) {\n  lines.push(lineOf(row));\n});\n\ndone.push(msg.logBatchId);\nflow.set('logDone', done.slice(-KEEP_IDS));\n\nmsg.payload = old + lines.join('\\n') + '\\n';\nmsg.path = path;\ndelete msg.logRows;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 200,
+    "y": 4080,
+    "wires": [
+      [
+        "c30db.db4dcd"
+      ]
+    ]
+  },
+  {
+    "z": "e2c8f.21ee79",
+    "id": "c30db.db4dcd",
+    "type": "write object",
+    "name": "Log to data lake",
+    "path": "",
+    "mode": "object",
+    "x": 420,
+    "y": 4080,
+    "wires": []
+  }
+]

@@ -1,6 +1,6 @@
 // Builds Volume_CoV_EU and the filler rows that keep the Tableau blend whole
 // (the rule of f1-filler-rows.js, for one line and day). In: msg.rows,
-// lossShift, day, look (y2, y3). Out: msg.rows.Volume_CoV_EU, filler rows
+// lossShift, day, line (y2, y3). Out: msg.rows.Volume_CoV_EU, filler rows
 // (Data Source = Filler) in the plan and loss rows, msg.tables.
 var SITE = 'Chartres';
 var FILLER = 'Filler';
@@ -25,19 +25,9 @@ var LOSS_ZERO = [
   'comment_count'
 ];
 
-function key(value) {
-  return String(value || '')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[\s-]/g, '')
-    .toUpperCase();
-}
-
 var day = msg.day;
 var machine = day.machine;
-var line = msg.look.lines[key(msg.row.fileLine)];
+var line = msg.line;
 var plan = msg.rows.Plan_OPT_EU;
 var loss = msg.rows.Daily_Losses_EU;
 

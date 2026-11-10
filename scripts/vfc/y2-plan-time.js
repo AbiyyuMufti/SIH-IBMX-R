@@ -1,7 +1,7 @@
 // Builds the Plan_OPT_EU rows (one per product slot) and the
-// Time_Utilisation_EU row of the day. In: msg.row (y1), msg.payload (the
-// file chartres_lookups.json). Out 1: msg.rows, msg.slots, msg.look.
-// Out 2: 400 for a line that is not in the lookups.
+// Time_Utilisation_EU row of the day. In: msg.row (y1) and the lookups in
+// flow context (machines, scope, targets, formats of Chartres). Out 1:
+// msg.rows, slots, line, targets. Out 2: 400 for an unknown line.
 var SITE = 'Chartres';
 var DATA_SOURCE = 'Excel';
 var ALL_TIME = 1440;
@@ -42,44 +42,84 @@ function num(value) {
   return Number(value) || 0;
 }
 
-// The lookup file arrives as bytes, text or an object.
-var look = msg.payload;
-if (look && look.type === 'Buffer') {
-  look = Buffer.from(look.data);
-}
-if (Buffer.isBuffer(look)) {
-  look = look.toString('utf8');
-}
-if (typeof look === 'string') {
-  look = JSON.parse(look);
-}
-
 var row = msg.row;
-var line = look.lines[key(row.fileLine)];
-if (!line) {
+var machines = flow.get('machines_' + SITE) || {};
+var scope = flow.get('scope_' + SITE) || {};
+var machine = null;
+Object.keys(machines).forEach(function (name) {
+  if (key(name) === key(row.fileLine)) {
+    machine = name;
+  }
+});
+if (machine === null) {
   msg.statusCode = 400;
   msg.payload = {
     status: 'rejected',
-    detail: 'line not in the lookups: ' + row.fileLine
+    detail: 'line not in Machine Names: ' + row.fileLine
   };
   msg.logLevel = 'warn';
-  msg.logText = 'rejected: line not in the lookups: ' + row.fileLine;
+  msg.logText = 'rejected: line not in Machine Names: ' + row.fileLine;
   return [null, msg];
 }
+
+// The EU report scope rules (keep / drop) of one table, as in the filler.
+function inEuReport(table) {
+  var rules = scope[table] || {
+    keep: {},
+    drop: {}
+  };
+  var candidate = {
+    MachineName: machine
+  };
+  var kept = Object.keys(rules.keep).every(function (column) {
+    return rules.keep[column].indexOf(norm(candidate[column])) !== -1;
+  });
+  var dropped = Object.keys(rules.drop).some(function (column) {
+    return rules.drop[column].indexOf(norm(candidate[column])) !== -1;
+  });
+  return kept && !dropped;
+}
+
+var info = machines[machine];
+var line = {
+  machine: machine,
+  unique: machine + '-' + SITE,
+  areaName: info.Area,
+  dept: info.Dept,
+  area: info.Area,
+  type: info['Product Type'],
+  inEu: {
+    Plan_OPT_EU: inEuReport('Plan_OPT_EU'),
+    Time_Utilisation_EU: inEuReport('Time_Utilisation_EU'),
+    Daily_Losses_EU: inEuReport('Daily_Losses_EU'),
+    Volume_CoV_EU: inEuReport('Volume_CoV_EU')
+  }
+};
 
 var base = row.base;
 var iso = row.iso;
 var month = iso.slice(0, 7);
-var machine = line.machine;
 var unique = line.unique;
 var dayNumber = Date.parse(iso + 'T00:00:00Z') / 86400000;
 var loadedAt = Date.now();
-var targets = (look.targets[key(machine)] || {})[month] || {};
-var oeeTarget = targets['% OEE'];
-oeeTarget = oeeTarget === undefined ? null :
-  Math.round(oeeTarget * 1000) / 10;
-var pdt = targets['Planned Downtime (Total)'];
-var updt = targets['Unplanned Downtime (Total)'];
+// Glidepaths are in percent: OEE as in the history (one decimal), the
+// downtime and loss targets as fractions.
+var allTargets = flow.get('targets_' + SITE) || {};
+var targets = (allTargets[unique] || {})[
+  '01/' + iso.slice(5, 7) + '/' + iso.slice(0, 4)
+] || {};
+
+function fraction(percent) {
+  if (percent === undefined) {
+    return null;
+  }
+  return Number((percent / 100).toPrecision(12));
+}
+
+var oeeTarget = targets.oee === undefined ? null :
+  Math.round(targets.oee * 10) / 10;
+var pdt = fraction(targets.pdt);
+var updt = fraction(targets.updt);
 var machineColumns = {
   Dept: line.dept,
   Area: line.area,
@@ -108,6 +148,7 @@ SHIFTS.forEach(function (shift) {
   }
 });
 
+var formats = flow.get('formats_' + SITE) || {};
 var plan = [];
 var capacityDay = 0;
 slots.forEach(function (slot) {
@@ -131,8 +172,8 @@ slots.forEach(function (slot) {
     SiteName: SITE,
     'Unique Machine Name': unique,
     'Product Key': unique + ' ' + part,
-    'UPDT Target': updt === undefined ? null : updt,
-    'PDT Target': pdt === undefined ? null : pdt,
+    'UPDT Target': updt,
+    'PDT Target': pdt,
     'OEE Target': oeeTarget,
     'Defect Parts': slot.waste,
     OEE: capacity ? Math.round((good / capacity) * 1000) / 1000 : null,
@@ -150,9 +191,9 @@ slots.forEach(function (slot) {
     planRow[name] = machineColumns[name];
   });
   // The Format List columns, joined on Product Key.
-  var format = look.format[planRow['Product Key']] || [];
-  FORMAT_COLUMNS.forEach(function (name, i) {
-    planRow[name] = format[i] === undefined ? null : format[i];
+  var format = formats[planRow['Product Key']] || {};
+  FORMAT_COLUMNS.forEach(function (name) {
+    planRow[name] = format[name] === undefined ? null : format[name];
   });
   plan.push(planRow);
 });
@@ -175,7 +216,8 @@ Object.keys(machineColumns).forEach(function (name) {
   time[name] = machineColumns[name];
 });
 
-msg.look = look;
+msg.line = line;
+msg.targets = targets;
 msg.slots = slots;
 msg.day = {
   iso: iso,
@@ -188,6 +230,4 @@ msg.rows = {
   Plan_OPT_EU: plan,
   Time_Utilisation_EU: [time]
 };
-// The payload is the lookup file no more.
-msg.payload = null;
 return [msg, null];
