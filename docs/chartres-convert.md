@@ -190,3 +190,6 @@ Local only, not uploaded. Changes vs run12: `Good Parts` = `Volume - Déchets`; 
 - **NR** = Non renseigné (not provided: time the operators did not log). A negative NR is not loaded (no change).
 - **Duplicate days**: `Date et heure de la saisie` is not a content difference any more. Identical copies: kept once. Copies that differ: [duplicates.csv](../downloads/chartres-convert/run13/duplicates.csv), column `status` = `choose`, with both values per differing column (`1 -> 2`, copy 1 = the row higher in the sheet); until the user picks, the newest saving is kept. The user picks; no rule is inferred.
 - Targets of 2025 and 2026 come from `TARGET 2.xlsx` (no change). SACHA1 and SACHA2 stay `In EU Report` = false (run12).
+
+## Run14 (2026-11-10)
+Local, not uploaded. Same rules as run13, plus: a day that sits in two workbooks of one line (the 2025 and the 2026 file) is loaded once when the copies are identical, and listed in `duplicates.csv` (`status`) when they differ. Found: CUMULUS and ZEUS 2026-01-03 and 2026-01-04 (identical), which run13 loaded twice. Run14 vs run13: only the 2026-01 files of Plan_OPT_EU, Time_Utilisation_EU, Daily_Losses_EU, Volume_CoV_EU and the filler change (7,334 days, 22,639 plan, 78,913 loss rows). Upload those files over the lake ones (user's go). Live feed: [chartres-live.md](chartres-live.md).

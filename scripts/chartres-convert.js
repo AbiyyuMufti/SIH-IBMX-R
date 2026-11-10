@@ -467,6 +467,7 @@ const checks = [['file', 'date', 'rule', 'detail']];
 const dupes = [];
 const duplicateDetails = [];
 const days = [];
+const firstFile = new Map();
 const sum = { days: 0, plan: 0, util: 0, loss: 0 };
 
 for (const f of files.filter((x) => YEARS.includes(x.year))) {
@@ -531,7 +532,33 @@ for (const f of files.filter((x) => YEARS.includes(x.year))) {
   const unique = `${machine}-${SITE}`;
   const machineCols = { Dept: info.dept ?? null, Area: info.area ?? null, 'Product Type': info.type ?? null };
 
-  for (const [iso, { r }] of seen) {
+  for (const [iso, { r, savedValue }] of seen) {
+    // A day in two workbooks of one line (2025 and 2026 file): identical copies
+    // are kept once, copies that differ are listed (the first file is kept).
+    const dayKey = `${machine}|${iso}`;
+    const earlier = firstFile.get(dayKey);
+    if (earlier) {
+      const content = (row, head) =>
+        Object.fromEntries(
+          head.map((n, i) => [n, String(row[i] ?? '')]).filter(([n]) => n && n !== 'Date et heure de la saisie'),
+        );
+      const mine = content(r, h);
+      const other = content(earlier.r, earlier.h);
+      const differing = Object.keys(mine)
+        .filter((n) => mine[n] !== (other[n] ?? ''))
+        .map((n) => `${n}: ${other[n] ?? ''} -> ${mine[n]}`);
+      duplicateDetails.push({
+        file: `${earlier.path} + ${f.path.slice(ROOT.length + 1)}`,
+        date: iso,
+        savingTime1: String(earlier.savedValue ?? ''),
+        savingTime2: String(savedValue ?? ''),
+        differingColumns: differing.join('; ') || 'same',
+        status: differing.length ? 'choose (two workbooks, first kept)' : 'identical, kept once',
+      });
+      dupes.push(`${f.line} ${iso} (two workbooks)`);
+      continue;
+    }
+    firstFile.set(dayKey, { r, h, savedValue, path: f.path.slice(ROOT.length + 1) });
     sum.days += 1;
     const month = iso.slice(0, 7);
     const monthTargets = targetData.byLine[key(machine)]?.[month] ?? {};
