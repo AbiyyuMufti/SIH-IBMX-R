@@ -18,3 +18,6 @@
 
 ## Found on the way
 Four days (CUMULUS and ZEUS, 2026-01-03 and 2026-01-04) sit identically in the 2025 and the 2026 workbook and were loaded twice in run13 (the Good Parts of Jan 2026 CoV doubled). Run14 keeps identical copies once and lists differing ones ([chartres-convert.md](chartres-convert.md), Run14).
+
+## Reference files for the live tab (decision of the user, 2026-11-10)
+No copy of reference data in a JSON: the tab reads the lake reference files the other tabs read (`b5-*-lookup`): Machine Names (exists for Chartres), report scope, Format List, Glidepaths. Chartres had no Glidepaths file: `node scripts/chartres-glidepath.js` turns `TARGET 2.xlsx` (sheet `OEE 2025-2026`) into the standard layout (`Site Name`, `Line`, `OEE Bucket`, `01/MM/YYYY` columns, values in percent, 289 rows = 17 lines x 17 buckets, 24 months) at `sharepoint/reference/glidepaths/site=Chartres/Glidepath Chartres V1 <date>.csv`. Upload: `node scripts/datalake-upload-tree.js` (defaults `sharepoint/reference` to `eu_report/reference`, user's go). Only the French-to-English loss names have no reference file yet (planned: CSV `reference/loss_names/site=Chartres/`). `chartres-live-lookups.js` and the JSON are replaced by these.
