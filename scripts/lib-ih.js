@@ -101,6 +101,26 @@ export function requireEnv(...names) {
 
 // Client-credentials token. This is a POST (the only POST needed to start).
 // Returns { token, expiresIn, tokenType }. Never log `token`.
+// fetch with retries for the short connect stalls seen on the office Wi-Fi
+// (UND_ERR_CONNECT_TIMEOUT after 10 s, 2026-11-10; the next try works).
+// Only network errors are retried, never an HTTP status. Waits 2, 4, 8, 16 s.
+const RETRY_CODES = ['UND_ERR_CONNECT_TIMEOUT', 'ECONNRESET', 'ETIMEDOUT', 'EAI_AGAIN', 'UND_ERR_SOCKET'];
+export async function fetchRetry(url, options, tries = 5) {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await fetch(url, options);
+    } catch (e) {
+      const code = e?.cause?.code;
+      if (attempt >= tries || !RETRY_CODES.includes(code)) {
+        throw e;
+      }
+      const wait = 2000 * 2 ** (attempt - 1);
+      console.error(`network stall (${code}), try ${attempt + 1} of ${tries} in ${wait / 1000} s`);
+      await new Promise((resolve) => setTimeout(resolve, wait));
+    }
+  }
+}
+
 export async function getToken(idVar = 'RECKITT_API_TECHUSER_CLIENT_ID', secretVar = 'RECKITT_API_TECHUSER_CLIENT_SECRET') {
   requireEnv(idVar, secretVar);
   const basic = Buffer.from(`${process.env[idVar]}:${process.env[secretVar]}`).toString('base64');
@@ -110,7 +130,7 @@ export async function getToken(idVar = 'RECKITT_API_TECHUSER_CLIENT_ID', secretV
   if (form) {
     headers['Content-Type'] = 'application/x-www-form-urlencoded';
   }
-  const res = await fetch(form ? cfg.tokenUrl : `${cfg.tokenUrl}?grant_type=client_credentials`, {
+  const res = await fetchRetry(form ? cfg.tokenUrl : `${cfg.tokenUrl}?grant_type=client_credentials`, {
     method: 'POST',
     headers,
     body: form ? 'grant_type=client_credentials' : undefined,
@@ -131,7 +151,7 @@ export async function apiGet(path, token, { query, accept = 'application/json' }
   const url = new URL(path.startsWith('http') ? path : cfg.gateway + apiPath(path));
   for (const [k, v] of Object.entries(query ?? {})) url.searchParams.set(k, v);
   const t0 = Date.now();
-  const res = await fetch(url, { method: 'GET', headers: { Authorization: `Bearer ${token}`, Accept: accept } });
+  const res = await fetchRetry(url, { method: 'GET', headers: { Authorization: `Bearer ${token}`, Accept: accept } });
   const text = await res.text();
   let body;
   try { body = JSON.parse(text); } catch { body = text; }

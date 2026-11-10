@@ -2,7 +2,7 @@
 // Download and upload are two steps: ask for a signed URL (POST, answer 201),
 // then GET or PUT that URL directly, without the Bearer token.
 // Signed URLs contain a secret signature: they are never printed.
-import { cfg, datalakePath } from './lib-ih.js';
+import { cfg, datalakePath, fetchRetry } from './lib-ih.js';
 
 export function lakeBase() {
   return cfg.gateway + datalakePath();
@@ -24,7 +24,7 @@ export async function listObjects(token, path, nextToken) {
   if (nextToken) {
     url.searchParams.set('nextToken', nextToken);
   }
-  const res = await fetch(url, {
+  const res = await fetchRetry(url, {
     headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }
   });
   return { status: res.status, body: await readJson(res) };
@@ -34,7 +34,7 @@ export async function listObjects(token, path, nextToken) {
 // or /generateUploadObjectUrls (dl.ds.w, up to 30 paths). Both answer 201.
 export async function signedUrl(token, kind, path) {
   const name = kind === 'upload' ? 'generateUploadObjectUrls' : 'generateDownloadObjectUrls';
-  const res = await fetch(`${lakeBase()}/${name}`, {
+  const res = await fetchRetry(`${lakeBase()}/${name}`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -55,11 +55,11 @@ export function hostOf(url) {
 // The sample pages name the header x-ms-blob-type for Azure storage only.
 // Plain request first. Only if it is refused on an Azure host, retry once with it.
 export async function callSigned(method, url, body) {
-  const first = await fetch(url, { method, body });
+  const first = await fetchRetry(url, { method, body });
   if (first.status < 400 || !/blob\.core\.windows\.net$/.test(hostOf(url))) {
     return { res: first, usedBlobHeader: false };
   }
-  const second = await fetch(url, {
+  const second = await fetchRetry(url, {
     method,
     body,
     headers: { 'x-ms-blob-type': 'BlockBlob' }
