@@ -37,7 +37,7 @@ const tables = arg('tables', [...TAB1, ...TAB2].join(',')).split(',');
 // days=YYYY-MM-DD,... builds the day files (tab Provideam fetch) instead of months.
 const days = arg('days', '') ? arg('days', '').split(',') : null;
 
-const read = (f) => JSON.parse(readFileSync(new URL('../flows/' + f, import.meta.url), 'utf8'));
+const read = (f) => JSON.parse(readFileSync(new URL('../flows/legacy_report_generator_v0/' + f, import.meta.url), 'utf8'));
 const config = read('vfc-config.json');
 // root=<dir> reads reference/ and source/ from another folder (a test copy).
 const root = arg('root', '') ? pathToFileURL(arg('root', '').replace(/\/?$/, '/')) :
