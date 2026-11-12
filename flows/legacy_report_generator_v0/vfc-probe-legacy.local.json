@@ -1,0 +1,171 @@
+[
+  {
+    "id": "p0b3.legacy01",
+    "type": "tab",
+    "label": "ZZ legacy probe",
+    "disabled": false,
+    "allowCycles": false,
+    "info": "Throwaway probe, read-only. Checks that the OLD platform still works from the VFC: old token host, old gateway, 4 calls. Needs the Config tab applied first. Click the inject once, read the two debug outputs, then delete this tab."
+  },
+  {
+    "z": "p0b3.legacy01",
+    "id": "p0b3.cmt0001",
+    "type": "comment",
+    "name": "Legacy probe (read-only)",
+    "info": "Throwaway probe, read-only. Checks that the OLD platform still works from the VFC: old token host, old gateway, 4 calls. Needs the Config tab applied first. Click the inject once, read the two debug outputs, then delete this tab.",
+    "x": 120,
+    "y": 40,
+    "wires": []
+  },
+  {
+    "z": "p0b3.legacy01",
+    "id": "p0b3.inj0001",
+    "type": "inject",
+    "name": "Run probe once",
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "repeat": "",
+    "repeatEnd": "0",
+    "endTime": "0",
+    "crontab": "",
+    "offset": "NaN",
+    "once": false,
+    "properties": "",
+    "timezone": "UTC",
+    "betweentimesunit": "m",
+    "showNextExecution": false,
+    "powerMode": false,
+    "x": 120,
+    "y": 120,
+    "wires": [
+      [
+        "p0b3.fn00001"
+      ]
+    ]
+  },
+  {
+    "z": "p0b3.legacy01",
+    "id": "p0b3.fn00001",
+    "type": "function",
+    "name": "P1 token",
+    "func": "// Builds the token request for the old platform (probe).\n// In: any message. Out: method, url and headers for the http node.\nvar cfg = glob.get('cfg');\nvar credentials = cfg.clientId + ':' + cfg.clientSecret;\nmsg.method = 'POST';\nmsg.url = 'https://' + cfg.tenantName +\n  '.piam.eu1.mindsphere.io/oauth/token?grant_type=client_credentials';\nmsg.headers = {\n  'Authorization': 'Basic ' + Buffer.from(credentials).toString('base64'),\n  'Accept': 'application/json'\n};\ndelete msg.payload;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 380,
+    "y": 120,
+    "wires": [
+      [
+        "p0b3.http001"
+      ]
+    ]
+  },
+  {
+    "z": "p0b3.legacy01",
+    "id": "p0b3.http001",
+    "type": "http request",
+    "name": "POST token",
+    "method": "use",
+    "ret": "obj",
+    "url": "",
+    "timeout": "",
+    "mindspherePath": "",
+    "useMindsphereAuth": false,
+    "isAdmin": false,
+    "x": 640,
+    "y": 120,
+    "wires": [
+      [
+        "p0b3.fn00002"
+      ]
+    ]
+  },
+  {
+    "z": "p0b3.legacy01",
+    "id": "p0b3.fn00002",
+    "type": "function",
+    "name": "P2 calls",
+    "func": "// Takes the token response and sends one request message per probe call.\n// In: token response. Out 1: the calls. Out 2: token result summary.\nvar BASE = 'https://gateway.eu1.mindsphere.io/api/';\nvar cfg = glob.get('cfg');\nvar token = msg.payload && msg.payload.access_token;\nif (msg.statusCode !== 200 || !token) {\n  var failed = {\n    step: 'token',\n    status: msg.statusCode,\n    error: msg.payload && msg.payload.error\n  };\n  return [null, { payload: failed }];\n}\nvar assetId = cfg.sites[0].assetIds[0];\nvar oee = BASE + 'oee/v3';\nvar am = BASE + 'assetmanagement/v3';\nvar kpiBody = {\n  assetId: assetId,\n  scope: {\n    from: '2026-09-30T00:00:00.000Z',\n    to: '2026-10-01T00:00:00.000Z',\n    filter: [\n      { key: 'PRODUCT', value: [] },\n      { key: 'ORDER', value: [] },\n      { key: 'SHIFT', value: [] }\n    ],\n    recursive: false,\n    groupedByDateTime: false\n  }\n};\nvar calls = [\n  { name: 'oee health', method: 'GET', url: oee + '/health' },\n  { name: 'oee assets', method: 'GET', url: oee + '/assets' },\n  {\n    name: 'am assets',\n    method: 'GET',\n    url: am + '/assets?size=1',\n    accept: 'application/hal+json'\n  },\n  {\n    name: 'oee evaluateKPIs',\n    method: 'POST',\n    url: oee + '/expressions/evaluateKPIs',\n    body: JSON.stringify(kpiBody)\n  }\n];\nvar out = [];\nfor (var i = 0; i < calls.length; i++) {\n  var call = calls[i];\n  var request = {\n    callName: call.name,\n    method: call.method,\n    url: call.url,\n    headers: {\n      'Authorization': 'Bearer ' + token,\n      'Accept': call.accept || 'application/json'\n    }\n  };\n  if (call.body) {\n    request.headers['Content-Type'] = 'application/json';\n    request.payload = call.body;\n  }\n  out.push(request);\n}\nreturn [out, { payload: { step: 'token', status: msg.statusCode } }];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 900,
+    "y": 120,
+    "wires": [
+      [
+        "p0b3.http002"
+      ],
+      [
+        "p0b3.dbg0002"
+      ]
+    ]
+  },
+  {
+    "z": "p0b3.legacy01",
+    "id": "p0b3.http002",
+    "type": "http request",
+    "name": "API call",
+    "method": "use",
+    "ret": "txt",
+    "url": "",
+    "timeout": "",
+    "mindspherePath": "",
+    "useMindsphereAuth": false,
+    "isAdmin": false,
+    "x": 1160,
+    "y": 120,
+    "wires": [
+      [
+        "p0b3.fn00003"
+      ]
+    ]
+  },
+  {
+    "z": "p0b3.legacy01",
+    "id": "p0b3.fn00003",
+    "type": "function",
+    "name": "P3 summary",
+    "func": "// Reduces each response to its status and size. Never shows body or token.\n// In: the http response. Out: msg.payload with call, status, bytes, results.\nvar text = typeof msg.payload === 'string' ? msg.payload : '';\nvar results = null;\ntry {\n  var body = JSON.parse(text);\n  if (body && Array.isArray(body.results)) {\n    results = body.results.length;\n  }\n} catch (e) {\n  results = null;\n}\nmsg.payload = {\n  call: msg.callName,\n  status: msg.statusCode,\n  bytes: text.length,\n  results: results\n};\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 1420,
+    "y": 120,
+    "wires": [
+      [
+        "p0b3.dbg0001"
+      ]
+    ]
+  },
+  {
+    "z": "p0b3.legacy01",
+    "id": "p0b3.dbg0001",
+    "type": "debug",
+    "name": "summary",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "x": 1680,
+    "y": 120,
+    "wires": []
+  },
+  {
+    "z": "p0b3.legacy01",
+    "id": "p0b3.dbg0002",
+    "type": "debug",
+    "name": "token result",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "x": 900,
+    "y": 340,
+    "wires": []
+  }
+]
