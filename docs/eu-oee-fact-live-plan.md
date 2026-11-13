@@ -1,17 +1,17 @@
-# EU_OEE_Fact live: plan agreed 2026-11-11 (not built yet)
+# EU_OEE_Fact live: plan agreed 2026-11-11, updated 2026-11-13 for 65 columns (flow not built yet)
 
 | At a glance | |
 |---|---|
-| **Goal** | `eu_report/report/EU_OEE_Fact/` stays live: one table (62 columns, `Record Type` = Plan, Loss, Time Utilisation) for Hull, Nottingham, Weinheim (Provideam) and Chartres (Excel via Power Automate) |
-| **Status** | Plan only. History is uploaded (94 month files, build and parity: [eu-oee-fact-build.md](../prompt-response/eu-oee-fact-build.md)). The user paused the flow work on 2026-11-11 to test Tableau. Until the flows run, refresh by hand (see "Manual refresh") |
+| **Goal** | `eu_report/report/EU_OEE_Fact/` stays live: one table (since 2026-11-13 65 columns, `Record Type` = Plan, Loss, Time Utilisation, Run Rate; Chartres has no Run Rate rows) for Hull, Nottingham, Weinheim (Provideam) and Chartres (Excel via Power Automate) |
+| **Status** | Plan only for the flow. History (94 month files) is live with the Run Rate rows since 2026-11-13 ([eu-oee-fact-run-rate.md](eu-oee-fact-run-rate.md), milestone [eu-oee-fact-milestone.md](eu-oee-fact-milestone.md)). Until the flows run, refresh by hand (see "Manual refresh") with `scripts/eu_oee_fact_rr_build.py` |
 | **Flows** | Old flows come back from `flows/legacy_report_generator_v0/` unchanged: Config, Provideam fetch, PBI report build, PBI report build 2. Stay off: Run monitor, SIH tabs, old Power BI flows, proofs. Config keeps the `reportSource` switch; SIH is a value only, nothing is built for it now |
 | **New** | Tab `EU OEE Fact build` (Provideam sites) and a fact output in `Chartres live` |
 
 ## Decisions (user, 2026-11-11)
 1. **Fact tab, Provideam sites**: own clock 07:30 UTC (30 min after the fetch) plus a backfill inject `{start, end}`. It reads the Plan, Time Utilisation and Loss day files of the last 3 days that the build tabs wrote and unions them. No "done" signal exists (the write node has no output), so no immediate trigger yet; a link out at the end of PBI report build can come later.
 2. **Chartres live**: Power Automate POSTs one `Base` row per request, the tab builds the rows in memory. Add one union node and write one fact file per line and day. No read-back. Same tab, same endpoint.
-3. **Old tables stay as they are** and keep flowing (Run Rates, Volume CoV, Format List, Site targets are needed later as more record types and columns in the fact, not designed yet).
-4. **File names**: `EU_OEE_Fact/site=<Site>/EU_OEE_Fact_<YYYY-MM-DD>_provideam.parquet`, Chartres `..._<YYYY-MM-DD>_<line>_excel.parquet`. Same 62 columns and order as the uploaded history. A rerun replaces the file (late corrections arrive that way). A day with one of the three tables missing is logged and not built.
+3. **Old tables stay as they are** and keep flowing (Run Rates are now a record type in the fact, see "Update 2026-11-13"; Volume CoV, Format List, Site targets still later).
+4. **File names**: `EU_OEE_Fact/site=<Site>/EU_OEE_Fact_<YYYY-MM-DD>_provideam.parquet`, Chartres `..._<YYYY-MM-DD>_<line>_excel.parquet`. Same 65 columns and order as the live files (the 3 RR columns last, typed Int64, Int64, Float64 even when a file has no Run Rate rows: an untyped empty column breaks the SIH sync). A rerun replaces the file (late corrections arrive that way). A day with one of the three tables missing is logged and not built.
 5. **Targets**: every glidepath file is in percent points (checked 2026-11-11 in Hull, Nottingham, Weinheim, Chartres). Plan table: file value. Loss target and Site tables: value / 100. One bug: [y2-plan-time.js](../scripts/vfc/y2-plan-time.js) divides Plan PDT and UPDT by 100 for Chartres; fix it to percent. Add a log warning when a glidepath file looks like fractions (OEE maximum 1 or below).
 6. **`In EU Report`** from `report_scope.csv`, Dept/Area/Product Type from the Machine Names files the flows load. Before building: compare `report_scope.csv` with `Dim/Machine_Names_EU.csv` for every line and report differences.
 7. **Logging**: every new tab ends with the shared log lanes (`logs/<flow>/log_YYYY-MM.csv`). The Run monitor is not rebuilt.
@@ -31,3 +31,11 @@
 - Fact tab design details: node budget, job format from the fetch, the check of `report_scope.csv` against the Dim file.
 - Run15 Chartres tables in the lake still hold fractions for Plan UPDT/PDT; the fact build multiplies them (and refuses when a value is above 1).
 - Chartres tables end at 2026-11-09 in the lake (checked 2026-11-11).
+
+## Update 2026-11-13: what the flow must now build
+The fact has a fourth record type, so the Provideam fact tab reads FOUR sources, not three.
+1. **Run Rate rows**: read the `Run_Rates_EU` hourly day files (written by `b9-run-rate-rows.js`), drop hours with empty MachineName or Good Parts 0, give each hour its shift start day (weekday in the raw shift name, so hours 00 to 10 may belong to the day before: build a day from hours of that day and the next day, and rebuild the last 3 days each run), sum per shift start day, line, shift, part to `RR Hours`, `RR Good Parts`, `RR Capacity`. Rules and joins (shift file, Product Key, Format List, line list): [eu-oee-fact-run-rate.md](eu-oee-fact-run-rate.md). Code to port: `run_rate_rows()` in [scripts/eu_oee_fact_rr_build.py](../scripts/eu_oee_fact_rr_build.py).
+2. **VFC limit**: hourly rows are many, never keep them in flow context (2 MB): group per day with the join node.
+3. **Types**: the parquet writer must give the three RR columns a type on every file (Chartres has none). Parquet node types: INT64, INT64, DOUBLE.
+4. **Cutover** unchanged (decision 8), but the Nov month files of the three sites are now the 65-column ones: the backfill must write the same columns, or Tableau reads two schemas.
+5. **Order of work**: one change per session. First step: a design note for the tab (node budget, job format from the fetch, the Run Rate source), then build, validate, test with `test-vfc-*.js`, then the user imports.
