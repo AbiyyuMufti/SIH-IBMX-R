@@ -5,7 +5,7 @@ node_modules/
 .claude/settings.local.json
 
 # VFC flow copies that contain real credentials, and downloaded data files
-flows/*.local.json
+flows/**/*.local.json
 *.parquet
 *.csv
 downloads/
