@@ -12,8 +12,11 @@ import {
   addLogLanes, applyLayout, compactLanes, measureSpacing
 } from './lib-flow-builder.js';
 import { LIVE_TABLES, columnsSource } from './lib-chartres-live.js';
+import { factLane } from './lib-pbi-report-lanes.js';
 
 const FLOW_ID = 'chartres-live';
+// The tabs in use live in this folder since 2026-11-12.
+const DIR = 'legacy_report_generator_v0/';
 const FILE = 'vfc-chartres-live.json';
 const ENDPOINT = '/chartres-data';
 
@@ -111,7 +114,8 @@ function buildFlow() {
       fn('loss', 'Build loss rows', 'y3-loss-rows.js', ['next', 'ANSWER']),
       fn('cov', 'Build CoV and filler rows', 'y4-cov-filler.js', ['next']),
       fn('route', 'Route the tables', 'y5-route-tables.js',
-        ['PLAN TABLE', 'UTIL TABLE', 'LOSS TABLE', 'COV TABLE', 'ANSWER'],
+        ['PLAN TABLE', 'UTIL TABLE', 'LOSS TABLE', 'COV TABLE', 'ANSWER',
+          'FACT'],
         { 'var COLUMNS = {};': columnsSource() }, true)
     ]);
   const keys = {
@@ -135,6 +139,7 @@ function buildFlow() {
         statusCode: '', headers: {}
       })
     ]);
+  r = factLane(b, r, FLOW_ID);
   lane(r++, 'REQUEST ERRORS',
     'an error in a node of the request lane or the row lane is answered with 500 (the sender sends the row again). The shared ERRORS lane below also logs it.',
     [
@@ -170,10 +175,10 @@ const { errors, warnings, stats } = validateFlow(nodes);
 if (errors.length) {
   throw new Error(`flow check failed for ${FILE}:\n  ${errors.join('\n  ')}`);
 }
-writeFileSync(new URL(`../flows/${FILE}`, import.meta.url),
+writeFileSync(new URL(`../flows/${DIR}${FILE}`, import.meta.url),
   JSON.stringify(nodes, null, 2) + '\n');
 console.log(
-  `written flows/${FILE}: ${stats.nodes} nodes, ${stats.linkIn} link in / ` +
+  `written flows/${DIR}${FILE}: ${stats.nodes} nodes, ${stats.linkIn} link in / ` +
     `${stats.linkOut} link out, longest line ${stats.longestLine}`
 );
 warnings.forEach((w) => console.log(`warn: ${w}`));

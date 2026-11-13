@@ -10,7 +10,7 @@
 import { readFileSync, readdirSync, writeFileSync, existsSync } from 'node:fs';
 import { runFlow, testPlatform } from './lib-vfc-runner.js';
 
-const read = (f) => JSON.parse(readFileSync(new URL('../flows/' + f, import.meta.url), 'utf8'));
+const read = (f) => JSON.parse(readFileSync(new URL('../flows/legacy_report_generator_v0/' + f, import.meta.url), 'utf8'));
 const config = read('vfc-config.json');
 const flow = read('vfc-pbi-report.json');
 const REF = 'eu_report/reference';

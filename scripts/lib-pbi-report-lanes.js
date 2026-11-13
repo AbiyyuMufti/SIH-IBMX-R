@@ -6,12 +6,27 @@ import {
   fn, linkInStep, end, split, readStep, listNode, csvNode
 } from './lib-flow-builder.js';
 
+// The id of the link in "eu-oee-fact WRITE" of the tab EU OEE Fact write
+// (build-vfc-eu-oee-fact.js): fixed, so the link outs of the other tabs
+// can point to it (the VFC keeps cross-tab links by id).
+export const FACT_LINK_IN_ID = 'f4c7a.e0e0fa';
+export const FACT_LINK_NAME = 'eu-oee-fact WRITE';
+// The fixed ids of the link outs that feed it, one per tab.
+export const FACT_LINK_OUT_IDS = {
+  'pbi-report': 'f4c7a.e0e0f1',
+  'pbi-report-2': 'f4c7a.e0e0f2',
+  'chartres-live': 'f4c7a.e0e0f3'
+};
+
 // The end of a table lane: machine and scope columns, split by source,
 // decide (one message per folder), parquet, month path and write object.
-export const monthEnd = (table, schema) => [
+// fact: the rows of report/ also go to the link "to FACT" (factLane).
+export const monthEnd = (table, schema, fact = false) => [
   fn(`${table}_cols`, 'Add machine and scope columns',
     'b8-machine-columns.js', ['next']),
-  fn(`${table}_split`, 'Split by source', 'b8-split-source.js', ['next']),
+  fn(`${table}_split`, 'Split by source', 'b8-split-source.js',
+    fact ? ['next', 'FACT'] : ['next'],
+    { __FACT__: fact ? 'true' : 'false' }),
   fn(`${table}_decide`, `Decide ${table}`, 'r5-decide.js', ['next', 'LOG'],
     { __TABLE__: table }),
   { t: 'parquet', key: `${table}_pq`, table, schema },
@@ -95,5 +110,36 @@ export function setupFailedLane(b, r, files) {
       linkInStep('PLAN FAILED'),
       fn('plFailed', 'Describe failure', 'b5-pick-failed.js', ['LOG'])
     ]);
+  return r;
+}
+
+// The rows of the table lanes that call monthEnd(..., true) (and steps,
+// e.g. the Run Rate grouping) go to the tab EU OEE Fact write.
+export function factLane(b, r, tabKey, steps = []) {
+  b.lane(r++, 'TO EU OEE FACT',
+    'the rows each table writes to report/ (the line source of this tab) also go to the tab EU OEE Fact write, which maps them to the 65 columns of EU_OEE_Fact and writes one file per site, day and record type. Its own DRY_RUN decides; nothing here writes.',
+    [
+      linkInStep('FACT'),
+      ...steps,
+      {
+        t: 'raw',
+        key: 'factOut',
+        node: {
+          type: 'link out',
+          name: `to ${FACT_LINK_NAME}`,
+          mode: 'link',
+          links: [FACT_LINK_IN_ID]
+        }
+      }
+    ]);
+  // give the link out its fixed id (and fix the wire that points to it)
+  const made = b.id('factOut');
+  const fixed = FACT_LINK_OUT_IDS[tabKey];
+  b.nodes.forEach((n) => {
+    if (n.id === made) {
+      n.id = fixed;
+    }
+    n.wires = (n.wires || []).map((w) => w.map((x) => x === made ? fixed : x));
+  });
   return r;
 }

@@ -19,10 +19,12 @@ import {
   pbiPlanSchema, reportUtilSchema, pbiLossSchema
 } from './lib-pbi-report-schemas.js';
 import {
-  monthEnd, siteSetupLanes, setupFailedLane
+  monthEnd, siteSetupLanes, setupFailedLane, factLane
 } from './lib-pbi-report-lanes.js';
 
 const TABLES = ['Plan_OPT_EU', 'Time_Utilisation_EU', 'Daily_Losses_EU'];
+// The tabs in use live in this folder since 2026-11-12.
+const DIR = 'legacy_report_generator_v0/';
 const FILE = 'vfc-pbi-report.json';
 
 function buildFlow() {
@@ -115,13 +117,13 @@ function buildFlow() {
     'Dept, Area, Product Type from the machine lookup of the site, Data Source = Provideam and In EU Report from the scope rules are added, the rows are split by the source of their line in 1.1 CONFIG (a line on Provideam: <root>/report, any other: <root>/candidate/provideam, one message per folder), then decide (nothing is written in dry-run mode or for an empty month), parquet, the month path <folder>/Plan_OPT_EU/site=<Site>/Plan_OPT_EU_<YYYY-MM>_provideam.parquet and write object. A rerun replaces the month.',
     [
       linkInStep('PLAN TABLE'),
-      ...monthEnd('Plan_OPT_EU', pbiPlanSchema)
+      ...monthEnd('Plan_OPT_EU', pbiPlanSchema, true)
     ]);
   lane(r++, 'Time_Utilisation_EU',
     'the same for Time_Utilisation_EU: one row per machine and day, total, planned and OEE time summed in minutes, All Time 1440.',
     [
       linkInStep('UTIL TABLE'),
-      ...monthEnd('Time_Utilisation_EU', reportUtilSchema)
+      ...monthEnd('Time_Utilisation_EU', reportUtilSchema, true)
     ]);
   lane(r++, 'LOSSES: EQUIPMENT',
     'daily losses only: the Equipment Coding file of the site (eu_report/reference/equipment_coding/site=<Site>/) is read and the lookup "machine + loss description" to equipment is stored in flow context (an empty equipment is "Unclassed", as in the report queries). Weinheim has no Merged Unique Identifier column: the key is built from machine and description.',
@@ -200,8 +202,9 @@ function buildFlow() {
     'the same for Daily_Losses_EU: machine columns, split by source, decide, parquet, the month path <folder>/Daily_Losses_EU/site=<Site>/Daily_Losses_EU_<YYYY-MM>_provideam.parquet and write object.',
     [
       linkInStep('LOSS TABLE'),
-      ...monthEnd('Daily_Losses_EU', pbiLossSchema)
+      ...monthEnd('Daily_Losses_EU', pbiLossSchema, true)
     ]);
+  r = factLane(b, r, 'pbi-report');
   r = setupFailedLane(b, r,
     'Glidepaths, Machine Names, Shift Patterns, report scope or Equipment Coding');
   addLogLanes(b, r, 'pbi-report', true);
@@ -225,10 +228,10 @@ const { errors, warnings, stats } = validateFlow(nodes);
 if (errors.length) {
   throw new Error(`flow check failed for ${FILE}:\n  ${errors.join('\n  ')}`);
 }
-writeFileSync(new URL(`../flows/${FILE}`, import.meta.url),
+writeFileSync(new URL(`../flows/${DIR}${FILE}`, import.meta.url),
   JSON.stringify(nodes, null, 2) + '\n');
 console.log(
-  `written flows/${FILE}: ${stats.nodes} nodes, ${stats.linkIn} link in / ` +
+  `written flows/${DIR}${FILE}: ${stats.nodes} nodes, ${stats.linkIn} link in / ` +
     `${stats.linkOut} link out, longest line ${stats.longestLine}`
 );
 warnings.forEach((w) => console.log(`warn: ${w}`));

@@ -95,7 +95,8 @@ export function testPlatform() {
 export async function runFlow(nodes, options) {
   const { startDay, endDay = startDay, write = false, allAssets = false, fetchImpl } = options;
   const byId = new Map(nodes.map((n) => [n.id, n]));
-  const context = {};
+  // Flow context is per tab (node.z), as in the VFC.
+  const contexts = {};
   const globalData = {};
   const globalContext = {
     get: (key) => globalData[key],
@@ -103,7 +104,11 @@ export async function runFlow(nodes, options) {
       globalData[key] = value;
     }
   };
-  const flowContext = {
+  const flowContextOf = (z) => {
+    const context = contexts[z] = contexts[z] || {};
+    return makeFlowContext(context);
+  };
+  const makeFlowContext = (context) => ({
     get: (key) => context[key],
     set: (key, value) => {
       // The VFC refuses a context value over 2 MB (error "Maximal size of
@@ -125,7 +130,7 @@ export async function runFlow(nodes, options) {
         if (allAssets) value.assetIds = [];
       }
     }
-  };
+  });
   const queue = [];
   const joins = new Map();
   // In-memory data lake: path -> text. Pass options.lake to keep it between runs.
@@ -165,7 +170,7 @@ export async function runFlow(nodes, options) {
         warn: () => {}
       };
       const fn = vm.runInNewContext('(function(flow,node,msg,Buffer,Promise,glob){' + n.func + '\n})', {});
-      const r = fn(flowContext, node, msg, Buffer, Promise, globalContext);
+      const r = fn(flowContextOf(n.z), node, msg, Buffer, Promise, globalContext);
       if (r === null || r === undefined) return;
       if (n.outputs !== 1) return emit(n, r);
       if (!Array.isArray(r)) return emit(n, [r]);
@@ -236,7 +241,10 @@ export async function runFlow(nodes, options) {
     } else if (n.type === 'delay' || n.type === 'link in') {
       emit(n, [msg]);
     } else if (n.type === 'link out') {
-      for (const target of n.links) queue.push([target, clone(msg)]);
+      for (const target of n.links) {
+        // A link to a tab that is not loaded (another flow file) goes nowhere.
+        if (byId.has(target)) queue.push([target, clone(msg)]);
+      }
     } else if (n.type === 'split') {
       const groupId = Math.random().toString(36).slice(2);
       msg.payload.forEach((el, i) => {
@@ -309,7 +317,7 @@ export async function runFlow(nodes, options) {
       configCode = configCode.replace(/xcTenantId: '[^']*'/, `xcTenantId: '${options.xcTenantId || '1234567890'}'`);
     }
     const fn = vm.runInNewContext('(function(flow,node,msg,Buffer,Promise,glob){' + configCode + '\n})', {});
-    fn(flowContext, node, {}, Buffer, Promise, globalContext);
+    fn(flowContextOf('config'), node, {}, Buffer, Promise, globalContext);
   }
   const config = nodes.find((n) => n.type === 'function' && /CONFIG|SETTINGS/.test(n.name));
   const first = options.startPayload || { start: startDay, end: endDay };

@@ -17,12 +17,14 @@ import {
   reportPdtSchema, reportUpdtSchema
 } from './lib-pbi-report-schemas.js';
 import {
-  monthEnd, siteSetupLanes, setupFailedLane
+  monthEnd, siteSetupLanes, setupFailedLane, factLane
 } from './lib-pbi-report-lanes.js';
 
 const FLOW_ID = 'pbi-report-2';
 const TABLES = ['Run_Rates_EU', 'Volume_CoV_EU', 'Format_List_EU',
   'Site_PDT_Targets', 'Site_UPDT_Targets'];
+// The tabs in use live in this folder since 2026-11-12.
+const DIR = 'legacy_report_generator_v0/';
 const FILE = 'vfc-pbi-report-2.json';
 
 // The months of one file type of the site: list the folder, keep the months
@@ -116,7 +118,7 @@ function buildFlow() {
         'b9-run-rate-rows.js', 'RUN RATE TABLE')]);
   lane(r++, 'Run_Rates_EU',
     'Dept, Area, Product Type, Data Source and In EU Report are added, the rows are split by the source of their line in 1.1 CONFIG, then decide, parquet, the month path <folder>/Run_Rates_EU/site=<Site>/Run_Rates_EU_<YYYY-MM>_provideam.parquet and write object.',
-    [linkInStep('RUN RATE TABLE'), ...monthEnd('Run_Rates_EU', reportRunRateSchema)]);
+    [linkInStep('RUN RATE TABLE'), ...monthEnd('Run_Rates_EU', reportRunRateSchema, true)]);
 
   lane(r++, 'VOLUME COV: MONTHS',
     'the plan OPT month files of the site are listed and the months of the job that exist are chosen. One message per month, one per second.',
@@ -172,6 +174,9 @@ function buildFlow() {
     'the same for Site_UPDT_Targets: decide, parquet, the site path <folder>/Site_UPDT_Targets/site=<Site>/Site_UPDT_Targets.parquet and write object.',
     [linkInStep('UPDT TABLE'),
       ...targetEnd('Site_UPDT_Targets', reportUpdtSchema, 'ud')]);
+  r = factLane(b, r, FLOW_ID, [
+    fn('rrFact', 'Build Run Rate fact rows', 'b9-rr-fact-rows.js', ['next'])
+  ]);
   r = setupFailedLane(b, r,
     'Machine Names, Shift Patterns, report scope or Format List');
   addLogLanes(b, r, FLOW_ID, true);
@@ -194,10 +199,10 @@ const { errors, warnings, stats } = validateFlow(nodes);
 if (errors.length) {
   throw new Error(`flow check failed for ${FILE}:\n  ${errors.join('\n  ')}`);
 }
-writeFileSync(new URL(`../flows/${FILE}`, import.meta.url),
+writeFileSync(new URL(`../flows/${DIR}${FILE}`, import.meta.url),
   JSON.stringify(nodes, null, 2) + '\n');
 console.log(
-  `written flows/${FILE}: ${stats.nodes} nodes, ${stats.linkIn} link in / ` +
+  `written flows/${DIR}${FILE}: ${stats.nodes} nodes, ${stats.linkIn} link in / ` +
     `${stats.linkOut} link out, longest line ${stats.longestLine}`
 );
 warnings.forEach((w) => console.log(`warn: ${w}`));

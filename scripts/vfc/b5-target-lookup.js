@@ -7,6 +7,11 @@ var BUCKETS = {
   'Planned Downtime (Total)': 'pdt',
   'Unplanned Downtime (Total)': 'updt'
 };
+// Bucket names of a file that differ from the loss subgroup they target
+// (Hull 2026: "In process Quality"), as eu_oee_fact_build.py BUCKET_FIX.
+var BUCKET_FIX = {
+  'In process Quality': 'In Process Quality'
+};
 // The file starts with a byte order mark: it sits in the first column name.
 function clean(row) {
   var out = {};
@@ -30,7 +35,8 @@ rows.forEach(function (row) {
   if (!row.Line || !row['Site Name'] || !row['OEE Bucket']) {
     return;
   }
-  var field = BUCKETS[row['OEE Bucket']];
+  var bucket = BUCKET_FIX[row['OEE Bucket']] || row['OEE Bucket'];
+  var field = BUCKETS[bucket];
   var key = row.Line + '-' + row['Site Name'];
   Object.keys(row).forEach(function (column) {
     var value = String(row[column]).trim();
@@ -44,7 +50,7 @@ rows.forEach(function (row) {
     lookup[key] = lookup[key] || {};
     lookup[key][column] = lookup[key][column] || {};
     lookup[key][column].b = lookup[key][column].b || {};
-    lookup[key][column].b[row['OEE Bucket']] = number;
+    lookup[key][column].b[bucket] = number;
     if (field) {
       lookup[key][column][field] = number;
     }

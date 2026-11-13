@@ -8,7 +8,7 @@
 | **Code** | `run_rate_rows()` in [scripts/eu_oee_fact_rr_build.py](../scripts/eu_oee_fact_rr_build.py) (a copy of `eu_oee_fact_build.py`, which keeps the 62-column format), check `check_run_rates()` |
 | **Source** | `Run_Rates_EU` (hourly, from `b9-run-rate-rows.js`), unchanged |
 | **Sites** | Hull, Nottingham, Weinheim. Chartres has no hourly data, so no Run Rate rows |
-| **Status** | live in the lake since 2026-11-13 (94 files, data to 2026-11-12), SIH sync and Tableau ok. Backup of the old 62-column files: `parquet/eu_oee_fact_backup_20261113/`. No flow yet |
+| **Status** | live in the lake since 2026-11-13 (94 month files, data to 2026-11-12), SIH sync and Tableau ok. Flow version (`b9-rr-fact-rows.js` in PBI report build 2): [eu-oee-fact-flows.md](eu-oee-fact-flows.md). Backup of the old 62-column files: `parquet/eu_oee_fact_backup_20261113/` |
 
 Measures in Tableau: AVG Hr Rate = `SUM([RR Good Parts]) / SUM([RR Hours])`, % Max Rate = `SUM([RR Good Parts]) / SUM([RR Capacity])`. `Good Parts` and `Capacity` stay empty on Run Rate rows, so the OEE is not counted twice.
 

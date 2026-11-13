@@ -196,3 +196,60 @@ export const historicalOeeSchema = [
   ['In EU Report', B],
   ['loaded_at', TS]
 ];
+
+// EU_OEE_Fact: the union of Plan_OPT_EU, Daily_Losses_EU (renamed: Date ->
+// Event Date, ShiftStartDate -> Date, Shift colour -> Shift Colour, target ->
+// Loss Target), Time_Utilisation_EU and the Run Rate rows, in the order and
+// types of the 94 month files in the lake (docs/eu-oee-fact-run-rate.md).
+// Every column has a real type, also when a file leaves it empty.
+export const euOeeFactSchema = [
+  ...str(['Record Type']),
+  ['Date', DATE],
+  ...str(['SiteName', 'MachineName', 'Unique Machine Name', 'ShiftName',
+    'Dept', 'Area', 'Product Type']),
+  ['In EU Report', B],
+  ...str(['AreaName', 'PartName']),
+  ['Good Parts', I],
+  ['Capacity', D],
+  ['Total Time', I],
+  ['Planned OpT', I],
+  ['OEE Time', I],
+  ['Downtime Units', D],
+  ['Product Key', S],
+  ['UPDT Target', D],
+  ['PDT Target', D],
+  ['OEE Target', D],
+  ['Defect Parts', I],
+  ['OEE', D],
+  ['Shift Colour', S],
+  ['ShiftStartTime', TS],
+  ['Target', D],
+  ['Targets Key', S],
+  ...formatCols,
+  ['Data Source', S],
+  ['source_hours', I],
+  ['loaded_at', TS],
+  ['Event Date', DATE],
+  ['Time', TS],
+  ...str(['OEELossLvl3Group', 'OEELossLvl3SubGroup', 'OEELossLvl3Desc']),
+  ['Duration', I],
+  ...str(['Breakdown Types', 'Comment', 'Volume Key']),
+  ['Loss Units', D],
+  ...str(['Equipment', 'Loss Target Key']),
+  ['Value', D],
+  ['Volume Total', D],
+  ...str(['Loss Final Level', 'Batch ID', 'Equipment Loss Key',
+    'Lvl 3 Loss Name']),
+  ['Time in Mins', D],
+  ['Shift Time', S],
+  ['Loss Target', D],
+  ['comment_count', I],
+  ['OEE Time Total', D],
+  ['Total Time Total', D],
+  ['Planned OPT Total', D],
+  ['All Time', I],
+  ['In EU Report Source', B],
+  ['RR Hours', I],
+  ['RR Good Parts', I],
+  ['RR Capacity', D]
+];

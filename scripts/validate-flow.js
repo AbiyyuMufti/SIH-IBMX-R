@@ -8,6 +8,16 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { measureSpacing } from './lib-flow-builder.js';
 import { MONITOR_FLOWS } from './monitor-flows.js';
+import {
+  FACT_LINK_IN_ID, FACT_LINK_OUT_IDS
+} from './lib-pbi-report-lanes.js';
+
+// Cross-tab links with fixed ids (the tab EU OEE Fact write and its
+// feeders): the other end lives in another flow file.
+const CROSS_TAB_IDS = new Set([
+  FACT_LINK_IN_ID,
+  ...Object.values(FACT_LINK_OUT_IDS)
+]);
 
 const MAX_LINE = 80;
 const MAX_ITEMS_ON_ONE_LINE = 3;
@@ -274,6 +284,9 @@ export function validateFlow(nodes) {
     if (n.type === 'link out') {
       for (const t of n.links || []) {
         const target = byId.get(t);
+        if (!target && CROSS_TAB_IDS.has(t)) {
+          continue;
+        }
         if (!target || target.type !== 'link in') {
           errors.push(`${label(n)}: link to missing link in ${t}`);
           continue;
@@ -287,6 +300,7 @@ export function validateFlow(nodes) {
       const pendingBackfill = String(n.name || '').endsWith(' BACKFILL');
       for (const t of n.links || []) {
         const source = byId.get(t);
+        if (!source && CROSS_TAB_IDS.has(t)) continue;
         if (!source || source.type !== 'link out') errors.push(`${label(n)}: link from missing link out ${t}`);
         else if (!(source.links || []).includes(n.id)) errors.push(`${label(n)}: ${label(source)} does not list it`);
       }

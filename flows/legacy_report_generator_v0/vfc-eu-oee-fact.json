@@ -1,0 +1,802 @@
+[
+  {
+    "id": "6847f.8e4f09",
+    "type": "tab",
+    "label": "EU OEE Fact write",
+    "disabled": false,
+    "allowCycles": false,
+    "info": "Writes EU_OEE_Fact (65 columns, one file per site, day and record type) from the rows of PBI report build, PBI report build 2 and Chartres live. Needs the Config tab."
+  },
+  {
+    "z": "6847f.8e4f09",
+    "id": "6a36e.8fe822",
+    "type": "comment",
+    "name": "[1] WRITE EU_OEE_FACT",
+    "info": "STAGE 1 - one table message of a build tab arrives through the link in eu-oee-fact WRITE (the rows that table writes to report/). 1 FACT SETTINGS holds DRY_RUN (true: nothing is written, the log shows what would be) MONTH_JOBS (false: a month job of a build tab writes no fact file, the month files hold the history) and FIRST_DAY (no fact file before the cutover day) and sets the line list file report/Dim/Machine_Names_EU.csv, which is read and parsed. 2 maps the rows to the 65 columns of EU_OEE_Fact: Loss renames (Date -> Event Date, ShiftStartDate -> Date, Shift colour -> Shift Colour, target -> Loss Target), In EU Report Source = the flag of the table, In EU Report = the line is in the line list, Dept / Area / Product Type from the line list (else the row). Then decide, parquet (every column typed, also when empty), the path <root>/report/EU_OEE_Fact/site=<Site>/EU_OEE_Fact_<day>_<plan|tu|loss|rr>_<source>.parquet and write object. A rerun replaces the file.",
+    "x": 160,
+    "y": 40,
+    "wires": []
+  },
+  {
+    "z": "6847f.8e4f09",
+    "id": "f4c7a.e0e0fa",
+    "type": "link in",
+    "name": "eu-oee-fact WRITE",
+    "links": [
+      "f4c7a.e0e0f1",
+      "f4c7a.e0e0f2",
+      "f4c7a.e0e0f3"
+    ],
+    "x": 60,
+    "y": 120,
+    "wires": [
+      [
+        "6c25d.91813b"
+      ]
+    ]
+  },
+  {
+    "z": "6847f.8e4f09",
+    "id": "73e19.97e59f",
+    "type": "link out",
+    "name": "to LOG",
+    "mode": "link",
+    "links": [
+      "71f2a.964c86"
+    ],
+    "x": 420,
+    "y": 140,
+    "wires": []
+  },
+  {
+    "z": "6847f.8e4f09",
+    "id": "6c25d.91813b",
+    "type": "function",
+    "name": "1.1 FACT SETTINGS (edit here)",
+    "func": "// FACT SETTINGS of the tab EU OEE Fact write: dry run and the line list.\n// In: one table message of a build tab (msg.table, site, month, out, rows).\n// Out 1: the message with msg.path = the line list file; cfg in flow\n// context. Out 2: a log line for a skipped job (MONTH_JOBS, FIRST_DAY).\n\n// true: nothing is written, the log shows what would be written.\nvar DRY_RUN = true;\n// The line list (Unique Machine Name, Dept, Area, Product Type): In EU\n// Report of the fact = the line is in this file (as the month files).\nvar LINE_LIST = 'report/Dim/Machine_Names_EU.csv';\n// false: a month job of a build tab (from/to) writes no fact file, because\n// the month files EU_OEE_Fact_<YYYY-MM>.parquet already hold the history\n// and a second file of the same days would count them twice.\nvar MONTH_JOBS = false;\n// The first day this tab writes (the cutover): the month files hold the\n// days before it (docs/eu-oee-fact-flows.md, \"Cutover\").\nvar FIRST_DAY = '2026-11-10';\n\nvar shared = glob.get('cfg');\nif (!shared) {\n  node.status({\n    fill: 'red',\n    shape: 'ring',\n    text: 'CONFIG not run'\n  });\n  node.error('global cfg is missing: deploy or run the Config tab first');\n  return [null, null];\n}\n\nvar isMonth = /^\\d{4}-\\d{2}$/.test(msg.month);\nvar reason = '';\nif (isMonth && !MONTH_JOBS) {\n  reason = 'a month job; EU_OEE_Fact takes day jobs only (MONTH_JOBS)';\n} else if (!isMonth && String(msg.month).slice(0, 10) < FIRST_DAY) {\n  reason = 'before FIRST_DAY ' + FIRST_DAY + ' (the month files hold it)';\n}\nif (reason) {\n  node.status({\n    fill: 'grey',\n    shape: 'ring',\n    text: 'skipped ' + msg.month\n  });\n  var text = 'SKIPPED: ' + msg.table + ' ' + msg.site + ' ' + msg.month;\n  text += ' is ' + reason;\n  return [null, {\n    topic: 'log',\n    payload: msg.day + ' [' + msg.mode + '] ' + text\n  }];\n}\n\nvar cfg = Object.assign({}, shared);\ncfg.dryRun = {\n  EU_OEE_Fact: DRY_RUN\n};\nflow.set('cfg', cfg);\n\nmsg.path = shared.root + '/' + LINE_LIST;\nnode.status({\n  fill: DRY_RUN ? 'yellow' : 'green',\n  shape: 'dot',\n  text: (DRY_RUN ? 'DRY RUN ' : 'WRITE ') + msg.site + ' ' + msg.month\n});\nreturn [msg, null];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 240,
+    "y": 120,
+    "wires": [
+      [
+        "7003b.94b36d"
+      ],
+      [
+        "73e19.97e59f"
+      ]
+    ]
+  },
+  {
+    "z": "6847f.8e4f09",
+    "id": "7003b.94b36d",
+    "type": "read object",
+    "name": "Read line list",
+    "path": "",
+    "mode": "object",
+    "x": 480,
+    "y": 100,
+    "wires": [
+      [
+        "75d08.997eb8"
+      ]
+    ]
+  },
+  {
+    "z": "6847f.8e4f09",
+    "id": "75d08.997eb8",
+    "type": "csv",
+    "name": "Parse CSV",
+    "sep": ",",
+    "hdrin": true,
+    "hdrout": "",
+    "multi": "mult",
+    "ret": "\\n",
+    "temp": "parser csv",
+    "x": 640,
+    "y": 120,
+    "wires": [
+      [
+        "77bf7.9b17d1"
+      ]
+    ]
+  },
+  {
+    "z": "6847f.8e4f09",
+    "id": "7b9d5.9e4a03",
+    "type": "link out",
+    "name": "to LOG",
+    "mode": "link",
+    "links": [
+      "71f2a.964c86"
+    ],
+    "x": 1000,
+    "y": 140,
+    "wires": []
+  },
+  {
+    "z": "6847f.8e4f09",
+    "id": "77bf7.9b17d1",
+    "type": "function",
+    "name": "1.2 Map to fact columns",
+    "func": "// Maps the rows of one table message to the 65 columns of EU_OEE_Fact.\n// In: msg.rows and msg.table (Plan_OPT_EU, Time_Utilisation_EU,\n// Daily_Losses_EU or Run Rate), msg.payload = the parsed line list.\n// Out 1: msg.rows = fact rows, msg.fileTag. Out 2: a check log line.\n\n// Union, never a join (docs/eu-oee-fact-run-rate.md).\nvar RECORD_TYPE = {\n  'Plan_OPT_EU': 'Plan',\n  'Time_Utilisation_EU': 'Time Utilisation',\n  'Daily_Losses_EU': 'Loss',\n  'Run Rate': 'Run Rate'\n};\n// The part of the file name per record type.\nvar FILE_TAG = {\n  'Plan': 'plan',\n  'Time Utilisation': 'tu',\n  'Loss': 'loss',\n  'Run Rate': 'rr'\n};\n// Daily_Losses_EU names -> fact names.\nvar LOSS_RENAMES = {\n  'Date': 'Event Date',\n  'ShiftStartDate': 'Date',\n  'Shift colour': 'Shift Colour',\n  'target': 'Loss Target'\n};\n// Loss Target is a fraction (glidepath / 100): 6 decimals, as the month\n// files (0.072, not 0.07200000000000001).\nvar ROUND_6 = [\n  'Loss Target'\n];\nvar COLUMNS = [\n  'Record Type',\n  'Date',\n  'SiteName',\n  'MachineName',\n  'Unique Machine Name',\n  'ShiftName',\n  'Dept',\n  'Area',\n  'Product Type',\n  'In EU Report',\n  'AreaName',\n  'PartName',\n  'Good Parts',\n  'Capacity',\n  'Total Time',\n  'Planned OpT',\n  'OEE Time',\n  'Downtime Units',\n  'Product Key',\n  'UPDT Target',\n  'PDT Target',\n  'OEE Target',\n  'Defect Parts',\n  'OEE',\n  'Shift Colour',\n  'ShiftStartTime',\n  'Target',\n  'Targets Key',\n  'Brand',\n  'Unit Size',\n  'Unit Count/Format',\n  'Extra Info',\n  'Data Source',\n  'source_hours',\n  'loaded_at',\n  'Event Date',\n  'Time',\n  'OEELossLvl3Group',\n  'OEELossLvl3SubGroup',\n  'OEELossLvl3Desc',\n  'Duration',\n  'Breakdown Types',\n  'Comment',\n  'Volume Key',\n  'Loss Units',\n  'Equipment',\n  'Loss Target Key',\n  'Value',\n  'Volume Total',\n  'Loss Final Level',\n  'Batch ID',\n  'Equipment Loss Key',\n  'Lvl 3 Loss Name',\n  'Time in Mins',\n  'Shift Time',\n  'Loss Target',\n  'comment_count',\n  'OEE Time Total',\n  'Total Time Total',\n  'Planned OPT Total',\n  'All Time',\n  'In EU Report Source',\n  'RR Hours',\n  'RR Good Parts',\n  'RR Capacity'\n];\n\nvar type = RECORD_TYPE[msg.table];\nif (!type) {\n  node.error('EU_OEE_Fact: unknown table ' + msg.table);\n  return null;\n}\n\n// Line list: Unique Machine Name -> Dept, Area, Product Type.\nfunction text(value) {\n  return value === undefined || value === null ? '' : String(value).trim();\n}\nvar lines = {};\n(Array.isArray(msg.payload) ? msg.payload : []).forEach(function (row) {\n  var key = text(row['Unique Machine Name']);\n  if (key) {\n    lines[key] = row;\n  }\n});\nvar lineCount = Object.keys(lines).length;\nif (!lineCount) {\n  msg.failed = (msg.failed || []).concat(['line list empty or missing']);\n}\n\n// Line list value, else the value of the row (an empty cell is null).\nfunction pick(line, row, column) {\n  var value = line ? text(line[column]) : '';\n  if (value !== '') {\n    return value;\n  }\n  return row[column] === undefined ? null : row[column];\n}\n\nvar unknown = {};\nvar listed = 0;\nvar out = msg.rows.map(function (source) {\n  var row = {};\n  Object.keys(source).forEach(function (name) {\n    var to = type === 'Loss' && LOSS_RENAMES[name] ? LOSS_RENAMES[name] : name;\n    if (COLUMNS.indexOf(to) === -1) {\n      unknown[name] = true;\n      return;\n    }\n    row[to] = source[name];\n  });\n  var fact = {};\n  COLUMNS.forEach(function (column) {\n    fact[column] = row[column] === undefined ? null : row[column];\n  });\n  ROUND_6.forEach(function (column) {\n    if (typeof fact[column] === 'number') {\n      fact[column] = Math.round(fact[column] * 1e6) / 1e6;\n    }\n  });\n  var line = lines[text(source['Unique Machine Name'])];\n  fact['Record Type'] = type;\n  fact['In EU Report Source'] = row['In EU Report'] === undefined ?\n    null : row['In EU Report'];\n  fact['In EU Report'] = Boolean(line);\n  fact['Dept'] = pick(line, row, 'Dept');\n  fact['Area'] = pick(line, row, 'Area');\n  fact['Product Type'] = pick(line, row, 'Product Type');\n  if (line) {\n    listed++;\n  }\n  return fact;\n});\n\nmsg.rows = out;\nmsg.recordType = type;\nmsg.fileTag = FILE_TAG[type];\nvar check = msg.site + ' ' + msg.month + ' ' + type + ': ' + out.length;\ncheck += ' fact rows, ' + listed + ' on the line list (' + lineCount;\ncheck += ' lines)';\nvar extra = Object.keys(unknown);\nif (extra.length) {\n  check += ', columns not in EU_OEE_Fact left out: ' + extra.join(' / ');\n}\nnode.status({\n  fill: extra.length ? 'yellow' : 'green',\n  shape: 'dot',\n  text: msg.site + ' ' + msg.month + ' ' + type + ': ' + out.length\n});\nreturn [\n  msg,\n  {\n    topic: 'log',\n    payload: msg.day + ' [' + msg.mode + '] CHECK ' + check\n  }\n];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 840,
+    "y": 120,
+    "wires": [
+      [
+        "79ae6.9cb0ea"
+      ],
+      [
+        "7b9d5.9e4a03"
+      ]
+    ]
+  },
+  {
+    "z": "6847f.8e4f09",
+    "id": "7f7b3.a17c35",
+    "type": "link out",
+    "name": "to LOG",
+    "mode": "link",
+    "links": [
+      "71f2a.964c86"
+    ],
+    "x": 1240,
+    "y": 120,
+    "wires": []
+  },
+  {
+    "z": "6847f.8e4f09",
+    "id": "79ae6.9cb0ea",
+    "type": "function",
+    "name": "1.3 Decide EU_OEE_Fact",
+    "func": "// Decides what happens with the table EU_OEE_Fact.\n// In: msg.rows, msg.failed, msg.skipped. Out 1: msg.payload = rows for the\n// parquet node. Out 2: a log line. A failed item means nothing is written.\nvar TABLE = 'EU_OEE_Fact';\nvar cfg = flow.get('cfg');\nvar rows = msg.rows;\nvar tail = '';\nif (msg.skipped.length) {\n  tail += ' | skipped: ' + msg.skipped.join('; ');\n}\nvar sizes = TABLE + ' ' + rows.length + ' rows from ' +\n  msg.itemCount + ' item(s)';\nif (msg.out) {\n  sizes += ' to ' + msg.out;\n}\n\nfunction logOnly(text) {\n  var line = {\n    topic: 'log',\n    payload: msg.day + ' [' + msg.mode + '] ' + text\n  };\n  return [null, line];\n}\n\nif (msg.failed.length) {\n  node.status({\n    fill: 'red',\n    shape: 'ring',\n    text: 'FAILED, nothing written'\n  });\n  return logOnly(\n    'FAILED, NOTHING WRITTEN: ' + msg.failed.join(' | ') + tail\n  );\n}\nif (!rows.length) {\n  node.status({\n    fill: 'grey',\n    shape: 'ring',\n    text: 'nothing to write'\n  });\n  return logOnly('NOTHING TO WRITE: ' + sizes + tail);\n}\nif (cfg.dryRun[TABLE]) {\n  node.status({\n    fill: 'yellow',\n    shape: 'dot',\n    text: 'dry run ' + rows.length\n  });\n  var firstRows = JSON.stringify(rows.slice(0, 2));\n  return logOnly('DRY RUN: ' + sizes + '. First rows: ' + firstRows + tail);\n}\n\nnode.status({\n  fill: 'green',\n  shape: 'dot',\n  text: 'writing ' + rows.length\n});\nvar writing = {\n  topic: 'log',\n  payload: msg.day + ' [' + msg.mode + '] WRITING ' + sizes + tail\n};\nmsg.payload = rows;\ndelete msg.rows;\nreturn [msg, writing];\n",
+    "outputs": 2,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 1080,
+    "y": 100,
+    "wires": [
+      [
+        "7d8c4.9fe31c"
+      ],
+      [
+        "7f7b3.a17c35"
+      ]
+    ]
+  },
+  {
+    "z": "6847f.8e4f09",
+    "id": "7d8c4.9fe31c",
+    "type": "parquet",
+    "name": "Write EU_OEE_Fact parquet",
+    "option": "write",
+    "columns": [
+      {
+        "column": "Record Type",
+        "type": "UTF8"
+      },
+      {
+        "column": "Date",
+        "type": "DATE"
+      },
+      {
+        "column": "SiteName",
+        "type": "UTF8"
+      },
+      {
+        "column": "MachineName",
+        "type": "UTF8"
+      },
+      {
+        "column": "Unique Machine Name",
+        "type": "UTF8"
+      },
+      {
+        "column": "ShiftName",
+        "type": "UTF8"
+      },
+      {
+        "column": "Dept",
+        "type": "UTF8"
+      },
+      {
+        "column": "Area",
+        "type": "UTF8"
+      },
+      {
+        "column": "Product Type",
+        "type": "UTF8"
+      },
+      {
+        "column": "In EU Report",
+        "type": "BOOLEAN"
+      },
+      {
+        "column": "AreaName",
+        "type": "UTF8"
+      },
+      {
+        "column": "PartName",
+        "type": "UTF8"
+      },
+      {
+        "column": "Good Parts",
+        "type": "INT64"
+      },
+      {
+        "column": "Capacity",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "Total Time",
+        "type": "INT64"
+      },
+      {
+        "column": "Planned OpT",
+        "type": "INT64"
+      },
+      {
+        "column": "OEE Time",
+        "type": "INT64"
+      },
+      {
+        "column": "Downtime Units",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "Product Key",
+        "type": "UTF8"
+      },
+      {
+        "column": "UPDT Target",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "PDT Target",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "OEE Target",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "Defect Parts",
+        "type": "INT64"
+      },
+      {
+        "column": "OEE",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "Shift Colour",
+        "type": "UTF8"
+      },
+      {
+        "column": "ShiftStartTime",
+        "type": "TIMESTAMP_MILLIS"
+      },
+      {
+        "column": "Target",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "Targets Key",
+        "type": "UTF8"
+      },
+      {
+        "column": "Brand",
+        "type": "UTF8"
+      },
+      {
+        "column": "Unit Size",
+        "type": "UTF8"
+      },
+      {
+        "column": "Unit Count/Format",
+        "type": "UTF8"
+      },
+      {
+        "column": "Extra Info",
+        "type": "UTF8"
+      },
+      {
+        "column": "Data Source",
+        "type": "UTF8"
+      },
+      {
+        "column": "source_hours",
+        "type": "INT64"
+      },
+      {
+        "column": "loaded_at",
+        "type": "TIMESTAMP_MILLIS"
+      },
+      {
+        "column": "Event Date",
+        "type": "DATE"
+      },
+      {
+        "column": "Time",
+        "type": "TIMESTAMP_MILLIS"
+      },
+      {
+        "column": "OEELossLvl3Group",
+        "type": "UTF8"
+      },
+      {
+        "column": "OEELossLvl3SubGroup",
+        "type": "UTF8"
+      },
+      {
+        "column": "OEELossLvl3Desc",
+        "type": "UTF8"
+      },
+      {
+        "column": "Duration",
+        "type": "INT64"
+      },
+      {
+        "column": "Breakdown Types",
+        "type": "UTF8"
+      },
+      {
+        "column": "Comment",
+        "type": "UTF8"
+      },
+      {
+        "column": "Volume Key",
+        "type": "UTF8"
+      },
+      {
+        "column": "Loss Units",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "Equipment",
+        "type": "UTF8"
+      },
+      {
+        "column": "Loss Target Key",
+        "type": "UTF8"
+      },
+      {
+        "column": "Value",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "Volume Total",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "Loss Final Level",
+        "type": "UTF8"
+      },
+      {
+        "column": "Batch ID",
+        "type": "UTF8"
+      },
+      {
+        "column": "Equipment Loss Key",
+        "type": "UTF8"
+      },
+      {
+        "column": "Lvl 3 Loss Name",
+        "type": "UTF8"
+      },
+      {
+        "column": "Time in Mins",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "Shift Time",
+        "type": "UTF8"
+      },
+      {
+        "column": "Loss Target",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "comment_count",
+        "type": "INT64"
+      },
+      {
+        "column": "OEE Time Total",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "Total Time Total",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "Planned OPT Total",
+        "type": "DOUBLE"
+      },
+      {
+        "column": "All Time",
+        "type": "INT64"
+      },
+      {
+        "column": "In EU Report Source",
+        "type": "BOOLEAN"
+      },
+      {
+        "column": "RR Hours",
+        "type": "INT64"
+      },
+      {
+        "column": "RR Good Parts",
+        "type": "INT64"
+      },
+      {
+        "column": "RR Capacity",
+        "type": "DOUBLE"
+      }
+    ],
+    "rcolumns": "",
+    "multi": "multiple",
+    "outputPty": "payload",
+    "outputPtyType": "msg",
+    "engine": "parquetjs",
+    "x": 1340,
+    "y": 80,
+    "wires": [
+      [
+        "816a2.a3154e"
+      ]
+    ]
+  },
+  {
+    "z": "6847f.8e4f09",
+    "id": "816a2.a3154e",
+    "type": "function",
+    "name": "1.4 Set fact file path",
+    "func": "// Sets the file of one site, day (or month) and record type:\n// <out>/EU_OEE_Fact/site=<Site>/EU_OEE_Fact_<day>_<tag>_<source>.parquet,\n// tag plan, tu, loss or rr. In: the parquet node output. Out: msg.path.\n// A rerun of the day replaces only this record type of this source.\nmsg.path = msg.out + '/EU_OEE_Fact/site=' + msg.site;\nmsg.path += '/EU_OEE_Fact_' + msg.month + '_' + msg.fileTag;\nmsg.path += '_' + msg.source + '.parquet';\nmsg.filename = msg.path.split('/').pop();\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 1600,
+    "y": 120,
+    "wires": [
+      [
+        "83591.a4ae67"
+      ]
+    ]
+  },
+  {
+    "z": "6847f.8e4f09",
+    "id": "83591.a4ae67",
+    "type": "write object",
+    "name": "EU_OEE_Fact to data lake",
+    "path": "",
+    "mode": "object",
+    "x": 1860,
+    "y": 120,
+    "wires": []
+  },
+  {
+    "z": "6847f.8e4f09",
+    "id": "85480.a64780",
+    "type": "comment",
+    "name": "[2] ERRORS",
+    "info": "STAGE 2 - a catch node takes every error raised by a node of this tab and turns it into a log line with the name of the node and the message of the API (for example the limit message of evaluateKPIs). Errors of the log nodes themselves are not logged again.",
+    "x": 120,
+    "y": 260,
+    "wires": []
+  },
+  {
+    "z": "6847f.8e4f09",
+    "id": "8925e.a979b2",
+    "type": "catch",
+    "name": "Catch errors",
+    "scope": null,
+    "uncaught": false,
+    "x": 120,
+    "y": 340,
+    "wires": [
+      [
+        "8736f.a7e099"
+      ]
+    ]
+  },
+  {
+    "z": "6847f.8e4f09",
+    "id": "8b14d.ab12cb",
+    "type": "link out",
+    "name": "to LOG",
+    "mode": "link",
+    "links": [
+      "71f2a.964c86"
+    ],
+    "x": 460,
+    "y": 340,
+    "wires": []
+  },
+  {
+    "z": "6847f.8e4f09",
+    "id": "8736f.a7e099",
+    "type": "function",
+    "name": "2.1 Describe error",
+    "func": "// Turns an error caught by the catch node into a log line.\n// In: the message of a catch node (msg.error).\n// Out: a log line for the shared log. Errors of the log nodes themselves\n// are dropped (no log loop).\nvar err = msg.error || {};\nvar source = (err.source && err.source.name) || 'unknown node';\n\nfunction textOf(value) {\n  if (value === undefined || value === null) {\n    return '';\n  }\n  if (typeof value === 'string') {\n    return value;\n  }\n  return JSON.stringify(value);\n}\n\n// Takes the API message out of an error body when there is one.\nfunction apiMessage(value) {\n  var body = value;\n  if (typeof value === 'string') {\n    try {\n      body = JSON.parse(value);\n    } catch (e) {\n      return value;\n    }\n  }\n  var data = body && body.data;\n  var list = (data && data.errors) || (body && body.errors);\n  if (list && list.length && list[0].message) {\n    return list[0].message;\n  }\n  return textOf(value);\n}\n\nif (msg.logBatch) {\n  node.status({\n    fill: 'red',\n    shape: 'ring',\n    text: 'log write failed'\n  });\n  return null;\n}\n\nvar text = '';\nif (msg.day) {\n  text += msg.day + ' [' + msg.mode + '] ';\n}\ntext += 'ERROR in ' + source + ': ' + apiMessage(err.message);\nreturn {\n  topic: 'log',\n  payload: text,\n  level: 'error',\n  source: source\n};\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 320,
+    "y": 340,
+    "wires": [
+      [
+        "8b14d.ab12cb"
+      ]
+    ]
+  },
+  {
+    "z": "6847f.8e4f09",
+    "id": "8d03c.acabe4",
+    "type": "comment",
+    "name": "[3] LOG",
+    "info": "STAGE 3 - every log line arrives here through the link \"to LOG\". 1 turns a line into a row (time, flow, site, production day, level) and shows it in the debug sidebar. The join collects the rows for 30 s, the delay lets one batch pass every 10 s so two writes do not overlap, 3 sets the file of the month and the read node loads the old file. A read of a file that does not exist answers nothing (only a warning), so the same batch also goes through a 10 s wait to the append step. The log is written whatever the dry-run switch says.",
+    "x": 100,
+    "y": 480,
+    "wires": []
+  },
+  {
+    "z": "6847f.8e4f09",
+    "id": "71f2a.964c86",
+    "type": "link in",
+    "name": "LOG",
+    "links": [
+      "73e19.97e59f",
+      "7b9d5.9e4a03",
+      "7f7b3.a17c35",
+      "8b14d.ab12cb"
+    ],
+    "x": 60,
+    "y": 560,
+    "wires": [
+      [
+        "8ef2b.ae44fd"
+      ]
+    ]
+  },
+  {
+    "z": "6847f.8e4f09",
+    "id": "8ef2b.ae44fd",
+    "type": "function",
+    "name": "3.1 Format log line",
+    "func": "// Turns one log message into a row for the log file.\n// In: msg.payload = log text (optional msg.level and msg.source).\n// Out: msg.payload = the row, msg.line = the text for the debug node.\nvar FLOW_NAME = 'eu-oee-fact';\nvar cfg = flow.get('cfg') || {};\nvar text = String(msg.payload);\n\nvar seq = (flow.get('logSeq') || 0) + 1;\nflow.set('logSeq', seq);\n\n// Most lines start with the production day and the mode: \"2026-09-01 [x] \".\nvar day = '';\nvar mode = '';\nvar message = text;\nvar parts = /^(\\d{4}-\\d{2}-\\d{2}) \\[([^\\]]*)\\] ([\\s\\S]*)$/.exec(text);\nif (parts) {\n  day = parts[1];\n  mode = parts[2];\n  message = parts[3];\n}\n\nvar level = msg.level;\nif (!level) {\n  if (/FAILED/.test(message)) {\n    level = 'failed';\n  } else if (/NOTHING TO WRITE/.test(message)) {\n    level = 'warn';\n  } else {\n    level = 'info';\n  }\n}\n\nmsg.line = text;\nmsg.payload = {\n  ts_utc: new Date().toISOString(),\n  seq: seq,\n  flow: FLOW_NAME,\n  site: cfg.site || 'all',\n  production_day: day,\n  mode: mode,\n  level: level,\n  source: msg.source || 'flow',\n  message: message\n};\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 200,
+    "y": 560,
+    "wires": [
+      [
+        "90e1a.afde16",
+        "92d09.b1772f",
+        "94bf8.b31048"
+      ]
+    ]
+  },
+  {
+    "z": "6847f.8e4f09",
+    "id": "90e1a.afde16",
+    "type": "join",
+    "name": "Collect log lines",
+    "mode": "custom",
+    "build": "array",
+    "property": "payload",
+    "propertyType": "msg",
+    "key": "topic",
+    "joiner": "\\n",
+    "joinerType": "str",
+    "accumulate": false,
+    "useparts": false,
+    "timeout": "30",
+    "count": "",
+    "reduceRight": false,
+    "reduceExp": "",
+    "reduceInit": "",
+    "reduceInitType": "",
+    "reduceFixup": "",
+    "x": 420,
+    "y": 520,
+    "wires": [
+      [
+        "96ae7.b4a961"
+      ]
+    ]
+  },
+  {
+    "z": "6847f.8e4f09",
+    "id": "92d09.b1772f",
+    "type": "debug",
+    "name": "Run log",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "line",
+    "targetType": "msg",
+    "x": 380,
+    "y": 560,
+    "wires": []
+  },
+  {
+    "z": "6847f.8e4f09",
+    "id": "94bf8.b31048",
+    "type": "function",
+    "name": "3.2 Note last log line",
+    "func": "// Notes the time of the newest log line of the tab in global context\n// lastLog_<flow>. In: every log line (a tap behind the log formatter). Out:\n// nothing. A new line clears done_<flow>, so the next quiet period is shown.\nvar FLOW = 'eu-oee-fact';\nglob.set('lastLog_' + FLOW, Date.now());\nglob.set('done_' + FLOW, false);\nvar status = glob.get('runStatus_' + FLOW);\nif (status) {\n  var row = msg.payload || {};\n  var line = String(row.message || msg.line || '');\n  status.lastBeatAt = new Date().toISOString();\n  status.lastLog = line.slice(0, 160);\n  if (row.level === 'failed' || row.level === 'error') {\n    status.state = 'failed';\n  }\n  glob.set('runStatus_' + FLOW, status);\n}\nreturn null;\n",
+    "outputs": 0,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 440,
+    "y": 600,
+    "wires": []
+  },
+  {
+    "z": "6847f.8e4f09",
+    "id": "96ae7.b4a961",
+    "type": "delay",
+    "name": "One log batch per 10 s",
+    "pauseType": "rate",
+    "timeout": "1",
+    "timeoutUnits": "seconds",
+    "rate": "1",
+    "nbRateUnits": "10",
+    "rateUnits": "second",
+    "randomFirst": "1",
+    "randomLast": "1",
+    "randomUnits": "seconds",
+    "drop": false,
+    "powerMode": false,
+    "x": 640,
+    "y": 560,
+    "wires": [
+      [
+        "989d6.b6427a"
+      ]
+    ]
+  },
+  {
+    "z": "6847f.8e4f09",
+    "id": "989d6.b6427a",
+    "type": "function",
+    "name": "3.3 Build log write",
+    "func": "// Prepares the write of one batch of log rows (the read node runs next).\n// In: msg.payload = array of log rows from the join node.\n// Out: msg.path = file of the month, msg.logRows, msg.logBatchId, no payload.\n// msg.logBatch keeps errors of the log nodes themselves out of the log.\nvar FLOW_NAME = 'eu-oee-fact';\nvar cfg = flow.get('cfg') || {};\nvar root = cfg.root || 'logs_without_root';\nvar rows = msg.payload;\nvar month = rows[0].ts_utc.slice(0, 7);\n\nvar batchNo = (flow.get('logBatchNo') || 0) + 1;\nflow.set('logBatchNo', batchNo);\n\nmsg.logRows = rows;\nmsg.path = root + '/logs/' + FLOW_NAME + '/log_' + month + '.csv';\nmsg.logBatch = true;\nmsg.logBatchId = rows[0].ts_utc + '#' + batchNo;\ndelete msg.payload;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 880,
+    "y": 560,
+    "wires": [
+      [
+        "9a8c5.b7db93",
+        "9c7b4.b974ac"
+      ]
+    ]
+  },
+  {
+    "z": "6847f.8e4f09",
+    "id": "a0592.bca6de",
+    "type": "link out",
+    "name": "to APPEND",
+    "mode": "link",
+    "links": [
+      "9e6a3.bb0dc5"
+    ],
+    "x": 1240,
+    "y": 560,
+    "wires": []
+  },
+  {
+    "z": "6847f.8e4f09",
+    "id": "9a8c5.b7db93",
+    "type": "read object",
+    "name": "Read log file",
+    "path": "",
+    "mode": "object",
+    "x": 1080,
+    "y": 540,
+    "wires": [
+      [
+        "a0592.bca6de"
+      ]
+    ]
+  },
+  {
+    "z": "6847f.8e4f09",
+    "id": "a2481.be3ff7",
+    "type": "link out",
+    "name": "to APPEND",
+    "mode": "link",
+    "links": [
+      "9e6a3.bb0dc5"
+    ],
+    "x": 1240,
+    "y": 640,
+    "wires": []
+  },
+  {
+    "z": "6847f.8e4f09",
+    "id": "9c7b4.b974ac",
+    "type": "delay",
+    "name": "Wait for read 10 s",
+    "pauseType": "delay",
+    "timeout": "10",
+    "timeoutUnits": "seconds",
+    "rate": "1",
+    "nbRateUnits": "1",
+    "rateUnits": "second",
+    "randomFirst": "1",
+    "randomLast": "5",
+    "randomUnits": "seconds",
+    "drop": false,
+    "powerMode": false,
+    "x": 1100,
+    "y": 580,
+    "wires": [
+      [
+        "a2481.be3ff7"
+      ]
+    ]
+  },
+  {
+    "z": "6847f.8e4f09",
+    "id": "a4370.bfd910",
+    "type": "comment",
+    "name": "[4] LOG WRITE",
+    "info": "STAGE 4 - adds the rows of the batch to the old file and writes the whole file back (the data lake has no append). Columns: ts_utc, seq, flow, site, production_day, mode, level, source, message. Every field is quoted, line breaks become a space. The batch arrives twice (read answer and the wait) and is written once. If the read gives no answer for a file this flow wrote before, a new file with a time stamp is written, so the history is never replaced.",
+    "x": 120,
+    "y": 700,
+    "wires": []
+  },
+  {
+    "z": "6847f.8e4f09",
+    "id": "9e6a3.bb0dc5",
+    "type": "link in",
+    "name": "APPEND",
+    "links": [
+      "a0592.bca6de",
+      "a2481.be3ff7"
+    ],
+    "x": 60,
+    "y": 780,
+    "wires": [
+      [
+        "a625f.c17229"
+      ]
+    ]
+  },
+  {
+    "z": "6847f.8e4f09",
+    "id": "a625f.c17229",
+    "type": "function",
+    "name": "4.1 Append log rows",
+    "func": "// Adds the rows of one batch to the log file of the month.\n// In: msg.payload = the old file (read answered) or nothing (no answer).\n// Out: msg.payload = the whole new file, the data lake has no append.\n// The same batch can arrive twice (read answer, then the wait): once only.\nvar SEPARATOR = ',';\nvar KEEP_IDS = 50;\nvar COLUMNS = [\n  'ts_utc',\n  'seq',\n  'flow',\n  'site',\n  'production_day',\n  'mode',\n  'level',\n  'source',\n  'message'\n];\n\n// Quotes inside a field are doubled, line breaks become a space.\nfunction quote(value) {\n  var text = (value === undefined || value === null) ? '' : String(value);\n  text = text.replace(/\"/g, '\"\"').replace(/[\\r\\n]+/g, ' ');\n  return '\"' + text + '\"';\n}\n\nfunction lineOf(row) {\n  return COLUMNS.map(function (name) {\n    return quote(row[name]);\n  }).join(SEPARATOR);\n}\n\n// The read node gives text, or a serialised buffer.\nfunction decode(payload) {\n  if (typeof payload === 'string') {\n    return payload;\n  }\n  if (payload && payload.type === 'Buffer' && payload.data) {\n    var bin = '';\n    payload.data.forEach(function (byte) {\n      bin += String.fromCharCode(byte);\n    });\n    try {\n      return decodeURIComponent(escape(bin));\n    } catch (e) {\n      return bin;\n    }\n  }\n  return null;\n}\n\nvar rows = msg.logRows.slice();\nrows.sort(function (a, b) {\n  if (a.ts_utc !== b.ts_utc) {\n    return a.ts_utc < b.ts_utc ? -1 : 1;\n  }\n  return a.seq - b.seq;\n});\n\nvar done = flow.get('logDone') || [];\nvar known = flow.get('logKnown') || [];\nif (done.indexOf(msg.logBatchId) >= 0) {\n  return null;\n}\n\nvar path = msg.path;\nvar old = '';\nvar problem = '';\nif (msg.payload === undefined || msg.payload === null) {\n  if (known.indexOf(path) >= 0) {\n    problem = 'read gave no answer for a file written before';\n  }\n} else {\n  old = decode(msg.payload);\n  if (old === null) {\n    old = '';\n    problem = 'old file is not text';\n  }\n}\nif (problem) {\n  // Never replace the old file: write a new one with a time stamp.\n  var stamp = new Date().toISOString().replace(/[-:.TZ]/g, '');\n  path = path.replace(/\\.csv$/, '_' + stamp + '.csv');\n  rows.push({\n    ts_utc: new Date().toISOString(),\n    seq: 0,\n    flow: rows[0].flow,\n    site: rows[0].site,\n    production_day: '',\n    mode: '',\n    level: 'error',\n    source: 'log',\n    message: problem + ', wrote ' + path\n  });\n} else if (known.indexOf(path) < 0) {\n  known.push(path);\n  flow.set('logKnown', known);\n}\n\nvar lines = [];\nif (!old) {\n  lines.push(COLUMNS.map(quote).join(SEPARATOR));\n} else if (old.slice(-1) !== '\\n') {\n  old += '\\n';\n}\nrows.forEach(function (row) {\n  lines.push(lineOf(row));\n});\n\ndone.push(msg.logBatchId);\nflow.set('logDone', done.slice(-KEEP_IDS));\n\nmsg.payload = old + lines.join('\\n') + '\\n';\nmsg.path = path;\ndelete msg.logRows;\nreturn msg;\n",
+    "outputs": 1,
+    "language": "javascript",
+    "noerr": 0,
+    "x": 200,
+    "y": 780,
+    "wires": [
+      [
+        "a814e.c30b42"
+      ]
+    ]
+  },
+  {
+    "z": "6847f.8e4f09",
+    "id": "a814e.c30b42",
+    "type": "write object",
+    "name": "Log to data lake",
+    "path": "",
+    "mode": "object",
+    "x": 420,
+    "y": 780,
+    "wires": []
+  }
+]

@@ -2,7 +2,8 @@
 // on the local copies of the lake input (sharepoint/reference and
 // sharepoint/source), and keeps every file the flows write under
 // eu_report/report as stage JSON ({schema, rows}) for
-// helper-chartres-write-parquet.py. No network.
+// helper-chartres-write-parquet.py, with the EU_OEE_Fact files of the tab
+// EU OEE Fact write (line list from <root>/report/Dim). No network.
 // Usage: node scripts/local-report-build.js <out dir> [sites=Hull,Nottingham]
 //   [from=2024-12] [to=2026-10] [days=2026-11-01,...] [tables=Plan_OPT_EU,...]
 //   [root=<dir with reference/ and source/>]
@@ -56,6 +57,14 @@ for (const [group, prefix] of [['reference', REF], ['source', SRC]]) {
   }
 }
 
+// The line list of the tab EU OEE Fact write (report/Dim), when the copy has it.
+const LINE_LIST = 'report/Dim/Machine_Names_EU.csv';
+if (existsSync(new URL(LINE_LIST, root))) {
+  lake.set(`eu_report/${LINE_LIST}`, readFileSync(new URL(LINE_LIST, root), 'utf8'));
+}
+// The build tabs send their report/ rows to the tab EU OEE Fact write.
+const factTab = read('vfc-eu-oee-fact.json');
+
 let files = 0;
 let failed = false;
 for (const [file, tabTables] of [['vfc-pbi-report.json', TAB1], ['vfc-pbi-report-2.json', TAB2]]) {
@@ -63,7 +72,7 @@ for (const [file, tabTables] of [['vfc-pbi-report.json', TAB1], ['vfc-pbi-report
   if (!job.length) {
     continue;
   }
-  const flow = read(file);
+  const flow = [...read(file), ...factTab];
   const stats = await runFlow(flow, {
     startDay: new Date().toISOString().slice(0, 10),
     startPayload: days ? { tables: job, sites, days } : { tables: job, sites, from, to },

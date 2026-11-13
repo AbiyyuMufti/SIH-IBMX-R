@@ -3,7 +3,7 @@
 | At a glance | |
 |---|---|
 | **Goal** | `eu_report/report/EU_OEE_Fact/` stays live: one table (since 2026-11-13 65 columns, `Record Type` = Plan, Loss, Time Utilisation, Run Rate; Chartres has no Run Rate rows) for Hull, Nottingham, Weinheim (Provideam) and Chartres (Excel via Power Automate) |
-| **Status** | Plan only for the flow. History (94 month files) is live with the Run Rate rows since 2026-11-13 ([eu-oee-fact-run-rate.md](eu-oee-fact-run-rate.md), milestone [eu-oee-fact-milestone.md](eu-oee-fact-milestone.md)). Until the flows run, refresh by hand (see "Manual refresh") with `scripts/eu_oee_fact_rr_build.py` |
+| **Status** | Flows built and proven offline 2026-11-13, not imported yet: [eu-oee-fact-flows.md](eu-oee-fact-flows.md). The design changed from the 07:30 tab that reads the day files back to rows forwarded by the build tabs (no read-back, no clock). History (94 month files, 65 columns) live since 2026-11-13 |
 | **Flows** | Old flows come back from `flows/legacy_report_generator_v0/` unchanged: Config, Provideam fetch, PBI report build, PBI report build 2. Stay off: Run monitor, SIH tabs, old Power BI flows, proofs. Config keeps the `reportSource` switch; SIH is a value only, nothing is built for it now |
 | **New** | Tab `EU OEE Fact build` (Provideam sites) and a fact output in `Chartres live` |
 

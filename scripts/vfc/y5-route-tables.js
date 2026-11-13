@@ -1,7 +1,14 @@
 // Sends the rows of the day to the four table lanes and the answer to the
 // sender. In: msg.rows (y2 to y4), msg.day, msg.line, msg.notes. Out 1 to 4:
-// plan, time, losses, Volume CoV (payload = the rows, nothing in dry run).
-// Out 5: the answer (200) with the counts and the notes.
+// the tables (nothing in dry run). Out 5: the answer (200). Out 6: plan,
+// time and loss rows for EU_OEE_Fact (its tab decides on its own dry run).
+
+// The tables of EU_OEE_Fact (Chartres has no Run Rate rows).
+var FACT_TABLES = [
+  'Plan_OPT_EU',
+  'Time_Utilisation_EU',
+  'Daily_Losses_EU'
+];
 var TABLES = [
   'Plan_OPT_EU',
   'Time_Utilisation_EU',
@@ -18,7 +25,8 @@ var out = [
   null,
   null,
   null,
-  null
+  null,
+  []
 ];
 var counts = [];
 
@@ -31,6 +39,22 @@ TABLES.forEach(function (table, i) {
     return full;
   });
   counts.push(table + ' ' + rows.length);
+  if (FACT_TABLES.indexOf(table) !== -1 && rows.length) {
+    out[5].push({
+      topic: 'fact',
+      table: table,
+      rows: rows,
+      site: cfg.site,
+      month: msg.day.iso + '_' + msg.day.machine,
+      day: msg.day.iso,
+      mode: 'excel',
+      out: cfg.liveFolder,
+      source: cfg.source,
+      failed: [],
+      skipped: [],
+      itemCount: 1
+    });
+  }
   if (cfg.dryRun) {
     return;
   }

@@ -1,0 +1,616 @@
+<title>EU OEE Fact VFC test</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600&display=swap">
+<style>
+/* Layout: one reading column of numbered runbook steps (the order is the test order),
+   a sticky progress bar on top, the summary panel at the end. */
+:root {
+  --bg: #f4f6f7;
+  --panel: #ffffff;
+  --fg: #1b2328;
+  --muted: #5b6a73;
+  --line: #d9e0e4;
+  --accent: #0b6e72;
+  --accent-soft: #e2f0f0;
+  --code-bg: #eef2f4;
+  --pass: #1f7a3f;
+  --pass-soft: #e3f3e8;
+  --fail: #b3261e;
+  --fail-soft: #fbe7e5;
+  --skip: #8a6400;
+  --skip-soft: #fbf1d8;
+  --claude: #4b4fb8;
+  --claude-soft: #ebecfa;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-head: "IBM Plex Sans Condensed", "IBM Plex Sans", "Arial Narrow", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11171a; --panel: #182024; --fg: #e3e9ec; --muted: #9aa9b1; --line: #2a353b;
+    --accent: #4fc0c4; --accent-soft: #163236; --code-bg: #1f2a2f;
+    --pass: #5fcf86; --pass-soft: #17301f; --fail: #f08a80; --fail-soft: #3a1b18;
+    --skip: #e2b84a; --skip-soft: #33290f; --claude: #a3a6f5; --claude-soft: #23254a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11171a; --panel: #182024; --fg: #e3e9ec; --muted: #9aa9b1; --line: #2a353b;
+  --accent: #4fc0c4; --accent-soft: #163236; --code-bg: #1f2a2f;
+  --pass: #5fcf86; --pass-soft: #17301f; --fail: #f08a80; --fail-soft: #3a1b18;
+  --skip: #e2b84a; --skip-soft: #33290f; --claude: #a3a6f5; --claude-soft: #23254a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font-body);
+  font-size: 15px; line-height: 1.55;
+}
+body::before {
+  content: ""; position: fixed; inset: 0 0 auto;
+  height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--panel);
+}
+.wrap {
+  max-width: 860px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 64px;
+}
+h1, h2, h3 { font-family: var(--font-head); text-wrap: balance; margin: 0; letter-spacing: 0.01em; }
+h1 { font-size: 30px; line-height: 1.15; }
+h2 { font-size: 21px; }
+h3 { font-size: 17px; }
+p { margin: 0; }
+code, .mono { font-family: var(--font-mono); font-size: 13px; }
+code { background: var(--code-bg); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+.lede { color: var(--muted); max-width: 65ch; margin-top: 8px; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 14px; color: var(--muted); font-size: 13px; }
+
+.bar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: var(--panel); border-bottom: 1px solid var(--line);
+}
+.bar .inner {
+  max-width: 860px; margin: 0 auto; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 10px;
+}
+.track { flex: 1 1 200px; height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; display: flex; min-width: 0; }
+.track span { display: block; height: 100%; }
+.counts { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.btn {
+  font: 500 14px var(--font-body); border: 1px solid var(--line); background: var(--panel); color: var(--fg);
+  border-radius: 6px; padding: 6px 12px; cursor: pointer;
+}
+.btn:hover { border-color: var(--accent); }
+.btn:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--panel); }
+
+.rollback {
+  margin-top: 22px; border: 1px solid var(--line); border-left: 4px solid var(--fail);
+  background: var(--panel); border-radius: 6px; padding: 14px 16px; display: grid; gap: 6px;
+}
+.rollback strong { color: var(--fail); }
+
+.phase { margin-top: 36px; display: grid; gap: 6px; }
+.phase .tag { font: 600 12px var(--font-body); text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); }
+.steps { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 14px; }
+.step {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px 18px;
+  display: grid; gap: 10px; min-width: 0;
+}
+.step[data-status="pass"] { border-color: var(--pass); }
+.step[data-status="fail"] { border-color: var(--fail); }
+.step[data-status="skip"] { border-color: var(--skip); }
+.step-head { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+.num { font: 500 13px var(--font-mono); color: var(--muted); min-width: 2.6em; }
+.step-head h3 { flex: 1 1 260px; min-width: 0; }
+.pill { font: 600 11px var(--font-body); text-transform: uppercase; letter-spacing: 0.06em; padding: 2px 8px; border-radius: 99px; }
+.pill.claude { background: var(--claude-soft); color: var(--claude); }
+.pill.st-pass { background: var(--pass-soft); color: var(--pass); }
+.pill.st-fail { background: var(--fail-soft); color: var(--fail); }
+.pill.st-skip { background: var(--skip-soft); color: var(--skip); }
+.pill.st-todo { background: var(--code-bg); color: var(--muted); }
+.why { color: var(--muted); max-width: 70ch; }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.cols > div { min-width: 0; }
+.cols h4 { margin: 0 0 4px; font: 600 12px var(--font-body); text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+.cols ul, .cols ol { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
+.snip { position: relative; background: var(--code-bg); border-radius: 6px; padding: 10px 70px 10px 12px; overflow-x: auto; }
+.snip pre { margin: 0; font: 13px/1.45 var(--font-mono); white-space: pre; }
+.snip .copy { position: absolute; top: 6px; right: 6px; font-size: 12px; padding: 3px 8px; }
+.snip-label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.claude-box { background: var(--claude-soft); border-radius: 6px; padding: 10px 12px; display: grid; gap: 6px; }
+.claude-box strong { color: var(--claude); }
+.ask { display: grid; gap: 4px; }
+.ask label { font-size: 13px; font-weight: 500; }
+.ask input { font: 14px var(--font-body); padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--fg); width: 100%; }
+.status-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.status-row .btn[aria-pressed="true"][data-v="pass"] { background: var(--pass); border-color: var(--pass); color: var(--panel); }
+.status-row .btn[aria-pressed="true"][data-v="fail"] { background: var(--fail); border-color: var(--fail); color: var(--panel); }
+.status-row .btn[aria-pressed="true"][data-v="skip"] { background: var(--skip); border-color: var(--skip); color: var(--panel); }
+textarea {
+  width: 100%; min-height: 54px; resize: vertical; font: 14px var(--font-body); padding: 8px;
+  border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--fg);
+}
+.summary { margin-top: 40px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 18px; display: grid; gap: 12px; }
+.summary textarea { min-height: 260px; font: 13px/1.45 var(--font-mono); }
+.summary .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.toast { font-size: 13px; color: var(--pass); }
+@media (max-width: 640px) {
+  .cols { grid-template-columns: 1fr; }
+  h1 { font-size: 25px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="bar" role="region" aria-label="Progress">
+  <div class="inner">
+    <div class="track" id="track" aria-hidden="true"></div>
+    <span class="counts" id="counts">0 of 0 done</span>
+    <button class="btn primary" id="jump" type="button">Summary</button>
+  </div>
+</div>
+
+<main class="wrap">
+  <header>
+    <h1>EU OEE Fact: VFC test</h1>
+    <p class="lede">Import the new tab <code>EU OEE Fact write</code> and the changed build tabs, prove the fact day files in a dry run, cut over the November month files, then check the SIH sync and Tableau. Mark each step Pass, Fail or Skip and add notes. If you stop half-way, the summary says where. Copy it at the end and paste it to Claude.</p>
+    <div class="meta">
+      <span>Built and proven offline: 13 Nov 2026</span>
+      <span>Doc: <code>docs/eu-oee-fact-flows.md</code></span>
+      <span>Your marks stay in this browser only</span>
+    </div>
+  </header>
+
+  <section class="rollback" aria-label="If something breaks">
+    <strong>If the sync fails or Tableau looks wrong</strong>
+    <p>Stop, mark the step Fail with what you saw, copy the summary and paste it to Claude with "roll back". Rollback = Claude uploads the November month files as they are now (<code>parquet/eu_oee_fact_rr_build_v2/</code>, 65 columns) and deletes the new day files. The 62-column backup of this morning also stays (<code>parquet/eu_oee_fact_backup_20261113/</code>).</p>
+  </section>
+
+  <div id="phases"></div>
+
+  <section class="summary" id="summary" aria-labelledby="sum-h">
+    <h2 id="sum-h">Summary for Claude</h2>
+    <p class="why">Built from your marks and notes, including the step where you stopped. Copy it and paste it into the chat.</p>
+    <div class="row">
+      <button class="btn primary" id="copySum" type="button">Copy summary</button>
+      <button class="btn" id="reset" type="button">Clear all marks</button>
+      <span class="toast" id="toast" role="status"></span>
+    </div>
+    <textarea id="sumText" readonly aria-label="Summary text"></textarea>
+  </section>
+</main>
+
+<script>
+(function () {
+  var KEY = 'eu-oee-fact-vfc-test-v1';
+  var D = 'flows/legacy_report_generator_v0/';
+
+  var PHASES = [
+    {
+      id: 'A', tag: 'Priority 1', title: 'Provideam: Hull, Nottingham, Weinheim',
+      steps: [
+        {
+          id: 'A1', title: 'Import the new tab EU OEE Fact write',
+          why: 'The tab that writes the fact files. It arrives with DRY_RUN true, so nothing is written yet.',
+          doList: [
+            'Import <code>' + D + 'vfc-eu-oee-fact.json</code> as a new tab, then Deploy.',
+            'Open node <code>1.1 FACT SETTINGS (edit here)</code> and read the three settings at the top.'
+          ],
+          expect: [
+            'Tab <code>EU OEE Fact write</code>, 33 nodes plus the tab.',
+            '<code>DRY_RUN = true</code>, <code>MONTH_JOBS = false</code>, <code>FIRST_DAY = \'2026-11-10\'</code>.'
+          ]
+        },
+        {
+          id: 'A2', title: 'Import PBI report build (replaces the tab)',
+          why: 'Its three table lanes now also send the report rows to the fact tab. The old tables are written exactly as before, except the Hull "In Process Quality" loss target, which was empty and is now filled.',
+          doList: [
+            'Import <code>' + D + 'vfc-pbi-report.json</code>, replacing <code>PBI report build</code>.',
+            'Node <code>1.1 TASK SETTINGS (edit here)</code>: set <code>DRY_RUN</code> of the 3 tables to <code>false</code> again, as before. Deploy.',
+            'Double-click the link in <code>eu-oee-fact WRITE</code> on the fact tab.'
+          ],
+          expect: [
+            'The link in shows <code>to eu-oee-fact WRITE</code> of PBI report build as connected.',
+            'If not connected: connect it by hand and note it here.'
+          ]
+        },
+        {
+          id: 'A3', title: 'Import PBI report build 2 (replaces the tab)',
+          why: 'Run_Rates_EU rows go through the new node "Build Run Rate fact rows" (totals per shift start day) to the fact tab.',
+          doList: [
+            'Import <code>' + D + 'vfc-pbi-report-2.json</code>, replacing <code>PBI report build 2</code>.',
+            'Set <code>DRY_RUN</code> of its 5 tables to <code>false</code> again. Deploy.'
+          ],
+          expect: [
+            'The link in <code>eu-oee-fact WRITE</code> now shows two connected link outs.',
+            'In <code>Provideam fetch</code>, <code>to pbi-report BACKFILL</code> and <code>to pbi-report-2 BACKFILL</code> are still connected.'
+          ]
+        },
+        {
+          id: 'A4', title: 'Dry run of one Hull day',
+          why: 'Proves the rows reach the fact tab and are mapped, with nothing written to EU_OEE_Fact. The old tables of that day are rewritten with the same content.',
+          doList: [
+            'PBI report build: edit the inject <code>Run (edit payload)</code> to the first payload below and click it.',
+            'PBI report build 2: edit its inject to the second payload and click it.',
+            'Open the debug sidebar and filter on the fact tab\'s <code>Run log</code>.'
+          ],
+          snips: [
+            ['PBI report build inject', '{"tables":["Plan_OPT_EU","Time_Utilisation_EU","Daily_Losses_EU"],"sites":["Hull"],"days":["2026-11-12"]}'],
+            ['PBI report build 2 inject', '{"tables":["Run_Rates_EU"],"sites":["Hull"],"days":["2026-11-12"]}']
+          ],
+          expect: [
+            '4 lines like <code>CHECK Hull 2026-11-12 Plan: N fact rows, N on the line list (71 lines)</code>, for Plan, Time Utilisation, Loss and Run Rate.',
+            '4 lines <code>DRY RUN: EU_OEE_Fact N rows</code>.',
+            'No line with <code>columns not in EU_OEE_Fact left out</code>, and no error.'
+          ],
+          asks: ['Fact rows per type (Plan / TU / Loss / Run Rate)']
+        },
+        {
+          id: 'A5', title: 'Check the two guards (optional)',
+          why: 'A day before FIRST_DAY and a month job must not write fact files. If they did, the month files would count those days twice.',
+          doList: [
+            'PBI report build inject: <code>"days":["2026-11-09"]</code>, then <code>"from":"2026-10","to":"2026-10"</code> instead of days.'
+          ],
+          expect: [
+            '<code>SKIPPED: ... is before FIRST_DAY 2026-11-10</code>, then <code>SKIPPED: ... is a month job</code>.',
+            'Note: the month job rewrites the October month files of the old Hull tables with the same content.'
+          ]
+        },
+        {
+          id: 'A6', title: 'Cutover: Claude trims the November month files', claude: true,
+          why: 'From 10 Nov the day files take over. The November month file of each Provideam site must then hold only 1 to 9 Nov, or Tableau counts 10 to 12 Nov twice. The trimmed files are ready: Hull 3,562 rows, Nottingham 7,966, Weinheim 368 (Date before 10 Nov).',
+          claudeText: 'Copy the summary, paste it to Claude and write "go cutover". Claude uploads <code>parquet/fact_cutover_20261110/</code> (3 files) and verifies them. Come back to A7 right after, so the gap stays short.',
+          expect: [
+            'Claude confirms 3 files replaced and verified.',
+            'Until A7 is done, 10 to 12 Nov are missing from Tableau, not doubled.'
+          ]
+        },
+        {
+          id: 'A7', title: 'Switch the fact tab on and backfill from 10 Nov',
+          why: 'Writes the fact day files for 10 Nov to yesterday, through the normal chain: fetch, then both build tabs, then the fact tab.',
+          doList: [
+            'Fact tab, <code>1.1 FACT SETTINGS (edit here)</code>: <code>DRY_RUN = false</code>. Deploy.',
+            'Provideam fetch: edit the inject <code>Backfill (edit payload)</code> as below, with yesterday as the end date, and click it.',
+            'Wait until the fact tab\'s Run log stops. That takes a few minutes: the fetch waits for every call.'
+          ],
+          snips: [
+            ['Provideam fetch backfill (set end = yesterday)', '{"start":"2026-11-10","end":"2026-11-13"}']
+          ],
+          expect: [
+            'Lines <code>WRITING EU_OEE_Fact N rows</code> for each site, day and type. Weinheim may have days with no rows.',
+            'No <code>FAILED</code> line in the fact log.'
+          ],
+          asks: ['Number of WRITING lines in the fact log', 'End date used']
+        },
+        {
+          id: 'A8', title: 'Look at the files in the lake',
+          why: 'Day files sit next to the month files and follow the naming rule.',
+          doList: [
+            'Open <code>eu_report/report/EU_OEE_Fact/site=Hull/</code> in the data lake browser, or ask Claude to list it.'
+          ],
+          expect: [
+            '<code>EU_OEE_Fact_2026-11.parquet</code> (trimmed) plus <code>EU_OEE_Fact_2026-11-10_plan_provideam.parquet</code>, <code>..._tu_...</code>, <code>..._loss_...</code> and <code>..._rr_...</code> for each day.',
+            'The same for Nottingham and Weinheim.'
+          ]
+        },
+        {
+          id: 'A9', title: 'SIH sync of EU_OEE_Fact',
+          why: 'The first sync that mixes the month files with day files written by the VFC parquet node. This morning\'s failure came from a column type. All 65 columns are typed in every file, and the local Hyper check passes.',
+          doList: [
+            'Wait for the next sync of the EU_OEE_Fact data source, or start it.',
+            'Open the sync result.'
+          ],
+          expect: [
+            'Sync succeeds with no Errors line.',
+            'Rows a little above 979,008: the same up to 9 Nov, plus the days after 12 Nov.'
+          ],
+          asks: ['Sync result and row count']
+        },
+        {
+          id: 'A10', title: 'Tableau: pages still right',
+          why: 'Same numbers for the days before the cutover, plausible numbers for 10 Nov onwards.',
+          doList: [
+            'View mode: one site page and By Shift, filtered to 1 to 9 Nov, then 10 Nov to yesterday.',
+            'Compare 1 to 9 Nov with a screenshot or your memory from before.'
+          ],
+          expect: [
+            '1 to 9 Nov unchanged.',
+            '10 Nov onwards: OEE, losses and run rates present for Hull, Nottingham and Weinheim, no doubled volume.'
+          ]
+        },
+        {
+          id: 'A11', title: 'Next morning: the daily run writes alone',
+          why: 'The 07:00 UTC fetch refetches the last 3 days. The fact tab rewrites those day files, and the rerun replaces them instead of adding rows.',
+          doList: [
+            'Next morning, read the fact tab log in <code>logs/eu-oee-fact/log_YYYY-MM.csv</code>, or in the debug sidebar if it is open.'
+          ],
+          expect: [
+            'WRITING lines for the 3 days. The row count in Tableau does not jump.'
+          ]
+        }
+      ]
+    },
+    {
+      id: 'B', tag: 'Priority 2', title: 'Chartres Excel (Power Automate)',
+      steps: [
+        {
+          id: 'B1', title: 'Where does Chartres live stand?',
+          why: 'Claude needs this to plan the days 11 Nov up to today. The Chartres month file ends on 10 Nov.',
+          doList: [
+            'Check whether the tab <code>Chartres live</code> is imported and writing (DRY_RUN false) since 11 Nov.'
+          ],
+          expect: ['Answer below.'],
+          asks: ['Chartres live running since (date) or "not imported"', 'Is Power Automate sending every hour? (yes/no)']
+        },
+        {
+          id: 'B2', title: 'Import Chartres live (replaces the tab)',
+          why: 'Route the tables has a 6th output to the fact tab. Plan PDT and UPDT targets are now percent points, like the other sites.',
+          doList: [
+            'Import <code>' + D + 'vfc-chartres-live.json</code>, replacing <code>Chartres live</code>.',
+            'Check the access key of the <code>http in</code> node: Power Automate must still reach <code>/chartres-data</code>.',
+            'Set <code>DRY_RUN</code> in <code>1.1 SETTINGS (edit here)</code> as it was. Deploy.'
+          ],
+          expect: [
+            'The link in <code>eu-oee-fact WRITE</code> shows three connected link outs.',
+            'The next Power Automate request is answered 200.'
+          ]
+        },
+        {
+          id: 'B3', title: 'One Chartres line-day reaches the fact',
+          why: 'The fact tab writes one file per line, day and type.',
+          doList: [
+            'Wait for the next hourly send, or send one row again from Power Automate.',
+            'Read the fact tab log.'
+          ],
+          expect: [
+            '<code>CHECK Chartres 2026-11-xx_&lt;LINE&gt; Plan: N fact rows</code>, the same for Time Utilisation and Loss.',
+            'File <code>EU_OEE_Fact_2026-11-xx_&lt;LINE&gt;_plan_excel.parquet</code> in <code>site=Chartres</code>.'
+          ],
+          asks: ['Line and day seen']
+        },
+        {
+          id: 'B4', title: 'Sync and Tableau for Chartres',
+          why: 'Chartres now has day files next to its month files.',
+          doList: ['After the next sync, open the Chartres page in view mode for the new day.'],
+          expect: ['Sync ok. The Chartres day shows OEE and losses, and the PDT/UPDT targets look like the other sites (percent).'],
+          asks: ['Sync result']
+        }
+      ]
+    }
+  ];
+
+  var STATUS_LABEL = { pass: 'Pass', fail: 'Fail', skip: 'Skip', todo: 'Not done' };
+  var state = {};
+  try {
+    state = JSON.parse(localStorage.getItem(KEY) || '{}') || {};
+  } catch (e) {
+    state = {};
+  }
+  function save() {
+    try {
+      localStorage.setItem(KEY, JSON.stringify(state));
+    } catch (e) {}
+  }
+  function stepState(id) {
+    if (!state[id]) {
+      state[id] = { status: 'todo', notes: '', asks: {} };
+    }
+    return state[id];
+  }
+  function esc(t) {
+    return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function strip(html) {
+    var d = document.createElement('div');
+    d.innerHTML = html;
+    return d.textContent || '';
+  }
+
+  var all = [];
+  var host = document.getElementById('phases');
+  PHASES.forEach(function (ph) {
+    var sec = document.createElement('section');
+    sec.className = 'phase';
+    sec.setAttribute('aria-labelledby', 'ph-' + ph.id);
+    sec.innerHTML = '<span class="tag">' + esc(ph.tag) + '</span><h2 id="ph-' + ph.id + '">' + esc(ph.title) + '</h2>';
+    var ol = document.createElement('ol');
+    ol.className = 'steps';
+    ph.steps.forEach(function (s) {
+      all.push(s);
+      var st = stepState(s.id);
+      var li = document.createElement('li');
+      li.className = 'step';
+      li.id = 'step-' + s.id;
+      var html = '<div class="step-head"><span class="num">' + s.id + '</span><h3>' + esc(s.title) + '</h3>';
+      if (s.claude) {
+        html += '<span class="pill claude">Claude does this</span>';
+      }
+      html += '<span class="pill" data-pill></span></div>';
+      html += '<p class="why">' + s.why + '</p>';
+      if (s.claudeText) {
+        html += '<div class="claude-box"><strong>Handover to Claude</strong><p>' + s.claudeText + '</p></div>';
+      }
+      html += '<div class="cols">';
+      if (s.doList) {
+        html += '<div><h4>Do</h4><ol>' + s.doList.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ol></div>';
+      }
+      html += '<div><h4>Expect</h4><ul>' + s.expect.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ul></div>';
+      html += '</div>';
+      (s.snips || []).forEach(function (sn, i) {
+        html += '<div><div class="snip-label">' + esc(sn[0]) + '</div><div class="snip"><pre id="sn-' + s.id + '-' + i + '">' + esc(sn[1]) + '</pre><button class="btn copy" type="button" data-copy="sn-' + s.id + '-' + i + '">Copy</button></div></div>';
+      });
+      (s.asks || []).forEach(function (a, i) {
+        var fid = 'ask-' + s.id + '-' + i;
+        html += '<div class="ask"><label for="' + fid + '">' + esc(a) + '</label><input id="' + fid + '" type="text" data-ask="' + i + '"></div>';
+      });
+      html += '<div class="status-row" role="group" aria-label="Result of step ' + s.id + '">';
+      ['pass', 'fail', 'skip'].forEach(function (v) {
+        html += '<button class="btn" type="button" data-v="' + v + '" aria-pressed="false">' + STATUS_LABEL[v] + '</button>';
+      });
+      html += '</div>';
+      html += '<label class="snip-label" for="notes-' + s.id + '">Notes (what you saw, numbers, errors)</label><textarea id="notes-' + s.id + '"></textarea>';
+      li.innerHTML = html;
+
+      var ta = li.querySelector('textarea');
+      ta.value = st.notes || '';
+      ta.addEventListener('input', function () {
+        st.notes = ta.value;
+        save();
+        refresh();
+      });
+      li.querySelectorAll('input[data-ask]').forEach(function (inp) {
+        var k = inp.getAttribute('data-ask');
+        inp.value = (st.asks || {})[k] || '';
+        inp.addEventListener('input', function () {
+          st.asks = st.asks || {};
+          st.asks[k] = inp.value;
+          save();
+          refresh();
+        });
+      });
+      li.querySelectorAll('.status-row .btn').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var v = b.getAttribute('data-v');
+          st.status = st.status === v ? 'todo' : v;
+          save();
+          refresh();
+        });
+      });
+      ol.appendChild(li);
+    });
+    sec.appendChild(ol);
+    host.appendChild(sec);
+  });
+
+  function copyText(text, done) {
+    var ok = function () { done(true); };
+    var fail = function () { done(false); };
+    try {
+      navigator.clipboard.writeText(text).then(ok, fail);
+    } catch (e) {
+      fail();
+    }
+  }
+
+  document.addEventListener('click', function (ev) {
+    var b = ev.target.closest('[data-copy]');
+    if (!b) {
+      return;
+    }
+    var pre = document.getElementById(b.getAttribute('data-copy'));
+    copyText(pre.textContent, function (ok) {
+      b.textContent = ok ? 'Copied' : 'Select';
+      if (!ok) {
+        var r = document.createRange();
+        r.selectNodeContents(pre);
+        var sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(r);
+      }
+      setTimeout(function () { b.textContent = 'Copy'; }, 1500);
+    });
+  });
+
+  function summary() {
+    var lines = [];
+    var now = new Date();
+    lines.push('EU OEE Fact VFC test: summary ' + now.toISOString().slice(0, 16).replace('T', ' ') + ' UTC');
+    var firstOpen = null;
+    var failed = [];
+    all.forEach(function (s) {
+      var st = stepState(s.id);
+      if (st.status === 'fail') {
+        failed.push(s.id);
+      }
+      if (!firstOpen && st.status === 'todo') {
+        firstOpen = s.id;
+      }
+    });
+    var done = all.filter(function (s) { return stepState(s.id).status !== 'todo'; }).length;
+    lines.push('Done ' + done + ' of ' + all.length + (failed.length ? '; FAILED: ' + failed.join(', ') : '; no failure'));
+    lines.push(firstOpen ? 'Stopped before: ' + firstOpen + ' (' + strip(all.filter(function (s) { return s.id === firstOpen; })[0].title) + ')' : 'All steps marked');
+    PHASES.forEach(function (ph) {
+      lines.push('');
+      lines.push('== ' + ph.tag + ': ' + ph.title);
+      ph.steps.forEach(function (s) {
+        var st = stepState(s.id);
+        lines.push(s.id + ' [' + STATUS_LABEL[st.status].toUpperCase() + '] ' + s.title);
+        (s.asks || []).forEach(function (a, i) {
+          var v = (st.asks || {})[i];
+          if (v) {
+            lines.push('   ' + a + ': ' + v);
+          }
+        });
+        if (st.notes && st.notes.trim()) {
+          st.notes.trim().split('\n').forEach(function (n) {
+            lines.push('   note: ' + n);
+          });
+        }
+      });
+    });
+    return lines.join('\n');
+  }
+
+  var track = document.getElementById('track');
+  function refresh() {
+    var c = { pass: 0, fail: 0, skip: 0, todo: 0 };
+    all.forEach(function (s) {
+      var st = stepState(s.id);
+      c[st.status]++;
+      var li = document.getElementById('step-' + s.id);
+      li.setAttribute('data-status', st.status);
+      var pill = li.querySelector('[data-pill]');
+      pill.className = 'pill st-' + st.status;
+      pill.textContent = STATUS_LABEL[st.status];
+      li.querySelectorAll('.status-row .btn').forEach(function (b) {
+        b.setAttribute('aria-pressed', String(b.getAttribute('data-v') === st.status));
+      });
+    });
+    var n = all.length;
+    track.innerHTML = ['pass', 'fail', 'skip'].map(function (k) {
+      return '<span style="width:' + (100 * c[k] / n) + '%;background:var(--' + k + ')"></span>';
+    }).join('');
+    document.getElementById('counts').textContent = (n - c.todo) + ' of ' + n + ' done' + (c.fail ? ', ' + c.fail + ' failed' : '');
+    document.getElementById('sumText').value = summary();
+  }
+
+  document.getElementById('jump').addEventListener('click', function () {
+    document.getElementById('summary').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  var toast = document.getElementById('toast');
+  document.getElementById('copySum').addEventListener('click', function () {
+    var ta = document.getElementById('sumText');
+    ta.value = summary();
+    copyText(ta.value, function (ok) {
+      if (!ok) {
+        ta.focus();
+        ta.select();
+      }
+      toast.textContent = ok ? 'Copied. Paste it into the chat.' : 'Copy was blocked: the text is selected, press Ctrl+C.';
+      setTimeout(function () { toast.textContent = ''; }, 4000);
+    });
+  });
+  var resetArmed = false;
+  var resetBtn = document.getElementById('reset');
+  resetBtn.addEventListener('click', function () {
+    if (!resetArmed) {
+      resetArmed = true;
+      resetBtn.textContent = 'Click again to clear';
+      setTimeout(function () { resetArmed = false; resetBtn.textContent = 'Clear all marks'; }, 3000);
+      return;
+    }
+    state = {};
+    save();
+    document.querySelectorAll('textarea[id^="notes-"], input[data-ask]').forEach(function (el) { el.value = ''; });
+    resetArmed = false;
+    resetBtn.textContent = 'Clear all marks';
+    refresh();
+  });
+  refresh();
+})();
+</script>

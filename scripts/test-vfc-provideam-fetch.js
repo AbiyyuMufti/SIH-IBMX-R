@@ -5,7 +5,7 @@
 import { readFileSync } from 'node:fs';
 import { runFlow } from './lib-vfc-runner.js';
 
-const read = (f) => JSON.parse(readFileSync(new URL('../flows/' + f, import.meta.url), 'utf8'));
+const read = (f) => JSON.parse(readFileSync(new URL('../flows/legacy_report_generator_v0/' + f, import.meta.url), 'utf8'));
 let failures = 0;
 const check = (ok, text) => {
   console.log(`${ok ? 'PASS' : 'FAIL'} ${text}`);

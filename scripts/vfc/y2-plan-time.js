@@ -102,24 +102,25 @@ var month = iso.slice(0, 7);
 var unique = line.unique;
 var dayNumber = Date.parse(iso + 'T00:00:00Z') / 86400000;
 var loadedAt = Date.now();
-// Glidepaths are in percent: OEE as in the history (one decimal), the
-// downtime and loss targets as fractions.
+// Glidepaths are in percent: OEE as in the history (one decimal), PDT and
+// UPDT in percent points as the other sites (fixed 2026-11-13, was a
+// fraction).
 var allTargets = flow.get('targets_' + SITE) || {};
 var targets = (allTargets[unique] || {})[
   '01/' + iso.slice(5, 7) + '/' + iso.slice(0, 4)
 ] || {};
 
-function fraction(percent) {
-  if (percent === undefined) {
+function percent(value) {
+  if (value === undefined) {
     return null;
   }
-  return Number((percent / 100).toPrecision(12));
+  return Math.round(value * 1e6) / 1e6;
 }
 
 var oeeTarget = targets.oee === undefined ? null :
   Math.round(targets.oee * 10) / 10;
-var pdt = fraction(targets.pdt);
-var updt = fraction(targets.updt);
+var pdt = percent(targets.pdt);
+var updt = percent(targets.updt);
 var machineColumns = {
   Dept: line.dept,
   Area: line.area,

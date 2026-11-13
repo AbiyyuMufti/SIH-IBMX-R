@@ -1,6 +1,8 @@
 // Splits the rows of one table month by the source of their line (1.1
-// CONFIG: line reportSource, else site reportSource). In: msg.rows. Out: one
-// message per folder (msg.out = report or candidate/<source>) with its rows.
+// CONFIG: line reportSource, else site reportSource). In: msg.rows. Out 1:
+// one message per folder (msg.out = report or candidate/<source>) with its
+// rows. Out 2 (tables of EU_OEE_Fact only): the report/ rows for the fact.
+var SEND_FACT = __FACT__;
 var cfg = flow.get('cfg');
 var site = cfg.sites.filter(function (entry) {
   return entry.name === msg.site;
@@ -49,4 +51,13 @@ if (candidate.length) {
   moving.skipped.push(note);
   out.push(moving);
 }
-return [out];
+if (!SEND_FACT) {
+  return [out];
+}
+var fact = null;
+if (live.length) {
+  fact = part(cfg.liveFolder, live);
+  fact.topic = 'fact';
+  fact.source = cfg.source;
+}
+return [out, fact];

@@ -6,8 +6,9 @@
 //          [from=YYYY-MM-DD] [every=N]
 // Read only on the workbooks. Exit code 1 when a table differs. loaded_at is
 // not compared.
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { euOeeFactSchema } from './lib-pbi-report-schemas.js';
 import { readXlsx } from './lib-office.js';
 import { code } from './lib-flow-builder.js';
 import { lintFunction } from './validate-flow.js';
@@ -18,6 +19,10 @@ const args = Object.fromEntries(
   process.argv.slice(2).filter((a) => a.includes('=')).map((a) => a.split(/=(.*)/s).slice(0, 2)),
 );
 const FILLER = args.filler ?? null;
+// factOut=<dir>: also maps the fact messages with e2-fact-rows.js (line list
+// lines=<csv>) and writes stage JSON for helper-chartres-write-parquet.py.
+const FACT_OUT = args.factOut ?? null;
+const LINES = args.lines ?? null;
 const FROM = args.from ?? '2025-01-01';
 const EVERY = Number(args.every ?? 1);
 const SITE = 'Chartres';
@@ -117,8 +122,15 @@ console.log(`reference: ${Object.keys(context).filter((k) => k.endsWith('_Chartr
 
 // ---- Rows of the history load, by table, machine and day number ----
 const stage = new Map();
+// The history run holds Plan PDT / UPDT Target as fractions; the live tab
+// writes percent points since 2026-11-13 (as the other sites).
+const PERCENT = ['PDT Target', 'UPDT Target'];
 const addStage = (table, rows) => {
   for (const r of rows) {
+    if (table === 'Plan_OPT_EU') {
+      PERCENT.filter((c) => typeof r[c] === 'number')
+        .forEach((c) => { r[c] = Math.round(r[c] * 100 * 1e6) / 1e6; });
+    }
     const k = `${table}|${r.MachineName}|${r.Date}`;
     if (!stage.has(k)) {
       stage.set(k, []);
@@ -161,6 +173,19 @@ const diffRow = (a, b) => {
     (n) => n !== 'loaded_at' && !accepted(n) && JSON.stringify(a[n] ?? null) !== JSON.stringify(b[n] ?? null),
   );
 };
+
+// ---- EU_OEE_Fact: the fact messages through e2-fact-rows.js (optional) ----
+const factColumns = euOeeFactSchema.map(([n]) => `  '${n}'`).join(',\n');
+const lineRows = FACT_OUT ? parseCsv(readFileSync(LINES, 'utf8')) : [];
+function writeFact(m) {
+  const fix = (t) => t.replace('__COLUMNS__', factColumns);
+  const out = runNode('e2-fact-rows.js', { ...m, payload: lineRows }, fix);
+  const f = out[0];
+  const name = `EU_OEE_Fact_${f.month}_${f.fileTag}_${f.source}.json`;
+  const dir = join(FACT_OUT, 'stage', 'EU_OEE_Fact', `site=${SITE}`);
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, name), JSON.stringify({ schema: euOeeFactSchema, rows: f.rows }));
+}
 
 // ---- Days of the run, grouped by workbook ----
 const info = JSON.parse(readFileSync(join(run, 'days.json'), 'utf8'));
@@ -214,6 +239,20 @@ for (const [file, list] of byFile) {
         examples.push(`y5 ${table} ${d.line} ${d.date}: columns or row count differ from the schema`);
       }
     });
+    // Out 6: the plan, time and loss rows for EU_OEE_Fact, named by line.
+    const facts = sent[5] || [];
+    const factOk = facts.every((m) => m.topic === 'fact' && m.site === SITE &&
+      m.month === `${msg.day.iso}_${msg.day.machine}` && m.source === 'excel' &&
+      m.rows.length === msg.rows[m.table].length) &&
+      facts.length === ['Plan_OPT_EU', 'Time_Utilisation_EU', 'Daily_Losses_EU']
+        .filter((t) => msg.rows[t].length).length;
+    if (!factOk) {
+      bad += 1;
+      examples.push(`y5 fact ${d.line} ${d.date}: fact messages wrong`);
+    }
+    if (FACT_OUT) {
+      facts.forEach((m) => writeFact(m));
+    }
     routed += 1;
     const dayNumber = Date.parse(`${d.date}T00:00:00Z`) / 86400000;
     for (const table of TABLES) {
