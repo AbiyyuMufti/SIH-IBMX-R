@@ -38,12 +38,12 @@ Known differences (accepted):
 
 ## Cutover (from the month files to the day files)
 The month file of November holds the days to 2026-11-12. From `FIRST_DAY` on the flow writes day files, so the November month file of Hull, Nottingham and Weinheim must lose the days from `FIRST_DAY`, or Tableau counts them twice.
-1. `python scripts/eu_oee_fact_cutover.py <lake copy> <new folder> 2026-11-10` writes the trimmed month files (Date before the first day) and `upload-list.txt` / `delete-list.txt`. Prepared: `parquet/fact_cutover_20261110/` (from the live files of 2026-11-13).
+1. `python scripts/eu_oee_fact_cutover.py <lake copy> <new folder> 2026-11-10` writes the trimmed month files (Date before the first day) and `upload-list.txt` / `delete-list.txt`. `parquet/fact_cutover_20261110/` (from the live files of 2026-11-13) is OUT OF DATE: the local refresh (`docs/local-daily-refresh.md`) rewrote the three November files on 11-13 and 11-16. Download the lake fresh, back it up, trim again, then upload. The local refresh task must be disabled before (both write the same days). `FIRST_DAY` stays 2026-11-10 because Chartres has no lake days from 11-11 yet. Runbook for the user: `docs/guides/eu-oee-fact-vfc-test.html` (rewritten 2026-11-17 for an empty VFC).
 2. With the user's go: `node scripts/datalake-upload-tree.js parquet/fact_cutover_20261110/eu_report/report/EU_OEE_Fact eu_report/report/EU_OEE_Fact --overwrite --only parquet/fact_cutover_20261110/upload-list.txt`.
 3. Right after: fact `DRY_RUN` false and the Provideam fetch backfill `{"start": "2026-11-10", "end": "<yesterday>"}` (14 days at most; after 2026-11-23 move `FIRST_DAY` and rebuild the cutover files).
 4. Rollback: upload the backup `parquet/eu_oee_fact_backup_20261113/` (62 columns) or `parquet/eu_oee_fact_rr_build_v2/` (65 columns, the state before the cutover) with `--overwrite`, and delete the day files `EU_OEE_Fact_*_provideam.parquet`.
 
-Chartres needs no trim: its month file ends 2026-11-10 and the live tab writes from 2026-11-11.
+Chartres needs no trim for the fact: its month file ends 2026-11-10; the day files 2026-11-12 to 2026-11-17 (and HOME4 2026-11-09) were uploaded on 2026-11-18 and the live tab writes from 2026-11-16 (same file names: a resend replaces them).
 
 ## Import (VFC)
 | # | Import this file | Replaces tab | After import |
@@ -56,7 +56,7 @@ Chartres needs no trim: its month file ends 2026-11-10 and the live tab writes f
 Then open the link in `eu-oee-fact WRITE`: it must show the link outs of the imported tabs. The `to ... BACKFILL` link outs of `Provideam fetch` keep pointing to the build tabs (fixed ids).
 
 ## Open
-- Chartres days from 2026-11-11 to the day the fact tab writes: they reach the fact only when Power Automate sends them again (or by a manual rebuild).
+- Chartres days from 2026-11-12 to 2026-11-17: loaded as fact day files on 2026-11-18 (`docs/chartres-live.md`); 2026-11-11 has no entries (holiday).
 - Locally, the Tableau Hyper API (0.0.26784) cannot read the parquet.js files the VFC writes ("column index"); the SIH sync read them on 2026-11-03 (the `Live_*` sources). The local Hyper check is for the type problem of 2026-11-13 only.
 - `validate-flow.js` without arguments and `test-vfc-flow.js` still look in `flows/` (empty since the move of 2026-11-12): pass the files.
 - The Run monitor does not watch the new tab.

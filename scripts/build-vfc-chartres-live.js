@@ -18,7 +18,7 @@ const FLOW_ID = 'chartres-live';
 // The tabs in use live in this folder since 2026-11-12.
 const DIR = 'legacy_report_generator_v0/';
 const FILE = 'vfc-chartres-live.json';
-const ENDPOINT = '/chartres-data';
+const ENDPOINT = '/chartres-live';
 
 // Parquet, path and write object: the end of a table lane.
 const tableEnd = (table, schema) => [
@@ -30,36 +30,36 @@ const tableEnd = (table, schema) => [
 
 function buildFlow() {
   const b = makeBuilder(380);
-  const { add, id, col, rowY, comment, lane } = b;
+  const { id, lane } = b;
   let r = 1;
 
-  const stage1 = b.nextStage();
-  comment(
-    `[${stage1}] TRIGGERS`,
-    `STAGE ${stage1} - TRIGGERS. The reference files (Machine Names, Glidepaths, Format List, report scope, loss names) are loaded when the tab starts (5 s after a deploy) and again every hour at minute 7. A request that arrives before they are loaded gets 503 and Power Automate sends it again.`,
-    r
-  );
-  const inject = (name, dy, extra) => add({
-    id: b.newId(), type: 'inject', name, topic: '', repeat: '',
-    repeatEnd: '0', endTime: '0', offset: 'NaN', once: false,
-    properties: '', timezone: 'UTC', betweentimesunit: 'm',
-    showNextExecution: false, powerMode: false, x: col(0),
-    y: rowY(r) + dy, wires: [[id('settings')]], payload: '',
-    payloadType: 'date', ...extra
+  const inject = (key, name, extra) => rawStep(key, {
+    type: 'inject', name, topic: '', repeat: '', repeatEnd: '0',
+    endTime: '0', offset: 'NaN', once: false, properties: '',
+    timezone: 'UTC', betweentimesunit: 'm', showNextExecution: false,
+    powerMode: false, payload: '', payloadType: 'date', ...extra
   });
-  inject('At start', -40, { once: true, onceDelay: '5' });
-  inject('Every hour', 40, { crontab: '7 * * * *' });
-  r++;
+  lane(r++, 'TRIGGERS',
+    'the reference files (Machine Names, Glidepaths, Format List, report scope, loss names) are loaded when the tab starts (5 s after a deploy) and again every hour at minute 7. A request that arrives before they are loaded gets 503 and Power Automate sends it again.',
+    [
+      inject('injStart', 'At start', { once: true, onceDelay: '5' }),
+      { ...inject('injHour', 'Every hour', { crontab: '7 * * * *' }),
+        stack: true, dy: 40 },
+      end('TRIGGER')
+    ]);
 
   lane(r++, 'REQUEST',
-    `${ENDPOINT} (POST) receives one Base row per request. The key of the http in node is generated there after the import, it is not part of this file; delete or disable any other http in node with the same endpoint first. 1.1 SETTINGS (edit here) holds the dry-run switch (true: rows are built and logged, nothing is written). 1.2 reads the row (the line comes from FileName, the day from ANNEE / MOIS / JOUR; a row before the first live day is answered 200 and not written, a bad row 400). 1.3 answers 503 while the reference is not loaded.`,
+    `${ENDPOINT} (POST) receives one Base row per request, or a list of up to 10 Base rows (the last days of a workbook): the node Split the rows splits a list into one message per row and answers 200 at once; a row of a list is logged, not answered. The key of the http in node is generated there after the import, it is not part of this file; delete or disable any other http in node with the same endpoint first. 1.1 SETTINGS (edit here) holds the dry-run switch (true: rows are built and logged, nothing is written). 1.2 reads the row (the line comes from FileName, the day from ANNEE / MOIS / JOUR; a row before the first live day is answered 200 and not written, a bad row 400). 1.3 answers 503 while the reference is not loaded.`,
     [
-      rawStep('in', {
+      { ...rawStep('in', {
         type: 'http in', name: ENDPOINT, endpoint: ENDPOINT, method: 'post',
         upload: false, access: 'key', key: '', users: '', powerMode: false
-      }),
+      }), dy: -40 },
+      { ...linkInStep('TRIGGER'), stack: true, dy: 40 },
       fn('settings', '1.1 SETTINGS (edit here)', 'y0-settings.js',
         ['next', 'REFRESH']),
+      fn('splitRows', 'Split the rows', 'y0-split-rows.js',
+        ['next', 'ANSWER']),
       fn('readRow', 'Read the row', 'y1-read-row.js', ['next', 'ANSWER']),
       fn('ready', 'Check reference', 'y0-check-ready.js', ['next', 'ANSWER']),
       end('ROW')
@@ -153,7 +153,8 @@ function buildFlow() {
 
   // The catch node sees only the nodes of the request and row lanes, so an
   // error in the answer node cannot loop back to it.
-  const inScope = ['settings', 'readRow', 'ready', 'plan', 'loss', 'cov', 'route']
+  const inScope = ['settings', 'splitRows', 'readRow', 'ready', 'plan', 'loss',
+    'cov', 'route']
     .map((k) => id(k));
   b.nodes.find((n) => n.id === id('catchReq')).scope = inScope;
 

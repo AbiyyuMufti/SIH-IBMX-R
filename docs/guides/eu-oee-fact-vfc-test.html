@@ -1,3 +1,8 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>EU OEE Fact VFC test</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -145,8 +150,15 @@ textarea {
   h1 { font-size: 25px; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+.start { margin-top: 22px; background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 6px; padding: 16px 18px; display: grid; gap: 10px; }
+.start .tablewrap { overflow-x: auto; }
+.start table { border-collapse: collapse; width: 100%; font-size: 14px; }
+.start th, .start td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.start th { font: 600 12px var(--font-body); text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.start .rules { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
 </style>
-
+</head>
+<body>
 <div class="bar" role="region" aria-label="Progress">
   <div class="inner">
     <div class="track" id="track" aria-hidden="true"></div>
@@ -157,18 +169,43 @@ textarea {
 
 <main class="wrap">
   <header>
-    <h1>EU OEE Fact: VFC test</h1>
-    <p class="lede">Import the new tab <code>EU OEE Fact write</code> and the changed build tabs, prove the fact day files in a dry run, cut over the November month files, then check the SIH sync and Tableau. Mark each step Pass, Fail or Skip and add notes. If you stop half-way, the summary says where. Copy it at the end and paste it to Claude.</p>
+    <h1>EU OEE Fact: VFC setup and test</h1>
+    <p class="lede">Start from an empty VFC. Import five tabs in the order below, prove the fact rows in a dry run, let Claude cut over the November month files, then switch the fact tab on. Work from the top down. Mark each step Pass, Fail or Skip, then copy the summary at the end and paste it to Claude.</p>
     <div class="meta">
-      <span>Built and proven offline: 13 Nov 2026</span>
+      <span>Rewritten 17 Nov 2026 for a new, empty VFC</span>
       <span>Doc: <code>docs/eu-oee-fact-flows.md</code></span>
       <span>Your marks stay in this browser only</span>
     </div>
   </header>
 
+  <section class="start" aria-label="Start here">
+    <h2>Start here</h2>
+    <p>All files are in <code>flows/legacy_report_generator_v0/</code> of the repo. After every import click <strong>Deploy</strong>.</p>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>Step</th><th>Import this file</th><th>Tab name</th><th>After the import</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>A1</td><td><code>vfc-config.local.json</code> (made by one command)</td><td>Config</td><td>Apply</td></tr>
+          <tr><td>A2</td><td><code>vfc-pbi-report.json</code></td><td>PBI report build</td><td><code>DRY_RUN</code> of 3 tables to false</td></tr>
+          <tr><td>A3</td><td><code>vfc-pbi-report-2.json</code></td><td>PBI report build 2</td><td><code>DRY_RUN</code> of 5 tables to false</td></tr>
+          <tr><td>A4</td><td><code>vfc-provideam-fetch.json</code></td><td>Provideam fetch</td><td>connect 2 link outs</td></tr>
+          <tr><td>A5</td><td><code>vfc-eu-oee-fact.json</code></td><td>EU OEE Fact write</td><td>leave <code>DRY_RUN</code> true</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul class="rules">
+      <li><strong>Nothing writes to EU_OEE_Fact until step A8.</strong> The fact tab arrives with <code>DRY_RUN = true</code>.</li>
+      <li><strong>The local refresh must stop first (A0).</strong> It writes the same days as the VFC. Both writing counts those days twice in Tableau.</li>
+      <li><strong>Skip the Run monitor and the old reference tab for now.</strong> The lake already holds the reference tables.</li>
+      <li><strong>Something odd or red?</strong> Mark the step Fail, write what you saw in the notes and tell Claude. Do not continue past a failed step.</li>
+    </ul>
+  </section>
+
   <section class="rollback" aria-label="If something breaks">
     <strong>If the sync fails or Tableau looks wrong</strong>
-    <p>Stop, mark the step Fail with what you saw, copy the summary and paste it to Claude with "roll back". Rollback = Claude uploads the November month files as they are now (<code>parquet/eu_oee_fact_rr_build_v2/</code>, 65 columns) and deletes the new day files. The 62-column backup of this morning also stays (<code>parquet/eu_oee_fact_backup_20261113/</code>).</p>
+    <p>Stop, mark the step Fail with what you saw, copy the summary and paste it to Claude with "roll back". At step A7 Claude first saves a fresh backup of the three November month files. Rollback = Claude uploads that backup again and deletes the new day files <code>EU_OEE_Fact_*_provideam.parquet</code>. Set the fact tab back to <code>DRY_RUN = true</code>.</p>
   </section>
 
   <div id="phases"></div>
@@ -187,7 +224,7 @@ textarea {
 
 <script>
 (function () {
-  var KEY = 'eu-oee-fact-vfc-test-v1';
+  var KEY = 'eu-oee-fact-vfc-test-v2';
   var D = 'flows/legacy_report_generator_v0/';
 
   var PHASES = [
@@ -195,100 +232,145 @@ textarea {
       id: 'A', tag: 'Priority 1', title: 'Provideam: Hull, Nottingham, Weinheim',
       steps: [
         {
-          id: 'A1', title: 'Import the new tab EU OEE Fact write',
-          why: 'The tab that writes the fact files. It arrives with DRY_RUN true, so nothing is written yet.',
+          id: 'A0', title: 'Stop the local refresh',
+          why: 'The script on your laptop writes the same November month files as the VFC will. Stop it now and never run it again after the cutover.',
           doList: [
-            'Import <code>' + D + 'vfc-eu-oee-fact.json</code> as a new tab, then Deploy.',
-            'Open node <code>1.1 FACT SETTINGS (edit here)</code> and read the three settings at the top.'
+            'Run the first command in a terminal (PowerShell or Git Bash).',
+            'Run the second command to check.',
+            'From now on do not start <code>scripts/local-daily-refresh.js</code>.'
+          ],
+          snips: [
+            ['Disable the scheduled task', 'schtasks /Change /TN "EU OEE Fact refresh" /DISABLE'],
+            ['Check it', 'schtasks /Query /TN "EU OEE Fact refresh"']
+          ],
+          expect: [
+            'The check shows the status <code>Disabled</code>.',
+            'If the task does not exist: mark Pass and write it in the notes.'
+          ]
+        },
+        {
+          id: 'A1', title: 'Config tab',
+          why: 'All tabs read their settings (credentials, sites, folder) from this one tab. The file with the real credentials is made from your .env and is never committed.',
+          doList: [
+            'Run the command below in the repo folder. It prints no secret.',
+            'Import <code>' + D + 'vfc-config.local.json</code> as a new tab named <code>Config</code>. Deploy.',
+            'Click <strong>Apply</strong>. Without it the fetch stops with "fill in provideam.apiKey in 1.1 CONFIG".'
+          ],
+          snips: [
+            ['Make the Config file', 'node scripts/make-local-config.js']
+          ],
+          expect: [
+            'The command prints <code>written flows/legacy_report_generator_v0/vfc-config.local.json (...)</code>.',
+            'If it says <code>missing in .env</code>: mark Fail and tell Claude which names it lists.',
+            'No red node after Deploy.'
+          ]
+        },
+        {
+          id: 'A2', title: 'PBI report build',
+          why: 'Builds Plan OPT, Time Utilisation and Daily Losses. Its three table lanes also send their rows to the fact tab. The old tables are written as before, except the Hull "In Process Quality" loss target, which was empty and is now filled.',
+          doList: [
+            'Import <code>' + D + 'vfc-pbi-report.json</code> as a new tab.',
+            'Node <code>1.1 TASK SETTINGS (edit here)</code>: set <code>DRY_RUN</code> of the 3 tables to <code>false</code>. Deploy.'
+          ],
+          expect: [
+            'Tab <code>PBI report build</code> is there, no red node.'
+          ]
+        },
+        {
+          id: 'A3', title: 'PBI report build 2',
+          why: 'Run Rates, Volume CoV and Format List. Run_Rates_EU rows go through the node "Build Run Rate fact rows" (totals per shift start day) to the fact tab.',
+          doList: [
+            'Import <code>' + D + 'vfc-pbi-report-2.json</code> as a new tab.',
+            'Node <code>1.1 TASK SETTINGS (edit here)</code>: set <code>DRY_RUN</code> of the 5 tables to <code>false</code>. Deploy.'
+          ],
+          expect: [
+            'Tab <code>PBI report build 2</code> is there, no red node.'
+          ]
+        },
+        {
+          id: 'A4', title: 'Provideam fetch',
+          why: 'Fetches every morning at 07:00 UTC the last days from Provideam, writes the source day files and starts both build tabs. It has two link outs that you connect by hand.',
+          doList: [
+            'Import <code>' + D + 'vfc-provideam-fetch.json</code> as a new tab.',
+            'Connect the link out <code>to pbi-report BACKFILL</code> to the link in <code>pbi-report BACKFILL</code> on the tab PBI report build.',
+            'Connect the link out <code>to pbi-report-2 BACKFILL</code> to the link in <code>pbi-report-2 BACKFILL</code> on the tab PBI report build 2.',
+            'Leave <code>DRY_RUN</code> in <code>1.1 FETCH SETTINGS (edit here)</code> as it is (true). Deploy.'
+          ],
+          expect: [
+            'Both link outs show their target.',
+            'No red node, and no fetch has run yet.'
+          ]
+        },
+        {
+          id: 'A5', title: 'EU OEE Fact write',
+          why: 'The tab that writes the fact files, one file per site, day and record type. It arrives with <code>DRY_RUN = true</code>, so nothing is written yet.',
+          doList: [
+            'Import <code>' + D + 'vfc-eu-oee-fact.json</code> as a new tab. Deploy.',
+            'Open node <code>1.1 FACT SETTINGS (edit here)</code> and read the three settings at the top.',
+            'Double-click the link in <code>eu-oee-fact WRITE</code> on this tab.'
           ],
           expect: [
             'Tab <code>EU OEE Fact write</code>, 33 nodes plus the tab.',
-            '<code>DRY_RUN = true</code>, <code>MONTH_JOBS = false</code>, <code>FIRST_DAY = \'2026-11-10\'</code>.'
+            '<code>DRY_RUN = true</code>, <code>MONTH_JOBS = false</code>, <code>FIRST_DAY = \'2026-11-10\'</code>.',
+            'The link in <code>eu-oee-fact WRITE</code> shows two connected link outs, one from each build tab. If it shows none (the VFC drops a link whose target did not exist at import): on the tab <strong>PBI report build</strong> double-click the link out <code>to eu-oee-fact WRITE</code> and tick <code>eu-oee-fact WRITE</code>; do the same on <strong>PBI report build 2</strong>. Do not touch the <code>to FACT</code> link outs. Deploy.',
+            'Do not change <code>FIRST_DAY</code>: it stays <code>2026-11-10</code>.'
           ]
         },
         {
-          id: 'A2', title: 'Import PBI report build (replaces the tab)',
-          why: 'Its three table lanes now also send the report rows to the fact tab. The old tables are written exactly as before, except the Hull "In Process Quality" loss target, which was empty and is now filled.',
+          id: 'A6', title: 'Dry run: fetch two days, fact tab only logs',
+          why: 'The build tabs read the source day files that the Provideam fetch writes. On a new VFC those files do not exist yet ("no plan_opt file for ..., skipped"), so the fetch must run first. The fact tab stays on DRY_RUN true: it logs what it would write and writes nothing to EU_OEE_Fact. The old tables of these days are rewritten with the same content.',
           doList: [
-            'Import <code>' + D + 'vfc-pbi-report.json</code>, replacing <code>PBI report build</code>.',
-            'Node <code>1.1 TASK SETTINGS (edit here)</code>: set <code>DRY_RUN</code> of the 3 tables to <code>false</code> again, as before. Deploy.',
-            'Double-click the link in <code>eu-oee-fact WRITE</code> on the fact tab.'
-          ],
-          expect: [
-            'The link in shows <code>to eu-oee-fact WRITE</code> of PBI report build as connected.',
-            'If not connected: connect it by hand and note it here.'
-          ]
-        },
-        {
-          id: 'A3', title: 'Import PBI report build 2 (replaces the tab)',
-          why: 'Run_Rates_EU rows go through the new node "Build Run Rate fact rows" (totals per shift start day) to the fact tab.',
-          doList: [
-            'Import <code>' + D + 'vfc-pbi-report-2.json</code>, replacing <code>PBI report build 2</code>.',
-            'Set <code>DRY_RUN</code> of its 5 tables to <code>false</code> again. Deploy.'
-          ],
-          expect: [
-            'The link in <code>eu-oee-fact WRITE</code> now shows two connected link outs.',
-            'In <code>Provideam fetch</code>, <code>to pbi-report BACKFILL</code> and <code>to pbi-report-2 BACKFILL</code> are still connected.'
-          ]
-        },
-        {
-          id: 'A4', title: 'Dry run of one Hull day',
-          why: 'Proves the rows reach the fact tab and are mapped, with nothing written to EU_OEE_Fact. The old tables of that day are rewritten with the same content.',
-          doList: [
-            'PBI report build: edit the inject <code>Run (edit payload)</code> to the first payload below and click it.',
-            'PBI report build 2: edit its inject to the second payload and click it.',
-            'Open the debug sidebar and filter on the fact tab\'s <code>Run log</code>.'
+            'Provideam fetch, <code>1.1 FETCH SETTINGS (edit here)</code>: <code>DRY_RUN = false</code>. Deploy. (The fetch writes only its source day files.)',
+            'Check that the fact tab still has <code>DRY_RUN = true</code>.',
+            'Provideam fetch: edit the inject <code>Backfill (edit payload)</code> to the payload below and click it.',
+            'Open the debug sidebar, filter on the fact tab\'s <code>Run log</code>, and wait a few minutes until it stops.'
           ],
           snips: [
-            ['PBI report build inject', '{"tables":["Plan_OPT_EU","Time_Utilisation_EU","Daily_Losses_EU"],"sites":["Hull"],"days":["2026-11-12"]}'],
-            ['PBI report build 2 inject', '{"tables":["Run_Rates_EU"],"sites":["Hull"],"days":["2026-11-12"]}']
+            ['Provideam fetch backfill (two days: the day before yesterday and yesterday)', '{"start":"2026-11-15","end":"2026-11-16"}']
           ],
           expect: [
-            '4 lines like <code>CHECK Hull 2026-11-12 Plan: N fact rows, N on the line list (71 lines)</code>, for Plan, Time Utilisation, Loss and Run Rate.',
+            '4 lines like <code>CHECK Hull 2026-11-16 Plan: N fact rows, N on the line list (71 lines)</code>, for Plan, Time Utilisation, Loss and Run Rate, per site and day.',
             '4 lines <code>DRY RUN: EU_OEE_Fact N rows</code>.',
-            'No line with <code>columns not in EU_OEE_Fact left out</code>, and no error.'
+            'No line with <code>columns not in EU_OEE_Fact left out</code>, and no error.',
+            'If a build tab says a source file or a reference table is missing: mark Fail and copy the line.',
+            'If you see <code>SKIPPED: ... is before FIRST_DAY 2026-11-17</code> instead of <code>CHECK</code> lines: <code>FIRST_DAY</code> in the fact tab was changed. Set it to <code>\'2026-11-10\'</code>, Deploy and run the same backfill again.',
+            'Lines <code>WRITING Plan_OPT_EU ...</code> from the build tabs are normal: the old tables of these days are rewritten with the same content. Nottingham <code>no csv file in eu_report/reference/format_list/site=Nottingham/</code> is a known gap (no Format List yet), not a failure of this test.'
           ],
           asks: ['Fact rows per type (Plan / TU / Loss / Run Rate)']
         },
         {
-          id: 'A5', title: 'Check the two guards (optional)',
-          why: 'A day before FIRST_DAY and a month job must not write fact files. If they did, the month files would count those days twice.',
-          doList: [
-            'PBI report build inject: <code>"days":["2026-11-09"]</code>, then <code>"from":"2026-10","to":"2026-10"</code> instead of days.'
-          ],
+          id: 'A7', title: 'Cutover: Claude trims the November month files', claude: true,
+          why: 'From 10 Nov the day files of the VFC take over. The November month file of each Provideam site must then hold only the days before 10 Nov, or Tableau counts the days from 10 Nov twice. The lake files have changed since 13 Nov, so Claude trims fresh copies, not the old ones.',
+          claudeText: 'Copy the summary, paste it to Claude and write "go cutover". Claude downloads the three November month files fresh, saves them as the backup, trims them to Date before 10 Nov, uploads them and reads them back. Come back to A8 right after, so the gap stays short.',
           expect: [
-            '<code>SKIPPED: ... is before FIRST_DAY 2026-11-10</code>, then <code>SKIPPED: ... is a month job</code>.',
-            'Note: the month job rewrites the October month files of the old Hull tables with the same content.'
+            'Claude confirms 3 files replaced and verified, and where the backup is.',
+            'Until A8 is done, 10 Nov up to yesterday is missing from Tableau, not doubled.'
           ]
         },
         {
-          id: 'A6', title: 'Cutover: Claude trims the November month files', claude: true,
-          why: 'From 10 Nov the day files take over. The November month file of each Provideam site must then hold only 1 to 9 Nov, or Tableau counts 10 to 12 Nov twice. The trimmed files are ready: Hull 3,562 rows, Nottingham 7,966, Weinheim 368 (Date before 10 Nov).',
-          claudeText: 'Copy the summary, paste it to Claude and write "go cutover". Claude uploads <code>parquet/fact_cutover_20261110/</code> (3 files) and verifies them. Come back to A7 right after, so the gap stays short.',
-          expect: [
-            'Claude confirms 3 files replaced and verified.',
-            'Until A7 is done, 10 to 12 Nov are missing from Tableau, not doubled.'
-          ]
-        },
-        {
-          id: 'A7', title: 'Switch the fact tab on and backfill from 10 Nov',
-          why: 'Writes the fact day files for 10 Nov to yesterday, through the normal chain: fetch, then both build tabs, then the fact tab.',
+          id: 'A8', title: 'Switch the fact tab on and backfill from 10 Nov',
+          why: 'Writes the fact day files for 10 Nov to yesterday through the normal chain: fetch, then both build tabs, then the fact tab. The fetch reaches back 14 days at most, so do this before 23 Nov.',
           doList: [
-            'Fact tab, <code>1.1 FACT SETTINGS (edit here)</code>: <code>DRY_RUN = false</code>. Deploy.',
-            'Provideam fetch: edit the inject <code>Backfill (edit payload)</code> as below, with yesterday as the end date, and click it.',
-            'Wait until the fact tab\'s Run log stops. That takes a few minutes: the fetch waits for every call.'
+            'Only after A7 is confirmed. Fact tab, <code>1.1 FACT SETTINGS (edit here)</code>: <code>DRY_RUN = false</code>. Deploy.',
+            'Provideam fetch, <code>1.1 FETCH SETTINGS (edit here)</code>: <code>DRY_RUN = false</code>. Deploy.',
+            'Provideam fetch: run the 4 backfills below one after the other, at most 2 days each. A run of 7 days (84 calls) lost 6 calls and never finished on 17 Nov, because the VFC drops open messages when too many are in flight. Edit the inject <code>Backfill (edit payload)</code>, click it, and wait for the line <code>run: 24 of 24 calls back</code> and the WRITING lines before the next one.',
+            'Wait until the fact tab\'s Run log stops. That takes several minutes: the fetch waits for every call.'
           ],
           snips: [
-            ['Provideam fetch backfill (set end = yesterday)', '{"start":"2026-11-10","end":"2026-11-13"}']
+            ['Backfill 1 of 4 (wait until the fact log shows WRITING lines before the next one)', '{"start":"2026-11-10","end":"2026-11-11"}'],
+            ['Backfill 2 of 4', '{"start":"2026-11-12","end":"2026-11-13"}'],
+            ['Backfill 3 of 4', '{"start":"2026-11-14","end":"2026-11-15"}'],
+            ['Backfill 4 of 4 (end = yesterday)', '{"start":"2026-11-16","end":"2026-11-16"}']
           ],
           expect: [
             'Lines <code>WRITING EU_OEE_Fact N rows</code> for each site, day and type. Weinheim may have days with no rows.',
-            'No <code>FAILED</code> line in the fact log.'
+            'No <code>FAILED</code> line in the fact log.',
+            'Yesterday may be incomplete if you run before 07:10 UTC. The fetch of the next morning refetches the last 3 days and replaces it.'
           ],
           asks: ['Number of WRITING lines in the fact log', 'End date used']
         },
         {
-          id: 'A8', title: 'Look at the files in the lake',
+          id: 'A9', title: 'Look at the files in the lake',
           why: 'Day files sit next to the month files and follow the naming rule.',
           doList: [
             'Open <code>eu_report/report/EU_OEE_Fact/site=Hull/</code> in the data lake browser, or ask Claude to list it.'
@@ -299,21 +381,21 @@ textarea {
           ]
         },
         {
-          id: 'A9', title: 'SIH sync of EU_OEE_Fact',
-          why: 'The first sync that mixes the month files with day files written by the VFC parquet node. This morning\'s failure came from a column type. All 65 columns are typed in every file, and the local Hyper check passes.',
+          id: 'A10', title: 'SIH sync of EU_OEE_Fact',
+          why: 'The first sync that mixes the month files with day files written by the VFC parquet node. An earlier failure came from a column type. All 65 columns are typed in every file, and the local Hyper check passes.',
           doList: [
             'Wait for the next sync of the EU_OEE_Fact data source, or start it.',
             'Open the sync result.'
           ],
           expect: [
             'Sync succeeds with no Errors line.',
-            'Rows a little above 979,008: the same up to 9 Nov, plus the days after 12 Nov.'
+            'Row count close to before the cutover (979,008 on 13 Nov plus the new days). Claude can compare it if you paste the number.'
           ],
           asks: ['Sync result and row count']
         },
         {
-          id: 'A10', title: 'Tableau: pages still right',
-          why: 'Same numbers for the days before the cutover, plausible numbers for 10 Nov onwards.',
+          id: 'A11', title: 'Tableau: pages still right',
+          why: 'Same numbers for the days before the cutover, plausible numbers from 10 Nov on.',
           doList: [
             'View mode: one site page and By Shift, filtered to 1 to 9 Nov, then 10 Nov to yesterday.',
             'Compare 1 to 9 Nov with a screenshot or your memory from before.'
@@ -324,7 +406,7 @@ textarea {
           ]
         },
         {
-          id: 'A11', title: 'Next morning: the daily run writes alone',
+          id: 'A12', title: 'Next morning: the daily run writes alone',
           why: 'The 07:00 UTC fetch refetches the last 3 days. The fact tab rewrites those day files, and the rerun replaces them instead of adding rows.',
           doList: [
             'Next morning, read the fact tab log in <code>logs/eu-oee-fact/log_YYYY-MM.csv</code>, or in the debug sidebar if it is open.'
@@ -339,37 +421,38 @@ textarea {
       id: 'B', tag: 'Priority 2', title: 'Chartres Excel (Power Automate)',
       steps: [
         {
-          id: 'B1', title: 'Where does Chartres live stand?',
-          why: 'Claude needs this to plan the days 11 Nov up to today. The Chartres month file ends on 10 Nov.',
+          id: 'B1', title: 'Import Chartres live',
+          why: 'Reads the Excel data that Power Automate sends and writes the Chartres tables. Its tab "Route the tables" has a 6th output to the fact tab. Plan PDT and UPDT targets are percent points, like the other sites. The reference files are already in the lake.',
           doList: [
-            'Check whether the tab <code>Chartres live</code> is imported and writing (DRY_RUN false) since 11 Nov.'
-          ],
-          expect: ['Answer below.'],
-          asks: ['Chartres live running since (date) or "not imported"', 'Is Power Automate sending every hour? (yes/no)']
-        },
-        {
-          id: 'B2', title: 'Import Chartres live (replaces the tab)',
-          why: 'Route the tables has a 6th output to the fact tab. Plan PDT and UPDT targets are now percent points, like the other sites.',
-          doList: [
-            'Import <code>' + D + 'vfc-chartres-live.json</code>, replacing <code>Chartres live</code>.',
-            'Check the access key of the <code>http in</code> node: Power Automate must still reach <code>/chartres-data</code>.',
-            'Set <code>DRY_RUN</code> in <code>1.1 SETTINGS (edit here)</code> as it was. Deploy.'
+            'Import <code>' + D + 'vfc-chartres-live.json</code> as a new tab.',
+            'Create the access key of the <code>http in</code> node <code>/chartres-live</code> and give it to the Power Automate flow.',
+            'Keep <code>DRY_RUN</code> in <code>1.1 SETTINGS (edit here)</code> true for now. Deploy.'
           ],
           expect: [
-            'The link in <code>eu-oee-fact WRITE</code> shows three connected link outs.',
-            'The next Power Automate request is answered 200.'
+            'The link in <code>eu-oee-fact WRITE</code> now shows three connected link outs.',
+            'No red node.'
           ]
+        },
+        {
+          id: 'B2', title: 'Chartres days from 11 Nov',
+          why: 'The Chartres month file ends on 10 Nov. Later days only arrive when Power Automate sends them. Claude needs to know what you can resend.',
+          doList: [
+            'Check in Power Automate whether it sends every hour and whether you can resend the days from 11 Nov up to today.'
+          ],
+          expect: ['Answer below.'],
+          asks: ['Power Automate sends every hour? (yes/no)', 'Can the days from 11 Nov be resent? (yes/no)']
         },
         {
           id: 'B3', title: 'One Chartres line-day reaches the fact',
           why: 'The fact tab writes one file per line, day and type.',
           doList: [
             'Wait for the next hourly send, or send one row again from Power Automate.',
-            'Read the fact tab log.'
+            'Read the fact tab log (still a dry run).',
+            'If it looks right, set <code>DRY_RUN</code> to false in <code>1.1 SETTINGS (edit here)</code> of Chartres live and send again.'
           ],
           expect: [
             '<code>CHECK Chartres 2026-11-xx_&lt;LINE&gt; Plan: N fact rows</code>, the same for Time Utilisation and Loss.',
-            'File <code>EU_OEE_Fact_2026-11-xx_&lt;LINE&gt;_plan_excel.parquet</code> in <code>site=Chartres</code>.'
+            'After the real write: file <code>EU_OEE_Fact_2026-11-xx_&lt;LINE&gt;_plan_excel.parquet</code> in <code>site=Chartres</code>.'
           ],
           asks: ['Line and day seen']
         },
@@ -614,3 +697,5 @@ textarea {
   refresh();
 })();
 </script>
+</body>
+</html>

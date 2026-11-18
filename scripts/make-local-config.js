@@ -1,4 +1,4 @@
-// Writes flows/vfc-config.local.json: the committed Config tab with the
+// Writes flows/legacy_report_generator_v0/vfc-config.local.json: the committed Config tab with the
 // placeholders filled from .env, ready to import into the VFC. Prints no value.
 // .env: IH_PLATFORM, XC_TENANT_ID, RECKITT_API_TECHUSER_CLIENT_ID,
 // RECKITT_API_TECHUSER_CLIENT_SECRET, PROVIDEAM_API_KEY.
@@ -18,7 +18,7 @@ const missing = Object.values(FILL).map(([, env]) => env).filter((env) => !proce
 if (missing.length) {
   throw new Error(`missing in .env: ${missing.join(', ')}`);
 }
-const url = (f) => new URL(`../flows/${f}`, import.meta.url);
+const url = (f) => new URL(`../flows/legacy_report_generator_v0/${f}`, import.meta.url);
 const nodes = JSON.parse(readFileSync(url('vfc-config.json'), 'utf8'));
 const config = nodes.find((n) => n.type === 'function' && n.name.startsWith('1.1 CONFIG'));
 for (const [field, [placeholder, env]] of Object.entries(FILL)) {
@@ -29,4 +29,4 @@ for (const [field, [placeholder, env]] of Object.entries(FILL)) {
   config.func = config.func.replace(from, () => `${field}: '${process.env[env]}'`);
 }
 writeFileSync(url('vfc-config.local.json'), JSON.stringify(nodes, null, 2) + '\n');
-console.log(`written flows/vfc-config.local.json (${Object.keys(FILL).join(', ')} filled from .env)`);
+console.log(`written flows/legacy_report_generator_v0/vfc-config.local.json (${Object.keys(FILL).join(', ')} filled from .env)`);

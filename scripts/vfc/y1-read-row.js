@@ -4,7 +4,7 @@
 
 // First production day written by this tab (the days before stay in the
 // month files of the history load).
-var FIRST_DAY = '2026-11-11';
+var FIRST_DAY = '2026-11-16';
 var SAVED_COLUMN = 'Date et heure de la saisie';
 
 function norm(value) {

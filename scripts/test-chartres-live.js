@@ -23,6 +23,10 @@ const FILLER = args.filler ?? null;
 // lines=<csv>) and writes stage JSON for helper-chartres-write-parquet.py.
 const FACT_OUT = args.factOut ?? null;
 const LINES = args.lines ?? null;
+// dayOut=<dir> days=<YYYY-MM-DD,...>: also writes the day files of the four
+// tables exactly as the live tab would (stage JSON for the parquet writer).
+const DAY_OUT = args.dayOut ?? null;
+const DAY_SET = new Set((args.days ?? '').split(',').filter(Boolean));
 const FROM = args.from ?? '2025-01-01';
 const EVERY = Number(args.every ?? 1);
 const SITE = 'Chartres';
@@ -37,11 +41,11 @@ const source = (file) => liveCode(file, code);
 const runNode = (file, msg, fix = (t) => t) =>
   new Function('node', 'msg', 'flow', 'glob', 'Buffer', fix(source(file)))(nodeApi, msg, flow, glob, Buffer);
 // y1 with the first live day moved back, to test the real days of the run.
-const early = (t) => t.replace("'2026-11-11'", "'2000-01-01'");
+const early = (t) => t.replace("'2026-11-16'", "'2000-01-01'");
 
 // Function-node style (max 80 characters, no trailing comments).
 const NODES = [
-  'y0-settings.js', 'y0-check-ready.js', 'y0-ref-list.js', 'y0-ref-folder.js', 'y0-ref-route.js',
+  'y0-settings.js', 'y0-split-rows.js', 'y0-check-ready.js', 'y0-ref-list.js', 'y0-ref-folder.js', 'y0-ref-route.js',
   'y0-loss-lookup.js', 'y0-ref-done.js', 'y1-read-row.js', 'y2-plan-time.js', 'y3-loss-rows.js',
   'y4-cov-filler.js', 'y5-route-tables.js', 'y5-set-path.js', 'y6-answer.js',
 ];
@@ -253,6 +257,14 @@ for (const [file, list] of byFile) {
     if (FACT_OUT) {
       facts.forEach((m) => writeFact(m));
     }
+    if (DAY_OUT && DAY_SET.has(msg.day.iso)) {
+      TABLES.forEach((table, i) => {
+        const dir = join(DAY_OUT, 'stage', table, `site=${SITE}`);
+        mkdirSync(dir, { recursive: true });
+        const name = `${table}_${sent[i].iso}_${sent[i].machine}_excel.json`;
+        writeFileSync(join(dir, name), JSON.stringify({ schema: LIVE_TABLES[table], rows: sent[i].payload }));
+      });
+    }
     routed += 1;
     const dayNumber = Date.parse(`${d.date}T00:00:00Z`) / 86400000;
     for (const table of TABLES) {
@@ -313,22 +325,37 @@ const notReady = () => {
 };
 const cases = [
   ['day before FIRST_DAY is ignored with 200', first(row0)[1]?.statusCode === 200],
-  ['FIRST_DAY itself goes on', first({ ...row0, JOUR: '11' })[0]?.row?.fileLine === 'CLÉOPATRE'],
+  ['FIRST_DAY itself goes on', first({ ...row0, JOUR: '16' })[0]?.row?.fileLine === 'CLÉOPATRE'],
   ['no FileName gives 400', first({ ...row0, FileName: '' })[1]?.statusCode === 400],
   ['30 February gives 400', first({ ...row0, MOIS: '2', JOUR: '30' })[1]?.statusCode === 400],
   ['a list gives 400', first([1])[1]?.statusCode === 400],
   [
     'a header with trailing space is read',
-    first({ ...row0, JOUR: '12', 'Rupture Formule ': '3' })[0]?.row?.base['Rupture Formule'] === '3',
+    first({ ...row0, JOUR: '17', 'Rupture Formule ': '3' })[0]?.row?.base['Rupture Formule'] === '3',
   ],
 ];
 // A line that is not in Machine Names gives 400.
-const unknown = runNode('y2-plan-time.js', first({ ...row0, FileName: 'OEE NOPE - 2026.xlsm', JOUR: '12' })[0]);
+const unknown = runNode('y2-plan-time.js', first({ ...row0, FileName: 'OEE NOPE - 2026.xlsm', JOUR: '17' })[0]);
 cases.push(['unknown line gives 400', unknown[1]?.statusCode === 400]);
 // Reference not loaded yet: 503, loaded: the request goes on.
 cases.push(['not ready gives 503', notReady()[1]?.statusCode === 503]);
 context.chartres_ready = { at: 1 };
 cases.push(['ready goes on', runNode('y0-check-ready.js', { row: {} })[0] !== null]);
+// A list of rows (the last days of a workbook): one message per row, no
+// http response on them, one answer for the request.
+const split = (payload) => runNode('y0-split-rows.js', { payload, req: {}, res: {} });
+const list3 = split([row0, { ...row0, JOUR: '17' }, { ...row0, JOUR: '18' }]);
+cases.push(['a list gives one message per row', list3[0].length === 3 && list3[0].every((m) => !m.res && !m.req)]);
+cases.push(['a list is answered 200 at once', list3[1].statusCode === 200 && !!list3[1].res]);
+cases.push(['a row of a list goes through the row reader', first(list3[0][1].payload)[0]?.row?.iso === '2026-11-17']);
+cases.push(['one row is passed on unchanged', split(row0)[0].payload === row0 && split(row0)[1] === null]);
+cases.push(['an empty list gives 400', split([])[1]?.statusCode === 400]);
+cases.push(['a list of 11 rows gives 400', split(Array(11).fill(row0))[1]?.statusCode === 400]);
+cases.push(['a list with a number gives 400', split([row0, 1])[1]?.statusCode === 400]);
+const savedReady = context.chartres_ready;
+delete context.chartres_ready;
+cases.push(['a list while not ready gives 503', split([row0])[1]?.statusCode === 503]);
+context.chartres_ready = savedReady;
 // Dry run: nothing goes to the tables, the answer says so.
 context.cfg = { dryRun: true, liveFolder: 'eu_report/report', site: SITE, source: 'excel' };
 const dry = runNode('y5-route-tables.js', {
