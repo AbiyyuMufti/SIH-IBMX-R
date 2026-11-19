@@ -1,0 +1,172 @@
+<title>Nottingham Format List</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* One scroll page: Hull file as the model, Nottingham draft coloured by who fills each column */
+:root {
+  --bg: #f6f7f9;
+  --fg: #1c2330;
+  --muted: #5d6778;
+  --line: #d6dbe4;
+  --card: #ffffff;
+  --auto: #e4e8ee;
+  --auto-fg: #3a4352;
+  --rule: #d3efdc;
+  --rule-fg: #14532d;
+  --site: #fde3c2;
+  --site-fg: #7a3a00;
+  --accent: #1f5fbf;
+  --font: "Inter", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12161d; --fg: #e6e9ef; --muted: #98a2b3; --line: #2c3442;
+    --card: #1a2029; --auto: #2a313d; --auto-fg: #c9d0dc;
+    --rule: #17402a; --rule-fg: #a8e6bf; --site: #4a2f10; --site-fg: #ffd29c;
+    --accent: #6ea4ff; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12161d; --fg: #e6e9ef; --muted: #98a2b3; --line: #2c3442;
+  --card: #1a2029; --auto: #2a313d; --auto-fg: #c9d0dc;
+  --rule: #17402a; --rule-fg: #a8e6bf; --site: #4a2f10; --site-fg: #ffd29c;
+  --accent: #6ea4ff; color-scheme: dark;
+}
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font);
+  padding-block: 32px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  line-height: 1.5; font-size: 15px;
+}
+main { max-width: 1040px; margin: 0 auto; display: flex; flex-direction: column; gap: 36px; }
+h1 { font-size: 28px; margin: 0 0 6px; text-wrap: balance; }
+h2 { font-size: 18px; margin: 0 0 4px; text-wrap: balance; }
+p { margin: 0; color: var(--muted); max-width: 68ch; }
+section { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--card); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { padding: 8px 10px; text-align: left; white-space: nowrap; border-bottom: 1px solid var(--line); }
+tr:last-child td { border-bottom: 0; }
+th { font-size: 11px; letter-spacing: .05em; text-transform: uppercase; }
+td { font-family: var(--mono); }
+.a { background: var(--auto); color: var(--auto-fg); }
+.r { background: var(--rule); color: var(--rule-fg); }
+.s { background: var(--site); color: var(--site-fg); }
+td.e { font-style: italic; opacity: .85; }
+.legend { display: flex; flex-wrap: wrap; gap: 10px; }
+.chip { padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.box { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.box h3 { margin: 0; font-size: 14px; }
+.box ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: 13px; }
+.tag { align-self: flex-start; padding: 3px 9px; border-radius: 5px; font-size: 12px; font-weight: 700; }
+.key { font-family: var(--mono); font-size: 12px; background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; overflow-x: auto; white-space: nowrap; }
+</style>
+
+<main>
+  <header>
+    <h1>Nottingham Format List: who fills what</h1>
+    <p>Hull has a file with one row per product on each line. Nottingham has none, so Brand, Unit Size, Unit Count/Format and Extra Info stay empty on every Nottingham row. This page shows the file, and which columns we can fill from Provideam data and which need Nottingham.</p>
+  </header>
+
+  <section>
+    <h2>1. The Hull file (the model)</h2>
+    <p>One row per line and product name. The product name at Hull carries the format, so the other columns read straight from it.</p>
+    <div class="scroll"><table>
+      <tr><th>Site Name</th><th>MachineName</th><th>Product Name</th><th>Brand</th><th>Unit Size</th><th>Unit Count/Format</th><th>Extra Info</th></tr>
+      <tr><td>Hull</td><td>B1</td><td>Gav 6 x 200 mL</td><td>Gaviscon</td><td>200ml</td><td>6</td><td class="e">(empty)</td></tr>
+      <tr><td>Hull</td><td>B1</td><td>Senokot 6 x 150 ML</td><td>Senokot</td><td>150ml</td><td>6</td><td class="e">(empty)</td></tr>
+      <tr><td>Hull</td><td>B4</td><td>Mucinex 6 x 118mL</td><td>Mucinex</td><td>118ml</td><td>6</td><td class="e">(empty)</td></tr>
+      <tr><td>Hull</td><td>SP1</td><td>Corsa 12 x 24 x 10 ML FEEDER</td><td>Corsa</td><td>10ml</td><td>12x24 Feeder</td><td class="e">(empty)</td></tr>
+    </table></div>
+    <p>The lake file adds two more columns, <b>Unique Machine Name</b> and <b>Product Key</b>, built by the flow.</p>
+  </section>
+
+  <section>
+    <h2>2. The Nottingham draft, coloured</h2>
+    <div class="legend">
+      <span class="chip a">Already known: comes from Provideam plan rows</span>
+      <span class="chip r">Can be generated by a rule from the product name (Nottingham confirms the rule)</span>
+      <span class="chip s">Nottingham must fill</span>
+    </div>
+    <div class="scroll"><table>
+      <tr>
+        <th class="a">Site Name</th><th class="a">MachineName</th><th class="a">Product Name</th>
+        <th class="s">Brand</th><th class="r">Unit Size</th><th class="r">Unit Count/Format</th><th class="r">Extra Info</th>
+      </tr>
+      <tr>
+        <td class="a">Nottingham</td><td class="a">N4</td><td class="a">Gaviscon 4 blister</td>
+        <td class="r">Gaviscon</td><td class="s e">?</td><td class="r">4</td><td class="r e">(empty)</td>
+      </tr>
+      <tr>
+        <td class="a">Nottingham</td><td class="a">N3</td><td class="a">400mg Liquid Caps x2 blisters w/ Booklet</td>
+        <td class="s e">?</td><td class="r">400mg</td><td class="r">2</td><td class="r">Booklet</td>
+      </tr>
+      <tr>
+        <td class="a">Nottingham</td><td class="a">N4</td><td class="a">3003502 12's x2 Blisters</td>
+        <td class="s e">? (code 3003502)</td><td class="r">12's</td><td class="r">2</td><td class="r e">(empty)</td>
+      </tr>
+      <tr>
+        <td class="a">Nottingham</td><td class="a">S12</td><td class="a">24's Standard outer</td>
+        <td class="s e">?</td><td class="r">24's</td><td class="s e">?</td><td class="r">Standard outer</td>
+      </tr>
+      <tr>
+        <td class="a">Nottingham</td><td class="a">N8</td><td class="a">MUCNX,US,DM 600MG 24/20 CT</td>
+        <td class="r">Mucinex</td><td class="r">600mg</td><td class="r">24/20</td><td class="r e">(empty)</td>
+      </tr>
+      <tr>
+        <td class="a">Nottingham</td><td class="a">T2</td><td class="a">Fosrenol 750mg</td>
+        <td class="r">Fosrenol</td><td class="r">750mg</td><td class="s e">?</td><td class="r e">(empty)</td>
+      </tr>
+      <tr>
+        <td class="a">Nottingham</td><td class="a">S14</td><td class="a">3225330</td>
+        <td class="s e">?</td><td class="s e">?</td><td class="s e">?</td><td class="s e">?</td>
+      </tr>
+    </table></div>
+    <p>Example values show what a rule would write. The "?" cells are the ones the name does not tell us. Unique Machine Name and Product Key (not shown) are always built from Machine and Product Name, for example <span style="font-family:var(--mono)">N4-Nottingham Gaviscon 4 blister</span>.</p>
+  </section>
+
+  <section>
+    <h2>3. How many cells each group covers</h2>
+    <p>Rough pattern match on 331 Nottingham plan rows on the packing lines (Maintenance excluded). Not checked by eye.</p>
+    <div class="cols">
+      <div class="box">
+        <span class="tag a">Known now</span>
+        <h3>Site, Machine, Product Name</h3>
+        <ul><li>100% from the Provideam plan rows</li><li>Unique Machine Name and Product Key built by the flow</li></ul>
+      </div>
+      <div class="box">
+        <span class="tag r">Rule</span>
+        <h3>Unit Size, Unit Count/Format, Extra Info</h3>
+        <ul>
+          <li>Unit Size: about 80% have a pack count or strength in the name</li>
+          <li>Unit Count/Format: about 50% have a blister or strip count</li>
+          <li>Extra Info: words like Standard outer, Tray, XL leaflet, Booklet, country code</li>
+        </ul>
+      </div>
+      <div class="box">
+        <span class="tag s">Nottingham</span>
+        <h3>Brand, and every gap</h3>
+        <ul>
+          <li>Brand: only about 33% have a brand word in the name</li>
+          <li>Material codes (0108286, HLTK0, 3003502) need a code to brand list: about 25 codes, not 512 products</li>
+          <li>Names that are only a code (3225330) need the full row</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>4. What we ask Andrew</h2>
+    <div class="box">
+      <ul>
+        <li>Unit Size for tablets: the pack count (12's) or the strength (200mg)? At Hull it is the bottle volume.</li>
+        <li>Unit Count/Format: the number of blisters or strips per pack? What does a name with only a pack size get?</li>
+        <li>Brand for each material code.</li>
+        <li>Extra Info: the pack variant (outer, tray, leaflet, market)?</li>
+      </ul>
+    </div>
+  </section>
+</main>
