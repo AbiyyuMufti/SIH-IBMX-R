@@ -28,11 +28,7 @@ A row is `In EU Report = true` when, for every column that has `keep` rules, its
 |---|---|---|
 | Hull | Plan OPT, Time Utilisation, Daily Losses, Volume CoV | drop the 19 process machines (`Analgesics X Press` is not in the EU Volume CoV list, so not for that table) |
 | Hull | Run Rates | drop `Senokot Press` |
-| Nottingham | Plan OPT | keep areas `Strepsils Packing`, `SD Packing`; drop `S14` |
-| Nottingham | Time Utilisation | keep the 23 packing lines |
-| Nottingham | Daily Losses | drop 8 manufacturing machines and `S14` |
-| Nottingham | Volume CoV | drop 13 manufacturing machines and `S14` |
-| Nottingham | Run Rates | drop `S14` |
+| Nottingham | all five tables | keep the 24 machines `N1, N3, N4, N5, N6, N7, N8, N9 Auto, N10, N11, N12, O5, O6, S04, S05, S06, S08, S10, S11, S12, S13, T2, T7, S14` (select list, no drop rules; Andrew, 2026-11-19, S14 added). Before, Plan OPT kept two areas, Losses, CoV and Run Rates dropped manufacturing machines and S14. Rerun all Nottingham months |
 | Weinheim | all | no rule: all true |
 | Chartres | Plan OPT, Time Utilisation, Daily Losses, Volume CoV | drop `SACHA1`, `SACHA2` (site answer 2026-11-09: not in the EU report). The Chartres scripts read the file through `scripts/lib-report-scope.js`; run12 holds the values |
 
@@ -62,3 +58,8 @@ The lake watcher does not react to this folder (no table is rebuilt automaticall
 ## Other writers of the same tables
 - SIH report daily (Hull SIH lines): `In EU Report = true` (the SIH lines of Config are packing lines).
 - Chartres conversion (`scripts/chartres-convert.js`): `In EU Report = true`.
+
+## EU_OEE_Fact and S14 (2026-11-19)
+The fact's `In EU Report` is not read from this file: it is the line list `report/Dim/Machine_Names_EU.csv` (hand-kept, shared by all sites). S14 was added there (`Nottingham,S14,S14-Nottingham,Solid Dose,SD Packing,Solid Dose`). `In EU Report Source` keeps the table flag. A new site line needs BOTH files.
+
+History re-stamp: the flag columns of every Nottingham file (report tables and fact, 295 files) were rewritten in place by `scripts/helper-nott-scope-patch.py` (no other column changes, checked column by column), backup of the old files in `parquet/s14_backup/`. Flips: S14 false to true (Plan 126, Time Utilisation 99, Losses 1,606, Run Rates 668, CoV 118 rows); Losses 50,421, Run Rates 27,774 and CoV 1,440 rows of other non-list machines true to false. T1 has no rows in any table.

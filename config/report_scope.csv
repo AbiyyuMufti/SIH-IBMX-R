@@ -18,52 +18,29 @@ Hull,Plan_OPT_EU;Time_Utilisation_EU;Daily_Losses_EU;Volume_CoV_EU,drop,MachineN
 Hull,Plan_OPT_EU;Time_Utilisation_EU;Daily_Losses_EU;Volume_CoV_EU;Run_Rates_EU,drop,MachineName,Senokot Press,process machine
 Hull,Plan_OPT_EU;Time_Utilisation_EU;Daily_Losses_EU;Volume_CoV_EU,drop,MachineName,Symex suite,process machine
 Hull,Plan_OPT_EU;Time_Utilisation_EU;Daily_Losses_EU;Volume_CoV_EU,drop,MachineName,Vacumix,process machine
-Nottingham,Plan_OPT_EU,keep,AreaName,Strepsils Packing,packing area
-Nottingham,Plan_OPT_EU,keep,AreaName,SD Packing,packing area
-Nottingham,Plan_OPT_EU;Daily_Losses_EU;Volume_CoV_EU;Run_Rates_EU,drop,MachineName,S14,VSU line (site pages only)
-Nottingham,Time_Utilisation_EU,keep,MachineName,N1,packing line
-Nottingham,Time_Utilisation_EU,keep,MachineName,N3,packing line
-Nottingham,Time_Utilisation_EU,keep,MachineName,N4,packing line
-Nottingham,Time_Utilisation_EU,keep,MachineName,N5,packing line
-Nottingham,Time_Utilisation_EU,keep,MachineName,N6,packing line
-Nottingham,Time_Utilisation_EU,keep,MachineName,N7,packing line
-Nottingham,Time_Utilisation_EU,keep,MachineName,N8,packing line
-Nottingham,Time_Utilisation_EU,keep,MachineName,N9 Auto,packing line
-Nottingham,Time_Utilisation_EU,keep,MachineName,N10,packing line
-Nottingham,Time_Utilisation_EU,keep,MachineName,N11,packing line
-Nottingham,Time_Utilisation_EU,keep,MachineName,N12,packing line
-Nottingham,Time_Utilisation_EU,keep,MachineName,O5,packing line
-Nottingham,Time_Utilisation_EU,keep,MachineName,O6,packing line
-Nottingham,Time_Utilisation_EU,keep,MachineName,S04,packing line
-Nottingham,Time_Utilisation_EU,keep,MachineName,S05,packing line
-Nottingham,Time_Utilisation_EU,keep,MachineName,S06,packing line
-Nottingham,Time_Utilisation_EU,keep,MachineName,S08,packing line
-Nottingham,Time_Utilisation_EU,keep,MachineName,S10,packing line
-Nottingham,Time_Utilisation_EU,keep,MachineName,S11,packing line
-Nottingham,Time_Utilisation_EU,keep,MachineName,S12,packing line
-Nottingham,Time_Utilisation_EU,keep,MachineName,S13,packing line
-Nottingham,Time_Utilisation_EU,keep,MachineName,T2,packing line
-Nottingham,Time_Utilisation_EU,keep,MachineName,T7,packing line
-Nottingham,Daily_Losses_EU,drop,MachineName,Bosch,manufacturing machine
-Nottingham,Daily_Losses_EU,drop,MachineName,Fette 23,manufacturing machine
-Nottingham,Daily_Losses_EU,drop,MachineName,Fette12,manufacturing machine
-Nottingham,Daily_Losses_EU,drop,MachineName,Fette2,manufacturing machine
-Nottingham,Daily_Losses_EU,drop,MachineName,Fette20,manufacturing machine
-Nottingham,Daily_Losses_EU,drop,MachineName,Fette4,manufacturing machine
-Nottingham,Daily_Losses_EU,drop,MachineName,Fette5,manufacturing machine
-Nottingham,Daily_Losses_EU,drop,MachineName,Gran0,manufacturing machine
-Nottingham,Volume_CoV_EU,drop,MachineName,Basing1,manufacturing machine
-Nottingham,Volume_CoV_EU,drop,MachineName,Basing2,manufacturing machine
-Nottingham,Volume_CoV_EU,drop,MachineName,Basing7,manufacturing machine
-Nottingham,Volume_CoV_EU,drop,MachineName,Bosch,manufacturing machine
-Nottingham,Volume_CoV_EU,drop,MachineName,Fette21,manufacturing machine
-Nottingham,Volume_CoV_EU,drop,MachineName,Film Coating 10,manufacturing machine
-Nottingham,Volume_CoV_EU,drop,MachineName,Gran2A,manufacturing machine
-Nottingham,Volume_CoV_EU,drop,MachineName,Gran2B,manufacturing machine
-Nottingham,Volume_CoV_EU,drop,MachineName,Gran3,manufacturing machine
-Nottingham,Volume_CoV_EU,drop,MachineName,Sugar Coating 3,manufacturing machine
-Nottingham,Volume_CoV_EU,drop,MachineName,Sugar Coating 7,manufacturing machine
-Nottingham,Volume_CoV_EU,drop,MachineName,Vision,manufacturing machine
-Nottingham,Volume_CoV_EU,drop,MachineName,Vision 2,manufacturing machine
+Nottingham,Plan_OPT_EU;Time_Utilisation_EU;Daily_Losses_EU;Run_Rates_EU;Volume_CoV_EU,keep,MachineName,N1,EU packing line
+Nottingham,Plan_OPT_EU;Time_Utilisation_EU;Daily_Losses_EU;Run_Rates_EU;Volume_CoV_EU,keep,MachineName,N3,EU packing line
+Nottingham,Plan_OPT_EU;Time_Utilisation_EU;Daily_Losses_EU;Run_Rates_EU;Volume_CoV_EU,keep,MachineName,N4,EU packing line
+Nottingham,Plan_OPT_EU;Time_Utilisation_EU;Daily_Losses_EU;Run_Rates_EU;Volume_CoV_EU,keep,MachineName,N5,EU packing line
+Nottingham,Plan_OPT_EU;Time_Utilisation_EU;Daily_Losses_EU;Run_Rates_EU;Volume_CoV_EU,keep,MachineName,N6,EU packing line
+Nottingham,Plan_OPT_EU;Time_Utilisation_EU;Daily_Losses_EU;Run_Rates_EU;Volume_CoV_EU,keep,MachineName,N7,EU packing line
+Nottingham,Plan_OPT_EU;Time_Utilisation_EU;Daily_Losses_EU;Run_Rates_EU;Volume_CoV_EU,keep,MachineName,N8,EU packing line
+Nottingham,Plan_OPT_EU;Time_Utilisation_EU;Daily_Losses_EU;Run_Rates_EU;Volume_CoV_EU,keep,MachineName,N9 Auto,EU packing line
+Nottingham,Plan_OPT_EU;Time_Utilisation_EU;Daily_Losses_EU;Run_Rates_EU;Volume_CoV_EU,keep,MachineName,N10,EU packing line
+Nottingham,Plan_OPT_EU;Time_Utilisation_EU;Daily_Losses_EU;Run_Rates_EU;Volume_CoV_EU,keep,MachineName,N11,EU packing line
+Nottingham,Plan_OPT_EU;Time_Utilisation_EU;Daily_Losses_EU;Run_Rates_EU;Volume_CoV_EU,keep,MachineName,N12,EU packing line
+Nottingham,Plan_OPT_EU;Time_Utilisation_EU;Daily_Losses_EU;Run_Rates_EU;Volume_CoV_EU,keep,MachineName,O5,EU packing line
+Nottingham,Plan_OPT_EU;Time_Utilisation_EU;Daily_Losses_EU;Run_Rates_EU;Volume_CoV_EU,keep,MachineName,O6,EU packing line
+Nottingham,Plan_OPT_EU;Time_Utilisation_EU;Daily_Losses_EU;Run_Rates_EU;Volume_CoV_EU,keep,MachineName,S04,EU packing line
+Nottingham,Plan_OPT_EU;Time_Utilisation_EU;Daily_Losses_EU;Run_Rates_EU;Volume_CoV_EU,keep,MachineName,S05,EU packing line
+Nottingham,Plan_OPT_EU;Time_Utilisation_EU;Daily_Losses_EU;Run_Rates_EU;Volume_CoV_EU,keep,MachineName,S06,EU packing line
+Nottingham,Plan_OPT_EU;Time_Utilisation_EU;Daily_Losses_EU;Run_Rates_EU;Volume_CoV_EU,keep,MachineName,S08,EU packing line
+Nottingham,Plan_OPT_EU;Time_Utilisation_EU;Daily_Losses_EU;Run_Rates_EU;Volume_CoV_EU,keep,MachineName,S10,EU packing line
+Nottingham,Plan_OPT_EU;Time_Utilisation_EU;Daily_Losses_EU;Run_Rates_EU;Volume_CoV_EU,keep,MachineName,S11,EU packing line
+Nottingham,Plan_OPT_EU;Time_Utilisation_EU;Daily_Losses_EU;Run_Rates_EU;Volume_CoV_EU,keep,MachineName,S12,EU packing line
+Nottingham,Plan_OPT_EU;Time_Utilisation_EU;Daily_Losses_EU;Run_Rates_EU;Volume_CoV_EU,keep,MachineName,S13,EU packing line
+Nottingham,Plan_OPT_EU;Time_Utilisation_EU;Daily_Losses_EU;Run_Rates_EU;Volume_CoV_EU,keep,MachineName,T2,EU packing line
+Nottingham,Plan_OPT_EU;Time_Utilisation_EU;Daily_Losses_EU;Run_Rates_EU;Volume_CoV_EU,keep,MachineName,T7,EU packing line
+Nottingham,Plan_OPT_EU;Time_Utilisation_EU;Daily_Losses_EU;Run_Rates_EU;Volume_CoV_EU,keep,MachineName,S14,VSU line added by site 2026-11-19
 Chartres,Plan_OPT_EU;Time_Utilisation_EU;Daily_Losses_EU;Volume_CoV_EU,drop,MachineName,SACHA1,not in the EU report (site answer 2026-11-09)
 Chartres,Plan_OPT_EU;Time_Utilisation_EU;Daily_Losses_EU;Volume_CoV_EU,drop,MachineName,SACHA2,not in the EU report (site answer 2026-11-09)

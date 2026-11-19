@@ -254,13 +254,13 @@ stats = await run({ tables: STEP2, sites: ['Nottingham'], from: '2026-09', to: '
 plan = rowsOf(stats, PLAN);
 check(JSON.stringify(plan.map((r) => r.machine_name).sort()) === JSON.stringify(['N11', 'S06', 'S07', 'S14', 'X99']),
   'Nottingham plan: only N11 Auto is left out: ' + plan.map((r) => r.machine_name));
-check(JSON.stringify(plan.filter((r) => r.in_eu).map((r) => r.machine_name).sort()) === JSON.stringify(['N11', 'S06', 'S07']),
-  'Nottingham plan scope: the two packing areas (with or without the leading space), not S14: ' +
+check(JSON.stringify(plan.filter((r) => r.in_eu).map((r) => r.machine_name).sort()) === JSON.stringify(['N11', 'S06', 'S14']),
+  'Nottingham plan scope: only the machines of the list (S14 in, S07 not): ' +
   plan.filter((r) => r.in_eu).map((r) => r.machine_name));
 check(plan.find((r) => r.machine_name === 'S06').area_name === ' Strepsils Packing' &&
   plan.find((r) => r.machine_name === 'S06').oee_target === 40, 'Nottingham plan: the area keeps its leading space, target found');
 const nu = rowsOf(stats, UTIL).filter((r) => r.in_eu).map((r) => r.machine_name).sort();
-check(JSON.stringify(nu) === JSON.stringify(['N11', 'S06']), 'Nottingham time utilisation scope: only the machines of its list: ' + nu);
+check(JSON.stringify(nu) === JSON.stringify(['N11', 'S06', 'S14']), 'Nottingham time utilisation scope: only the machines of its list: ' + nu);
 check(rowsOf(stats, UTIL).length === 5, 'Nottingham time utilisation: every machine but N11 Auto has rows');
 
 // 11. no glidepaths file for a site: nothing for that site, others unaffected
