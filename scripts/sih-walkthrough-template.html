@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SIH Walkthrough</title>
+<style>
+:root {
+  --bg: #f7f7f5; --panel: #ffffff; --ink: #1d1f23; --muted: #62666d; --line: #e2e2de;
+  --accent: #1f5fbf; --code: #f1f1ee;
+  --ok: #1e7d4f; --ok-bg: #e3f3ea; --warn: #8a5a00; --warn-bg: #fbf0d9;
+  --bad: #a3312b; --bad-bg: #f9e2e0; --info: #3d4b8f; --info-bg: #e6e9f7; --none-bg: #eeeeea;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15171a; --panel: #1d2024; --ink: #e7e7e4; --muted: #9a9ea6; --line: #30343a;
+    --accent: #7aa7ff; --code: #24282d;
+    --ok: #7fd3a5; --ok-bg: #1d3328; --warn: #f0c46a; --warn-bg: #3a2f17;
+    --bad: #f09a92; --bad-bg: #3d2220; --info: #a9b5f5; --info-bg: #262c4a; --none-bg: #2a2d31;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15171a; --panel: #1d2024; --ink: #e7e7e4; --muted: #9a9ea6; --line: #30343a;
+  --accent: #7aa7ff; --code: #24282d;
+  --ok: #7fd3a5; --ok-bg: #1d3328; --warn: #f0c46a; --warn-bg: #3a2f17;
+  --bad: #f09a92; --bad-bg: #3d2220; --info: #a9b5f5; --info-bg: #262c4a; --none-bg: #2a2d31;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+header { padding: 28px 16px 8px; max-width: 1180px; margin: 0 auto; }
+h1 { font-size: 26px; margin: 0 0 4px; }
+h2 { font-size: 20px; margin: 0 0 6px; }
+h3 { font-size: 16px; margin: 18px 0 6px; }
+p { margin: 6px 0; }
+.muted { color: var(--muted); }
+nav { position: sticky; top: 0; z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); }
+nav div { max-width: 1180px; margin: 0 auto; padding: 8px 16px; display: flex; gap: 14px; overflow-x: auto; }
+nav a { color: var(--accent); text-decoration: none; white-space: nowrap; font-size: 14px; }
+main { max-width: 1180px; margin: 0 auto; padding: 8px 16px 60px; }
+section { scroll-margin-top: 48px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px; margin: 18px 0; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin: 14px 0; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+.card b { display: block; font-size: 22px; }
+.card span { color: var(--muted); font-size: 13px; }
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; position: sticky; top: 0; background: var(--panel); }
+td.num { text-align: right; font-variant-numeric: tabular-nums; }
+code, pre { font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; }
+pre { background: var(--code); padding: 10px; border-radius: 6px; overflow: auto; max-height: 420px; margin: 6px 0; }
+.tag { display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 12px; white-space: nowrap; }
+.ok { color: var(--ok); background: var(--ok-bg); }
+.warn { color: var(--warn); background: var(--warn-bg); }
+.bad { color: var(--bad); background: var(--bad-bg); }
+.info { color: var(--info); background: var(--info-bg); }
+.none { color: var(--muted); background: var(--none-bg); }
+details { border: 1px solid var(--line); border-radius: 8px; margin: 8px 0; padding: 0 12px; }
+details[open] { padding-bottom: 10px; }
+summary { cursor: pointer; padding: 9px 0; font-weight: 600; }
+.step { border-left: 3px solid var(--accent); padding-left: 12px; margin: 22px 0; }
+.step.extra { border-left-color: var(--warn); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } }
+.controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 8px 0; font-size: 14px; }
+select, input { font: inherit; padding: 3px 6px; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; }
+ul.gaps li { margin: 6px 0; }
+.legend span { margin-right: 8px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>SIH walkthrough</h1>
+  <p class="muted" id="sub"></p>
+</header>
+<nav><div>
+  <a href="#overview">Overview</a>
+  <a href="#machines">1 · Machines in SIH</a>
+  <a href="#calls">2 · The calls</a>
+  <a href="#compare">3 · SIH vs live EU_OEE_Fact</a>
+  <a href="#columns">4 · Column map</a>
+  <a href="#push">5 · Manual input and variables</a>
+  <a href="#gaps">6 · What is lacking</a>
+</div></nav>
+<main>
+<section id="overview"></section>
+<section id="machines"></section>
+<section id="calls"></section>
+<section id="compare"></section>
+<section id="columns"></section>
+<section id="push"></section>
+<section id="gaps"></section>
+</main>
+<script>
+const D = /*__DATA__*/null;
+const $ = (id) => document.getElementById(id);
+const esc = (v) => String(v ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const fmt = (v) => {
+  if (v === null || v === undefined || v === '') return '<span class="muted">–</span>';
+  if (typeof v === 'number') return Number.isInteger(v) ? v.toLocaleString('en-GB') : v.toLocaleString('en-GB', { maximumFractionDigits: 3 });
+  if (typeof v === 'boolean') return v ? 'true' : 'false';
+  return esc(v);
+};
+const pct = (v) => (v === null || v === undefined ? '–' : Math.round(v * 100) + '%');
+const OUT = { 'same': 'ok', 'close': 'ok', 'differs': 'bad', 'only live': 'warn', 'only SIH': 'info', 'both empty': 'none' };
+const KIND = { api: ['API field', 'ok'], derived: ['derived', 'info'], ref: ['reference file', 'none'], flow: ['set by flow', 'none'], none: ['not in SIH', 'bad'] };
+const table = (head, rows, numCols = []) => '<div class="scroll"><table><thead><tr>' +
+  head.map((h) => '<th>' + h + '</th>').join('') + '</tr></thead><tbody>' +
+  rows.map((r) => '<tr>' + r.map((c, i) => '<td' + (numCols.includes(i) ? ' class="num"' : '') + '>' + c + '</td>').join('') + '</tr>').join('') +
+  '</tbody></table></div>';
+
+$('sub').textContent = 'Production day ' + D.day + ' (' + D.window.from.slice(11, 16) + ' to ' +
+  D.window.to.slice(11, 16) + ' UTC, Hull) · platform ' + D.platform + ' · built ' +
+  D.builtAt.slice(0, 16).replace('T', ' ') + ' UTC · ' + D.callCount + ' calls · read only';
+
+// ---------- overview ----------
+{
+  const withData = D.machines.filter((m) => m.good > 0 || m.total > 0).length;
+  const kinds = {};
+  D.columnMap.forEach((c) => { kinds[c.kind] = (kinds[c.kind] || 0) + 1; });
+  $('overview').innerHTML = `
+  <h2>What this page is</h2>
+  <p>The SIH API calls behind one production day, the data they return, and how close that data gets to the
+  live <b>EU_OEE_Fact</b> table Tableau reads. Machines in detail: <b>${D.focus.join(' and ')}</b>
+  (report names ${D.machinesShown.join(', ')}). The live rows of these two machines come from Provideam today.</p>
+  <p>The SIH rows on this page were made by running the existing <b>Hull SIH report daily</b> tab locally on the real API
+  (its lake writes go to memory only), then mapping them to the fact columns with the rules of the
+  <b>EU OEE Fact write</b> tab. Nothing was written anywhere.</p>
+  <div class="cards">
+    <div class="card"><b>${D.machines.length}</b><span>OEE assets in SIH</span></div>
+    <div class="card"><b>${withData}</b><span>with parts on ${D.day}</span></div>
+    <div class="card"><b>${D.steps.filter((s) => s.part === 'tab').length}</b><span>call types the tab uses</span></div>
+    <div class="card"><b>${D.columnMap.length}</b><span>EU_OEE_Fact columns</span></div>
+    <div class="card"><b>${kinds.api || 0} / ${kinds.derived || 0}</b><span>from an API field / derived</span></div>
+    <div class="card"><b>${kinds.ref || 0} / ${kinds.flow || 0}</b><span>reference file / set by flow</span></div>
+    <div class="card"><b>${kinds.none || 0}</b><span>not in SIH at all</span></div>
+  </div>
+  <h3>Words used here</h3>
+  <p><b>Record type</b>: Plan, Loss, Time Utilisation, Run Rate (the kinds of row in EU_OEE_Fact).
+  <b>Manual input</b>: an operator entry per production period on a manual asset (GT4).
+  <b>Variable</b>: a time-series value on an aspect of an automatic asset (B2 Line), from which SIH computes KPIs and stops.
+  <b>Live</b>: the EU_OEE_Fact day files in the lake (${D.factFiles.length} files for Hull on ${D.day}).</p>
+  <details><summary>Log of the tab run</summary><pre>${esc(D.tabLog.join('\n'))}</pre></details>`;
+}
+
+// ---------- machines ----------
+function renderMachines() {
+  const site = $('mSite').value;
+  const only = $('mData').checked;
+  const rows = D.machines
+    .filter((m) => (site === '' || m.site === site) && (!only || m.good > 0 || m.total > 0))
+    .sort((a, b) => (a.site + a.area + a.name).localeCompare(b.site + b.area + b.name))
+    .map((m) => {
+      let state = '<span class="tag none">no parts</span>';
+      if (m.error) state = '<span class="tag bad">' + esc(m.error) + '</span>';
+      else if (m.good > 0 || m.total > 0) state = '<span class="tag ok">data</span>';
+      else if (m.missing) state = '<span class="tag warn">' + esc(m.missing) + '</span>';
+      return [esc(m.site), esc(m.area), '<b>' + esc(m.name) + '</b>',
+        m.manual ? 'manual' : 'automatic', m.configured ? 'yes' : '<span class="tag warn">no</span>',
+        m.configLine ? '<span class="tag info">' + esc(m.configLine) + '</span>' : '',
+        m.inEu ? '<span class="tag ok">yes</span>' : '',
+        fmt(m.good), fmt(m.total), m.oee === null ? fmt(null) : pct(m.oee), state];
+    });
+  $('mTable').innerHTML = table(['Site', 'Area / line', 'Asset', 'Type', 'Configured', 'Config line', 'On EU line list', 'Good parts', 'Total parts', 'OEE', 'On ' + D.day], rows, [7, 8, 9]) +
+    '<p class="muted">' + rows.length + ' shown</p>';
+}
+{
+  const sites = [...new Set(D.machines.map((m) => m.site))].sort();
+  const per = sites.map((s) => {
+    const all = D.machines.filter((m) => m.site === s);
+    const data = all.filter((m) => m.good > 0 || m.total > 0).length;
+    return [esc(s), all.length, data, all.filter((m) => m.manual).length, all.filter((m) => m.inEu).length, all.filter((m) => m.error).length];
+  });
+  $('machines').innerHTML = `
+  <h2>1 · Machines in SIH</h2>
+  <p>Every OEE asset (<code>GET /assets</code>), where it sits (<code>GET assetmanagement /assets/{id}</code>) and its KPI totals
+  for the day (<code>POST evaluateKPIs</code>, one per asset, same window for all sites: ${D.window.from.slice(11, 16)} to ${D.window.to.slice(11, 16)} UTC).
+  Only the Config lines (tag) are built by the SIH tab today.</p>
+  ${table(['Site', 'Assets', 'With parts on ' + D.day, 'Manual', 'Name on EU line list', 'Setup not finished'], per, [1, 2, 3, 4, 5])}
+  <p class="muted">"On EU line list" = asset name (or its Config report name) + site is a Unique Machine Name in Dim/Machine_Names_EU.csv.
+  A SIH name that differs from the report name shows as not listed, even when the line is in the report.</p>
+  <div class="controls"><label>Site <select id="mSite"><option value="">all</option>${sites.map((s) => '<option>' + esc(s) + '</option>').join('')}</select></label>
+  <label><input type="checkbox" id="mData"> only assets with parts</label></div>
+  <div id="mTable"></div>`;
+  $('mSite').onchange = renderMachines;
+  $('mData').onchange = renderMachines;
+  renderMachines();
+}
+
+// ---------- calls ----------
+{
+  const callHtml = (c) => `<details><summary>${esc(c.label || 'call')} · <code>${esc(c.method)}</code> · HTTP ${c.status} · ${c.ms} ms · ${(c.size / 1024).toFixed(1)} KB</summary>
+    <p><code>${esc(c.method)} ${esc(c.url)}</code></p>
+    ${c.body ? '<p class="muted">Request body</p><pre>' + esc(c.body) + '</pre>' : ''}
+    <p class="muted">Response (arrays cut to the first items)</p><pre>${esc(c.response)}</pre></details>`;
+  const stepHtml = (s, i) => `<div class="step ${s.part === 'extra' ? 'extra' : ''}">
+    <h3>${i + 1}. ${esc(s.title)} <span class="tag ${s.part === 'tab' ? 'info' : 'warn'}">${s.part === 'tab' ? 'used by the tab' : 'not used yet'}</span>
+    <span class="muted" style="font-weight:400;font-size:13px">${s.count} call(s) this run</span></h3>
+    <p>${esc(s.why)}</p>
+    <p><b>Kept:</b> ${esc(s.keep)}${s.feeds.length ? ' <b>Feeds:</b> ' + s.feeds.map((f) => '<code>' + esc(f) + '</code>').join(', ') : ''}</p>
+    ${s.calls.map(callHtml).join('')}</div>`;
+  const tabSteps = D.steps.filter((s) => s.part === 'tab');
+  const extraSteps = D.steps.filter((s) => s.part !== 'tab');
+  $('calls').innerHTML = `<h2>2 · The calls, in the order the tab makes them</h2>
+    <p>Per production day and per Config line, the SIH report daily tab makes these calls. Open a call to see the exact request and
+    the start of the real response (ids replaced by the asset name). Blue = what the tab does today; amber = extra calls made for this page,
+    to see what else SIH holds.</p>
+    ${tabSteps.map(stepHtml).join('')}
+    <h3 style="margin-top:28px">Extra calls (not in the tab)</h3>
+    ${extraSteps.map((s, i) => stepHtml(s, tabSteps.length + i)).join('')}
+    <p class="muted">Fields the tab builds that EU_OEE_Fact has no column for (dropped by the fact mapping):
+    ${Object.entries(D.dropped).map(([k, n]) => '<code>' + esc(k) + '</code> (' + n + ' rows)').join(', ') || 'none'}.</p>`;
+}
+
+// ---------- compare ----------
+{
+  const tot = D.totals.map((t) => `<h3>${esc(t.machine)}</h3><div class="grid2">
+    <div>${table(['Record type', 'Live rows', 'SIH rows'], t.rows.map(([k, a, b]) => [k, fmt(a), fmt(b)]), [1, 2])}</div>
+    <div>${table(['Measure', 'Live', 'SIH', ''], t.measures.map(([k, a, b]) => {
+      const d = a === 0 && b === 0 ? 'none' : Math.abs(a - b) <= 0.01 * Math.max(Math.abs(a), Math.abs(b)) ? 'ok' : 'bad';
+      return [k, fmt(a), fmt(b), '<span class="tag ' + d + '">' + (d === 'ok' ? 'same' : d === 'none' ? '–' : 'differs') + '</span>'];
+    }), [1, 2])}</div></div>
+    <div class="grid2"><div><p class="muted">Top loss names, live (rows, minutes)</p>
+    ${table(['Group › Sub group › Name', 'Rows', 'Min'], t.lossNames[0].map(([k, [n, m]]) => [esc(k), n, fmt(Math.round(m))]), [1, 2])}</div>
+    <div><p class="muted">Top loss names, SIH (rows, minutes)</p>
+    ${table(['Group › Sub group › Name', 'Rows', 'Min'], t.lossNames[1].map(([k, [n, m]]) => [esc(k), n, fmt(Math.round(m))]), [1, 2])}</div></div>`).join('');
+  const ex = Object.entries(D.examples).map(([type, list]) => `<h3>${esc(type)}: example rows side by side</h3>
+    ${list.length ? list.map((e) => `<details><summary>${esc(e.key)}</summary>
+      ${table(['Column', 'Live', 'SIH', ''], e.cells.map(([c, a, b, o]) => ['<code>' + esc(c) + '</code>', fmt(a), fmt(b), '<span class="tag ' + OUT[o] + '">' + o + '</span>']))}
+    </details>`).join('') : '<p class="muted">No matched rows' + (type === 'Run Rate' ? ': the SIH tab builds no Run Rate rows.' : '.') + '</p>'}`).join('');
+  $('compare').innerHTML = `<h2>3 · SIH vs live EU_OEE_Fact</h2>
+    <p>Same machines, same production day. How rows are paired: Plan = the n-th shift of the machine (time order),
+    Time Utilisation = the machine, Loss = machine + start minute (HH:MM; on a manual asset also the loss name, because every reason carries the shift start).
+    Numbers within 1% and clock times within 60 s count as the same (tag "close").</p>
+    ${tot}${ex}`;
+}
+
+// ---------- column map ----------
+function renderColumns() {
+  const kind = $('cKind').value;
+  const type = $('cType').value;
+  const rows = D.columnMap.filter((c) => (!kind || c.kind === kind) && (!type || c.usedIn.includes(type))).map((c) => {
+    const k = KIND[c.kind] || ['?', 'none'];
+    const obs = c.usedIn.map((t) => {
+      const s = c.stats[t];
+      const parts = Object.entries(s.outcome).map(([o, n]) => '<span class="tag ' + OUT[o] + '">' + o + ' ' + n + '</span>').join(' ');
+      return '<div><b>' + esc(t) + '</b> live ' + pct(s.live) + ' · SIH ' + pct(s.sih) + (s.n ? ' · ' + parts : '') + '</div>';
+    }).join('');
+    return ['<code>' + esc(c.col) + '</code>', '<span class="tag ' + k[1] + '">' + k[0] + '</span>', esc(c.from), obs || '<span class="muted">empty in live too</span>', esc(c.manual), esc(c.variable)];
+  });
+  $('cTable').innerHTML = table(['Column', 'Kind', 'Where it comes from in SIH', 'Observed (filled share, outcome on paired rows)', 'Manual input could fill it?', 'Variable could fill it?'], rows) +
+    '<p class="muted">' + rows.length + ' of ' + D.columnMap.length + ' columns</p>';
+}
+{
+  $('columns').innerHTML = `<h2>4 · Column map: all ${D.columnMap.length} EU_OEE_Fact columns</h2>
+    <p>Kind = where SIH can give the value. Observed = this day, the two machines: how often the column is filled in live and in SIH,
+    and on paired rows whether the values agree.</p>
+    <p class="legend">${Object.entries(OUT).map(([o, c]) => '<span class="tag ' + c + '">' + o + '</span>').join('')}</p>
+    <div class="controls"><label>Kind <select id="cKind"><option value="">all</option>${Object.entries(KIND).map(([k, [l]]) => '<option value="' + k + '">' + l + '</option>').join('')}</select></label>
+    <label>Record type <select id="cType"><option value="">all</option><option>Plan</option><option>Time Utilisation</option><option>Loss</option><option>Run Rate</option></select></label></div>
+    <div id="cTable"></div>`;
+  $('cKind').onchange = renderColumns;
+  $('cType').onchange = renderColumns;
+  renderColumns();
+}
+
+// ---------- push ----------
+{
+  const p = D.push;
+  const src = Object.entries(p.sources).map(([a, s]) => [esc(a), ...['productSource', 'orderSource', 'designSpeedSource', 'stateTableSource', 'good parts', 'rejected parts', 'total parts'].map((k) => esc(s[k] || '–'))]);
+  $('push').innerHTML = `<h2>5 · Manual input and variables: what a push would need</h2>
+    <p>Read from GET responses only; no write call was made. The two machines use the two routes:</p>
+    ${table(['Asset', 'Product', 'Order', 'Design speed', 'States', 'Good', 'Rejected', 'Total'], src)}
+    <p class="muted">CONNECTED = a variable (machine signal), MANUAL = manual input, VIA_PRODUCT = product master, STATUS_RULE = state table on a signal, CALCULATED = from other counts.</p>
+    <h3>Manual input (GT4): one entry per production period</h3>
+    <p>${p.entries.length} entries and ${p.virtual} periods in the window. The entries:</p>
+    ${table(['Start', 'End', 'Product', 'Order', 'Good', 'Rejected', 'Reasons'], p.entries.map((e) => [esc(e.start), esc(e.end), esc(e.product), esc(e.order), fmt(e.good), fmt(e.rejected), fmt(e.statuses)]), [4, 5, 6])}
+    <p>Fields of one entry (what a write would have to provide; ids, the product id and reason ids come from SIH master data):</p>
+    ${table(['Field', 'Type', 'Example'], p.fields.map(([k, t, v]) => ['<code>' + esc(k) + '</code>', esc(t), '<code>' + esc(v) + '</code>']))}
+    <p>Hourly entries (OEE_Hourly_Entry) in the window: ${p.hourlyCount}. Fields: ${p.hourlyFields.map((f) => '<code>' + esc(f) + '</code>').join(' ')}.
+    The hourly entry keeps the shift name as entered (Red, Green) and the comment text: two things the KPI and stop calls do not give.</p>
+    <p>Reason trees: ${Object.entries(p.reasonCounts).map(([a, n]) => esc(a) + ' ' + n + ' reasons').join(', ')}. GT4 top level: ${p.gt4Roots.map(esc).join(', ')}.
+    A Provideam loss can only be pushed if its name exists in the asset's reason tree (the reasonId is required).</p>
+    <h3>Variable (B2 Line): counters and a state signal</h3>
+    <p>Good parts, product and order come from aspect variables (CONNECTED); stops from a state table on a status variable (STATUS_RULE).
+    Pushing Provideam data this way means writing time series for those variables. The stop reason would then be what the state table gives;
+    the operator reason (Provideam loss name) has no variable. That is why the B2 stops show <code>Unplanned Downtime</code> / Not Logged.</p>
+    <p class="muted">Write endpoints are not tested in this project (docs/endpoints.md). Manual input writes need the eTag in If-Match to update.</p>`;
+}
+
+// ---------- gaps ----------
+{
+  const bad = [];
+  D.columnMap.forEach((c) => {
+    if (c.kind === 'none') bad.push([c.col, 'Not in SIH. ' + c.from]);
+    c.usedIn.forEach((t) => {
+      const s = c.stats[t];
+      const diff = (s.outcome['differs'] || 0) + (s.outcome['only live'] || 0);
+      if (c.kind !== 'none' && c.kind !== 'flow' && s.n && diff) {
+        bad.push([c.col, t + ': ' + diff + ' of ' + s.n + ' paired rows differ or are empty in SIH. ' + c.from]);
+      }
+    });
+  });
+  const seen = new Set();
+  const GROUP = {
+    ok: ['Already possible: SIH matches live', 'ok'],
+    flow: ['Possible, needs a change in the flow', 'info'],
+    setup: ['Lacking: needs data or setup in SIH', 'bad'],
+    coverage: ['Coverage', 'none']
+  };
+  const findings = Object.entries(GROUP).map(([g, [title, cls]]) => {
+    const list = D.findings.filter((f) => f[0] === g);
+    return `<h3><span class="tag ${cls}">${list.length}</span> ${esc(title)}</h3><ul class="gaps">` +
+      list.map((f) => '<li><b>' + esc(f[1]) + '.</b> ' + esc(f[2]) + '</li>').join('') + '</ul>';
+  }).join('');
+  const stale = !D.findingsDay ? '<p class="tag warn">No findings.json in this folder yet: only the generated list below.</p>' : D.findingsDay !== D.day ? '<p class="tag warn">These findings were written for ' + esc(D.findingsDay) + ', this page shows ' + esc(D.day) + ': check them against the list below.</p>' : '';
+  $('gaps').innerHTML = `<h2>6 · What is possible and what is lacking</h2>
+    <p class="muted">Findings from the ${esc(D.findingsDay)} run, read from sections 1 to 5.</p>${stale}
+    ${findings}
+    <details><summary>Generated list: every column with differences or empty in SIH (${bad.length})</summary>
+    <ul class="gaps">${bad.filter(([c, t]) => !seen.has(c + t) && seen.add(c + t)).map(([c, t]) => '<li><code>' + esc(c) + '</code>: ' + esc(t) + '</li>').join('')}</ul></details>`;
+}
+</script>
+</body>
+</html>
