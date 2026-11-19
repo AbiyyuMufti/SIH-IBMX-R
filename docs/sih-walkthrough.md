@@ -2,7 +2,7 @@
 
 | At a glance | |
 |---|---|
-| **What** | A local web page that shows, for one production day, every SIH API call the SIH report daily tab makes (request, real response), the OEE assets in SIH with their data, and how the SIH rows compare with the live `EU_OEE_Fact` rows, column by column |
+| **What** | One scrolling local page for one production day: the call chain, every OEE asset set up in SIH with its data of the day (good parts, OEE, stops), each call with a small table of what it returned (B2 Line, GT4), SIH result against live `EU_OEE_Fact`, the 65 columns as coloured chips, and the findings in three columns. No tabs, no collapsed parts (user, 2026-11-19: less text, more picture) |
 | **Why** | Learn the calls and the data before the SIH flow is finished, and list what SIH can and cannot give for `EU_OEE_Fact` (no flow change) |
 | **Run** | `node scripts/sih-walkthrough.js day=YYYY-MM-DD [focus=B2 Line,GT4]` (needs `.env`, `IH_PLATFORM`, Python with polars). Rebuild the page only: `node scripts/sih-walkthrough-page.js samples/sih-walkthrough/<day>` |
 | **Out** | `samples/sih-walkthrough/<day>/index.html` (git-ignored, real data, open in a browser). Next to it: `data.json` (every call), `fact/` (live day files), `fact.json`, and `findings.json` (findings written by hand, optional) |

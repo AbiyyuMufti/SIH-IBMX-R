@@ -17,30 +17,6 @@ function mask(text) {
     .replace(/[0-9a-f]{32}/g, (id) => (names.has(id) ? `<${names.get(id)} id>` : '<id>'))
     .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/g, '<id>');
 }
-// Short view of a JSON response: arrays cut to `keep` items, long text cut.
-function excerpt(value, keep = 3) {
-  if (Array.isArray(value)) {
-    const head = value.slice(0, keep).map((v) => excerpt(v, keep));
-    if (value.length > keep) {
-      head.push(`… ${value.length - keep} more (${value.length} in total)`);
-    }
-    return head;
-  }
-  if (value && typeof value === 'object') {
-    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, excerpt(v, keep)]));
-  }
-  if (typeof value === 'string' && value.length > 240) {
-    return value.slice(0, 240) + '…';
-  }
-  return value;
-}
-function pretty(text, keep) {
-  try {
-    return mask(JSON.stringify(excerpt(JSON.parse(text), keep), null, 2));
-  } catch {
-    return mask(String(text).slice(0, 2000));
-  }
-}
 
 // ---------- the steps of the walkthrough ----------
 // match: which recorded call(s) the step shows. tab = the SIH report daily tab
@@ -379,36 +355,48 @@ const columnMap = COLUMNS.map((c) => {
   return { col: c, kind, from, manual, variable, usedIn: usedIn[c], stats };
 });
 
-// ---------- machines ----------
-const CONFIG_LINES = { 'B2 Line': 'B2 Auto', GT4: 'GT4' };
-const machines = data.machines.map((m) => {
-  const errorCall = data.calls.find((c) => c.part === 'machines' && c.asset === m.name &&
-    /evaluateKPIs/.test(c.url) && c.status >= 400);
-  let error = null;
-  if (errorCall) {
+
+// ---------- machines set up in SIH, with their data of the day ----------
+const kpiOf = (name) => {
+  const call = data.calls.find((c) => c.what === 'day totals' && c.asset === name);
+  if (!call || call.status >= 400) {
+    let error = call ? 'HTTP ' + call.status : 'no call';
     try {
-      error = JSON.parse(errorCall.response).errors[0].message;
+      error = JSON.parse(call.response).errors[0].message;
     } catch {
-      error = 'HTTP ' + errorCall.status;
+      // keep the status text
     }
+    return { error };
   }
+  const results = JSON.parse(call.response).results || [];
+  const v = (n) => results.find((k) => k.name === n)?.value ?? null;
   return {
-    site: m.path[2] || '',
-    area: m.path.slice(3).join(' / '),
-    name: m.name,
+    good: v('Good parts'),
+    oee: v('OEE'),
+    availability: v('Availability'),
+    performance: v('Performance'),
+    quality: v('Quality'),
+    downMin: v('Downtime (duration)') === null ? null : Math.round(v('Downtime (duration)') / 60000),
+    stops: v('Downtimes (occurrence)')
+  };
+};
+const CONFIG_LINES = { 'B2 Line': 'B2 Auto', GT4: 'GT4' };
+const sites = {};
+for (const m of data.machines) {
+  const site = m.path[2] || '?';
+  const area = m.path.slice(3).join(' › ') || '(site level)';
+  sites[site] = sites[site] || {};
+  sites[site][area] = sites[site][area] || [];
+  sites[site][area].push({
+    name: m.name.trim(),
     manual: m.isManual,
     configured: m.isConfigured,
-    configLine: CONFIG_LINES[m.name] || '',
-    inEu: Boolean(lineList[(CONFIG_LINES[m.name] || m.name) + '-' + (m.path[2] || '')]),
-    good: m.kpi.good,
-    total: m.kpi.total,
-    oee: m.kpi.oee,
-    missing: (m.kpi.missing || []).map((x) => x.value).join('; '),
-    error
-  };
-});
+    built: CONFIG_LINES[m.name] || '',
+    ...kpiOf(m.name)
+  });
+}
 
-// ---------- steps with their calls ----------
+// ---------- each call: a small table of what it really returned ----------
 // Calendar and product collection ids belong to the asset whose config named them.
 const owner = new Map();
 for (const c of data.calls.filter((x) => /\/assets\/[0-9a-f]{32}\/config$/.test(x.url))) {
@@ -421,98 +409,153 @@ for (const c of data.calls.filter((x) => /\/assets\/[0-9a-f]{32}\/config$/.test(
     // no JSON body: nothing to learn
   }
 }
+const hm = (iso) => (iso ? String(iso).slice(11, 16) : '');
+const min = (ms) => Math.round(Number(ms) / 60000);
+// stepId -> (body, call) -> { head, rows } with at most a few rows.
+const SAMPLE = {
+  token: () => ({ head: ['field', 'value'], rows: [['access_token', '(hidden)'], ['expires_in', '1799 s']] }),
+  assets: (b) => ({
+    head: ['name', 'manual?', 'configured?'],
+    rows: b.slice(0, 4).map((a) => [a.name, a.isManual ? 'yes' : 'no', a.isConfigured ? 'yes' : 'no'])
+      .concat([['… ' + b.length + ' assets in total', '', '']])
+  }),
+  hierarchy: (b) => ({ head: ['path'], rows: [[(b.hierarchyPath || []).map((p) => p.name).concat(b.name).join(' › ')]] }),
+  kpis: (b) => {
+    const pick = ['Good parts', 'Used operational time', 'Downtime (duration)'];
+    const hours = (b.results[0].groups || []).slice(0, 3).map((g) => hm(g.time));
+    return {
+      head: ['KPI'].concat(hours, ['… day']),
+      rows: pick.map((n) => {
+        const k = b.results.find((r) => r.name === n);
+        const show = (v) => (v === null ? '–' : /time|duration/i.test(n) ? min(v) + ' min' : v);
+        return [n].concat((k.groups || []).slice(0, 3).map((g) => show(g.value)), [show(k.value)]);
+      })
+    };
+  },
+  config: (b) => ({
+    head: ['field', 'value'],
+    rows: [
+      ['good parts come from', b.operandSource?.good?.mode],
+      ['product comes from', b.productSource?.mode],
+      ['calendar', b.calendarId ? 'id given' : '–'],
+      ['product list', b.productCollectionId ? 'id given' : '–']
+    ]
+  }),
+  calendar: (b) => ({
+    head: ['shift event', 'length', 'repeats'],
+    rows: b.calendarEvents.slice(0, 4).map((e) => [e.name, min(e.duration) / 60 + ' h', 'every ' + e.rrule.interval + ' days from ' + e.rrule.dtstart.slice(0, 16).replace('T', ' ')])
+  }),
+  filtervalues: (b) => ({
+    head: ['list', 'values'],
+    rows: b.filterValues.map((f) => [f.key, f.value.join(', ')])
+  }),
+  products: (b) => ({
+    head: ['name', 'description', 'design speed'],
+    rows: b.products.slice(0, 3).map((p) => [p.name, p.description || '–', p.designSpeedValue + ' / ' + String(p.designSpeedInterval).toLowerCase()])
+      .concat([['… ' + b.products.length + ' products', '', '']])
+  }),
+  valuekpis: (b, c) => {
+    const f = JSON.parse(c.body).scope.filter.find((x) => x.value.length);
+    const good = b.results.find((r) => r.name === 'Good parts');
+    return { head: ['filter', 'good parts that day'], rows: [[f.key + ' = ' + f.value[0], good.value]] };
+  },
+  stops: (b) => {
+    const list = b._embedded?.downtimeReasons || [];
+    return {
+      head: ['from', 'to', 'min', 'reason'],
+      rows: list.slice(0, 4).map((s) => [hm(s.from), hm(s.to), Math.round(Number(s.duration) / 6000) / 10, s.reasonFullPath || s.reason])
+        .concat([['… ' + list.length + ' rows', '', '', '']])
+    };
+  },
+  manual: (b) => ({
+    head: ['period', 'product', 'good', 'reasons'],
+    rows: (b.manualInputs || []).slice(0, 3).map((e) => [hm(e.startTime) + '–' + hm(e.endTime) + ' ' + e.startTime.slice(5, 10), e.productName, e.good, (e.statuses || []).length])
+  }),
+  hourly: (b) => ({
+    head: ['hour end', 'shift', 'good', 'comment'],
+    rows: b.slice(0, 4).map((h) => [hm(h.HourEndTime), h.ShiftName, h.Good, JSON.parse(h.Comments || '[]').map((x) => x.comment).join('; ')])
+  }),
+  comment: (b) => ({ head: ['comments'], rows: [[b.length + ' rows']] }),
+  reasons: (b) => {
+    const list = b.reasons || [];
+    return { head: ['top-level reasons', 'all reasons'], rows: [[list.filter((r) => !r.parentId).slice(0, 6).map((r) => r.name).join(', '), list.length]] };
+  },
+  sources: (b, c) => ({ head: ['source', 'mode'], rows: [[c.url.split('/').pop(), b.mode]] })
+};
 const steps = STEPS.map((s) => {
   const hits = data.calls.filter((c) => (s.part === 'tab' ? c.part === 'tab' : c.part === 'extra') && s.match(c));
-  const byAsset = [];
-  const seen = new Set();
+  const perAsset = {};
   for (const c of hits) {
     const ownId = (c.url.match(/(calendars|productCollections)\/([0-9a-f]{32})/) || [])[2];
     const label = c.asset || owner.get(ownId) ||
-      mask(c.url + (c.body || '')).match(/<([^>]+) id>/)?.[1] || '';
-    const key = label + '|' + c.url.replace(/\?.*/, '').split('/').pop();
-    if (seen.has(key) || byAsset.length >= (s.id === 'sources' ? 8 : 4)) {
-      continue;
+      mask(c.url + (c.body || '')).match(/<([^>]+) id>/)?.[1] || 'all';
+    let sample = null;
+    try {
+      sample = SAMPLE[s.id](JSON.parse(c.response), c);
+    } catch {
+      sample = { head: ['answer'], rows: [['HTTP ' + c.status]] };
     }
-    seen.add(key);
-    byAsset.push({
-      label,
-      method: c.method,
-      url: mask(c.url),
-      body: c.body ? mask(JSON.stringify(JSON.parse(c.body), null, 2)) : null,
-      status: c.status,
-      ms: c.ms,
-      response: pretty(c.response, s.id === 'reasons' ? 6 : 3),
-      size: c.response.length
-    });
+    if (!sample.rows.length) {
+      sample = { head: ['answer'], rows: [['empty: nothing for this asset']] };
+    }
+    if (!perAsset[label]) {
+      perAsset[label] = { label, sample, endpoint: c.method + ' ' + mask(c.url).replace(/^https:\/\/[^/]+/, '').replace(/\?.*/, ''), ms: c.ms };
+    } else if (s.id === 'sources') {
+      perAsset[label].sample.rows.push(...sample.rows);
+    }
   }
-  return { ...s, match: undefined, count: hits.length, calls: byAsset };
+  return { id: s.id, part: s.part, title: s.title, why: s.why, feeds: s.feeds, count: hits.length, assets: Object.values(perAsset) };
 });
 
-// ---------- what a manual input push needs ----------
-const gt4 = data.extras.GT4 || {};
-const sample = gt4.manualInputs?.body?.manualInputs?.[0] || null;
-const push = {
-  fields: sample ? Object.entries(sample).map(([k, v]) => [k, Array.isArray(v) ? `array of ${v.length}` : typeof v, mask(JSON.stringify(excerpt(v, 2))).slice(0, 160)]) : [],
-  entries: (gt4.manualInputs?.body?.manualInputs || []).map((e) => ({
-    start: e.startTime, end: e.endTime, product: e.productName, order: e.order,
-    good: e.good, rejected: e.rejected, statuses: (e.statuses || []).length
-  })),
-  virtual: (gt4.manualInputs?.body?.virtualPeriods || []).length,
-  hourlyFields: gt4.hourly?.body?.[0] ? Object.keys(gt4.hourly.body[0]) : [],
-  hourlyCount: (gt4.hourly?.body || []).length,
-  reasonCounts: Object.fromEntries(data.focus.map((n) => [n, (data.extras[n]?.reasons?.body?.reasons || []).length])),
-  gt4Roots: (gt4.reasons?.body?.reasons || []).filter((r) => !r.parentId).map((r) => r.name),
-  sources: Object.fromEntries(data.focus.map((n) => [n, Object.fromEntries(
-    ['productSource', 'orderSource', 'designSpeedSource', 'stateTableSource'].map((s) => [s, data.extras[n]?.[s]?.body?.mode || '?'])
-      .concat(Object.entries(data.extras[n]?.config?.body?.operandSource || {}).map(([k, v]) => [k + ' parts', v.mode])))]))
-};
+// ---------- the 65 columns as chips ----------
+// green = SIH equals live, amber = SIH empty, red = SIH value differs,
+// grey = set by the flow (not a data question).
+const chips = TYPES.map((t) => ({
+  type: t,
+  cols: columnMap.filter((c) => c.usedIn.includes(t)).map((c) => {
+    const s = c.stats[t];
+    const o = s.outcome;
+    let state = 'ok';
+    if (c.kind === 'flow') {
+      state = 'flow';
+    } else if (!s.n || !s.sih) {
+      state = 'empty';
+    } else if (o.differs) {
+      state = 'diff';
+    } else if (o['only live']) {
+      state = 'empty';
+    }
+    return { col: c.col, state, hint: c.from };
+  })
+}));
 
-// ---------- examples side by side ----------
-const examples = Object.fromEntries(TYPES.map((t) => [t, comparison[t].pairs.slice(0, 5).map(([a, b, k]) => ({
-  key: k,
-  cells: COLUMNS.filter((c) => !empty(a[c]) || !empty(b[c])).map((c) => [c, a[c] ?? null, b[c] ?? null, same(a[c], b[c])])
-}))]));
+// ---------- headline numbers for the two machines ----------
 const sum = (rows, c) => rows.reduce((t, r) => t + (typeof r[c] === 'number' ? r[c] : 0), 0);
 const totals = machinesShown.map((m) => {
   const L = (t) => liveRows.filter((r) => r.MachineName === m && r['Record Type'] === t);
   const S = (t) => sihRows.filter((r) => r.MachineName === m && r['Record Type'] === t);
-  const lossMin = (rows, conv) => rows.reduce((t, r) => t + (typeof r['Time in Mins'] === 'number' ? r['Time in Mins'] : (r.Duration || 0) * conv), 0);
+  const lossMin = (rows) => Math.round(sum(rows, 'Time in Mins'));
   return {
     machine: m,
-    rows: TYPES.map((t) => [t, L(t).length, S(t).length]),
     measures: [
-      ['Plan Good Parts', sum(L('Plan'), 'Good Parts'), sum(S('Plan'), 'Good Parts')],
-      ['Plan Planned OpT (min)', sum(L('Plan'), 'Planned OpT'), sum(S('Plan'), 'Planned OpT')],
-      ['Plan OEE Time (min)', sum(L('Plan'), 'OEE Time'), sum(S('Plan'), 'OEE Time')],
-      ['Plan Capacity', sum(L('Plan'), 'Capacity'), sum(S('Plan'), 'Capacity')],
-      ['TU OEE Time Total (min)', sum(L('Time Utilisation'), 'OEE Time Total'), sum(S('Time Utilisation'), 'OEE Time Total')],
-      ['Loss minutes', lossMin(L('Loss'), 1), lossMin(S('Loss'), 1)],
-      ['Loss minutes, unplanned', lossMin(L('Loss').filter((r) => /Unplanned/.test(r.OEELossLvl3Group)), 1), lossMin(S('Loss').filter((r) => !/^Planned/.test(r.OEELossLvl3Group)), 1)]
-    ],
-    lossNames: [
-      top(L('Loss')), top(S('Loss'))
+      ['Good parts', sum(L('Plan'), 'Good Parts'), sum(S('Plan'), 'Good Parts')],
+      ['Planned OpT, min', sum(L('Plan'), 'Planned OpT'), sum(S('Plan'), 'Planned OpT')],
+      ['OEE Time, min', sum(L('Plan'), 'OEE Time'), sum(S('Plan'), 'OEE Time')],
+      ['Loss rows', L('Loss').length, S('Loss').length],
+      ['Loss minutes', lossMin(L('Loss')), lossMin(S('Loss'))],
+      ['Run Rate rows', L('Run Rate').length, S('Run Rate').length]
     ]
   };
 });
-function top(rows) {
-  const by = {};
-  for (const r of rows) {
-    const k = [r.OEELossLvl3Group, r.OEELossLvl3SubGroup, r['Lvl 3 Loss Name']].join(' › ');
-    by[k] = by[k] || [0, 0];
-    by[k][0]++;
-    by[k][1] += typeof r['Time in Mins'] === 'number' ? r['Time in Mins'] : 0;
-  }
-  return Object.entries(by).sort((a, b) => b[1][1] - a[1][1]).slice(0, 8);
-}
 
 // Findings written by hand after looking at a run: <dir>/findings.json
-// {day, findings: [[group, title, text]]}, groups ok / flow / setup /
-// coverage. Kept next to the data (client detail), not in this script.
+// {day, findings: [[group, title, text]]}, groups ok / flow / setup.
+// Kept next to the data (client detail), not in this script.
 let findings = { day: null, findings: [] };
 try {
   findings = JSON.parse(readFileSync(resolve(dir, 'findings.json'), 'utf8'));
 } catch {
-  // none yet: the page shows only the generated list
+  // none yet
 }
 
 const page = {
@@ -522,19 +565,12 @@ const page = {
   window: data.window,
   platform: data.platform,
   builtAt: data.builtAt,
-  focus: data.focus,
-  machinesShown,
   callCount: data.calls.length,
-  tabLog: data.tab.logs.map(mask),
-  dropped,
+  machineCount: data.machines.length,
+  sites,
   steps,
-  machines,
   totals,
-  examples,
-  columnMap,
-  push,
-  referenceFiles: data.referenceFiles,
-  factFiles: data.factFiles.map((f) => f.path)
+  chips
 };
 
 const template = readFileSync(new URL('./sih-walkthrough-template.html', import.meta.url), 'utf8');

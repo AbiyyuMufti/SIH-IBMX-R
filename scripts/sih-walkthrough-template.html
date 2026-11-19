@@ -6,320 +6,251 @@
 <title>SIH Walkthrough</title>
 <style>
 :root {
-  --bg: #f7f7f5; --panel: #ffffff; --ink: #1d1f23; --muted: #62666d; --line: #e2e2de;
-  --accent: #1f5fbf; --code: #f1f1ee;
-  --ok: #1e7d4f; --ok-bg: #e3f3ea; --warn: #8a5a00; --warn-bg: #fbf0d9;
-  --bad: #a3312b; --bad-bg: #f9e2e0; --info: #3d4b8f; --info-bg: #e6e9f7; --none-bg: #eeeeea;
+  --bg: #f5f5f2; --panel: #ffffff; --ink: #1d1f23; --muted: #6a6e75; --line: #e3e3de;
+  --accent: #1f5fbf; --accent-bg: #e8effb; --code: #f1f1ee;
+  --ok: #1e7d4f; --ok-bg: #e2f2e9; --warn: #8a5a00; --warn-bg: #fbefd6;
+  --bad: #a3312b; --bad-bg: #f8e1df; --grey-bg: #ececea;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #15171a; --panel: #1d2024; --ink: #e7e7e4; --muted: #9a9ea6; --line: #30343a;
-    --accent: #7aa7ff; --code: #24282d;
+    --accent: #7aa7ff; --accent-bg: #1f2a40; --code: #24282d;
     --ok: #7fd3a5; --ok-bg: #1d3328; --warn: #f0c46a; --warn-bg: #3a2f17;
-    --bad: #f09a92; --bad-bg: #3d2220; --info: #a9b5f5; --info-bg: #262c4a; --none-bg: #2a2d31;
+    --bad: #f09a92; --bad-bg: #3d2220; --grey-bg: #2a2d31;
   }
 }
 :root[data-theme="dark"] {
   --bg: #15171a; --panel: #1d2024; --ink: #e7e7e4; --muted: #9a9ea6; --line: #30343a;
-  --accent: #7aa7ff; --code: #24282d;
+  --accent: #7aa7ff; --accent-bg: #1f2a40; --code: #24282d;
   --ok: #7fd3a5; --ok-bg: #1d3328; --warn: #f0c46a; --warn-bg: #3a2f17;
-  --bad: #f09a92; --bad-bg: #3d2220; --info: #a9b5f5; --info-bg: #262c4a; --none-bg: #2a2d31;
+  --bad: #f09a92; --bad-bg: #3d2220; --grey-bg: #2a2d31;
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--ink);
-  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
-header { padding: 28px 16px 8px; max-width: 1180px; margin: 0 auto; }
-h1 { font-size: 26px; margin: 0 0 4px; }
-h2 { font-size: 20px; margin: 0 0 6px; }
-h3 { font-size: 16px; margin: 18px 0 6px; }
-p { margin: 6px 0; }
-.muted { color: var(--muted); }
-nav { position: sticky; top: 0; z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); }
-nav div { max-width: 1180px; margin: 0 auto; padding: 8px 16px; display: flex; gap: 14px; overflow-x: auto; }
-nav a { color: var(--accent); text-decoration: none; white-space: nowrap; font-size: 14px; }
-main { max-width: 1180px; margin: 0 auto; padding: 8px 16px 60px; }
-section { scroll-margin-top: 48px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px; margin: 18px 0; }
-.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin: 14px 0; }
-.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
-.card b { display: block; font-size: 22px; }
-.card span { color: var(--muted); font-size: 13px; }
-.scroll { overflow-x: auto; }
-table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
-th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
-th { color: var(--muted); font-weight: 600; position: sticky; top: 0; background: var(--panel); }
-td.num { text-align: right; font-variant-numeric: tabular-nums; }
-code, pre { font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; }
-pre { background: var(--code); padding: 10px; border-radius: 6px; overflow: auto; max-height: 420px; margin: 6px 0; }
-.tag { display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 12px; white-space: nowrap; }
-.ok { color: var(--ok); background: var(--ok-bg); }
-.warn { color: var(--warn); background: var(--warn-bg); }
-.bad { color: var(--bad); background: var(--bad-bg); }
-.info { color: var(--info); background: var(--info-bg); }
-.none { color: var(--muted); background: var(--none-bg); }
-details { border: 1px solid var(--line); border-radius: 8px; margin: 8px 0; padding: 0 12px; }
-details[open] { padding-bottom: 10px; }
-summary { cursor: pointer; padding: 9px 0; font-weight: 600; }
-.step { border-left: 3px solid var(--accent); padding-left: 12px; margin: 22px 0; }
-.step.extra { border-left-color: var(--warn); }
-.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-@media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } }
-.controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 8px 0; font-size: 14px; }
-select, input { font: inherit; padding: 3px 6px; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; }
-ul.gaps li { margin: 6px 0; }
-.legend span { margin-right: 8px; }
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+.wrap { max-width: 1200px; margin: 0 auto; padding: 0 16px; }
+header { padding: 32px 0 6px; }
+h1 { font-size: 28px; margin: 0; }
+h2 { font-size: 22px; margin: 44px 0 4px; }
+h2 small { font-size: 14px; font-weight: 400; color: var(--muted); }
+.lead { color: var(--muted); margin: 0 0 16px; }
+code { font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+
+/* pipeline */
+.pipe { display: flex; flex-wrap: wrap; align-items: stretch; gap: 6px; }
+.pipe .box { background: var(--panel); border: 1px solid var(--line); border-top: 3px solid var(--accent);
+  border-radius: 8px; padding: 8px 10px; min-width: 120px; flex: 1 1 120px; }
+.pipe .box.extra { border-top-color: var(--warn); }
+.pipe .box.end { border-top-color: var(--ok); background: var(--ok-bg); }
+.pipe .n { font-size: 12px; color: var(--muted); }
+.pipe .t { font-weight: 600; font-size: 14px; }
+.pipe .arrow { align-self: center; color: var(--muted); font-size: 18px; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--muted); margin: 10px 0 0; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+
+/* machines */
+.site { margin: 14px 0; }
+.site h3 { margin: 0 0 8px; font-size: 17px; }
+.site h3 span { font-weight: 400; color: var(--muted); font-size: 14px; }
+.area { font-size: 13px; color: var(--muted); margin: 8px 0 4px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
+.m { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+.m.off { opacity: .55; }
+.m.err { border-color: var(--bad); }
+.m .name { font-weight: 600; }
+.m .built { font-size: 11px; background: var(--accent-bg); color: var(--accent); border-radius: 8px; padding: 0 6px; margin-left: 4px; }
+.m .kind { font-size: 12px; color: var(--muted); }
+.m .big { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.bar { height: 6px; background: var(--grey-bg); border-radius: 3px; overflow: hidden; margin: 4px 0 2px; }
+.bar i { display: block; height: 100%; background: var(--accent); }
+.m .small { font-size: 12px; color: var(--muted); }
+.m .msg { font-size: 12px; color: var(--bad); }
+
+/* steps */
+.step { display: grid; grid-template-columns: 280px 1fr; gap: 16px; padding: 16px 0; border-top: 1px solid var(--line); }
+.step:first-child { border-top: 0; }
+.step .badge { display: inline-block; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: #fff;
+  text-align: center; line-height: 26px; font-weight: 600; font-size: 13px; margin-right: 6px; }
+.step.extra .badge { background: var(--warn); }
+.step .title { font-weight: 600; font-size: 16px; }
+.step .why { font-size: 13.5px; margin: 6px 0; }
+.step .ep { font-size: 12px; color: var(--muted); word-break: break-all; }
+.feeds { margin-top: 6px; }
+.chip { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 10px; margin: 2px 3px 2px 0; white-space: nowrap; }
+.chip.ok { background: var(--ok-bg); color: var(--ok); }
+.chip.empty { background: var(--warn-bg); color: var(--warn); }
+.chip.diff { background: var(--bad-bg); color: var(--bad); }
+.chip.flow { background: var(--grey-bg); color: var(--muted); }
+.chip.feed { background: var(--accent-bg); color: var(--accent); }
+.answers { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px; }
+.answer .who { font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 2px; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; font-size: 12px; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.answer table { background: var(--code); border-radius: 6px; }
+@media (max-width: 760px) { .step { grid-template-columns: 1fr; } }
+
+/* compare */
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; }
+.yes { color: var(--ok); font-weight: 700; }
+.no { color: var(--bad); font-weight: 700; }
+
+/* columns */
+.rt { margin: 12px 0; }
+.rt b { display: block; margin-bottom: 4px; }
+
+/* findings */
+.three { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+.three .panel h3 { margin: 0 0 8px; font-size: 16px; }
+.three .panel.ok { border-top: 4px solid var(--ok); }
+.three .panel.flow { border-top: 4px solid var(--accent); }
+.three .panel.setup { border-top: 4px solid var(--bad); }
+.three li { margin: 6px 0; font-size: 14px; }
+.three li span { display: block; color: var(--muted); font-size: 13px; }
+footer { color: var(--muted); font-size: 12px; padding: 40px 0; }
 </style>
 </head>
 <body>
+<div class="wrap">
 <header>
-  <h1>SIH walkthrough</h1>
-  <p class="muted" id="sub"></p>
+  <h1>SIH → EU_OEE_Fact</h1>
+  <p class="lead" id="sub"></p>
 </header>
-<nav><div>
-  <a href="#overview">Overview</a>
-  <a href="#machines">1 · Machines in SIH</a>
-  <a href="#calls">2 · The calls</a>
-  <a href="#compare">3 · SIH vs live EU_OEE_Fact</a>
-  <a href="#columns">4 · Column map</a>
-  <a href="#push">5 · Manual input and variables</a>
-  <a href="#gaps">6 · What is lacking</a>
-</div></nav>
-<main>
-<section id="overview"></section>
-<section id="machines"></section>
-<section id="calls"></section>
-<section id="compare"></section>
-<section id="columns"></section>
-<section id="push"></section>
-<section id="gaps"></section>
-</main>
+
+<h2>How the data travels <small>one production day, per machine</small></h2>
+<div class="panel"><div class="pipe" id="pipe"></div>
+  <div class="legend"><span><i class="dot" style="background:var(--accent)"></i>call the SIH tab makes today</span>
+  <span><i class="dot" style="background:var(--warn)"></i>SIH has it, the tab does not call it yet</span>
+  <span><i class="dot" style="background:var(--ok)"></i>result</span></div></div>
+
+<h2>Machines set up in SIH <small id="mSub"></small></h2>
+<p class="lead">Every OEE asset, grouped as SIH groups them. The numbers are what SIH returns for the day.</p>
+<div id="machines"></div>
+
+<h2>Each call and what it returns <small>B2 Line (machine signals) and GT4 (operator entries)</small></h2>
+<div class="panel" id="steps"></div>
+
+<h2>SIH result vs live EU_OEE_Fact <small>same machines, same day</small></h2>
+<div class="two" id="compare"></div>
+
+<h2>The 65 EU_OEE_Fact columns <small>what SIH gives</small></h2>
+<div class="panel"><div id="chips"></div>
+  <div class="legend"><span><i class="dot" style="background:var(--ok)"></i>SIH = live</span>
+  <span><i class="dot" style="background:var(--warn)"></i>empty from SIH</span>
+  <span><i class="dot" style="background:var(--bad)"></i>SIH value differs</span>
+  <span><i class="dot" style="background:var(--grey-bg)"></i>set by the flow</span>
+  <span>Hover a column for where it comes from.</span></div></div>
+
+<h2>What is possible, what is lacking</h2>
+<div class="three" id="findings"></div>
+
+<footer id="foot"></footer>
+</div>
 <script>
 const D = /*__DATA__*/null;
 const $ = (id) => document.getElementById(id);
 const esc = (v) => String(v ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const fmt = (v) => {
-  if (v === null || v === undefined || v === '') return '<span class="muted">–</span>';
-  if (typeof v === 'number') return Number.isInteger(v) ? v.toLocaleString('en-GB') : v.toLocaleString('en-GB', { maximumFractionDigits: 3 });
-  if (typeof v === 'boolean') return v ? 'true' : 'false';
-  return esc(v);
-};
-const pct = (v) => (v === null || v === undefined ? '–' : Math.round(v * 100) + '%');
-const OUT = { 'same': 'ok', 'close': 'ok', 'differs': 'bad', 'only live': 'warn', 'only SIH': 'info', 'both empty': 'none' };
-const KIND = { api: ['API field', 'ok'], derived: ['derived', 'info'], ref: ['reference file', 'none'], flow: ['set by flow', 'none'], none: ['not in SIH', 'bad'] };
-const table = (head, rows, numCols = []) => '<div class="scroll"><table><thead><tr>' +
-  head.map((h) => '<th>' + h + '</th>').join('') + '</tr></thead><tbody>' +
-  rows.map((r) => '<tr>' + r.map((c, i) => '<td' + (numCols.includes(i) ? ' class="num"' : '') + '>' + c + '</td>').join('') + '</tr>').join('') +
-  '</tbody></table></div>';
+const num = (v) => (typeof v === 'number' ? v.toLocaleString('en-GB', { maximumFractionDigits: 1 }) : esc(v));
+const isNum = (v) => typeof v === 'number' || /^-?[\d,.]+( min)?$/.test(String(v));
+const tbl = (head, rows) => '<table><thead><tr>' + head.map((h) => '<th>' + esc(h) + '</th>').join('') +
+  '</tr></thead><tbody>' + rows.map((r) => '<tr>' + r.map((c) => '<td' + (isNum(c) ? ' class="num"' : '') + '>' + num(c) + '</td>').join('') + '</tr>').join('') + '</tbody></table>';
 
-$('sub').textContent = 'Production day ' + D.day + ' (' + D.window.from.slice(11, 16) + ' to ' +
-  D.window.to.slice(11, 16) + ' UTC, Hull) · platform ' + D.platform + ' · built ' +
-  D.builtAt.slice(0, 16).replace('T', ' ') + ' UTC · ' + D.callCount + ' calls · read only';
+$('sub').textContent = 'Production day ' + D.day + ' · ' + D.window.from.slice(11, 16) + ' to ' +
+  D.window.to.slice(11, 16) + ' UTC · platform ' + D.platform + ' · data read from SIH at ' +
+  D.builtAt.slice(0, 16).replace('T', ' ') + ' UTC';
 
-// ---------- overview ----------
+// pipeline
 {
-  const withData = D.machines.filter((m) => m.good > 0 || m.total > 0).length;
-  const kinds = {};
-  D.columnMap.forEach((c) => { kinds[c.kind] = (kinds[c.kind] || 0) + 1; });
-  $('overview').innerHTML = `
-  <h2>What this page is</h2>
-  <p>The SIH API calls behind one production day, the data they return, and how close that data gets to the
-  live <b>EU_OEE_Fact</b> table Tableau reads. Machines in detail: <b>${D.focus.join(' and ')}</b>
-  (report names ${D.machinesShown.join(', ')}). The live rows of these two machines come from Provideam today.</p>
-  <p>The SIH rows on this page were made by running the existing <b>Hull SIH report daily</b> tab locally on the real API
-  (its lake writes go to memory only), then mapping them to the fact columns with the rules of the
-  <b>EU OEE Fact write</b> tab. Nothing was written anywhere.</p>
-  <div class="cards">
-    <div class="card"><b>${D.machines.length}</b><span>OEE assets in SIH</span></div>
-    <div class="card"><b>${withData}</b><span>with parts on ${D.day}</span></div>
-    <div class="card"><b>${D.steps.filter((s) => s.part === 'tab').length}</b><span>call types the tab uses</span></div>
-    <div class="card"><b>${D.columnMap.length}</b><span>EU_OEE_Fact columns</span></div>
-    <div class="card"><b>${kinds.api || 0} / ${kinds.derived || 0}</b><span>from an API field / derived</span></div>
-    <div class="card"><b>${kinds.ref || 0} / ${kinds.flow || 0}</b><span>reference file / set by flow</span></div>
-    <div class="card"><b>${kinds.none || 0}</b><span>not in SIH at all</span></div>
-  </div>
-  <h3>Words used here</h3>
-  <p><b>Record type</b>: Plan, Loss, Time Utilisation, Run Rate (the kinds of row in EU_OEE_Fact).
-  <b>Manual input</b>: an operator entry per production period on a manual asset (GT4).
-  <b>Variable</b>: a time-series value on an aspect of an automatic asset (B2 Line), from which SIH computes KPIs and stops.
-  <b>Live</b>: the EU_OEE_Fact day files in the lake (${D.factFiles.length} files for Hull on ${D.day}).</p>
-  <details><summary>Log of the tab run</summary><pre>${esc(D.tabLog.join('\n'))}</pre></details>`;
+  const tab = D.steps.filter((s) => s.part === 'tab' && s.id !== 'token');
+  const extra = D.steps.filter((s) => s.part !== 'tab');
+  const box = (s, i, cls) => '<div class="box ' + cls + '"><div class="n">' + i + '</div><div class="t">' + esc(s.title) + '</div></div>';
+  $('pipe').innerHTML = tab.map((s, i) => box(s, i + 1, '')).join('<span class="arrow">→</span>') +
+    '<span class="arrow">→</span><div class="box end"><div class="n">result</div><div class="t">Plan, Time Utilisation and Loss rows</div></div>' +
+    '<div style="flex-basis:100%;height:6px"></div>' +
+    extra.map((s, i) => box(s, tab.length + i + 1, 'extra')).join('');
 }
 
-// ---------- machines ----------
-function renderMachines() {
-  const site = $('mSite').value;
-  const only = $('mData').checked;
-  const rows = D.machines
-    .filter((m) => (site === '' || m.site === site) && (!only || m.good > 0 || m.total > 0))
-    .sort((a, b) => (a.site + a.area + a.name).localeCompare(b.site + b.area + b.name))
-    .map((m) => {
-      let state = '<span class="tag none">no parts</span>';
-      if (m.error) state = '<span class="tag bad">' + esc(m.error) + '</span>';
-      else if (m.good > 0 || m.total > 0) state = '<span class="tag ok">data</span>';
-      else if (m.missing) state = '<span class="tag warn">' + esc(m.missing) + '</span>';
-      return [esc(m.site), esc(m.area), '<b>' + esc(m.name) + '</b>',
-        m.manual ? 'manual' : 'automatic', m.configured ? 'yes' : '<span class="tag warn">no</span>',
-        m.configLine ? '<span class="tag info">' + esc(m.configLine) + '</span>' : '',
-        m.inEu ? '<span class="tag ok">yes</span>' : '',
-        fmt(m.good), fmt(m.total), m.oee === null ? fmt(null) : pct(m.oee), state];
-    });
-  $('mTable').innerHTML = table(['Site', 'Area / line', 'Asset', 'Type', 'Configured', 'Config line', 'On EU line list', 'Good parts', 'Total parts', 'OEE', 'On ' + D.day], rows, [7, 8, 9]) +
-    '<p class="muted">' + rows.length + ' shown</p>';
-}
+// machines
 {
-  const sites = [...new Set(D.machines.map((m) => m.site))].sort();
-  const per = sites.map((s) => {
-    const all = D.machines.filter((m) => m.site === s);
-    const data = all.filter((m) => m.good > 0 || m.total > 0).length;
-    return [esc(s), all.length, data, all.filter((m) => m.manual).length, all.filter((m) => m.inEu).length, all.filter((m) => m.error).length];
-  });
-  $('machines').innerHTML = `
-  <h2>1 · Machines in SIH</h2>
-  <p>Every OEE asset (<code>GET /assets</code>), where it sits (<code>GET assetmanagement /assets/{id}</code>) and its KPI totals
-  for the day (<code>POST evaluateKPIs</code>, one per asset, same window for all sites: ${D.window.from.slice(11, 16)} to ${D.window.to.slice(11, 16)} UTC).
-  Only the Config lines (tag) are built by the SIH tab today.</p>
-  ${table(['Site', 'Assets', 'With parts on ' + D.day, 'Manual', 'Name on EU line list', 'Setup not finished'], per, [1, 2, 3, 4, 5])}
-  <p class="muted">"On EU line list" = asset name (or its Config report name) + site is a Unique Machine Name in Dim/Machine_Names_EU.csv.
-  A SIH name that differs from the report name shows as not listed, even when the line is in the report.</p>
-  <div class="controls"><label>Site <select id="mSite"><option value="">all</option>${sites.map((s) => '<option>' + esc(s) + '</option>').join('')}</select></label>
-  <label><input type="checkbox" id="mData"> only assets with parts</label></div>
-  <div id="mTable"></div>`;
-  $('mSite').onchange = renderMachines;
-  $('mData').onchange = renderMachines;
-  renderMachines();
-}
-
-// ---------- calls ----------
-{
-  const callHtml = (c) => `<details><summary>${esc(c.label || 'call')} · <code>${esc(c.method)}</code> · HTTP ${c.status} · ${c.ms} ms · ${(c.size / 1024).toFixed(1)} KB</summary>
-    <p><code>${esc(c.method)} ${esc(c.url)}</code></p>
-    ${c.body ? '<p class="muted">Request body</p><pre>' + esc(c.body) + '</pre>' : ''}
-    <p class="muted">Response (arrays cut to the first items)</p><pre>${esc(c.response)}</pre></details>`;
-  const stepHtml = (s, i) => `<div class="step ${s.part === 'extra' ? 'extra' : ''}">
-    <h3>${i + 1}. ${esc(s.title)} <span class="tag ${s.part === 'tab' ? 'info' : 'warn'}">${s.part === 'tab' ? 'used by the tab' : 'not used yet'}</span>
-    <span class="muted" style="font-weight:400;font-size:13px">${s.count} call(s) this run</span></h3>
-    <p>${esc(s.why)}</p>
-    <p><b>Kept:</b> ${esc(s.keep)}${s.feeds.length ? ' <b>Feeds:</b> ' + s.feeds.map((f) => '<code>' + esc(f) + '</code>').join(', ') : ''}</p>
-    ${s.calls.map(callHtml).join('')}</div>`;
-  const tabSteps = D.steps.filter((s) => s.part === 'tab');
-  const extraSteps = D.steps.filter((s) => s.part !== 'tab');
-  $('calls').innerHTML = `<h2>2 · The calls, in the order the tab makes them</h2>
-    <p>Per production day and per Config line, the SIH report daily tab makes these calls. Open a call to see the exact request and
-    the start of the real response (ids replaced by the asset name). Blue = what the tab does today; amber = extra calls made for this page,
-    to see what else SIH holds.</p>
-    ${tabSteps.map(stepHtml).join('')}
-    <h3 style="margin-top:28px">Extra calls (not in the tab)</h3>
-    ${extraSteps.map((s, i) => stepHtml(s, tabSteps.length + i)).join('')}
-    <p class="muted">Fields the tab builds that EU_OEE_Fact has no column for (dropped by the fact mapping):
-    ${Object.entries(D.dropped).map(([k, n]) => '<code>' + esc(k) + '</code> (' + n + ' rows)').join(', ') || 'none'}.</p>`;
-}
-
-// ---------- compare ----------
-{
-  const tot = D.totals.map((t) => `<h3>${esc(t.machine)}</h3><div class="grid2">
-    <div>${table(['Record type', 'Live rows', 'SIH rows'], t.rows.map(([k, a, b]) => [k, fmt(a), fmt(b)]), [1, 2])}</div>
-    <div>${table(['Measure', 'Live', 'SIH', ''], t.measures.map(([k, a, b]) => {
-      const d = a === 0 && b === 0 ? 'none' : Math.abs(a - b) <= 0.01 * Math.max(Math.abs(a), Math.abs(b)) ? 'ok' : 'bad';
-      return [k, fmt(a), fmt(b), '<span class="tag ' + d + '">' + (d === 'ok' ? 'same' : d === 'none' ? '–' : 'differs') + '</span>'];
-    }), [1, 2])}</div></div>
-    <div class="grid2"><div><p class="muted">Top loss names, live (rows, minutes)</p>
-    ${table(['Group › Sub group › Name', 'Rows', 'Min'], t.lossNames[0].map(([k, [n, m]]) => [esc(k), n, fmt(Math.round(m))]), [1, 2])}</div>
-    <div><p class="muted">Top loss names, SIH (rows, minutes)</p>
-    ${table(['Group › Sub group › Name', 'Rows', 'Min'], t.lossNames[1].map(([k, [n, m]]) => [esc(k), n, fmt(Math.round(m))]), [1, 2])}</div></div>`).join('');
-  const ex = Object.entries(D.examples).map(([type, list]) => `<h3>${esc(type)}: example rows side by side</h3>
-    ${list.length ? list.map((e) => `<details><summary>${esc(e.key)}</summary>
-      ${table(['Column', 'Live', 'SIH', ''], e.cells.map(([c, a, b, o]) => ['<code>' + esc(c) + '</code>', fmt(a), fmt(b), '<span class="tag ' + OUT[o] + '">' + o + '</span>']))}
-    </details>`).join('') : '<p class="muted">No matched rows' + (type === 'Run Rate' ? ': the SIH tab builds no Run Rate rows.' : '.') + '</p>'}`).join('');
-  $('compare').innerHTML = `<h2>3 · SIH vs live EU_OEE_Fact</h2>
-    <p>Same machines, same production day. How rows are paired: Plan = the n-th shift of the machine (time order),
-    Time Utilisation = the machine, Loss = machine + start minute (HH:MM; on a manual asset also the loss name, because every reason carries the shift start).
-    Numbers within 1% and clock times within 60 s count as the same (tag "close").</p>
-    ${tot}${ex}`;
-}
-
-// ---------- column map ----------
-function renderColumns() {
-  const kind = $('cKind').value;
-  const type = $('cType').value;
-  const rows = D.columnMap.filter((c) => (!kind || c.kind === kind) && (!type || c.usedIn.includes(type))).map((c) => {
-    const k = KIND[c.kind] || ['?', 'none'];
-    const obs = c.usedIn.map((t) => {
-      const s = c.stats[t];
-      const parts = Object.entries(s.outcome).map(([o, n]) => '<span class="tag ' + OUT[o] + '">' + o + ' ' + n + '</span>').join(' ');
-      return '<div><b>' + esc(t) + '</b> live ' + pct(s.live) + ' · SIH ' + pct(s.sih) + (s.n ? ' · ' + parts : '') + '</div>';
-    }).join('');
-    return ['<code>' + esc(c.col) + '</code>', '<span class="tag ' + k[1] + '">' + k[0] + '</span>', esc(c.from), obs || '<span class="muted">empty in live too</span>', esc(c.manual), esc(c.variable)];
-  });
-  $('cTable').innerHTML = table(['Column', 'Kind', 'Where it comes from in SIH', 'Observed (filled share, outcome on paired rows)', 'Manual input could fill it?', 'Variable could fill it?'], rows) +
-    '<p class="muted">' + rows.length + ' of ' + D.columnMap.length + ' columns</p>';
-}
-{
-  $('columns').innerHTML = `<h2>4 · Column map: all ${D.columnMap.length} EU_OEE_Fact columns</h2>
-    <p>Kind = where SIH can give the value. Observed = this day, the two machines: how often the column is filled in live and in SIH,
-    and on paired rows whether the values agree.</p>
-    <p class="legend">${Object.entries(OUT).map(([o, c]) => '<span class="tag ' + c + '">' + o + '</span>').join('')}</p>
-    <div class="controls"><label>Kind <select id="cKind"><option value="">all</option>${Object.entries(KIND).map(([k, [l]]) => '<option value="' + k + '">' + l + '</option>').join('')}</select></label>
-    <label>Record type <select id="cType"><option value="">all</option><option>Plan</option><option>Time Utilisation</option><option>Loss</option><option>Run Rate</option></select></label></div>
-    <div id="cTable"></div>`;
-  $('cKind').onchange = renderColumns;
-  $('cType').onchange = renderColumns;
-  renderColumns();
-}
-
-// ---------- push ----------
-{
-  const p = D.push;
-  const src = Object.entries(p.sources).map(([a, s]) => [esc(a), ...['productSource', 'orderSource', 'designSpeedSource', 'stateTableSource', 'good parts', 'rejected parts', 'total parts'].map((k) => esc(s[k] || '–'))]);
-  $('push').innerHTML = `<h2>5 · Manual input and variables: what a push would need</h2>
-    <p>Read from GET responses only; no write call was made. The two machines use the two routes:</p>
-    ${table(['Asset', 'Product', 'Order', 'Design speed', 'States', 'Good', 'Rejected', 'Total'], src)}
-    <p class="muted">CONNECTED = a variable (machine signal), MANUAL = manual input, VIA_PRODUCT = product master, STATUS_RULE = state table on a signal, CALCULATED = from other counts.</p>
-    <h3>Manual input (GT4): one entry per production period</h3>
-    <p>${p.entries.length} entries and ${p.virtual} periods in the window. The entries:</p>
-    ${table(['Start', 'End', 'Product', 'Order', 'Good', 'Rejected', 'Reasons'], p.entries.map((e) => [esc(e.start), esc(e.end), esc(e.product), esc(e.order), fmt(e.good), fmt(e.rejected), fmt(e.statuses)]), [4, 5, 6])}
-    <p>Fields of one entry (what a write would have to provide; ids, the product id and reason ids come from SIH master data):</p>
-    ${table(['Field', 'Type', 'Example'], p.fields.map(([k, t, v]) => ['<code>' + esc(k) + '</code>', esc(t), '<code>' + esc(v) + '</code>']))}
-    <p>Hourly entries (OEE_Hourly_Entry) in the window: ${p.hourlyCount}. Fields: ${p.hourlyFields.map((f) => '<code>' + esc(f) + '</code>').join(' ')}.
-    The hourly entry keeps the shift name as entered (Red, Green) and the comment text: two things the KPI and stop calls do not give.</p>
-    <p>Reason trees: ${Object.entries(p.reasonCounts).map(([a, n]) => esc(a) + ' ' + n + ' reasons').join(', ')}. GT4 top level: ${p.gt4Roots.map(esc).join(', ')}.
-    A Provideam loss can only be pushed if its name exists in the asset's reason tree (the reasonId is required).</p>
-    <h3>Variable (B2 Line): counters and a state signal</h3>
-    <p>Good parts, product and order come from aspect variables (CONNECTED); stops from a state table on a status variable (STATUS_RULE).
-    Pushing Provideam data this way means writing time series for those variables. The stop reason would then be what the state table gives;
-    the operator reason (Provideam loss name) has no variable. That is why the B2 stops show <code>Unplanned Downtime</code> / Not Logged.</p>
-    <p class="muted">Write endpoints are not tested in this project (docs/endpoints.md). Manual input writes need the eTag in If-Match to update.</p>`;
-}
-
-// ---------- gaps ----------
-{
-  const bad = [];
-  D.columnMap.forEach((c) => {
-    if (c.kind === 'none') bad.push([c.col, 'Not in SIH. ' + c.from]);
-    c.usedIn.forEach((t) => {
-      const s = c.stats[t];
-      const diff = (s.outcome['differs'] || 0) + (s.outcome['only live'] || 0);
-      if (c.kind !== 'none' && c.kind !== 'flow' && s.n && diff) {
-        bad.push([c.col, t + ': ' + diff + ' of ' + s.n + ' paired rows differ or are empty in SIH. ' + c.from]);
+  let withData = 0;
+  let html = '';
+  for (const [site, areas] of Object.entries(D.sites).sort()) {
+    const all = Object.values(areas).flat();
+    const live = all.filter((m) => m.good > 0).length;
+    withData += live;
+    html += '<div class="site panel"><h3>' + esc(site) + ' <span>' + all.length + ' assets · ' + live + ' with parts on this day</span></h3>';
+    for (const [area, list] of Object.entries(areas).sort()) {
+      html += '<div class="area">' + esc(area) + '</div><div class="cards">';
+      for (const m of list.sort((a, b) => a.name.localeCompare(b.name))) {
+        const has = m.good > 0;
+        html += '<div class="m' + (m.error ? ' err' : has ? '' : ' off') + '">' +
+          '<div class="name">' + esc(m.name) + (m.built ? '<span class="built">built today</span>' : '') + '</div>' +
+          '<div class="kind">' + (m.manual ? 'operator entry' : 'machine signal') + '</div>';
+        if (m.error) {
+          html += '<div class="msg">' + esc(m.error) + '</div>';
+        } else if (has) {
+          html += '<div class="big">' + num(m.good) + '</div><div class="small">good parts</div>' +
+            '<div class="bar"><i style="width:' + Math.min(100, Math.round((m.oee || 0) * 100)) + '%"></i></div>' +
+            '<div class="small">OEE ' + Math.round((m.oee || 0) * 100) + '% · ' + num(Math.round(m.stops)) + ' stops · ' + num(m.downMin) + ' min down</div>';
+        } else {
+          html += '<div class="small">no parts this day</div>';
+        }
+        html += '</div>';
       }
-    });
-  });
-  const seen = new Set();
-  const GROUP = {
-    ok: ['Already possible: SIH matches live', 'ok'],
-    flow: ['Possible, needs a change in the flow', 'info'],
-    setup: ['Lacking: needs data or setup in SIH', 'bad'],
-    coverage: ['Coverage', 'none']
-  };
-  const findings = Object.entries(GROUP).map(([g, [title, cls]]) => {
-    const list = D.findings.filter((f) => f[0] === g);
-    return `<h3><span class="tag ${cls}">${list.length}</span> ${esc(title)}</h3><ul class="gaps">` +
-      list.map((f) => '<li><b>' + esc(f[1]) + '.</b> ' + esc(f[2]) + '</li>').join('') + '</ul>';
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+  $('machines').innerHTML = html;
+  $('mSub').textContent = D.machineCount + ' assets · ' + withData + ' with parts on ' + D.day;
+}
+
+// steps
+{
+  $('steps').innerHTML = D.steps.map((s, i) => {
+    const answers = s.assets.map((a) => '<div class="answer"><div class="who">' + esc(a.label === 'all' ? 'answer' : a.label) +
+      '</div>' + tbl(a.sample.head, a.sample.rows) + '</div>').join('');
+    return '<div class="step ' + (s.part === 'tab' ? '' : 'extra') + '"><div>' +
+      '<div class="title"><span class="badge">' + (i + 1) + '</span>' + esc(s.title) + '</div>' +
+      '<div class="why">' + esc(s.why) + '</div>' +
+      '<div class="ep"><code>' + esc(s.assets[0]?.endpoint || '') + '</code></div>' +
+      (s.feeds.length ? '<div class="feeds">' + s.feeds.map((f) => '<span class="chip feed">' + esc(f) + '</span>').join('') + '</div>' : '') +
+      (s.part === 'tab' ? '' : '<div class="feeds"><span class="chip empty">not used by the tab yet</span></div>') +
+      '</div><div class="answers">' + answers + '</div></div>';
   }).join('');
-  const stale = !D.findingsDay ? '<p class="tag warn">No findings.json in this folder yet: only the generated list below.</p>' : D.findingsDay !== D.day ? '<p class="tag warn">These findings were written for ' + esc(D.findingsDay) + ', this page shows ' + esc(D.day) + ': check them against the list below.</p>' : '';
-  $('gaps').innerHTML = `<h2>6 · What is possible and what is lacking</h2>
-    <p class="muted">Findings from the ${esc(D.findingsDay)} run, read from sections 1 to 5.</p>${stale}
-    ${findings}
-    <details><summary>Generated list: every column with differences or empty in SIH (${bad.length})</summary>
-    <ul class="gaps">${bad.filter(([c, t]) => !seen.has(c + t) && seen.add(c + t)).map(([c, t]) => '<li><code>' + esc(c) + '</code>: ' + esc(t) + '</li>').join('')}</ul></details>`;
+}
+
+// compare
+{
+  $('compare').innerHTML = D.totals.map((t) => '<div class="panel"><h3 style="margin:0 0 8px">' + esc(t.machine) + '</h3><table><thead><tr><th></th><th class="num">live</th><th class="num">SIH</th><th></th></tr></thead><tbody>' +
+    t.measures.map(([k, a, b]) => {
+      const ok = Math.abs(a - b) <= 0.01 * Math.max(Math.abs(a), Math.abs(b));
+      return '<tr><td>' + esc(k) + '</td><td class="num">' + num(a) + '</td><td class="num">' + num(b) + '</td><td class="' + (ok ? 'yes">✓' : 'no">✗') + '</td></tr>';
+    }).join('') + '</tbody></table></div>').join('');
+}
+
+// chips
+{
+  $('chips').innerHTML = D.chips.map((g) => {
+    const count = (st) => g.cols.filter((c) => c.state === st).length;
+    return '<div class="rt"><b>' + esc(g.type) + ' <span style="font-weight:400;color:var(--muted);font-size:13px">' +
+      count('ok') + ' equal · ' + count('empty') + ' empty · ' + count('diff') + ' differ</span></b>' +
+      g.cols.map((c) => '<span class="chip ' + c.state + '" title="' + esc(c.hint) + '">' + esc(c.col) + '</span>').join('') + '</div>';
+  }).join('');
+}
+
+// findings
+{
+  const GROUP = { ok: 'Works already', flow: 'Possible: change the flow', setup: 'Lacking in SIH' };
+  $('findings').innerHTML = Object.entries(GROUP).map(([g, title]) => {
+    const list = (D.findings || []).filter((f) => f[0] === g);
+    return '<div class="panel ' + g + '"><h3>' + esc(title) + '</h3><ul>' +
+      list.map((f) => '<li><b>' + esc(f[1]) + '</b><span>' + esc(f[2]) + '</span></li>').join('') + '</ul></div>';
+  }).join('');
+  $('foot').textContent = (D.findingsDay ? 'Findings written for ' + D.findingsDay + '. ' : 'No findings.json yet. ') +
+    D.callCount + ' calls, read only. Rebuild: node scripts/sih-walkthrough.js day=YYYY-MM-DD';
 }
 </script>
 </body>
