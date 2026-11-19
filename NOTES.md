@@ -166,6 +166,7 @@ Helper scripts (read-only, no network): `scripts/helper-postman-outline.js`, `sc
 - Run monitor GET route follow-up (2026-10-21): the VFC does not accept the optional `:view?` endpoint. Use the fixed `/reports-monitor/` route and select page/status/history with `msg.req.query.view`; update the page to call that same endpoint with query parameters.
 
 ## Decisions
+- 2026-11-19 Tuzla: the history script runs the function nodes of the future live tab (t1 to t3, e2) so history and live share one rule set. `Diğer` (remainder) contains the speed loss: loaded as Reduced Speed (at most the remainder) + Not Logged (the rest). Loss map, Dept / Area / Product Type are proposals until the site confirms (docs/tuzla-live.md).
 - 2026-10-28 Provideam: use a separate fixed-host client and `apiKey`
   authentication; permit only individually allowlisted method/path pairs.
   The first live request was only the Swagger GET. Never save raw responses

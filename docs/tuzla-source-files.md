@@ -5,7 +5,7 @@
 | **What** | How the Tuzla site (Turkey) records OEE today: a paper shift form filled by the operators, typed by the shift supervisors into one Excel workbook, whose sheet `Template` feeds the daily, weekly and monthly dashboard sheets. Profile only, step 1 of the as-is recreation |
 | **Sources read** | `downloads/05 SITE Tuzla/2026_OEE_KPI.xlsx` and `downloads/05 SITE Tuzla/SD046683-10.0-Vardiya Makina Çalışma Takip Formu.xlsx` (git-ignored, untrusted). Read with openpyxl (values and formulas), no macro, not opened in Excel |
 | **Language** | Turkish. Günlük = daily, Haftalık = weekly, Aylık = monthly. Rows 1 and 2 of `Template` also carry Chinese labels (the template was copied from another site, see section 5) |
-| **Status** | Profile done 2026-11-19. Next: column map to the report tables, then recompute one day and compare with `Günlük` |
+| **Status** | Profile done 2026-11-19. Column map, history load (checked against `Günlük` and `Aylık`), file watch and daily update design: [tuzla-live.md](tuzla-live.md) |
 
 ## 1. How the data flows
 1. Operators fill the paper form **Vardiya Makina Çalışma Takip Formu** (shift machine tracking form) per line and shift: up to 4 products (start, end, code, cases, machine speed, staff, order number), stop minutes per reason, waste (Fire) per material, and a stop detail list (reason, start/end, minutes).
